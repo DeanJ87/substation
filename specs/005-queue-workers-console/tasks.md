@@ -18,3 +18,5 @@
   timeout 180 s; a worker is stale after 120 s without a heartbeat (was 30 s); a supervisor is lenient with
   orphans for its first 5 minutes.
 - [X] W15 (owner 2026-10-13) `/work/queue?kind=` and toggling chips in Activity (005-DR-15)
+- [X] W16 (owner 2026-10-13) `heavy_memory` sets all cores and 80% for stacking jobs (005-DR-16); deploy script
+  waits for heavy tasks and keeps a paused queue paused (005-DR-17)

@@ -362,17 +362,23 @@ def engine() -> Siril:
 
 
 @contextlib.contextmanager
-def heavy_memory(share: float = 0.6):  # noqa: ANN201
+def heavy_memory(share: float | None = None):  # noqa: ANN201
     """For a stacking-slot job (integrate, combine, build a master): Siril may use at least `share` of free memory
-    while it runs, then goes back to the per-worker share. There is one stacking slot, so this can't overcommit
-    the way giving every worker half the memory would (005 T003)."""
+    (SUBSTATION_SIRIL_HEAVY_MEM, default 0.8) and every CPU this container has while it runs, then goes back to the
+    per-worker share and threads. There is one stacking slot, so this can't overcommit the way giving every worker
+    that much would (005 T003). With 2 threads and 60% a 135-sub stack ran over an hour (2026-10-13)."""
     global _heavy_active
+    share = share if share is not None else float(os.environ.get("SUBSTATION_SIRIL_HEAVY_MEM", "0.8"))
     eng = engine()
-    before = eng.mem_ratio
+    before, threads_before = eng.mem_ratio, eng.threads
     want = max(before, share)
+    cores = max(threads_before, os.cpu_count() or threads_before)
     if want != before:
         eng.run(f"setmem {want}", check=False)
         eng.mem_ratio = want
+    if cores != threads_before:
+        eng.run(f"setcpu {cores}", check=False)
+        eng.threads = cores
     _heavy_active = True
     try:
         yield eng
@@ -381,6 +387,9 @@ def heavy_memory(share: float = 0.6):  # noqa: ANN201
         if eng.alive() and eng.mem_ratio != before:
             eng.run(f"setmem {before}", check=False)
             eng.mem_ratio = before
+        if eng.alive() and eng.threads != threads_before:
+            eng.run(f"setcpu {threads_before}", check=False)
+            eng.threads = threads_before
 
 
 def engine_pid() -> int | None:
