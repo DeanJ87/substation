@@ -11420,6 +11420,7 @@
   },
   "/helper/tasks/{task_id}/fail": {
    "post": {
+    "description": "A run that went wrong. While it has attempts left it goes back in the queue (a dropped connection or a\nhelper restart shouldn't cost the master its post-processing); after that it fails with the helper's reason.",
     "operationId": "apps_processing_api_helper_job_failed",
     "parameters": [
      {

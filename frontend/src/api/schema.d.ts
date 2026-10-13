@@ -1083,7 +1083,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Job Failed */
+        /**
+         * Job Failed
+         * @description A run that went wrong. While it has attempts left it goes back in the queue (a dropped connection or a
+         *     helper restart shouldn't cost the master its post-processing); after that it fails with the helper's reason.
+         */
         post: operations["apps_processing_api_helper_job_failed"];
         delete?: never;
         options?: never;
