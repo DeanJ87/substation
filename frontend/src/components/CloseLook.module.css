@@ -1,0 +1,207 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--sst-bg);
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) 16px 16px;
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  color: var(--sst-text);
+}
+.name {
+  font-family: var(--sst-mono, ui-monospace, monospace);
+  font-size: 13px;
+  margin-right: auto;
+  overflow-wrap: anywhere;
+}
+.group {
+  display: inline-flex;
+  gap: 4px;
+}
+.group button,
+.close {
+  background: var(--sst-panel);
+  border: 1px solid var(--sst-line);
+  border-radius: 999px;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.group button[aria-pressed='true'] {
+  border-color: var(--sst-accent);
+  color: var(--sst-accent);
+}
+kbd {
+  font-size: 11px;
+  opacity: 0.6;
+}
+.wait {
+  color: var(--sst-muted);
+}
+.pan {
+  flex: 1;
+  overflow: auto;
+  cursor: grab;
+  user-select: none;
+}
+.pan:active {
+  cursor: grabbing;
+}
+.fit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.fitImg {
+  max-width: 100%;
+  max-height: 100%;
+}
+.actualImg {
+  max-width: none;
+  image-rendering: pixelated;
+}
+.inspect {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.inspect img {
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+.hint {
+  color: var(--sst-muted);
+  max-width: 70ch;
+  font-size: 13px;
+}
+.zoomable {
+  all: unset;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: zoom-in;
+}
+.zoomable:focus-visible {
+  outline: 2px solid var(--sst-accent);
+  outline-offset: 2px;
+}
+/* the image and its annotations, sized together (and scaled together at 200%) */
+.frame {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.fitFrame {
+  max-width: 100%;
+  max-height: 100%;
+}
+.fitFrame .fitImg {
+  display: block;
+  max-height: calc(100vh - 80px);
+}
+/* a master's versions at 100% (owner 2026-10-12): tab through Original and each post-processing step */
+.versions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 calc(4px + env(safe-area-inset-bottom, 0px));
+}
+.versions button {
+  background: var(--sst-panel);
+  border: 1px solid var(--sst-line);
+  border-radius: 999px;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.versions button[aria-selected='true'] {
+  border-color: var(--sst-accent);
+  color: var(--sst-accent);
+}
+.versionsHint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--sst-muted);
+}
+/* the image and its measurements side by side (owner 2026-10-12) */
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+}
+.body > .pan {
+  flex: 1;
+  min-width: 0;
+}
+.stats {
+  width: 220px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sst-text);
+}
+.stats dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stats dt {
+  color: var(--sst-muted);
+  font-size: 12px;
+}
+.stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.delta {
+  color: var(--sst-muted);
+}
+@media (max-width: 900px) {
+  .body {
+    flex-direction: column;
+  }
+  .stats {
+    width: auto;
+  }
+}
+.pan {
+  position: relative;
+}
+/* while a version loads (owner 2026-10-13: "nothing to notify you it's loading") */
+.loading {
+  position: sticky;
+  top: 12px;
+  left: 12px;
+  margin: 12px;
+  width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--sst-panel);
+  border: 1px solid var(--sst-line);
+  color: var(--sst-text);
+  font-size: 13px;
+  z-index: 2;
+}

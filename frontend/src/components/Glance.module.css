@@ -1,0 +1,32 @@
+.target {
+  cursor: default;
+}
+.card {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  background: var(--sst-panel-2);
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  box-shadow: var(--sst-shadow);
+  overflow: hidden;
+}
+.card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.wait {
+  aspect-ratio: 3 / 2;
+  display: grid;
+  place-items: center;
+}
+.label {
+  padding: 6px 8px;
+  font-family: var(--sst-font-mono);
+  font-size: 11px;
+  color: var(--sst-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

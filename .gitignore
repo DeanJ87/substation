@@ -1,0 +1,46 @@
+# OS and editors
+.DS_Store
+._*
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+frontend/dist/
+coverage/
+*.log
+playwright-report/
+test-results/
+
+# Local runtime data and secrets
+.env*
+backend/var/
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# AppleDouble test fixture must be committed (the ingest code must learn to ignore it)
+!backend/tests/fixtures/headers/**/._*
+compose.local-test.yml
+
+# Local scratch: screenshot and check scripts, Claude Code lock files
+frontend/.*.mjs
+.claude/*.lock

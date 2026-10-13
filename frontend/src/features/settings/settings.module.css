@@ -1,0 +1,445 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.patternList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.patternRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  padding: 10px 12px;
+  font-size: 14px;
+}
+.kind {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sst-muted);
+  margin-right: 6px;
+}
+.rowActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.editor {
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--sst-panel);
+}
+.editor h3 {
+  margin: 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.editor input,
+.editor select,
+.editor textarea {
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  padding: 7px 10px;
+  font: inherit;
+}
+.editor input[type='checkbox'] {
+  padding: 0;
+}
+.hint {
+  font-size: 12px;
+  color: var(--sst-muted);
+  font-family: var(--sst-font-mono, monospace);
+}
+.examples {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  border: 1px solid var(--sst-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--sst-muted);
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip:hover {
+  color: var(--sst-text);
+  border-color: var(--sst-accent-line);
+}
+.prefer {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.prefer label {
+  flex-direction: row;
+  align-items: center;
+}
+.preview {
+  border-left: 3px solid var(--sst-accent-line);
+  padding-left: 12px;
+  font-size: 14px;
+}
+.preview p {
+  margin: 4px 0;
+}
+.previewTable {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+.previewTable th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sst-muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--sst-line);
+}
+.previewTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--sst-line-2);
+  word-break: break-all;
+}
+.changes {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.error {
+  color: var(--sst-bad);
+  margin: 0;
+}
+.inlineForm {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.inlineForm input,
+.inlineForm select {
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  padding: 7px 10px;
+  font: inherit;
+}
+.inlineForm input {
+  min-width: 260px;
+}
+.suggest {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px dashed var(--sst-accent-line);
+  border-radius: var(--sst-radius-sm);
+  font-size: 14px;
+}
+.rowActions select {
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+}
+
+/* Settings layout (design v2 A4): a sticky rail beside one scrolling page, and a sticky save bar. */
+.layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+.rail {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.rail a {
+  padding: 6px 10px;
+  border-radius: var(--sst-radius-sm);
+  color: var(--sst-muted);
+  text-decoration: none;
+}
+.rail a:hover,
+.rail a:focus-visible {
+  color: var(--sst-text);
+  background: var(--sst-panel-2);
+}
+.section {
+  scroll-margin-top: 16px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--sst-line-2);
+}
+.saveBar {
+  position: sticky;
+  bottom: 12px;
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--sst-accent-line);
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, var(--sst-panel), var(--sst-card-end));
+  z-index: 10;
+}
+.saveDetail {
+  color: var(--sst-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.mono {
+  font-family: var(--sst-font-mono);
+}
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.dotOk {
+  background: var(--sst-ok);
+}
+.dotWarn {
+  background: var(--sst-warn);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sst-muted);
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--sst-line);
+}
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--sst-line-2);
+  vertical-align: middle;
+}
+.num {
+  width: 72px;
+  padding: 5px 8px;
+  margin-right: 4px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.inline select,
+.inline input:not(.num) {
+  padding: 5px 8px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}
+.formGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  align-items: center;
+}
+@media (max-width: 800px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+.patternRow select,
+.rowActions select {
+  padding: 6px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+  font-size: 13px;
+  max-width: 300px;
+}
+
+.sourceTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.sourceTable th {
+  text-align: left;
+  font-weight: 500;
+  padding: 8px 10px;
+  white-space: nowrap;
+  vertical-align: top;
+  border-bottom: 1px solid var(--sst-line-2);
+}
+.sourceTable td {
+  padding: 8px 10px;
+  color: var(--sst-muted);
+  border-bottom: 1px solid var(--sst-line-2);
+}
+
+.sortPill {
+  background: none;
+  border: 1px solid var(--sst-line);
+  border-radius: 999px;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.sortPill[aria-pressed='true'] {
+  border-color: var(--sst-accent);
+  color: var(--sst-accent);
+}
+/* long lists scroll inside their section, so the rest of the section stays in view */
+.scrollPane {
+  max-height: min(60vh, 560px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.railTab {
+  all: unset;
+  padding: 7px 10px;
+  border-radius: var(--sst-radius-sm);
+  color: var(--sst-muted);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.railTab:hover,
+.railTab:focus-visible {
+  color: var(--sst-text);
+  background: var(--sst-panel-2);
+}
+.railTab[aria-selected='true'] {
+  color: var(--sst-text);
+  border-left-color: var(--sst-accent);
+  background: var(--sst-panel-2);
+}
+/* rigs: every row's controls in the same columns (owner 2026-10-11) */
+.rigRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.rigActions {
+  display: grid;
+  grid-template-columns: 200px 150px 84px 190px 74px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+.rigActions select {
+  width: 100%;
+  max-width: none;
+}
+@media (max-width: 1100px) {
+  .rigRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rigActions {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+.patternRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.patternRow > .rowActions {
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* a row the server hasn't confirmed yet */
+.saving {
+  opacity: 0.6;
+}
+/* A folded section's contents (SettingsSection): the same rhythm the section had before it could fold. */
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sectionBody > p {
+  margin: 0;
+  max-width: 75ch;
+}
+/* Tables inside a scrolling pane keep their headings in view. */
+.scrollPane th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sst-bg);
+}

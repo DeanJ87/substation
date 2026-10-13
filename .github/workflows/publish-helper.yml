@@ -1,0 +1,53 @@
+name: publish helper image
+# The post-processing helper image (spec 010), built only when the helper or its image changes: no NAS service runs
+# it, so a push that doesn't touch it needn't rebuild it.
+on:
+  push:
+    branches: [main, "poc-*"]
+    paths:
+      - docker/finisher.Dockerfile
+      - docker/entrypoint.sh
+      - backend/tools/**
+      - .github/workflows/publish-helper.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-helper-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/deanj87/substation-finisher
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+      - id: ver
+        run: echo "v=$(sed -n 's/^version = "\(.*\)"/\1/p' backend/pyproject.toml) · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7} · $(date -u '+%-d %b %Y %H:%M')" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        with:
+          build-args: SUBSTATION_VERSION=${{ steps.ver.outputs.v }}
+          context: .
+          file: docker/finisher.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=finisher
+          cache-to: type=gha,mode=max,scope=finisher

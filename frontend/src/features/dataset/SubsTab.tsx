@@ -1,0 +1,343 @@
+// Subs (design v2 D1): tiles grouped by session, newest first; filters; click selects, shift-click selects a
+// range, Ctrl/Cmd-A selects the session; the bulk bar and A, W, R apply to the selection; U reverts.
+import { Link, useNavigate } from '@tanstack/react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { Button } from '../../components/ui'
+import { Collapsible } from '../../components/Collapsible'
+import { LoadMore } from '../../components/LoadMore'
+import { useProgressive } from '../../components/useProgressive'
+import { VerdictIcon, type VerdictState } from '../../components/VerdictBadge'
+import { integrationText, nightText } from '../format'
+import {
+  fwhmText,
+  num,
+  previewUrl,
+  useStartStack,
+  useVerdict,
+  type DatasetT,
+  type Session,
+  type Sub,
+} from '../v2/hooks'
+import v from '../v2/v2.module.css'
+import { conditionsText } from './DatasetScreen'
+import s from './dataset.module.css'
+
+type Filter = 'all' | 'accept' | 'down' | 'reject' | 'manual' | 'waiting'
+
+export function verdictState(sub: Sub): VerdictState {
+  if (sub.verdict === 'accept') return 'accept'
+  if (sub.verdict === 'down') return 'down'
+  if (sub.verdict === 'reject') return 'reject'
+  if (sub.awaiting_reason) return 'await'
+  return 'integ'
+}
+
+export function shortName(file: string): string {
+  const m = file.match(/(_\d{3,5})(\.[a-z]+)?$/i)
+  return m ? `…${m[1]}` : file.replace(/\.(xisf|fits?|fz)$/i, '')
+}
+
+export function SubsTab({
+  dataset,
+  subs,
+  sessions,
+}: {
+  dataset: DatasetT
+  subs: Sub[]
+  sessions: Session[]
+}) {
+  const [filter, setFilter] = useState<Filter>('all')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [anchor, setAnchor] = useState<string | null>(null)
+  const verdict = useVerdict()
+  const navigate = useNavigate()
+  const stack = useStartStack(dataset.id)
+  // 004 T009: a master of exactly these subs, whatever their grades (included and excluded by hand)
+  // the Masters tab opens at once, with the new master waiting there
+  const stackSelected = () => {
+    stack.mutate({
+      rule: 'default',
+      include: [...selected],
+      exclude: subs.map((x) => x.sha256).filter((x) => !selected.has(x)),
+    })
+    void navigate({
+      to: '/datasets/$id',
+      params: { id: String(dataset.id) },
+      search: { tab: 'masters' },
+    })
+  }
+  // Review lists flagged subs; it opens on this dataset (003-DR-05)
+  const openReview = () => void navigate({ to: '/review', search: { dataset: dataset.id } })
+
+  const visible = useMemo(
+    () =>
+      subs.filter((x) =>
+        filter === 'all'
+          ? true
+          : filter === 'manual'
+            ? x.manual
+            : filter === 'waiting'
+              ? !x.verdict
+              : x.verdict === filter,
+      ),
+    [subs, filter],
+  )
+  const byNight = useMemo(() => {
+    const m = new Map<string, Sub[]>()
+    for (const x of visible) {
+      const k = x.night ?? 'unknown'
+      m.set(k, [...(m.get(k) ?? []), x])
+    }
+    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  }, [visible])
+  const groups = useProgressive(byNight, 8, filter)
+  const order = useMemo(() => byNight.flatMap(([, list]) => list.map((x) => x.sha256)), [byNight])
+  const count = (f: Filter) =>
+    f === 'manual'
+      ? subs.filter((x) => x.manual).length
+      : f === 'waiting'
+        ? subs.filter((x) => !x.verdict).length
+        : subs.filter((x) => x.verdict === f).length
+
+  function click(sha: string, e: React.MouseEvent) {
+    const next = new Set(selected)
+    if (e.shiftKey && anchor) {
+      const [a, b] = [order.indexOf(anchor), order.indexOf(sha)].sort((p, q) => p - q)
+      for (const k of order.slice(a, b + 1)) next.add(k)
+    } else if (next.has(sha)) next.delete(sha)
+    else next.add(sha)
+    setSelected(next)
+    setAnchor(sha)
+  }
+
+  function apply(kind: 'accept' | 'keep' | 'reject' | 'auto') {
+    if (!selected.size) return
+    verdict.mutate({ sha256s: [...selected], verdict: kind })
+    setSelected(new Set())
+  }
+
+  useEffect(() => {
+    function key(e: KeyboardEvent) {
+      if ((e.target as HTMLElement).closest('input, select, textarea')) return
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+        const night = anchor ? subs.find((x) => x.sha256 === anchor)?.night : byNight[0]?.[0]
+        const list = byNight.find(([n]) => n === night)?.[1] ?? []
+        if (list.length) {
+          e.preventDefault()
+          setSelected(new Set(list.map((x) => x.sha256)))
+        }
+        return
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey || !selected.size) return
+      const k = e.key.toLowerCase()
+      if (k === 'a') apply('accept')
+      else if (k === 'w') apply('keep')
+      else if (k === 'r') apply('reject')
+      else if (k === 'u') apply('auto')
+      else if (k === 'escape') setSelected(new Set())
+      else if (k === 'enter' && selected.size === 1) openReview()
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  })
+
+  const selNights = [...new Set(subs.filter((x) => selected.has(x.sha256)).map((x) => x.night))]
+  const sessionInfo = (n: string) => sessions.find((x) => x.night === n)
+
+  return (
+    <div className={s.subs}>
+      <div className={s.filterBar}>
+        <div className={v.pills}>
+          <button className={v.pill} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
+            Sessions <strong>All {dataset.nights}</strong>
+          </button>
+          {(
+            [
+              ['accept', 'Accepted', 'accept'],
+              ['down', 'Down-weighted', 'down'],
+              ['reject', 'Rejected', 'reject'],
+            ] as const
+          ).map(([f, label, st]) => (
+            <button key={f} className={v.pill} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+              <VerdictIcon state={st} size={13} title="" /> {label} <span className={v.mono}>{count(f)}</span>
+            </button>
+          ))}
+          <button className={v.pill} aria-pressed={filter === 'manual'} onClick={() => setFilter('manual')}>
+            M Manual <span className={v.mono}>{count('manual')}</span>
+          </button>
+          {count('waiting') > 0 && (
+            <button
+              className={v.pill}
+              aria-pressed={filter === 'waiting'}
+              onClick={() => setFilter('waiting')}
+            >
+              <VerdictIcon state="await" size={13} title="" /> Not graded yet{' '}
+              <span className={v.mono}>{count('waiting')}</span>
+            </button>
+          )}
+        </div>
+        <span className={v.muted}>Sort: capture time</span>
+      </div>
+
+      {selected.size > 0 && (
+        <div className={s.bulkBar} role="toolbar" aria-label="Selected subs">
+          <span>
+            <strong>{selected.size} selected</strong>{' '}
+            <span className={v.muted}>
+              {selNights.length === 1
+                ? `from ${nightText(selNights[0])}`
+                : `from ${selNights.length} sessions`}
+            </span>
+          </span>
+          <div className={v.actions}>
+            <Button onClick={() => apply('accept')}>
+              <VerdictIcon state="accept" size={14} title="" /> Accept <kbd>A</kbd>
+            </Button>
+            <Button onClick={() => apply('keep')}>
+              <VerdictIcon state="down" size={14} title="" /> Down-weight <kbd>W</kbd>
+            </Button>
+            <Button onClick={() => apply('reject')}>
+              <VerdictIcon state="reject" size={14} title="" /> Reject <kbd>R</kbd>
+            </Button>
+            <Button onClick={() => apply('auto')}>
+              Clear override <kbd>U</kbd>
+            </Button>
+            <Button onClick={openReview}>Open in review</Button>
+            <Button
+              onClick={stackSelected}
+              disabled={selected.size < 2}
+              title="Stack these subs regardless of grade"
+            >
+              Stack these {selected.size}
+            </Button>
+            <Button onClick={() => setSelected(new Set())}>Deselect</Button>
+          </div>
+        </div>
+      )}
+
+      {byNight.length === 0 && <p className={v.empty}>No subs match this filter.</p>}
+      {/* sessions a few at a time, and each session's tiles a slice at a time in its own scrolling pane
+          (owner 2026-10-11: enormous lists load as they scroll, inside their section) */}
+      {groups.visible.map(([night, list]) => (
+        <SessionGroup
+          key={night}
+          datasetId={dataset.id}
+          night={night}
+          list={list}
+          info={sessionInfo(night)}
+          resetKey={filter}
+          selected={selected}
+          onClick={click}
+        />
+      ))}
+      <LoadMore hasMore={groups.hasMore} loading={false} onMore={groups.more} />
+    </div>
+  )
+}
+
+function SessionGroup({
+  datasetId,
+  night,
+  list,
+  info,
+  resetKey,
+  selected,
+  onClick,
+}: {
+  datasetId: number
+  night: string
+  list: Sub[]
+  info: Session | undefined
+  resetKey: unknown
+  selected: Set<string>
+  onClick: (sha: string, e: React.MouseEvent) => void
+}) {
+  const { visible, hasMore, more } = useProgressive(list, 120, resetKey)
+  return (
+    <Collapsible
+      id={`dataset-${datasetId}-session-${night}`}
+      title={nightText(night)}
+      meta={`${list.length.toLocaleString('en-GB')} subs · ${integrationText(list.reduce((n, x) => n + (x.exptime_s ?? 0), 0))}`}
+      className={s.session}
+    >
+      <div className={s.sessionHead}>
+        {info ? (
+          <span
+            className={v.muted}
+            title={
+              Object.entries(info.condition_sources ?? {})
+                .map(([k, src]) => `${k}: ${src}`)
+                .join('\n') || 'No conditions recorded'
+            }
+          >
+            {conditionsText(info.conditions) || 'no conditions recorded'}
+            {Object.keys(info.condition_sources ?? {}).length > 0 &&
+              ` · from ${[...new Set(Object.values(info.condition_sources ?? {}))].join(', ')}`}
+          </span>
+        ) : (
+          <span />
+        )}
+        <Link to="/nights/$date" params={{ date: night }}>
+          The night
+        </Link>
+      </div>
+      <div className={s.tilePane}>
+        <div className={s.tiles}>
+          {visible.map((x) => (
+            <Tile
+              key={x.sha256}
+              sub={x}
+              selected={selected.has(x.sha256)}
+              onClick={(e) => onClick(x.sha256, e)}
+            />
+          ))}
+        </div>
+        <LoadMore hasMore={hasMore} loading={false} onMore={more} />
+      </div>
+    </Collapsible>
+  )
+}
+
+function Tile({
+  sub,
+  selected,
+  onClick,
+}: {
+  sub: Sub
+  selected: boolean
+  onClick: (e: React.MouseEvent) => void
+}) {
+  const st = verdictState(sub)
+  const title = sub.reason ?? sub.awaiting_reason ?? sub.error ?? 'Not graded yet'
+  return (
+    <div className={`${s.tile} ${selected ? s.tileSelected : ''}`} title={title}>
+      <button
+        className={s.tileHit}
+        onClick={onClick}
+        aria-pressed={selected}
+        aria-label={`Select ${sub.file}: ${title}`}
+      />
+      <div className={s.thumb}>
+        {sub.has_preview && <img src={previewUrl(sub.sha256)} alt="" loading="lazy" />}
+      </div>
+      <div className={s.tileTop}>
+        <span className={s.disc}>
+          <VerdictIcon state={st} size={14} title="" />
+        </span>
+        {sub.manual && <span className={s.manual}>M</span>}
+        {sub.source === 'nina' && <span className={s.manual}>NINA</span>}
+        {sub.provisional && <span className={s.manual}>?</span>}
+        <span className={`${s.check} ${selected ? s.checkOn : ''}`} aria-hidden />
+      </div>
+      <div className={s.tileFoot}>
+        <Link to="/subs/$sha" params={{ sha: sub.sha256 }} className={`${s.tileName} ${v.mono}`}>
+          {shortName(sub.file)}
+        </Link>
+        <div className={`${v.mono} ${s.tileStats}`}>
+          {sub.exptime_s ? `${sub.exptime_s} s · ` : ''}
+          {fwhmText(sub)} · {num(sub.stars)}
+        </div>
+      </div>
+    </div>
+  )
+}

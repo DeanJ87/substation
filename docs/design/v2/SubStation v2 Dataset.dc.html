@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SubStation v2 · Dataset</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system/substation-tokens.css">
+<style>html,body{margin:0;background:#04070b}a{color:var(--sst-accent);text-underline-offset:.18em}a:hover{color:var(--sst-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--sst-panel-3);color:var(--sst-text);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;padding:64px;display:flex;flex-direction:column;gap:72px;min-width:1440px;font-variant-numeric:tabular-nums">
+
+<div>
+  <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;margin-bottom:10px">SubStation v2 · 2 of 3 · Dataset</div>
+  <div style="font-size:36px;font-weight:600;letter-spacing:-0.02em;line-height:1.1">Subs, quality, metadata, calibration, masters</div>
+  <div style="color:var(--sst-muted);margin-top:10px;max-width:820px">Grading is automatic. Every verdict can be overridden per sub or in bulk, from any screen that lists subs. Overrides are marked <b style="color:var(--sst-text)">Manual</b>, logged, and survive a re-grade. Metadata from plate solving and capture software is shown where present and marked <b style="color:var(--sst-text)">Not recorded</b> where not.</div>
+  <div style="display:flex;gap:16px;margin-top:14px;font-size:14px"><a href="SubStation v2 Library.dc.html">1 · Library and collections</a><a href="SubStation v2 Activity.dc.html">3 · Activity, review, settings</a></div>
+</div>
+
+<!-- D1 Subs -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">D1 · Subs</div><div style="font-size:14px;color:var(--sst-muted)">Grouped by session, newest first, with each session's conditions in its header. Click selects, shift-click selects a range, Ctrl/Cmd-A selects the session. The bulk bar appears with a selection; A, W and R apply to every selected sub. A small M marks a manual override.</div></div></sc-if>
+  <div data-screen-label="D1 Subs" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Library" hint-size="100%,56px"></dc-import>
+    <div style="background:var(--sst-panel);border-bottom:1px solid var(--sst-line)"><div style="max-width:1240px;margin:0 auto;padding:22px 32px 0">
+      <div style="font-size:12px;color:var(--sst-muted)"><span style="text-decoration:underline;text-underline-offset:.18em">Library</span> / <span style="text-decoration:underline;text-underline-offset:.18em">North America and Pelican</span></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-top:6px"><div><div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Askar 71F · Hα</div><div style="font-size:13px;color:var(--sst-muted)">31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026</div></div><div style="display:flex;gap:8px"><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Re-grade</button><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Open review</button><button style="font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:.55rem;border:1px dashed var(--sst-accent-line);background:transparent;color:var(--sst-accent)">Integrating v7 · 52%</button></div></div>
+      <div style="display:flex;gap:24px;font-size:14px;margin-top:18px"><sc-for list="{{ tabs1 }}" as="t" hint-placeholder-count="4"><span style="padding:9px 0;color:{{ t.color }};font-weight:{{ t.weight }};box-shadow:{{ t.shadow }}">{{ t.label }}</span></sc-for></div>
+    </div></div>
+    <div style="max-width:1240px;margin:0 auto;padding:20px 32px 48px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="border:1px solid var(--sst-line);border-radius:.55rem;padding:5px 12px;font-size:13px;color:var(--sst-muted)">Sessions <span style="color:var(--sst-text)">All 31</span></span>
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5"><span style="display:inline-flex;align-items:center;gap:7px;border:1px solid {{ c.border }};background:{{ c.bg }};border-radius:999px;padding:4px 12px 4px 8px;font-size:13px"><svg width="14" height="14" viewBox="0 0 16 16"><path d="{{ c.v.s }}" style="fill:{{ c.v.fill }};stroke:{{ c.v.col }}" stroke-width="1.25" stroke-linejoin="round"></path><path d="{{ c.v.g }}" style="stroke:{{ c.v.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>{{ c.label }}<span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">{{ c.n }}</span></span></sc-for>
+        <span style="margin-left:auto;font-size:13px;color:var(--sst-muted)">Sort <span style="color:var(--sst-text)">Capture time</span></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--sst-accent-line);background:var(--sst-accent-tint);border-radius:.7rem;font-size:13px">
+        <span style="font-weight:600">3 selected</span><span style="color:var(--sst-muted)">from 7 October 2026</span>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <sc-for list="{{ bulk }}" as="b" hint-placeholder-count="3"><button style="font:inherit;font-size:13px;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:.5rem;border:1px solid var(--sst-line);background:var(--sst-panel);color:var(--sst-text)"><svg width="14" height="14" viewBox="0 0 16 16"><path d="{{ b.v.s }}" style="fill:{{ b.v.fill }};stroke:{{ b.v.col }}" stroke-width="1.25" stroke-linejoin="round"></path><path d="{{ b.v.g }}" style="stroke:{{ b.v.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>{{ b.label }}<kbd style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-muted)">{{ b.k }}</kbd></button></sc-for>
+          <button style="font:inherit;font-size:13px;padding:6px 12px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-muted)">Clear override</button>
+          <button style="font:inherit;font-size:13px;padding:6px 12px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-muted)">Open in review</button>
+        </span>
+      </div>
+      <sc-for list="{{ sessionGroups }}" as="g" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--sst-line-2);padding-bottom:8px"><span style="font-weight:600">{{ g.date }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted)">{{ g.meta }}</span><span style="margin-left:auto;font-size:12px;color:var(--sst-muted)">{{ g.cond }}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px">
+            <sc-for list="{{ g.thumbs }}" as="t" hint-placeholder-count="8">
+              <div style="border:1px solid {{ t.border }};box-shadow:{{ t.ring }};border-radius:.5rem;overflow:hidden;background:var(--sst-panel-3)">
+                <div style="aspect-ratio:3 / 2;position:relative;background:repeating-linear-gradient(135deg,var(--sst-thumb) 0 5px,var(--sst-panel-3) 5px 10px)">
+                  <span style="position:absolute;top:5px;left:5px;display:flex;background:var(--sst-bg);border-radius:999px;padding:2px"><svg width="14" height="14" viewBox="0 0 16 16"><path d="{{ t.v.s }}" style="fill:{{ t.v.fill }};stroke:{{ t.v.col }}" stroke-width="1.25" stroke-linejoin="round"></path><path d="{{ t.v.g }}" style="stroke:{{ t.v.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                  <sc-if value="{{ t.manual }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:5px;left:26px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;background:var(--sst-bg);color:var(--sst-text);border-radius:.3rem;padding:0 4px;line-height:16px">M</span></sc-if>
+                  <span style="position:absolute;top:5px;right:5px;width:16px;height:16px;border-radius:4px;border:1px solid {{ t.boxBorder }};background:{{ t.boxBg }};display:flex;align-items:center;justify-content:center"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5.2l2 2l4-4.4" fill="none" style="stroke:{{ t.tick }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                </div>
+                <div style="padding:6px 8px;display:grid;gap:1px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px">{{ t.name }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--sst-muted)">{{ t.meta }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+
+<!-- D2 Quality -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">D2 · Quality</div><div style="font-size:14px;color:var(--sst-muted)">Top: every session in the dataset. Each bar is the 10th to 90th percentile for that night with its median as a dot; SQM and guiding come from capture headers and leave gaps where they weren't recorded. Click a session to fill the lower chart and table with its subs. The inspector on the right shows the selected sub's image, verdict and overrides. Grading compares each sub with its own session's median.</div></div></sc-if>
+  <div data-screen-label="D2 Quality" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Library" hint-size="100%,56px"></dc-import>
+    <div style="background:var(--sst-panel);border-bottom:1px solid var(--sst-line)"><div style="max-width:1376px;margin:0 auto;padding:22px 32px 0">
+      <div style="font-size:12px;color:var(--sst-muted)"><span style="text-decoration:underline;text-underline-offset:.18em">Library</span> / <span style="text-decoration:underline;text-underline-offset:.18em">North America and Pelican</span></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-top:6px"><div><div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Askar 71F · Hα</div><div style="font-size:13px;color:var(--sst-muted)">31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026</div></div><div style="display:flex;gap:8px"><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Re-grade</button><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Open review</button><button style="font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:.55rem;border:1px dashed var(--sst-accent-line);background:transparent;color:var(--sst-accent)">Integrating v7 · 52%</button></div></div>
+      <div style="display:flex;gap:24px;font-size:14px;margin-top:18px"><sc-for list="{{ tabs2 }}" as="t" hint-placeholder-count="4"><span style="padding:9px 0;color:{{ t.color }};font-weight:{{ t.weight }};box-shadow:{{ t.shadow }}">{{ t.label }}</span></sc-for></div>
+    </div></div>
+    <div style="max-width:1376px;margin:0 auto;padding:20px 32px 48px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;padding:18px 20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">Sessions · 31</span><div style="display:flex;border:1px solid var(--sst-line);border-radius:.5rem;overflow:hidden;font-size:12px"><span style="padding:4px 10px;background:var(--sst-panel-2);font-weight:600">All</span><span style="padding:4px 10px;color:var(--sst-muted);border-left:1px solid var(--sst-line)">2026</span><span style="padding:4px 10px;color:var(--sst-muted);border-left:1px solid var(--sst-line)">2025</span><span style="padding:4px 10px;color:var(--sst-muted);border-left:1px solid var(--sst-line)">2024</span><span style="padding:4px 10px;color:var(--sst-muted);border-left:1px solid var(--sst-line)">2023</span></div></div>
+          <sc-for list="{{ sessCharts }}" as="ch" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:center;border-top:1px solid var(--sst-line-2);padding:6px 0">
+              <div><div style="font-size:13px;font-weight:600">{{ ch.name }}</div><div style="font-size:11px;color:var(--sst-muted)">{{ ch.note }}</div></div>
+              <svg viewBox="0 0 620 56" style="width:100%;height:auto;display:block"><rect x="{{ selX }}" y="0" width="20" height="56" style="fill:var(--sst-accent-tint)"></rect><sc-for list="{{ ch.cols }}" as="c" hint-placeholder-count="0"><rect x="{{ c.x }}" y="{{ c.y }}" width="4" height="{{ c.h }}" rx="2" style="fill:var(--sst-line)"></rect><circle cx="{{ c.cx }}" cy="{{ c.cy }}" r="3" style="fill:{{ c.col }}"></circle></sc-for><sc-for list="{{ ch.gaps }}" as="g" hint-placeholder-count="0"><path d="{{ g.d }}" style="stroke:var(--sst-dim)" stroke-width="1"></path></sc-for></svg>
+            </div>
+          </sc-for>
+          <div style="display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;border-top:1px solid var(--sst-line-2);padding-top:6px"><span></span><div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-muted)"><span>Aug 2023</span><span>2024</span><span>2025</span><span>2026</span><span style="color:var(--sst-accent)">7 Oct</span></div></div>
+        </div>
+        <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;padding:18px 20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">7 October 2026 · 24 subs</span><div style="display:flex;gap:14px;font-size:12px;color:var(--sst-muted);align-items:center"><span style="display:flex;align-items:center;gap:6px"><svg width="18" height="8" viewBox="0 0 18 8"><path d="M0 4h18" style="stroke:var(--sst-accent)" stroke-width="1.5"></path></svg>FWHM</span><span style="display:flex;align-items:center;gap:6px"><svg width="18" height="8" viewBox="0 0 18 8"><path d="M0 4h18" style="stroke:var(--sst-violet)" stroke-width="1.5"></path></svg>SQM</span><span style="display:flex;align-items:center;gap:6px"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1.5h8L5 9z" style="fill:var(--sst-warn)"></path></svg>weighted</span><span style="display:flex;align-items:center;gap:6px"><svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" style="fill:var(--sst-bad)"></rect></svg>rejected</span></div></div>
+          <svg viewBox="0 0 620 120" style="width:100%;height:auto;display:block"><path d="M0 30H620M0 60H620M0 90H620" style="stroke:var(--sst-line-2)" stroke-width="1"></path><rect x="{{ cloudX }}" y="0" width="{{ cloudW }}" height="120" style="fill:var(--sst-accent-tint)"></rect><line x1="0" x2="620" y1="{{ medY }}" y2="{{ medY }}" style="stroke:var(--sst-dim)" stroke-dasharray="3 3"></line><polyline points="{{ sqmPts }}" fill="none" style="stroke:var(--sst-violet)" stroke-width="1.5" stroke-linejoin="round"></polyline><polyline points="{{ fwPts }}" fill="none" style="stroke:var(--sst-accent)" stroke-width="1.5" stroke-linejoin="round"></polyline><sc-for list="{{ fwRej }}" as="m" hint-placeholder-count="0"><rect x="{{ m.x }}" y="{{ m.y }}" width="7" height="7" style="fill:var(--sst-bad)"></rect></sc-for><sc-for list="{{ fwDown }}" as="m" hint-placeholder-count="0"><path d="{{ m.d }}" style="fill:var(--sst-warn)"></path></sc-for><circle cx="{{ selSubX }}" cy="{{ selSubY }}" r="6" fill="none" style="stroke:var(--sst-text)" stroke-width="1.5"></circle></svg>
+          <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-muted);margin-top:4px"><span>20:52</span><span>21:52</span><span>22:52</span><span>23:52</span><span>00:52</span></div>
+        </div>
+        <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="background:var(--sst-panel-2);text-align:left"><th style="padding:9px 14px;border-bottom:1px solid var(--sst-line);width:16px"></th><th style="padding:9px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line)">Grade</th><th style="padding:9px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line)">Time</th><th style="padding:9px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line);text-align:right">FWHM</th><th style="padding:9px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line);text-align:right">Stars</th><th style="padding:9px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line);text-align:right">Bg</th><th style="padding:9px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line);text-align:right">SQM</th><th style="padding:9px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line);text-align:right">Alt</th><th style="padding:9px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line)">Reason</th></tr></thead>
+            <tbody><sc-for list="{{ qRows }}" as="r" hint-placeholder-count="12"><tr style="background:{{ r.rowBg }}">
+              <td style="padding:7px 14px;border-bottom:1px solid var(--sst-line-2)"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--sst-line);display:block"></span></td>
+              <td style="padding:7px 8px;border-bottom:1px solid var(--sst-line-2)"><div style="display:flex;align-items:center;gap:6px"><div style="display:flex;border:1px solid var(--sst-line);border-radius:.45rem;overflow:hidden"><sc-for list="{{ r.seg }}" as="s" hint-placeholder-count="3"><span style="width:26px;height:22px;display:flex;align-items:center;justify-content:center;background:{{ s.bg }};opacity:{{ s.op }}"><svg width="13" height="13" viewBox="0 0 16 16"><path d="{{ s.v.s }}" style="fill:{{ s.v.fill }};stroke:{{ s.v.col }}" stroke-width="1.25" stroke-linejoin="round"></path><path d="{{ s.v.g }}" style="stroke:{{ s.v.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></sc-for></div><sc-if value="{{ r.manual }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;border:1px solid var(--sst-line);border-radius:.3rem;padding:0 4px">M</span></sc-if></div></td>
+              <td style="padding:7px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted);border-bottom:1px solid var(--sst-line-2)">{{ r.time }}</td>
+              <td style="padding:7px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;border-bottom:1px solid var(--sst-line-2)">{{ r.fwhm }}</td>
+              <td style="padding:7px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;border-bottom:1px solid var(--sst-line-2)">{{ r.stars }}</td>
+              <td style="padding:7px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;border-bottom:1px solid var(--sst-line-2)">{{ r.bg }}</td>
+              <td style="padding:7px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;border-bottom:1px solid var(--sst-line-2)">{{ r.sqm }}</td>
+              <td style="padding:7px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;border-bottom:1px solid var(--sst-line-2)">{{ r.alt }}</td>
+              <td style="padding:7px 14px;color:var(--sst-muted);border-bottom:1px solid var(--sst-line-2)">{{ r.reason }}</td>
+            </tr></sc-for></tbody>
+          </table>
+          <div style="padding:10px 14px;font-size:13px;color:var(--sst-accent)">Show all 24 subs</div>
+        </div>
+      </div>
+      <div style="background:var(--sst-panel);border:1px solid var(--sst-line);border-radius:.85rem;overflow:hidden;display:flex;flex-direction:column">
+        <div style="aspect-ratio:3 / 2;position:relative;background:repeating-linear-gradient(135deg,var(--sst-thumb) 0 8px,var(--sst-panel-3) 8px 16px);display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--sst-line)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-dim)">sub preview · auto-stretched</span><span style="position:absolute;right:8px;top:8px;font-size:11px;border:1px solid var(--sst-line);background:var(--sst-bg);border-radius:.35rem;padding:1px 7px;color:var(--sst-muted)">Open full size</span></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:14px">
+          <div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted)">NGC7000_Ha_300s_0014.fits · 22:02</div><div style="display:flex;align-items:center;gap:8px;margin-top:6px"><svg width="22" height="22" viewBox="0 0 16 16"><path d="{{ V.accept.s }}" style="fill:{{ V.accept.fill }};stroke:{{ V.accept.col }}" stroke-width="1.25"></path><path d="{{ V.accept.g }}" style="stroke:{{ V.accept.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-size:18px;font-weight:600">Accepted</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;border:1px solid var(--sst-line);border-radius:.3rem;padding:0 5px">MANUAL</span></div></div>
+          <div style="font-size:13px;color:var(--sst-muted);border-left:2px solid var(--sst-line);padding-left:10px">Auto grade was <span style="color:var(--sst-text)">Down-weighted</span>: FWHM 2.71″, 17% above the session median. You accepted it at 9 Oct 2026, 10:14.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><button style="font:inherit;font-size:12px;padding:7px 4px;border-radius:.5rem;border:1px solid var(--sst-accent);background:var(--sst-accent-tint);color:var(--sst-accent)">Accept <span style="font-family:'JetBrains Mono',monospace">A</span></button><button style="font:inherit;font-size:12px;padding:7px 4px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Weight <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">W</span></button><button style="font:inherit;font-size:12px;padding:7px 4px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Reject <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">R</span></button></div>
+          <span style="font-size:13px;color:var(--sst-accent);text-decoration:underline;text-underline-offset:.18em">Revert to auto grade</span>
+          <dl style="margin:0;display:grid;grid-template-columns:1fr auto;gap:5px 12px;font-size:13px;border-top:1px solid var(--sst-line-2);padding-top:12px"><sc-for list="{{ inspStats }}" as="s" hint-placeholder-count="6"><dt style="color:var(--sst-muted)">{{ s.k }}</dt><dd style="margin:0;font-family:'JetBrains Mono',monospace">{{ s.v }} <span style="color:var(--sst-muted)">{{ s.m }}</span></dd></sc-for></dl>
+          <span style="font-size:13px;color:var(--sst-accent);text-decoration:underline;text-underline-offset:.18em">All metadata</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D3 Sub detail -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">D3 · Sub detail</div><div style="font-size:14px;color:var(--sst-muted)">Everything known about one sub. Each field is tagged with where it came from: SubStation's own measurement, the plate solve, the capture software's FITS header, or a linked device such as SQMeter. Fields with no source show Not recorded rather than hiding, so a missing integration is obvious. Raw header is one click away.</div></div></sc-if>
+  <div data-screen-label="D3 Sub detail" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Library" hint-size="100%,56px"></dc-import>
+    <div style="max-width:1376px;margin:0 auto;padding:22px 32px 48px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px">
+        <div><div style="font-size:12px;color:var(--sst-muted)"><span style="text-decoration:underline;text-underline-offset:.18em">North America and Pelican</span> / <span style="text-decoration:underline;text-underline-offset:.18em">Askar 71F · Hα</span> / 7 October 2026</div><div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;margin-top:4px">NGC7000_Ha_300s_0019.fits</div></div>
+        <div style="display:flex;gap:8px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted)">19 / 24</span><button style="font:inherit;font-size:13px;padding:7px 12px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Previous <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">J</span></button><button style="font:inherit;font-size:13px;padding:7px 12px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Next <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">K</span></button></div>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="aspect-ratio:3 / 2;border-radius:.7rem;position:relative;background:repeating-linear-gradient(135deg,var(--sst-thumb) 0 10px,var(--sst-panel-3) 10px 20px);border:1px solid var(--sst-line);display:flex;align-items:center;justify-content:center"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-dim)">sub preview · auto-stretched · star detections overlaid</span><div style="position:absolute;left:12px;top:12px;display:flex;gap:6px;font-size:12px"><span style="border:1px solid var(--sst-accent);color:var(--sst-accent);background:var(--sst-bg);border-radius:.4rem;padding:2px 9px">Auto-stretch</span><span style="border:1px solid var(--sst-line);color:var(--sst-muted);background:var(--sst-bg);border-radius:.4rem;padding:2px 9px">Linear</span><span style="border:1px solid var(--sst-line);color:var(--sst-muted);background:var(--sst-bg);border-radius:.4rem;padding:2px 9px">Stars</span><span style="border:1px solid var(--sst-line);color:var(--sst-muted);background:var(--sst-bg);border-radius:.4rem;padding:2px 9px">FWHM map</span></div></div>
+          <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px"><svg width="24" height="24" viewBox="0 0 16 16"><path d="{{ V.reject.s }}" style="fill:{{ V.reject.fill }};stroke:{{ V.reject.col }}" stroke-width="1.25"></path><path d="{{ V.reject.g }}" style="stroke:{{ V.reject.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round"></path></svg><span style="font-size:18px;font-weight:600">Rejected</span><span style="font-size:12px;color:var(--sst-muted)">auto · graded 7 Oct 2026, 23:33</span><span style="margin-left:auto;display:flex;gap:6px"><button style="font:inherit;font-size:12px;padding:6px 12px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Accept <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">A</span></button><button style="font:inherit;font-size:12px;padding:6px 12px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Weight <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">W</span></button><button style="font:inherit;font-size:12px;padding:6px 12px;border-radius:.5rem;border:1px solid var(--sst-accent);background:var(--sst-accent-tint);color:var(--sst-accent)">Reject <span style="font-family:'JetBrains Mono',monospace">R</span></button></span></div>
+            <div style="font-size:14px">Star count 44% of the session median: likely cloud.</div>
+            <div style="font-size:13px;color:var(--sst-muted)">SQM dropped from 21.12 to 20.31 at the same time and SQMeter reported cloud. Subs 18 and 20 show the same pattern.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ metaGroups }}" as="g" hint-placeholder-count="4">
+            <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;overflow:hidden">
+              <div style="padding:10px 16px;display:flex;justify-content:space-between;border-bottom:1px solid var(--sst-line-2)"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">{{ g.title }}</span><span style="font-size:12px;color:var(--sst-dim)">{{ g.note }}</span></div>
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:130px minmax(0,1fr) 92px;gap:10px;padding:6px 16px;font-size:13px;align-items:center"><span style="color:var(--sst-muted)">{{ r.k }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ r.col }}">{{ r.v }}</span><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--sst-dim);text-align:right">{{ r.src }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <span style="font-size:13px;color:var(--sst-accent);text-decoration:underline;text-underline-offset:.18em">Show raw FITS header · 142 keywords</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D4 Calibration -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">D4 · Dataset, calibration</div><div style="font-size:14px;color:var(--sst-muted)">Which dark, flat and bias each session was calibrated with, and how good the match is. Flats are matched per session because rotation and dust change. Weak matches are flagged in plain English; any session can be pointed at different frames, which re-calibrates and re-grades only that session.</div></div></sc-if>
+  <div data-screen-label="D4 Calibration" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Library" hint-size="100%,56px"></dc-import>
+    <div style="background:var(--sst-panel);border-bottom:1px solid var(--sst-line)"><div style="max-width:1240px;margin:0 auto;padding:22px 32px 0">
+      <div style="font-size:12px;color:var(--sst-muted)"><span style="text-decoration:underline;text-underline-offset:.18em">Library</span> / <span style="text-decoration:underline;text-underline-offset:.18em">North America and Pelican</span></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-top:6px"><div><div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Askar 71F · Hα</div><div style="font-size:13px;color:var(--sst-muted)">31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026</div></div></div>
+      <div style="display:flex;gap:24px;font-size:14px;margin-top:18px"><sc-for list="{{ tabs4 }}" as="t" hint-placeholder-count="4"><span style="padding:9px 0;color:{{ t.color }};font-weight:{{ t.weight }};box-shadow:{{ t.shadow }}">{{ t.label }}</span></sc-for></div>
+    </div></div>
+    <div style="max-width:1240px;margin:0 auto;padding:24px 32px 48px;display:flex;flex-direction:column;gap:16px">
+      <div style="border:1px solid var(--sst-line);background:var(--sst-panel);border-radius:.7rem;padding:14px 18px;display:flex;gap:12px;align-items:flex-start"><svg width="18" height="18" viewBox="0 0 16 16" style="flex:none;margin-top:2px"><path d="M1.5 2.25h13L8 14.5z" style="fill:var(--sst-warn)"></path><path d="M5.6 5.4h4.8" style="stroke:var(--sst-bg)" stroke-width="1.5" stroke-linecap="round"></path></svg><div style="font-size:14px"><b>2 sessions have a weak flat match.</b> <span style="color:var(--sst-muted)">Their flats were taken more than 21 days apart from the lights. Dust shadows may not be removed. Grading still ran.</span></div></div>
+      <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;overflow:hidden">
+        <div style="display:grid;grid-template-columns:150px 70px minmax(0,1fr) minmax(0,1.2fr) minmax(0,.8fr) 90px;gap:14px;padding:9px 20px;background:var(--sst-panel-2);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line)"><span>Session</span><span style="text-align:right">Subs</span><span>Dark</span><span>Flat</span><span>Bias</span><span></span></div>
+        <sc-for list="{{ calRows }}" as="c" hint-placeholder-count="8">
+          <div style="display:grid;grid-template-columns:150px 70px minmax(0,1fr) minmax(0,1.2fr) minmax(0,.8fr) 90px;gap:14px;padding:11px 20px;border-bottom:1px solid var(--sst-line-2);font-size:13px;align-items:center">
+            <span style="font-weight:600">{{ c.date }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right">{{ c.subs }}</span>
+            <div><div style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ c.dark }}</div><div style="font-size:12px;color:var(--sst-ok)">Exact match</div></div>
+            <div><div style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ c.flat }}</div><div style="font-size:12px;color:{{ c.flatCol }}">{{ c.flatNote }}</div></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ c.bias }}</div>
+            <span style="font-size:13px;color:var(--sst-accent);text-align:right">Change</span>
+          </div>
+        </sc-for>
+        <div style="padding:10px 20px;font-size:13px;color:var(--sst-accent)">Show all 31 sessions</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D5 Masters -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">D5 · Dataset, masters</div><div style="font-size:14px;color:var(--sst-muted)">An integration in progress appears at the top with its pipeline steps and links to the worker running it. Finished masters are versions with their inputs and settings. A master goes stale when its inputs change; the reason is stated.</div></div></sc-if>
+  <div data-screen-label="D5 Masters" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Library" hint-size="100%,56px"></dc-import>
+    <div style="background:var(--sst-panel);border-bottom:1px solid var(--sst-line)"><div style="max-width:1240px;margin:0 auto;padding:22px 32px 0">
+      <div style="font-size:12px;color:var(--sst-muted)"><span style="text-decoration:underline;text-underline-offset:.18em">Library</span> / <span style="text-decoration:underline;text-underline-offset:.18em">North America and Pelican</span></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-top:6px"><div><div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Askar 71F · Hα</div><div style="font-size:13px;color:var(--sst-muted)">31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026</div></div></div>
+      <div style="display:flex;gap:24px;font-size:14px;margin-top:18px"><sc-for list="{{ tabs5 }}" as="t" hint-placeholder-count="4"><span style="padding:9px 0;color:{{ t.color }};font-weight:{{ t.weight }};box-shadow:{{ t.shadow }}">{{ t.label }}</span></sc-for></div>
+    </div></div>
+    <div style="max-width:1240px;margin:0 auto;padding:24px 32px 48px;display:flex;flex-direction:column;gap:14px">
+      <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-accent-line);border-radius:.85rem;padding:20px 22px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:flex-start;gap:12px"><svg width="22" height="22" viewBox="0 0 16 16"><path d="M8 1.5l5.6 3.25v6.5L8 14.5l-5.6-3.25v-6.5z" fill="none" style="stroke:var(--sst-accent)" stroke-width="1.25"></path><path d="M5.4 6.2h5.2M5.4 8h5.2M5.4 9.8h5.2" style="stroke:var(--sst-accent)" stroke-width="1.5" stroke-linecap="round"></path></svg><div style="flex:1"><div style="font-size:17px;font-weight:600">Master v7 · integrating</div><div style="font-size:13px;color:var(--sst-muted)">496 subs from 31 sessions · started 10:02 · about 9 min left · 4 workers</div></div><span style="font-size:13px;color:var(--sst-accent);text-decoration:underline;text-underline-offset:.18em">View in Activity</span><button style="font:inherit;font-size:13px;padding:6px 12px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Cancel</button></div>
+        <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px"><sc-for list="{{ pipeline }}" as="p" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;gap:6px"><div style="height:4px;border-radius:2px;background:var(--sst-line-2);overflow:hidden"><div style="height:100%;width:{{ p.w }};background:{{ p.col }}"></div></div><span style="font-size:12px;font-weight:{{ p.weight }};color:{{ p.tcol }}">{{ p.name }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-muted)">{{ p.meta }}</span></div></sc-for></div>
+      </div>
+      <sc-for list="{{ masters }}" as="m" hint-placeholder-count="3">
+        <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.85rem;padding:16px 22px;display:grid;grid-template-columns:96px minmax(0,1fr) 120px 120px auto;gap:20px;align-items:center">
+          <div style="aspect-ratio:3 / 2;border-radius:.4rem;background:repeating-linear-gradient(135deg,var(--sst-thumb) 0 4px,var(--sst-panel-3) 4px 8px);border:1px solid var(--sst-line-2)"></div>
+          <div><div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600">{{ m.name }}</span><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:{{ m.tagCol }};border:1px solid var(--sst-line);border-radius:999px;padding:0 9px">{{ m.tag }}</span></div><div style="font-size:13px;color:var(--sst-muted)">{{ m.meta }}</div></div>
+          <div><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">Integration</div><div style="font-family:'JetBrains Mono',monospace;color:var(--sst-accent)">{{ m.integ }}</div></div>
+          <div><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">FWHM</div><div style="font-family:'JetBrains Mono',monospace">{{ m.fwhm }}</div></div>
+          <div style="display:flex;gap:8px"><button style="font:inherit;font-size:13px;padding:6px 12px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Download</button><button style="font:inherit;font-size:13px;padding:6px 12px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Inputs</button></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;,&quot;night&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  vdefs() {
+    const c = k => `var(--sst-${k})`, bg = 'var(--sst-bg)';
+    const circle = 'M8 1.75a6.25 6.25 0 1 1 0 12.5a6.25 6.25 0 1 1 0-12.5z';
+    const square = 'M2.75 1.75h10.5a1 1 0 0 1 1 1v10.5a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1V2.75a1 1 0 0 1 1-1z';
+    const mk = (k, s, g) => { const col = c(k); return { s, g, col, fill: col, gcol: bg }; };
+    return { accept: mk('ok', circle, 'M5.1 8.3l2 2l3.9-4.3'), down: mk('warn', 'M1.5 2.25h13L8 14.5z', 'M5.6 5.4h4.8'), reject: mk('bad', square, 'M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8') };
+  }
+  tabs(active) { return ['Subs 541', 'Quality', 'Calibration', 'Masters 7'].map(l => { const on = l.startsWith(active); return { label: l, color: on ? 'var(--sst-text)' : 'var(--sst-muted)', weight: on ? 600 : 500, shadow: on ? 'inset 0 -2px 0 var(--sst-accent)' : 'none' }; }); }
+  renderVals() {
+    const V = this.vdefs();
+    const n = x => x.toLocaleString('en-GB');
+    let seed = 3; const r = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    // session 7 Oct: 24 subs
+    const auto = i => [17, 18, 19].includes(i) ? 'reject' : [6, 13, 22].includes(i) ? 'down' : 'accept';
+    const manual = { 13: 'accept' };
+    const subs = Array.from({ length: 24 }, (_, i) => {
+      const a = auto(i), v = manual[i] || a;
+      const cloud = a === 'reject';
+      const fwhm = a === 'down' ? 2.66 + r() * 0.1 : cloud ? 2.4 + r() * 0.2 : 2.18 + r() * 0.28;
+      const stars = Math.round(cloud ? 560 + r() * 120 : a === 'down' ? 1180 + r() * 60 : 1260 + r() * 160);
+      const bg = Math.round(cloud ? 505 + r() * 30 : 402 + r() * 20);
+      const sqm = cloud ? 20.25 + r() * 0.15 : 21.05 + r() * 0.12;
+      const mins = 20 * 60 + 52 + i * 5, t = `${String(Math.floor(mins / 60) % 24).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+      const alt = Math.round(58 + 22 * Math.sin((i + 2) / 24 * Math.PI));
+      return { i, a, v, man: !!manual[i], fwhm, stars, bg, sqm, t, alt };
+    });
+    const med = arr => { const s = [...arr].sort((x, y) => x - y); return (s[11] + s[12]) / 2; };
+    const mF = med(subs.map(s => s.fwhm)), mS = med(subs.map(s => s.stars));
+    const reason = s => s.a === 'down' ? `FWHM ${s.fwhm.toFixed(2)}″, ${Math.round((s.fwhm / mF - 1) * 100)}% above the session median.` : s.a === 'reject' ? `Star count ${Math.round(s.stars / mS * 100)}% of the session median: likely cloud.` : '—';
+    const thumb = (s, sel) => ({ v: V[s.v], manual: s.man, name: `…_${String(s.i + 1).padStart(4, '0')}`, meta: `${s.fwhm.toFixed(2)}″ · ${n(s.stars)}`, border: sel ? 'var(--sst-accent)' : 'var(--sst-line)', ring: sel ? '0 0 0 1px var(--sst-accent)' : 'none', boxBorder: sel ? 'var(--sst-accent)' : 'var(--sst-line)', boxBg: sel ? 'var(--sst-accent)' : 'var(--sst-bg)', tick: sel ? 'var(--sst-on-accent)' : 'transparent' });
+    const selSet = [17, 18, 19];
+    const older = Array.from({ length: 16 }, (_, i) => ({ i, a: i === 4 ? 'reject' : i === 11 ? 'down' : 'accept', v: i === 4 ? 'reject' : i === 11 ? 'down' : 'accept', man: i === 8, fwhm: 2.3 + r() * 0.35, stars: Math.round(1150 + r() * 200) }));
+    older[8].v = 'reject';
+    const sessionGroups = [
+      { date: '7 October 2026', meta: '24 subs · 2h 00m', cond: 'SQM 21.12 · 8.1 °C · 82% RH · guiding 0.62″ · cloud 23:27–23:42 (SQMeter)', thumbs: subs.slice(8).map(s => thumb(s, selSet.includes(s.i))) },
+      { date: '2 October 2026', meta: '16 subs · 1h 20m', cond: 'SQM 21.30 · 10.4 °C · 76% RH · guiding 0.55″', thumbs: older.map(s => thumb(s, false)) }
+    ];
+    const chipList = [['Accepted', V.accept, '452', true], ['Down-weighted', V.down, '44'], ['Rejected', V.reject, '45'], ['Manual', { ...V.accept, s: 'M3 13V3h2.2L8 8.5L10.8 3H13v10', fill: 'none', col: 'var(--sst-text)', g: '' }, '4']];
+    const chips = chipList.map(([label, v, c, on]) => ({ label, v, n: c, border: on ? 'var(--sst-accent-line)' : 'var(--sst-line)', bg: on ? 'var(--sst-accent-tint)' : 'var(--sst-panel-3)' }));
+
+    // sessions chart
+    const sessions = Array.from({ length: 31 }, (_, i) => ({ i, f: 2.15 + r() * 0.55, s: 1100 + r() * 400, b: 380 + r() * 140, q: r() < 0.35 && i < 20 ? null : 20.6 + r() * 0.75, g: r() < 0.2 && i < 12 ? null : 0.45 + r() * 0.45, rej: Math.floor(r() * r() * 6) }));
+    sessions[30] = { ...sessions[30], f: mF, s: mS, b: 410, q: 21.12, g: 0.62, rej: 3 };
+    const sx = i => i * 20 + 10;
+    const sc = (key, min, max, spread, inv, warnFn) => {
+      const y = v => +(52 - (v - min) / (max - min) * 48).toFixed(1);
+      const cols = [], gaps = [];
+      sessions.forEach(s => { const v = s[key]; if (v == null) { gaps.push({ d: `M${sx(s.i) - 3} 26l6 6M${sx(s.i) + 3} 26l-6 6` }); return; } const lo = y(v - spread), hi = y(v + spread); cols.push({ x: sx(s.i) - 2, y: Math.min(lo, hi), h: Math.abs(lo - hi), cx: sx(s.i), cy: y(v), col: s.i === 30 ? 'var(--sst-accent)' : warnFn && warnFn(v) ? 'var(--sst-warn)' : 'var(--sst-muted)' }); });
+      return { cols, gaps };
+    };
+    const sessCharts = [
+      { name: 'FWHM', note: 'median 2.38″', ...sc('f', 1.9, 3.0, 0.14, false, v => v > 2.6) },
+      { name: 'Stars', note: 'median 1,340', ...sc('s', 900, 1600, 70) },
+      { name: 'Background', note: 'median 446 ADU', ...sc('b', 340, 560, 18, false, v => v > 500) },
+      { name: 'SQM', note: '20 of 31 recorded', ...sc('q', 20.4, 21.5, 0.08, false, v => v < 20.8) },
+      { name: 'Guiding RMS', note: '25 of 31 recorded', ...sc('g', 0.3, 1.0, 0.08, false, v => v > 0.8) }
+    ];
+    // within-session chart
+    const X = i => +(i * 600 / 23 + 10).toFixed(1);
+    const fy = v => +(110 - (v - 2.0) / (2.9 - 2.0) * 100).toFixed(1);
+    const qy = v => +(110 - (v - 20.1) / (21.3 - 20.1) * 100).toFixed(1);
+    const sel = subs[13];
+    const qRows = subs.slice(10, 22).map(s => ({
+      rowBg: s.i === 13 ? 'var(--sst-accent-tint)' : 'transparent', manual: s.man, time: s.t, fwhm: s.fwhm.toFixed(2) + '″', stars: n(s.stars), bg: s.bg, sqm: s.sqm.toFixed(2), alt: s.alt + '°', reason: s.man ? `Manual. Auto: ${reason(s)}` : reason(s),
+      seg: ['accept', 'down', 'reject'].map(k => ({ v: V[k], bg: k === s.v ? 'var(--sst-panel-2)' : 'transparent', op: k === s.v ? 1 : 0.35 }))
+    }));
+    const pipeline = [['Select inputs', 1, '496 subs'], ['Calibrate', 1, 'cached'], ['Register', 1, '496 / 496'], ['Normalise', 0.62, '308 / 496'], ['Integrate', 0, 'winsorised σ'], ['Write', 0, 'XISF 32-bit']].map(([name, p, meta]) => ({ name, meta, w: (p * 100) + '%', col: p === 1 ? 'var(--sst-ok)' : 'var(--sst-accent)', weight: p > 0 && p < 1 ? 600 : 500, tcol: p === 0 ? 'var(--sst-muted)' : 'var(--sst-text)' }));
+    return {
+      theme: this.props.theme ?? 'dark', showNotes: this.props.showNotes ?? true, V,
+      tabs1: this.tabs('Subs'), tabs2: this.tabs('Quality'), tabs4: this.tabs('Calibration'), tabs5: this.tabs('Masters'),
+      chips, sessionGroups,
+      bulk: [{ v: V.accept, label: 'Accept', k: 'A' }, { v: V.down, label: 'Down-weight', k: 'W' }, { v: V.reject, label: 'Reject', k: 'R' }],
+      sessCharts, selX: sx(30) - 10,
+      fwPts: subs.map(s => `${X(s.i)},${fy(s.fwhm)}`).join(' '), sqmPts: subs.map(s => `${X(s.i)},${qy(s.sqm)}`).join(' '),
+      fwRej: subs.filter(s => s.a === 'reject').map(s => ({ x: X(s.i) - 3.5, y: fy(s.fwhm) - 3.5 })),
+      fwDown: subs.filter(s => s.a === 'down').map(s => ({ d: `M${X(s.i) - 4.5} ${fy(s.fwhm) - 4}h9l-4.5 8z` })),
+      medY: fy(mF), cloudX: X(17) - 12, cloudW: X(19) - X(17) + 24, selSubX: X(13), selSubY: fy(sel.fwhm),
+      qRows,
+      inspStats: [{ k: 'FWHM', v: sel.fwhm.toFixed(2) + '″', m: `/ ${mF.toFixed(2)}″` }, { k: 'Stars', v: n(sel.stars), m: `/ ${n(Math.round(mS))}` }, { k: 'Background', v: sel.bg + ' ADU', m: '' }, { k: 'Eccentricity', v: '0.36', m: '' }, { k: 'SQM', v: sel.sqm.toFixed(2), m: 'SQMeter' }, { k: 'Altitude', v: sel.alt + '°', m: 'airmass 1.12' }],
+      metaGroups: [
+        { title: 'Measured', note: 'SubStation', rows: [['FWHM', '2.52″ · 1.59 px', 'SubStation'], ['Stars', '598 of 1,358 median', 'SubStation'], ['Background', '519 ADU · +17%', 'SubStation'], ['Eccentricity', '0.39', 'SubStation'], ['SNR', '41.2', 'SubStation']] },
+        { title: 'Plate solve', note: 'ASTAP · 1.4 s', rows: [['Centre', '20h 58m 51s  +44° 18′ 40″', 'Solve'], ['Rotation', '87.4°', 'Solve'], ['Pixel scale', '1.58″/px', 'Solve'], ['Field', '2.71° × 1.81°', 'Solve'], ['Offset', '1′ 14″ from reference', 'Solve']] },
+        { title: 'Capture', note: 'N.I.N.A. 3.1 header', rows: [['Camera', 'ASI2600MM Pro · gain 100 · offset 50', 'Header'], ['Sensor', '−10.0 °C · set −10', 'Header'], ['Filter', 'Hα 3 nm · wheel slot 1', 'Header'], ['Focuser', '15,420 · 8.4 °C', 'Header'], ['Guiding', 'RMS 0.71″ · RA 0.48 Dec 0.52', 'Header'], ['Mount', 'Alt 64° · az 271° · pier west', 'Header'], ['Airmass', '1.11', 'Header']] },
+        { title: 'Conditions', note: 'where recorded', rows: [['SQM', '20.31 mag/arcsec²', 'SQMeter'], ['Cloud', 'Cloudy · sky −6 °C vs ambient 8 °C', 'SQMeter'], ['Ambient', '8.1 °C · 82% RH · dew point 5.2 °C', 'Header'], ['Wind', 'Not recorded', '—'], ['Moon', '23% · 41° away', 'SubStation']] }
+      ].map(g => ({ ...g, rows: g.rows.map(([k, v, src]) => ({ k, v, src, col: v === 'Not recorded' ? 'var(--sst-dim)' : 'var(--sst-text)' })) })),
+      calRows: [
+        ['7 Oct 2026', 24, 'Dark 300 s −10 °C · 30', 'Flat Hα 87.2° · 5 Oct 2026', 'Same rotation · 2 days before', 'ok'],
+        ['2 Oct 2026', 16, 'Dark 300 s −10 °C · 30', 'Flat Hα 87.2° · 5 Oct 2026', 'Same rotation · 3 days after', 'ok'],
+        ['21 Sep 2026', 18, 'Dark 300 s −10 °C · 30', 'Flat Hα 87.1° · 5 Oct 2026', 'Rotation within 0.1° · 14 days after', 'ok'],
+        ['14 Sep 2026', 20, 'Dark 300 s −10 °C · 30', 'Flat Hα 86.8° · 12 Aug 2026', 'Weak: 33 days before, rotation 0.4° off', 'warn'],
+        ['2 Sep 2026', 12, 'Dark 300 s −10 °C · 30', 'Flat Hα 86.8° · 12 Aug 2026', 'Weak: 21 days before', 'warn'],
+        ['11 Sep 2025', 22, 'Dark 300 s −10 °C · 25 · 2025 set', 'Flat Hα 87.0° · 10 Sep 2025', 'Same rotation · 1 day before', 'ok'],
+        ['3 Sep 2024', 15, 'Dark 300 s −10 °C · 25 · 2024 set', 'Flat Hα 92.5° · 3 Sep 2024', 'Same night', 'ok'],
+        ['14 Aug 2023', 9, 'Dark 300 s −10 °C · 20 · 2023 set', 'Flat Hα 91.0° · 14 Aug 2023', 'Same night', 'ok']
+      ].map(([date, subs, dark, flat, flatNote, k]) => ({ date, subs, dark, flat, flatNote, flatCol: `var(--sst-${k})`, bias: 'Bias gain 100 · 100' })),
+      pipeline,
+      masters: [
+        { name: 'Master v6', tag: 'Current', tagCol: 'var(--sst-ok)', meta: '455 subs · 29 sessions · 2 Oct 2026, 08:40 · winsorised σ 3.0 · grade weights', integ: '37h 55m', fwhm: '2.29″' },
+        { name: 'Master v5', tag: 'Superseded', tagCol: 'var(--sst-muted)', meta: '431 subs · 27 sessions · 15 Sep 2026 · replaced by v6 (2 new sessions)', integ: '35h 55m', fwhm: '2.31″' },
+        { name: 'Master v4', tag: 'Superseded', tagCol: 'var(--sst-muted)', meta: '398 subs · 24 sessions · 12 Sep 2025 · 2025 season', integ: '33h 10m', fwhm: '2.35″' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

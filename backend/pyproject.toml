@@ -1,0 +1,76 @@
+[project]
+name = "substation"
+version = "0.1.0.dev0"
+description = "Watches capture folders, calibrates and grades each sub as it lands, and stacks datasets into masters."
+license = "GPL-3.0-only"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "Django>=5.2,<5.3",
+  "django-ninja>=1.3",
+  "django-allauth[mfa]>=65.0",
+  "django-tasks>=0.8",
+  "astropy>=6.1",
+  "xisf>=0.9.5",
+  "numpy>=2.0",
+  "parse>=1.20",
+  "watchdog>=5.0",
+  "psutil>=6.0",
+  "uvicorn[standard]>=0.30",
+  "whitenoise>=6.7",
+  "pillow>=11",
+  "scipy>=1.14",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-django>=4.9",
+  "pytest-asyncio>=0.24",
+  "httpx>=0.27",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "django-stubs>=5.0",
+  "pyyaml>=6",
+  "openapi-spec-validator>=0.7",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "SIM"]
+# E501: the formatter owns line length. DJ001: NULL means "unknown" in the catalogue, distinct from "".
+# DJ008: __str__ on every model adds nothing here.
+ignore = ["E501", "DJ001", "DJ008"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+check_untyped_defs = true
+exclude = ["migrations/"]
+
+[tool.django-stubs]
+django_settings_module = "substation.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "substation.settings_test"
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+  "golden: runs against the real spike trees in SUBSTATION_GOLDEN_DIR",
+  "slow: performance checks",
+  "siril: needs siril-cli (run inside the worker image: scripts/test-in-worker.sh)",
+]
+addopts = "-m 'not golden and not slow and not siril'"
+asyncio_mode = "auto"
+
+[[tool.mypy.overrides]]
+# Tests use Django test-client internals and Optional lookups that are asserted at runtime.
+module = ["tests.*"]
+disable_error_code = ["operator", "attr-defined", "union-attr", "arg-type"]

@@ -1,0 +1,61 @@
+/* Annotations over a preview (009 amendment 2026-10-12). Never takes a click: the image under it still opens. */
+.layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  container-type: inline-size;
+}
+.obj {
+  --tone: var(--sst-accent);
+}
+.star {
+  --tone: var(--sst-text);
+}
+.ldn {
+  --tone: var(--sst-muted);
+}
+.ring,
+.dot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid var(--tone);
+  border-radius: 50%;
+  box-sizing: border-box;
+  opacity: 0.85;
+}
+.ring {
+  aspect-ratio: 1;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+}
+.ldn .ring,
+.ldn .dot {
+  border-style: dashed;
+}
+.label {
+  position: absolute;
+  transform: translate(8px, 6px);
+  white-space: nowrap;
+  font-size: clamp(9px, 1.6cqi, 13px);
+  font-variant-numeric: tabular-nums;
+  color: var(--tone);
+  text-shadow:
+    0 0 3px var(--sst-bg),
+    0 0 2px var(--sst-bg);
+}
+.flip {
+  transform: translate(calc(-100% - 8px), 6px);
+}
+/* near the bottom edge the label goes above its marker */
+.up {
+  transform: translate(8px, calc(-100% - 6px));
+}
+.flip.up {
+  transform: translate(calc(-100% - 8px), calc(-100% - 6px));
+}
+.common {
+  opacity: 0.8;
+}

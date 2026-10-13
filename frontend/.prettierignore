@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+src/api/schema.d.ts
+.*.mjs
+test-results/
+playwright-report/
+src/api/openapi.json

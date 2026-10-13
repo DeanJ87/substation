@@ -1,0 +1,30 @@
+site_name: SubStation
+site_description: Catalogue, check and stack astrophotography subs on your own hardware.
+docs_dir: docs/user
+theme:
+  name: material
+  language: en
+  font: false # self-hosted Inter and JetBrains Mono (stylesheets/substation.css)
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
+  palette:
+    - scheme: substation
+      toggle: { icon: material/weather-sunny, name: Light }
+    - scheme: substation-light
+      toggle: { icon: material/weather-night, name: Night vision }
+    - scheme: substation-night
+      toggle: { icon: material/brightness-4, name: Dark }
+extra_css:
+  - stylesheets/substation.css
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+nav:
+  - Overview: index.md
+  - Install with Compose: install.md
+  - Path patterns: patterns.md
+  - Reconcile: reconcile.md
+  - Calibration: calibration.md
+  - Ignoring files: ignore.md

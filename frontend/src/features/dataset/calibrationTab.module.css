@@ -1,0 +1,69 @@
+.flatImg {
+  aspect-ratio: 3 / 2;
+  background: var(--sst-panel-3);
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 160px;
+}
+.flatImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.rowActions {
+  justify-content: flex-end;
+}
+
+/* the change panel: a full-width row under its session (owner 2026-10-12) */
+.panelRow > td {
+  background: var(--sst-panel-2, var(--sst-panel));
+  padding: 14px 18px 18px;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.darkPick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.flatTable {
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+}
+.flatTable tbody {
+  display: block;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.flatTable thead,
+.flatTable tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+.flatTable td,
+.flatTable th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flatRow {
+  cursor: pointer;
+}
+.flatRow:hover {
+  background: var(--sst-panel-3);
+}
+.flatOn,
+.flatOn:hover {
+  background: color-mix(in srgb, var(--sst-accent) 14%, transparent);
+}
+.otherFilter {
+  opacity: 0.75;
+}
+.otherToggle {
+  align-self: flex-start;
+}

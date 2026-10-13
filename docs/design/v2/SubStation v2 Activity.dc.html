@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SubStation v2 · Activity, review, calibration, settings</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system/substation-tokens.css">
+<style>html,body{margin:0;background:#04070b}a{color:var(--sst-accent);text-underline-offset:.18em}a:hover{color:var(--sst-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--sst-panel-3);color:var(--sst-text);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;padding:64px;display:flex;flex-direction:column;gap:72px;min-width:1440px;font-variant-numeric:tabular-nums">
+
+<div>
+  <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;margin-bottom:10px">SubStation v2 · 3 of 3</div>
+  <div style="font-size:36px;font-weight:600;letter-spacing:-0.02em;line-height:1.1">Activity, review, calibration, settings</div>
+  <div style="display:flex;gap:16px;margin-top:14px;font-size:14px"><a href="SubStation v2 Library.dc.html">1 · Library and collections</a><a href="SubStation v2 Dataset.dc.html">2 · Dataset screens</a></div>
+</div>
+
+<!-- A1 Activity -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">A1 · Activity</div><div style="font-size:14px;color:var(--sst-muted)">What every worker is doing right now. Jobs show their pipeline steps, the current step's progress, which workers are on it and the last few log lines. The queue can be reordered and paused. Failures stay at the top of Recent until retried or dismissed, with the cause in plain English.</div></div></sc-if>
+  <div data-screen-label="A1 Activity" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Activity" hint-size="100%,56px"></dc-import>
+    <div style="max-width:1240px;margin:0 auto;padding:32px 32px 48px;display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px">
+        <div><div style="font-size:24px;font-weight:600;letter-spacing:-0.02em">Activity</div><div style="font-size:13px;color:var(--sst-muted)">6 workers · 3 jobs running · 9 queued</div></div>
+        <div style="display:flex;gap:8px"><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Pause new work</button><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Worker settings</button></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+        <sc-for list="{{ sys }}" as="s" hint-placeholder-count="4">
+          <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;padding:14px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">{{ s.label }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px">{{ s.value }}</span></div><div style="height:4px;background:var(--sst-line-2);border-radius:2px;overflow:hidden"><div style="height:100%;width:{{ s.w }};background:{{ s.col }}"></div></div><span style="font-size:12px;color:var(--sst-muted)">{{ s.sub }}</span></div>
+        </sc-for>
+      </div>
+      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">Running</div>
+      <sc-for list="{{ jobs }}" as="j" hint-placeholder-count="3">
+        <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid {{ j.border }};border-radius:.85rem;overflow:hidden">
+          <div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:flex-start;gap:12px"><div style="flex:1"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:16px;font-weight:600">{{ j.title }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-muted);border:1px solid var(--sst-line);border-radius:.35rem;padding:0 6px">{{ j.workers }}</span></div><div style="font-size:13px;color:var(--sst-muted)">{{ j.meta }}</div></div><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--sst-accent)">{{ j.eta }}</span><button style="font:inherit;font-size:12px;padding:5px 11px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">{{ j.link }}</button><button style="font:inherit;font-size:12px;padding:5px 11px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-muted)">Cancel</button></div>
+            <div style="display:flex;gap:8px"><sc-for list="{{ j.steps }}" as="p" hint-placeholder-count="5"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><div style="height:4px;border-radius:2px;background:var(--sst-line-2);overflow:hidden"><div style="height:100%;width:{{ p.w }};background:{{ p.col }}"></div></div><span style="font-size:12px;font-weight:{{ p.weight }};color:{{ p.tcol }}">{{ p.name }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-muted)">{{ p.meta }}</span></div></sc-for></div>
+          </div>
+          <div style="background:var(--sst-panel-3);border-top:1px solid var(--sst-line-2);padding:10px 22px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted);display:flex;flex-direction:column;gap:2px"><sc-for list="{{ j.log }}" as="l" hint-placeholder-count="3"><span><span style="color:var(--sst-dim)">{{ l.t }}</span>  {{ l.m }}</span></sc-for></div>
+        </div>
+      </sc-for>
+      <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:start">
+        <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.85rem;overflow:hidden">
+          <div style="padding:14px 20px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line)">Workers</div>
+          <sc-for list="{{ workers }}" as="w" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:36px 90px minmax(0,1fr) 70px;gap:12px;padding:10px 20px;border-bottom:1px solid var(--sst-line-2);font-size:13px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-weight:600">{{ w.id }}</span><span style="display:flex;align-items:center;gap:6px;color:{{ w.col }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ w.col }}"></span>{{ w.state }}</span><div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ w.task }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ w.file }}</div></div><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted);text-align:right">{{ w.cpu }}</span></div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.85rem;overflow:hidden">
+            <div style="padding:14px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--sst-line)"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">Queue · 9</span><span style="font-size:12px;color:var(--sst-muted)">drag to reorder</span></div>
+            <sc-for list="{{ queue }}" as="q" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:14px 22px minmax(0,1fr) auto;gap:10px;padding:9px 20px;border-bottom:1px solid var(--sst-line-2);font-size:13px;align-items:center"><svg width="10" height="14" viewBox="0 0 10 14"><path d="M3 3h0M7 3h0M3 7h0M7 7h0M3 11h0M7 11h0" style="stroke:var(--sst-dim)" stroke-width="2" stroke-linecap="round"></path></svg><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted)">{{ q.n }}</span><div><div>{{ q.task }}</div><div style="font-size:12px;color:var(--sst-muted)">{{ q.meta }}</div></div><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted)">{{ q.est }}</span></div></sc-for>
+            <div style="padding:9px 20px;font-size:13px;color:var(--sst-accent)">Show 4 more</div>
+          </div>
+          <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.85rem;overflow:hidden">
+            <div style="padding:14px 20px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line)">Recent</div>
+            <div style="padding:12px 20px;border-bottom:1px solid var(--sst-line-2);display:flex;gap:10px;align-items:flex-start;background:var(--sst-panel-2)"><svg width="16" height="16" viewBox="0 0 16 16" style="flex:none;margin-top:2px"><path d="M2.75 1.75h10.5a1 1 0 0 1 1 1v10.5a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1V2.75a1 1 0 0 1 1-1z" style="fill:var(--sst-bad)"></path><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" style="stroke:var(--sst-bg)" stroke-width="1.5" stroke-linecap="round"></path></svg><div style="flex:1;font-size:13px"><div style="font-weight:600">Couldn't write the SII master</div><div style="color:var(--sst-muted)">The volume at <span style="font-family:'JetBrains Mono',monospace">/data/masters</span> was read-only at 09:41. Subs and grades are safe.</div></div><button style="font:inherit;font-size:12px;padding:5px 11px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Retry</button></div>
+            <sc-for list="{{ recent }}" as="r" hint-placeholder-count="3"><div style="padding:9px 20px;border-bottom:1px solid var(--sst-line-2);display:flex;gap:10px;font-size:13px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-dim)">{{ r.t }}</span><span style="flex:1">{{ r.m }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted)">{{ r.d }}</span></div></sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- A2 Review -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">A2 · Review</div><div style="font-size:14px;color:var(--sst-muted)">Flagged subs from every dataset, grouped by session. The right panel adds the session's conditions next to the sub's own numbers, so a cloud or guiding problem can be confirmed without leaving the viewer. A, W and R override and advance; U reverts to the auto grade.</div></div></sc-if>
+  <div data-screen-label="A2 Review" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Review" hint-size="100%,56px"></dc-import>
+    <div style="display:grid;grid-template-columns:280px minmax(0,1fr) 340px">
+      <div style="border-right:1px solid var(--sst-line);background:var(--sst-panel-3);padding:18px 14px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;padding:0 8px 4px">To review · 12</div>
+        <sc-for list="{{ rq }}" as="q" hint-placeholder-count="4"><div style="border:1px solid {{ q.border }};background:{{ q.bg }};border-radius:.55rem;padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:600;font-size:13px">{{ q.name }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-accent)">{{ q.n }}</span></div><div style="font-size:12px;color:var(--sst-muted)">{{ q.meta }}</div></div></sc-for>
+        <div style="margin-top:auto;padding:8px;font-size:12px;color:var(--sst-dim)">Flagged: rejected, down-weighted, or within 10% of a threshold.</div>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:14px;padding:0 20px;height:48px;border-bottom:1px solid var(--sst-line);font-size:13px"><span style="font-weight:600">Askar 71F · Hα · 7 Oct 2026</span><span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">2 / 5 flagged · sub 19 of 24</span><span style="margin-left:auto;display:flex;gap:6px"><span style="border:1px solid var(--sst-line);border-radius:.45rem;padding:3px 10px;color:var(--sst-muted)">Fit</span><span style="border:1px solid var(--sst-accent);border-radius:.45rem;padding:3px 10px;color:var(--sst-accent);background:var(--sst-accent-tint)">Blink with best</span><span style="border:1px solid var(--sst-line);border-radius:.45rem;padding:3px 10px;color:var(--sst-muted)">Auto-stretch</span><span style="border:1px solid var(--sst-line);border-radius:.45rem;padding:3px 10px;color:var(--sst-muted)">Stars</span></span></div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="aspect-ratio:3 / 2;border-radius:.55rem;position:relative;background:repeating-linear-gradient(135deg,var(--sst-thumb) 0 10px,var(--sst-panel-3) 10px 20px);border:1px solid var(--sst-line-2);display:flex;align-items:center;justify-content:center"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-dim)">sub preview · blinking against …_0009 (best of session)</span><span style="position:absolute;left:12px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--sst-bg);padding:3px 8px;border-radius:.35rem">NGC7000_Ha_300s_0019.fits</span><span style="position:absolute;right:12px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted);background:var(--sst-bg);padding:3px 8px;border-radius:.35rem">22:22 · alt 64°</span></div>
+          <div style="display:flex;gap:6px"><sc-for list="{{ strip }}" as="t" hint-placeholder-count="14"><div style="flex:1;min-width:0;aspect-ratio:3 / 2;border-radius:.35rem;position:relative;border:{{ t.border }};background:repeating-linear-gradient(135deg,var(--sst-thumb) 0 4px,var(--sst-panel-3) 4px 8px)"><span style="position:absolute;top:3px;left:3px;display:flex;background:var(--sst-bg);border-radius:999px;padding:1px"><svg width="12" height="12" viewBox="0 0 16 16"><path d="{{ t.v.s }}" style="fill:{{ t.v.fill }};stroke:{{ t.v.col }}" stroke-width="1.25"></path><path d="{{ t.v.g }}" style="stroke:{{ t.v.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></div></sc-for></div>
+        </div>
+      </div>
+      <div style="border-left:1px solid var(--sst-line);padding:20px;display:flex;flex-direction:column;gap:16px;background:var(--sst-panel)">
+        <div><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;margin-bottom:8px">Auto grade</div><div style="display:flex;align-items:center;gap:10px"><svg width="26" height="26" viewBox="0 0 16 16"><path d="{{ V.reject.s }}" style="fill:{{ V.reject.fill }};stroke:{{ V.reject.col }}" stroke-width="1.25"></path><path d="{{ V.reject.g }}" style="stroke:{{ V.reject.gcol }}" fill="none" stroke-width="1.5" stroke-linecap="round"></path></svg><span style="font-size:20px;font-weight:600">Rejected</span></div><p style="margin:10px 0 0;font-size:14px">Star count 44% of the session median: likely cloud.</p><p style="margin:6px 0 0;font-size:13px;color:var(--sst-muted)">SQM fell to 20.31 and SQMeter reported cloud from 23:27 to 23:42.</p></div>
+        <dl style="margin:0;display:grid;grid-template-columns:1fr auto auto;gap:5px 12px;font-size:13px;border-top:1px solid var(--sst-line-2);padding-top:12px"><dt style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-dim);font-weight:600"></dt><dd style="margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-dim);font-weight:600;text-align:right">Sub</dd><dd style="margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-dim);font-weight:600;text-align:right">Session</dd><sc-for list="{{ rStats }}" as="s" hint-placeholder-count="7"><dt style="color:var(--sst-muted)">{{ s.k }}</dt><dd style="margin:0;font-family:'JetBrains Mono',monospace;text-align:right;color:{{ s.col }}">{{ s.v }}</dd><dd style="margin:0;font-family:'JetBrains Mono',monospace;text-align:right;color:var(--sst-muted)">{{ s.m }}</dd></sc-for></dl>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--sst-line-2);padding-top:12px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600">Override</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><button style="font:inherit;font-size:12px;padding:8px 4px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Accept <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">A</span></button><button style="font:inherit;font-size:12px;padding:8px 4px;border-radius:.5rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Weight <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">W</span></button><button style="font:inherit;font-size:12px;padding:8px 4px;border-radius:.5rem;border:1px solid var(--sst-accent);background:var(--sst-accent-tint);color:var(--sst-accent)">Keep rejected <span style="font-family:'JetBrains Mono',monospace">R</span></button></div><div style="font-size:12px;color:var(--sst-dim)">Apply to subs 18 to 20 as well <span style="font-family:'JetBrains Mono',monospace;color:var(--sst-muted)">Shift+key</span></div></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px 22px;padding:12px 20px;border-top:1px solid var(--sst-line);background:var(--sst-panel-3);font-size:12px;color:var(--sst-muted)"><sc-for list="{{ keys }}" as="k" hint-placeholder-count="9"><span style="display:inline-flex;align-items:center;gap:6px"><kbd style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sst-text);background:var(--sst-panel);border:1px solid var(--sst-line);border-bottom-width:2px;border-radius:5px;padding:1px 6px">{{ k.k }}</kbd>{{ k.l }}</span></sc-for></div>
+  </div>
+</div>
+
+<!-- A3 Calibration -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">A3 · Calibration library</div><div style="font-size:14px;color:var(--sst-muted)">Calibration masters per rig, built from the calibration folder. Anything blocking grading is shown first with what SubStation is looking for. Each master lists the datasets and sessions using it.</div></div></sc-if>
+  <div data-screen-label="A3 Calibration" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Calibration" hint-size="100%,56px"></dc-import>
+    <div style="max-width:1240px;margin:0 auto;padding:32px 32px 48px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between"><div><div style="font-size:24px;font-weight:600;letter-spacing:-0.02em">Calibration</div><div style="font-size:13px;color:var(--sst-muted)">21 masters across 3 rigs from <span style="font-family:'JetBrains Mono',monospace">/data/library/calibration</span> · last scan 3 min ago</div></div><div style="display:flex;gap:8px"><span style="border:1px solid var(--sst-line);border-radius:.55rem;padding:7px 12px;font-size:13px;color:var(--sst-muted)">Rig <span style="color:var(--sst-text)">Askar 71F</span></span><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Rescan</button></div></div>
+      <div style="border:1px dashed var(--sst-dim);border-radius:.85rem;padding:16px 20px;display:flex;gap:14px;align-items:flex-start;background:var(--sst-panel)"><svg width="20" height="20" viewBox="0 0 16 16" style="flex:none;margin-top:2px"><path d="M8 1.75a6.25 6.25 0 1 1 0 12.5a6.25 6.25 0 1 1 0-12.5z" fill="none" style="stroke:var(--sst-dim)" stroke-width="1.25" stroke-dasharray="2.2 1.6"></path><path d="M8 5v3.2h2.4" fill="none" style="stroke:var(--sst-dim)" stroke-width="1.5" stroke-linecap="round"></path></svg><div style="flex:1"><div style="font-weight:600">Heart Nebula · Askar 71F · OIII is waiting for a flat</div><div style="font-size:14px;color:var(--sst-muted)">2 subs from 7 October 2026 can't be graded. Looking for an OIII flat at rotation 112° ± 2°, within 30 days.</div></div><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Use nearest flat</button></div>
+      <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.7rem;overflow:hidden">
+        <div style="display:grid;grid-template-columns:90px minmax(0,1.4fr) 80px 120px minmax(0,1fr) 150px;gap:14px;padding:9px 20px;background:var(--sst-panel-2);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sst-muted);font-weight:600;border-bottom:1px solid var(--sst-line)"><span>Type</span><span>Matches</span><span style="text-align:right">Frames</span><span>Created</span><span>Used by</span><span>State</span></div>
+        <sc-for list="{{ calLib }}" as="c" hint-placeholder-count="8"><div style="display:grid;grid-template-columns:90px minmax(0,1.4fr) 80px 120px minmax(0,1fr) 150px;gap:14px;padding:11px 20px;border-bottom:1px solid var(--sst-line-2);font-size:13px;align-items:center"><span style="font-weight:600">{{ c.type }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ c.desc }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right">{{ c.frames }}</span><span style="color:var(--sst-muted)">{{ c.created }}</span><span style="color:var(--sst-muted)">{{ c.used }}</span><span style="color:{{ c.col }}">{{ c.state }}</span></div></sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- A4 Settings -->
+<div style="display:flex;flex-direction:column;gap:16px">
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:260px minmax(0,780px);gap:24px"><div style="font-size:20px;font-weight:600">A4 · Settings</div><div style="font-size:14px;color:var(--sst-muted)">One scrolling page; the left rail jumps to sections. Rigs are detected from headers and can be renamed. Metadata sources say which header keywords are read and what to do when a value is missing. One save bar at the bottom; changes that affect grades offer a re-grade.</div></div></sc-if>
+  <div data-screen-label="A4 Settings" style="width:1440px;background:var(--sst-bg);border:1px solid var(--sst-line);border-radius:12px;overflow:hidden">
+    <dc-import name="SubStationHeader" active="Settings" hint-size="100%,56px"></dc-import>
+    <div style="max-width:1240px;margin:0 auto;padding:32px 32px 0;display:grid;grid-template-columns:200px minmax(0,1fr);gap:40px">
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:14px"><div style="font-size:24px;font-weight:600;letter-spacing:-0.02em;margin-bottom:16px">Settings</div><sc-for list="{{ setNav }}" as="n" hint-placeholder-count="10"><span style="padding:6px 12px;border-radius:.45rem;color:{{ n.color }};background:{{ n.bg }};font-weight:{{ n.weight }}">{{ n.label }}</span></sc-for></div>
+      <div style="display:flex;flex-direction:column;gap:18px;padding-top:52px;padding-bottom:32px">
+        <sc-for list="{{ sections }}" as="s" hint-placeholder-count="9">
+          <div style="background:linear-gradient(180deg,var(--sst-panel),var(--sst-card-end));border:1px solid var(--sst-line);border-radius:.85rem;overflow:hidden">
+            <div style="padding:16px 22px;border-bottom:1px solid var(--sst-line);display:flex;justify-content:space-between;align-items:center;gap:16px"><div><div style="font-weight:600;font-size:16px">{{ s.title }}</div><div style="font-size:13px;color:var(--sst-muted)">{{ s.desc }}</div></div><sc-if value="{{ s.hasAction }}" hint-placeholder-val="{{ false }}"><button style="font:inherit;font-size:13px;font-weight:500;padding:6px 12px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text);white-space:nowrap">{{ s.action }}</button></sc-if></div>
+            <sc-for list="{{ s.rows }}" as="r" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:20px;padding:11px 22px;border-top:1px solid var(--sst-line-2);align-items:center;font-size:14px">
+                <div><div style="font-weight:500">{{ r.k }}</div><div style="font-size:12px;color:var(--sst-muted)">{{ r.note }}</div></div>
+                <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap"><sc-for list="{{ r.ctl }}" as="c" hint-placeholder-count="1"><span style="border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.col }};border-radius:.45rem;padding:5px 11px;font-family:{{ c.font }};font-size:13px;font-weight:{{ c.weight }}">{{ c.t }}</span></sc-for></div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--sst-line);background:var(--sst-panel);padding:14px 32px"><div style="max-width:1176px;margin:0 auto;display:flex;align-items:center;gap:12px;font-size:13px;color:var(--sst-muted)"><span style="width:7px;height:7px;border-radius:50%;background:var(--sst-warn)"></span>Unsaved: FWHM reject threshold 1.60× → 1.50×. 9 datasets would be re-graded; manual overrides are kept.<span style="margin-left:auto;display:flex;gap:8px"><button style="font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-line);background:transparent;color:var(--sst-text)">Discard</button><button style="font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:.55rem;border:1px solid var(--sst-accent);background:var(--sst-accent-tint);color:var(--sst-accent)">Save and re-grade</button></span></div></div>
+  </div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;,&quot;night&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  vdefs() {
+    const c = k => `var(--sst-${k})`, bg = 'var(--sst-bg)';
+    const circle = 'M8 1.75a6.25 6.25 0 1 1 0 12.5a6.25 6.25 0 1 1 0-12.5z';
+    const square = 'M2.75 1.75h10.5a1 1 0 0 1 1 1v10.5a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1V2.75a1 1 0 0 1 1-1z';
+    const mk = (k, s, g) => { const col = c(k); return { s, g, col, fill: col, gcol: bg }; };
+    return { accept: mk('ok', circle, 'M5.1 8.3l2 2l3.9-4.3'), down: mk('warn', 'M1.5 2.25h13L8 14.5z', 'M5.6 5.4h4.8'), reject: mk('bad', square, 'M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8') };
+  }
+  renderVals() {
+    const V = this.vdefs();
+    const theme = this.props.theme ?? 'dark';
+    const steps = list => list.map(([name, p, meta]) => ({ name, meta, w: (p * 100) + '%', col: p === 1 ? 'var(--sst-ok)' : 'var(--sst-accent)', weight: p > 0 && p < 1 ? 600 : 500, tcol: p === 0 ? 'var(--sst-muted)' : 'var(--sst-text)' }));
+    const jobs = [
+      { title: 'Integrate master v7 · Askar 71F · Hα', workers: 'W3 W4 W5 W6', meta: 'North America and Pelican · 496 subs from 31 sessions · started 10:02', eta: '≈ 9 min', link: 'Open dataset', border: 'var(--sst-accent-line)',
+        steps: steps([['Select inputs', 1, '452 full · 44 weighted'], ['Calibrate', 1, 'cached from grading'], ['Register', 1, '496 / 496 · ref …_0312'], ['Local normalise', 0.62, '308 / 496'], ['Integrate', 0, 'winsorised σ 3.0'], ['Write', 0, 'XISF 32-bit']]),
+        log: [{ t: '10:13:02', m: 'normalise  NGC7000_Ha_300s_0309.fits  scale 0.982  offset −3.1' }, { t: '10:13:01', m: 'normalise  NGC7000_Ha_300s_0308.fits  scale 0.977  offset −2.8' }, { t: '10:12:59', m: 'register   496 / 496 done · median residual 0.21 px' }] },
+      { title: 'Catalogue new subs · SQA130 · OIII', workers: 'W1', meta: '3 subs from /data/library/capture · arrived 10:11', eta: '≈ 40 s', link: 'Open dataset', border: 'var(--sst-line)',
+        steps: steps([['Read headers', 1, '3 / 3'], ['Plate solve', 0.66, '2 / 3 · ASTAP'], ['Calibrate', 0, 'dark 600 s, flat OIII'], ['Measure', 0, 'FWHM, stars, bg'], ['Grade', 0, 'vs session median']]),
+        log: [{ t: '10:12:58', m: 'solve      Wall_OIII_600s_0042.fits  20h 59m 12s +44° 08′  rot 92.1°  0.95″/px  1.1 s' }, { t: '10:12:44', m: 'header     Wall_OIII_600s_0043.fits  NINA 3.1  SQM 21.08  AMBTEMP 7.9' }, { t: '10:12:43', m: 'header     Wall_OIII_600s_0044.fits  no SQM keyword' }] },
+      { title: 'Plate solve archive · 214 subs', workers: 'W2', meta: 'Back-filling solves for subs imported before 0.4 · low priority', eta: '≈ 12 min', link: 'Pause', border: 'var(--sst-line)',
+        steps: steps([['Plate solve', 0.61, '131 / 214 · 3 failed'], ['Match to collections', 0, 'by centre and overlap']]),
+        log: [{ t: '10:12:57', m: 'solve      M31_OSC_10s_1182.fits  00h 42m 44s +41° 16′  rot 38.0°  3.70″/px' }, { t: '10:12:41', m: 'failed     M31_OSC_10s_1181.fits  too few stars (cloud). Will use header RA/Dec' }] }
+    ].map(j => ({ ...j, stepCount: j.steps.length }));
+    const ok = 'var(--sst-ok)', ac = 'var(--sst-accent)', dim = 'var(--sst-dim)';
+    const strip = Array.from({ length: 14 }, (_, k) => { const i = k + 10; const v = [17, 18, 19].includes(i) ? 'reject' : [13, 22].includes(i) ? 'down' : 'accept'; return { v: V[v], border: i === 18 ? '2px solid var(--sst-accent)' : '1px solid var(--sst-line-2)' }; });
+    const ctl = (t, kind) => { const k = kind || 'field'; return { t, border: k === 'on' ? 'var(--sst-accent)' : k === 'off' ? 'var(--sst-line)' : 'var(--sst-line)', bg: k === 'on' ? 'var(--sst-accent-tint)' : k === 'field' ? 'var(--sst-panel-3)' : 'transparent', col: k === 'on' ? 'var(--sst-accent)' : k === 'off' ? 'var(--sst-muted)' : 'var(--sst-text)', font: k === 'field' ? "'JetBrains Mono', monospace" : 'Inter, sans-serif', weight: k === 'on' ? 600 : 400 }; };
+    const row = (k, note, ...c) => ({ k, note, ctl: c });
+    const seg = (opts, on) => opts.map(o => ctl(o, o === on ? 'on' : 'off'));
+    const sections = [
+      { title: 'Folders', desc: 'New files in these folders are catalogued within a few seconds.', action: 'Add folder', rows: [row('/data/library/capture', 'Lights · last file 3 min ago', ctl('Watching', 'on')), row('/data/library/archive', 'Lights, archive · idle since 28 Sep', ctl('Watching', 'on')), row('/data/library/calibration', 'Calibration frames', ctl('Watching', 'on')), row('/data/substation', 'Output for masters and previews · 1.0 TB free of 4.0 TB', ctl('Change', 'off'))] },
+      { title: 'Rigs', desc: 'Detected from TELESCOP, INSTRUME and FOCALLEN. Rename or merge them here.', action: 'Add rig', rows: [row('Askar 71F', 'ASI2600MM Pro · 490 mm · 1.58″/px · 61 sessions', ctl('Edit', 'off')), row('SQA130', 'ASI6200MM Pro · 820 mm · 0.95″/px · 10 sessions', ctl('Edit', 'off')), row('Seestar S30 Pro', 'Built-in IMX585 · 150 mm · 3.70″/px · alt-az · 31 sessions', ctl('Edit', 'off'))] },
+      { title: 'Grading', desc: 'Each sub is compared with the median of its own session.', rows: [row('FWHM', 'Down-weight above / reject above', ctl('1.20×'), ctl('1.50×')), row('Star count', 'Down-weight below / reject below', ctl('0.70×'), ctl('0.50×')), row('Background', 'Down-weight above / reject above', ctl('1.20×'), ctl('1.40×')), row('Eccentricity', 'Absolute · down-weight above / reject above', ctl('0.50'), ctl('0.65')), row('Use SQM and cloud when recorded', 'A sub is flagged, not rejected, on SQM or cloud alone', ...seg(['On', 'Off'], 'On'))] },
+      { title: 'Stacking', desc: 'Defaults for dataset and combined masters.', rows: [row('Rejection', 'Pixel rejection during integration', ctl('Winsorised σ clip'), ctl('3.0 / 3.0')), row('Weighting', 'How subs are weighted', ...seg(['Grade', 'SNR', 'Equal'], 'Grade')), row('Registration reference', 'Used when a dataset has no reference set', ...seg(['Best FWHM', 'Most stars', 'Manual'], 'Best FWHM')), row('Auto-stack', 'Start a new master automatically', ctl('After each session', 'on'), ctl('Every 10 new subs', 'off'), ctl('Never', 'off')), row('Output', 'File format and bit depth', ...seg(['XISF', 'FITS'], 'XISF'), ctl('32-bit float'))] },
+      { title: 'Plate solving', desc: 'Every sub is solved so it can be matched to datasets and collections.', rows: [row('Solver', 'Local ASTAP with the D50 database', ctl('/usr/local/bin/astap')), row('Use header position as a hint', 'RA, DEC and OBJCTROT from capture software', ...seg(['On', 'Off'], 'On')), row('When solving fails', 'Usually cloud or too few stars', ctl('Use header position', 'on'), ctl('Leave unsolved', 'off'))] },
+      { title: 'Metadata sources', desc: 'Read from FITS and XISF headers when present. Nothing is required.', rows: [row('Capture software', 'N.I.N.A., ASIAIR, Seestar, SharpCap, Ekos detected from SWCREATE', ctl('Auto-detect', 'on')), row('Sky quality', 'SQM keyword, or a linked SQMeter matched by time', ctl('SQM keyword', 'on'), ctl('SQMeter · sqmeter.local', 'on')), row('Weather', 'AMBTEMP, HUMIDITY, DEWPOINT, CLOUDCVR, WINDSPD', ctl('Header', 'on')), row('Guiding', 'PHD2 log folder for RMS when not in the header', ctl('/data/library/phd2'))] },
+      { title: 'Notifications', desc: 'Sent when something needs you, not for routine work.', action: 'Send test', rows: [row('Channels', 'Where messages go', ctl('ntfy · substation', 'on'), ctl('Webhook', 'off'), ctl('Email', 'off')), row('Events', 'Choose what to be told about', ctl('Master finished', 'on'), ctl('Job failed', 'on'), ctl('Awaiting calibration', 'on'), ctl('Session summary', 'off'))] },
+      { title: 'Workers', desc: 'Parallel jobs. More workers use more memory.', rows: [row('Workers', '6 of 12 CPU threads', ctl('6')), row('Priority', 'New subs always go first', ...seg(['New subs first', 'In order'], 'New subs first'))] },
+      { title: 'Users and appearance', desc: 'Accounts and theme.', action: 'Add user', rows: [row('admin', 'Owner · last signed in today 09:58', ctl('Edit', 'off')), row('guest', 'Read only · can review, can’t override', ctl('Edit', 'off')), row('Theme', 'Press N anywhere for night vision', ...seg(['Dark', 'Light', 'Night vision'], theme === 'light' ? 'Light' : theme === 'night' ? 'Night vision' : 'Dark'))] }
+    ].map(s => ({ ...s, hasAction: !!s.action }));
+    return {
+      theme, showNotes: this.props.showNotes ?? true, V, jobs, strip, sections,
+      sys: [
+        { label: 'CPU', value: '78%', w: '78%', col: ac, sub: '12 threads · 6 workers' },
+        { label: 'Memory', value: '22.4 / 64 GB', w: '35%', col: ac, sub: 'integration buffer 14 GB' },
+        { label: 'Disk', value: '210 MB/s', w: '42%', col: ac, sub: 'write · /data/substation' },
+        { label: 'Intake', value: 'Watching', w: '100%', col: ok, sub: '3 folders · last file 10:11' }
+      ],
+      workers: [
+        { id: 'W1', state: 'Solving', col: ac, task: 'Catalogue new subs · SQA130 · OIII', file: 'Wall_OIII_600s_0044.fits', cpu: '98%' },
+        { id: 'W2', state: 'Solving', col: ac, task: 'Plate solve archive', file: 'M31_OSC_10s_1183.fits', cpu: '96%' },
+        { id: 'W3', state: 'Normalising', col: ac, task: 'Master v7 · Askar 71F · Hα', file: 'NGC7000_Ha_300s_0309.fits', cpu: '91%' },
+        { id: 'W4', state: 'Normalising', col: ac, task: 'Master v7 · Askar 71F · Hα', file: 'NGC7000_Ha_300s_0310.fits', cpu: '93%' },
+        { id: 'W5', state: 'Normalising', col: ac, task: 'Master v7 · Askar 71F · Hα', file: 'NGC7000_Ha_300s_0311.fits', cpu: '90%' },
+        { id: 'W6', state: 'Normalising', col: ac, task: 'Master v7 · Askar 71F · Hα', file: 'NGC7000_Ha_300s_0312.fits', cpu: '92%' }
+      ],
+      queue: [
+        { n: '1', task: 'Re-grade · Askar 71F · SII', meta: 'calibration changed · 198 subs', est: '3 min' },
+        { n: '2', task: 'Integrate master v4 · Askar 71F · SII', meta: 'stale · 176 subs', est: '6 min' },
+        { n: '3', task: 'Combined master · Hα', meta: 'North America and Pelican · 3 datasets', est: '14 min' },
+        { n: '4', task: 'Build flat master · OIII 112°', meta: '40 frames from 8 Oct', est: '30 s' },
+        { n: '5', task: 'Previews · Seestar S30 Pro', meta: '420 subs', est: '2 min' }
+      ],
+      recent: [
+        { t: '10:01', m: 'Graded 24 subs · Askar 71F · Hα · 7 Oct · 19 accepted, 2 weighted, 3 rejected', d: '1 min 50 s' },
+        { t: '09:58', m: 'Built dark master 600 s −15 °C · SQA130 · 30 frames', d: '42 s' },
+        { t: '08:40', m: 'Master v6 · Askar 71F · OIII · 266 subs', d: '7 min 12 s' }
+      ],
+      rq: [
+        { name: 'Askar 71F · Hα', n: '5', meta: 'NGC 7000 · 7 Oct · 3 rejected, 2 weighted', border: 'var(--sst-accent-line)', bg: 'var(--sst-accent-tint)' },
+        { name: 'SQA130 · OIII', n: '2', meta: 'NGC 7000 · 7 Oct · 2 near threshold', border: 'var(--sst-line)', bg: 'var(--sst-panel)' },
+        { name: 'Askar 71F · SII', n: '1', meta: 'Heart Nebula · 7 Oct · 1 rejected', border: 'var(--sst-line)', bg: 'var(--sst-panel)' },
+        { name: 'Askar 71F · L', n: '4', meta: 'Heart Nebula · 28 Sep · 4 rejected', border: 'var(--sst-line)', bg: 'var(--sst-panel)' }
+      ],
+      rStats: [
+        { k: 'FWHM', v: '2.52″', m: '2.38″', col: 'var(--sst-text)' },
+        { k: 'Stars', v: '598', m: '1,358', col: 'var(--sst-bad)' },
+        { k: 'Background', v: '519', m: '444', col: 'var(--sst-warn)' },
+        { k: 'SQM', v: '20.31', m: '21.12', col: 'var(--sst-warn)' },
+        { k: 'Guiding RMS', v: '0.71″', m: '0.62″', col: 'var(--sst-text)' },
+        { k: 'Altitude', v: '64°', m: '58–80°', col: 'var(--sst-text)' },
+        { k: 'Cloud', v: 'Cloudy', m: 'SQMeter', col: 'var(--sst-warn)' }
+      ],
+      keys: [{ k: 'J', l: 'previous' }, { k: 'K', l: 'next' }, { k: 'Space', l: 'blink' }, { k: 'A', l: 'accept' }, { k: 'W', l: 'down-weight' }, { k: 'R', l: 'reject' }, { k: 'U', l: 'revert to auto' }, { k: 'I', l: 'metadata' }, { k: 'N', l: 'night vision' }],
+      calLib: [
+        { type: 'Dark', desc: 'Askar 71F · 300 s · gain 100 · −10 °C', frames: 30, created: '2 Oct 2026', used: '9 datasets · 48 sessions', state: 'Current', col: ok },
+        { type: 'Dark', desc: 'Askar 71F · 300 s · −10 °C · 2025 set', frames: 25, created: '1 Aug 2025', used: '4 datasets · 19 sessions', state: 'Kept for 2025 data', col: 'var(--sst-muted)' },
+        { type: 'Flat', desc: 'Askar 71F · Hα · 87.2°', frames: 40, created: '5 Oct 2026', used: '1 dataset · 3 sessions', state: 'Current', col: ok },
+        { type: 'Flat', desc: 'Askar 71F · OIII · 87.2°', frames: 40, created: '5 Oct 2026', used: '1 dataset · 2 sessions', state: 'Current', col: ok },
+        { type: 'Flat', desc: 'Askar 71F · Hα · 86.8°', frames: 40, created: '12 Aug 2026', used: '1 dataset · 2 sessions', state: 'Weak match for 2', col: 'var(--sst-warn)' },
+        { type: 'Flat', desc: 'Askar 71F · OIII · 112°', frames: 0, created: '—', used: 'Heart Nebula · 1 session', state: 'Missing', col: 'var(--sst-bad)' },
+        { type: 'Bias', desc: 'Askar 71F · gain 100', frames: 100, created: '1 Sep 2026', used: '12 datasets', state: 'Current', col: ok },
+        { type: 'Dark', desc: 'Askar 71F · 120 s · gain 100 · −10 °C', frames: 30, created: '12 Mar 2025', used: 'None', state: 'Unused · 19 months', col: 'var(--sst-muted)' }
+      ],
+      setNav: ['Folders', 'Rigs', 'Grading', 'Stacking', 'Plate solving', 'Metadata sources', 'Notifications', 'Workers', 'Users', 'Appearance'].map((l, i) => ({ label: l, color: i === 2 ? 'var(--sst-text)' : 'var(--sst-muted)', bg: i === 2 ? 'var(--sst-panel-2)' : 'transparent', weight: i === 2 ? 600 : 500 }))
+    };
+  }
+}
+</script>
+</body>
+</html>

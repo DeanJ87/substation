@@ -1,0 +1,83 @@
+# SubStation behind Traefik on a NAS, deployed as a Portainer (or plain Compose) stack. Images come from GHCR
+# (built by .github/workflows/publish.yml); SUBSTATION_TAG picks the branch or short SHA.
+#
+# Site values are stack variables, never in the repo. All but the tag are required, so a missing one stops the
+# deploy instead of starting on an empty folder:
+#   SUBSTATION_DOMAIN      host name Traefik serves it on (e.g. substation.example.com)
+#   SUBSTATION_STATION     where the database, work and masters live (fast storage)
+#   SUBSTATION_CATALOGUES  Siril's offline star catalogues, for plate solving
+#   SUBSTATION_LIBRARY     the organised image library, mounted read-only
+#   SUBSTATION_ARCHIVE     a second, archive library, mounted read-only
+#   SUBSTATION_ADMIN_USERNAME / SUBSTATION_ADMIN_PASSWORD, SUBSTATION_HELPER_TOKEN
+name: substation
+
+x-base: &base
+  restart: unless-stopped
+  networks: [internal]
+
+x-station: &station ${SUBSTATION_STATION:?set SUBSTATION_STATION}:/data/substation
+x-catalogues: &catalogues ${SUBSTATION_CATALOGUES:?set SUBSTATION_CATALOGUES}:/home/substation/.local/share/kstars:ro
+# read-only: SubStation never writes to an image library
+x-library: &library ${SUBSTATION_LIBRARY:?set SUBSTATION_LIBRARY}:/data/library/organised:ro
+x-archive: &archive ${SUBSTATION_ARCHIVE:?set SUBSTATION_ARCHIVE}:/data/library/archive:ro
+
+services:
+  frontend:
+    <<: *base
+    image: ghcr.io/deanj87/substation-frontend:${SUBSTATION_TAG:-poc-substation}
+    depends_on: [api]
+    networks: [internal, proxy]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: proxy
+      traefik.http.routers.substation.rule: Host(`${SUBSTATION_DOMAIN:?set SUBSTATION_DOMAIN}`)
+      traefik.http.routers.substation.entrypoints: websecure
+      traefik.http.routers.substation.tls: "true"
+      traefik.http.routers.substation.tls.certresolver: letsencrypt
+      traefik.http.services.substation.loadbalancer.server.port: "8080"
+
+  api:
+    <<: *base
+    cpu_shares: 2048  # what you click comes first when the box is busy
+    image: ghcr.io/deanj87/substation-api:${SUBSTATION_TAG:-poc-substation}
+    environment:
+      SUBSTATION_SITE_NAME: Home
+      SUBSTATION_CSRF_TRUSTED_ORIGINS: https://${SUBSTATION_DOMAIN:?set SUBSTATION_DOMAIN}  # sign-in only from here
+      # post-processing runs on helpers on faster machines, not here (spec 010)
+      SUBSTATION_HELPER_TOKEN: ${SUBSTATION_HELPER_TOKEN:-}
+      SUBSTATION_ADMIN_USERNAME: ${SUBSTATION_ADMIN_USERNAME}
+      SUBSTATION_ADMIN_PASSWORD: ${SUBSTATION_ADMIN_PASSWORD}
+    volumes:
+      - *station
+      - *catalogues
+      # so hover and reconcile previews can draw a frame that hasn't been processed yet
+      - *library
+      - *archive
+
+  worker:
+    <<: *base
+    cpu_shares: 512
+    image: ghcr.io/deanj87/substation-worker:${SUBSTATION_TAG:-poc-substation}
+    environment:
+      SUBSTATION_WORKERS: "2"           # per container; two containers (deploy.replicas) make four
+      SUBSTATION_SKIP_QUEUES: finish,finish_ctl  # post-processing runs on a helper (api_helper.py)
+      SUBSTATION_SIRIL_THREADS: "2"
+      SUBSTATION_SIRIL_MEM_RATIO: "0.25"
+    volumes:
+      - *station
+      - *catalogues
+      - *library
+      - *archive
+    depends_on:
+      api: { condition: service_healthy }
+    deploy:
+      # scale out, not up: two containers, each capped, so a runaway Siril build takes down its own container,
+      # not the one handling live subs. Stacking slots (Settings → Workers) are shared through the database.
+      replicas: 2
+      resources:
+        limits: { cpus: "3", memory: 7g }
+
+networks:
+  internal: {}
+  proxy:
+    external: true

@@ -1,0 +1,236 @@
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  height: 56px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--sst-line);
+  background: var(--sst-panel);
+  white-space: nowrap;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+.nav {
+  display: flex;
+  gap: 28px;
+  height: 100%;
+}
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sst-muted);
+  text-decoration: none;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.navLink:hover {
+  color: var(--sst-text);
+}
+.navActive {
+  color: var(--sst-text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--sst-accent);
+}
+.headerRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+.watching {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sst-muted);
+  font-family: var(--sst-font-mono);
+  font-size: 12px;
+  text-decoration: none;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.dotOk {
+  background: var(--sst-ok);
+}
+.dotWarn {
+  background: var(--sst-warn);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--sst-line);
+}
+.account {
+  position: relative;
+}
+.accountBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--sst-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: var(--sst-radius-sm);
+}
+.accountBtn:hover {
+  background: var(--sst-panel-2);
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sst-panel-3);
+  border: 1px solid var(--sst-line);
+  font-size: 12px;
+  font-weight: 600;
+}
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--sst-line);
+  border-radius: 0.6rem;
+  background: var(--sst-panel);
+  z-index: 20;
+}
+.menuItem {
+  text-align: left;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--sst-text);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none;
+  border-radius: var(--sst-radius-sm);
+  cursor: pointer;
+}
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--sst-panel-2);
+}
+@media (max-width: 900px) {
+  .header {
+    gap: 16px;
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+  .nav {
+    gap: 16px;
+  }
+  .watching {
+    display: none;
+  }
+}
+.main {
+  padding: 28px 32px 56px;
+  max-width: 1304px; /* 1240 px of content inside 32 px gutters (007-DR-13) */
+  width: 100%;
+  margin: 0 auto;
+}
+.signIn {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.signInCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 28px;
+  border: 1px solid var(--sst-line);
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, var(--sst-panel), var(--sst-card-end));
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field input {
+  padding: 9px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}
+.formError {
+  color: var(--sst-bad);
+  margin: 0;
+}
+
+.count {
+  font-family: var(--sst-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--sst-accent-line);
+  background: var(--sst-accent-tint);
+  color: var(--sst-accent);
+}
+.countBad {
+  border-color: var(--sst-bad);
+  color: var(--sst-bad);
+  background: transparent;
+}
+.signInStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: min(380px, 100%);
+}
+.signInBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.signInFoot {
+  font-size: 12px;
+}
+.fieldError input {
+  border-color: var(--sst-bad);
+}
+.version {
+  padding: 8px 12px 4px;
+  border-top: 1px solid var(--sst-line);
+  margin-top: 4px;
+  font-family: var(--sst-font-mono);
+  font-size: 11px;
+  color: var(--sst-muted);
+  white-space: nowrap;
+}

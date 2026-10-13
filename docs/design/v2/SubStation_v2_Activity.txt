@@ -1,0 +1,439 @@
+SUBSTATION V2 · 3 OF 3
+Activity, review, calibration, settings
+1 · Library and collections
+2 · Dataset screens
+A1 · Activity
+What every worker is doing right now. Jobs show their pipeline steps, the current step's progress, which workers are on it and the last few log lines. The queue can be reordered and paused. Failures stay at the top of Recent until retried or dismissed, with the cause in plain English.
+Activity
+6 workers · 3 jobs running · 9 queued
+Pause new work
+Worker settings
+CPU
+78%
+12 threads · 6 workers
+MEMORY
+22.4 / 64 GB
+integration buffer 14 GB
+DISK
+210 MB/s
+write · /data/substation
+INTAKE
+Watching
+3 folders · last file 10:11
+RUNNING
+Integrate master v7 · Askar 71F · Hα
+W3 W4 W5 W6
+North America and Pelican · 496 subs from 31 sessions · started 10:02
+≈ 9 min
+Open dataset
+Cancel
+Select inputs
+452 full · 44 weighted
+Calibrate
+cached from grading
+Register
+496 / 496 · ref …_0312
+Local normalise
+308 / 496
+Integrate
+winsorised σ 3.0
+Write
+XISF 32-bit
+10:13:02 normalise NGC7000_Ha_300s_0309.fits scale 0.982 offset −3.1
+10:13:01 normalise NGC7000_Ha_300s_0308.fits scale 0.977 offset −2.8
+10:12:59 register 496 / 496 done · median residual 0.21 px
+Catalogue new subs · SQA130 · OIII
+W1
+3 subs from /data/library/capture · arrived 10:11
+≈ 40 s
+Open dataset
+Cancel
+Read headers
+3 / 3
+Plate solve
+2 / 3 · ASTAP
+Calibrate
+dark 600 s, flat OIII
+Measure
+FWHM, stars, bg
+Grade
+vs session median
+10:12:58 solve Wall_OIII_600s_0042.fits 20h 59m 12s +44° 08′ rot 92.1° 0.95″/px 1.1 s
+10:12:44 header Wall_OIII_600s_0043.fits NINA 3.1 SQM 21.08 AMBTEMP 7.9
+10:12:43 header Wall_OIII_600s_0044.fits no SQM keyword
+Plate solve archive · 214 subs
+W2
+Back-filling solves for subs imported before 0.4 · low priority
+≈ 12 min
+Pause
+Cancel
+Plate solve
+131 / 214 · 3 failed
+Match to collections
+by centre and overlap
+10:12:57 solve M31_OSC_10s_1182.fits 00h 42m 44s +41° 16′ rot 38.0° 3.70″/px
+10:12:41 failed M31_OSC_10s_1181.fits too few stars (cloud). Will use header RA/Dec
+WORKERS
+W1
+Solving
+Catalogue new subs · SQA130 · OIII
+Wall_OIII_600s_0044.fits
+98%
+W2
+Solving
+Plate solve archive
+M31_OSC_10s_1183.fits
+96%
+W3
+Normalising
+Master v7 · Askar 71F · Hα
+NGC7000_Ha_300s_0309.fits
+91%
+W4
+Normalising
+Master v7 · Askar 71F · Hα
+NGC7000_Ha_300s_0310.fits
+93%
+W5
+Normalising
+Master v7 · Askar 71F · Hα
+NGC7000_Ha_300s_0311.fits
+90%
+W6
+Normalising
+Master v7 · Askar 71F · Hα
+NGC7000_Ha_300s_0312.fits
+92%
+QUEUE · 9
+drag to reorder
+1
+Re-grade · Askar 71F · SII
+calibration changed · 198 subs
+3 min
+2
+Integrate master v4 · Askar 71F · SII
+stale · 176 subs
+6 min
+3
+Combined master · Hα
+North America and Pelican · 3 datasets
+14 min
+4
+Build flat master · OIII 112°
+40 frames from 8 Oct
+30 s
+5
+Previews · Seestar S30 Pro
+420 subs
+2 min
+Show 4 more
+RECENT
+Couldn't write the SII master
+The volume at /data/masters was read-only at 09:41. Subs and grades are safe.
+Retry
+10:01
+Graded 24 subs · Askar 71F · Hα · 7 Oct · 19 accepted, 2 weighted, 3 rejected
+1 min 50 s
+09:58
+Built dark master 600 s −15 °C · SQA130 · 30 frames
+42 s
+08:40
+Master v6 · Askar 71F · OIII · 266 subs
+7 min 12 s
+A2 · Review
+Flagged subs from every dataset, grouped by session. The right panel adds the session's conditions next to the sub's own numbers, so a cloud or guiding problem can be confirmed without leaving the viewer. A, W and R override and advance; U reverts to the auto grade.
+TO REVIEW · 12
+Askar 71F · Hα
+5
+NGC 7000 · 7 Oct · 3 rejected, 2 weighted
+SQA130 · OIII
+2
+NGC 7000 · 7 Oct · 2 near threshold
+Askar 71F · SII
+1
+Heart Nebula · 7 Oct · 1 rejected
+Askar 71F · L
+4
+Heart Nebula · 28 Sep · 4 rejected
+Flagged: rejected, down-weighted, or within 10% of a threshold.
+Askar 71F · Hα · 7 Oct 2026
+2 / 5 flagged · sub 19 of 24
+Fit
+Blink with best
+Auto-stretch
+Stars
+sub preview · blinking against …_0009 (best of session)
+NGC7000_Ha_300s_0019.fits
+22:22 · alt 64°
+AUTO GRADE
+Rejected
+
+Star count 44% of the session median: likely cloud.
+
+SQM fell to 20.31 and SQMeter reported cloud from 23:27 to 23:42.
+
+SUB
+SESSION
+FWHM
+2.52″
+2.38″
+Stars
+598
+1,358
+Background
+519
+444
+SQM
+20.31
+21.12
+Guiding RMS
+0.71″
+0.62″
+Altitude
+64°
+58–80°
+Cloud
+Cloudy
+SQMeter
+OVERRIDE
+Accept A
+Weight W
+Keep rejected R
+Apply to subs 18 to 20 as well Shift+key
+J
+previous
+K
+next
+Space
+blink
+A
+accept
+W
+down-weight
+R
+reject
+U
+revert to auto
+I
+metadata
+N
+night vision
+A3 · Calibration library
+Calibration masters per rig, built from the calibration folder. Anything blocking grading is shown first with what SubStation is looking for. Each master lists the datasets and sessions using it.
+Calibration
+21 masters across 3 rigs from /data/library/calibration · last scan 3 min ago
+Rig Askar 71F
+Rescan
+Heart Nebula · Askar 71F · OIII is waiting for a flat
+2 subs from 7 October 2026 can't be graded. Looking for an OIII flat at rotation 112° ± 2°, within 30 days.
+Use nearest flat
+TYPE
+MATCHES
+FRAMES
+CREATED
+USED BY
+STATE
+Dark
+Askar 71F · 300 s · gain 100 · −10 °C
+30
+2 Oct 2026
+9 datasets · 48 sessions
+Current
+Dark
+Askar 71F · 300 s · −10 °C · 2025 set
+25
+1 Aug 2025
+4 datasets · 19 sessions
+Kept for 2025 data
+Flat
+Askar 71F · Hα · 87.2°
+40
+5 Oct 2026
+1 dataset · 3 sessions
+Current
+Flat
+Askar 71F · OIII · 87.2°
+40
+5 Oct 2026
+1 dataset · 2 sessions
+Current
+Flat
+Askar 71F · Hα · 86.8°
+40
+12 Aug 2026
+1 dataset · 2 sessions
+Weak match for 2
+Flat
+Askar 71F · OIII · 112°
+0
+—
+Heart Nebula · 1 session
+Missing
+Bias
+Askar 71F · gain 100
+100
+1 Sep 2026
+12 datasets
+Current
+Dark
+Askar 71F · 120 s · gain 100 · −10 °C
+30
+12 Mar 2025
+None
+Unused · 19 months
+A4 · Settings
+One scrolling page; the left rail jumps to sections. Rigs are detected from headers and can be renamed. Metadata sources say which header keywords are read and what to do when a value is missing. One save bar at the bottom; changes that affect grades offer a re-grade.
+Settings
+Folders
+Rigs
+Grading
+Stacking
+Plate solving
+Metadata sources
+Notifications
+Workers
+Users
+Appearance
+Folders
+New files in these folders are catalogued within a few seconds.
+Add folder
+/data/library/capture
+Lights · last file 3 min ago
+Watching
+/data/library/archive
+Lights, archive · idle since 28 Sep
+Watching
+/data/library/calibration
+Calibration frames
+Watching
+/data/substation
+Output for masters and previews · 1.0 TB free of 4.0 TB
+Change
+Rigs
+Detected from TELESCOP, INSTRUME and FOCALLEN. Rename or merge them here.
+Add rig
+Askar 71F
+ASI2600MM Pro · 490 mm · 1.58″/px · 61 sessions
+Edit
+SQA130
+ASI6200MM Pro · 820 mm · 0.95″/px · 10 sessions
+Edit
+Seestar S30 Pro
+Built-in IMX585 · 150 mm · 3.70″/px · alt-az · 31 sessions
+Edit
+Grading
+Each sub is compared with the median of its own session.
+FWHM
+Down-weight above / reject above
+1.20×
+1.50×
+Star count
+Down-weight below / reject below
+0.70×
+0.50×
+Background
+Down-weight above / reject above
+1.20×
+1.40×
+Eccentricity
+Absolute · down-weight above / reject above
+0.50
+0.65
+Use SQM and cloud when recorded
+A sub is flagged, not rejected, on SQM or cloud alone
+On
+Off
+Stacking
+Defaults for dataset and combined masters.
+Rejection
+Pixel rejection during integration
+Winsorised σ clip
+3.0 / 3.0
+Weighting
+How subs are weighted
+Grade
+SNR
+Equal
+Registration reference
+Used when a dataset has no reference set
+Best FWHM
+Most stars
+Manual
+Auto-stack
+Start a new master automatically
+After each session
+Every 10 new subs
+Never
+Output
+File format and bit depth
+XISF
+FITS
+32-bit float
+Plate solving
+Every sub is solved so it can be matched to datasets and collections.
+Solver
+Local ASTAP with the D50 database
+/usr/local/bin/astap
+Use header position as a hint
+RA, DEC and OBJCTROT from capture software
+On
+Off
+When solving fails
+Usually cloud or too few stars
+Use header position
+Leave unsolved
+Metadata sources
+Read from FITS and XISF headers when present. Nothing is required.
+Capture software
+N.I.N.A., ASIAIR, Seestar, SharpCap, Ekos detected from SWCREATE
+Auto-detect
+Sky quality
+SQM keyword, or a linked SQMeter matched by time
+SQM keyword
+SQMeter · sqmeter.local
+Weather
+AMBTEMP, HUMIDITY, DEWPOINT, CLOUDCVR, WINDSPD
+Header
+Guiding
+PHD2 log folder for RMS when not in the header
+/data/library/phd2
+Notifications
+Sent when something needs you, not for routine work.
+Send test
+Channels
+Where messages go
+ntfy · substation
+Webhook
+Email
+Events
+Choose what to be told about
+Master finished
+Job failed
+Awaiting calibration
+Session summary
+Workers
+Parallel jobs. More workers use more memory.
+Workers
+6 of 12 CPU threads
+6
+Priority
+New subs always go first
+New subs first
+In order
+Users and appearance
+Accounts and theme.
+Add user
+admin
+Owner · last signed in today 09:58
+Edit
+guest
+Read only · can review, can’t override
+Edit
+Theme
+Press N anywhere for night vision
+Dark
+Light
+Night vision
+Unsaved: FWHM reject threshold 1.60× → 1.50×. 9 datasets would be re-graded; manual overrides are kept.
+Discard
+Save and re-grade

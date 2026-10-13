@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" sizes="16x16" href="/favicon-16.svg" />
+    <link rel="icon" type="image/svg+xml" sizes="32x32" href="/favicon-32.svg" />
+    <link rel="icon" type="image/svg+xml" sizes="48x48" href="/favicon-48.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080d14" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SubStation</title>
+    <script>
+      // apply the saved theme before the first paint, so night vision never flashes the dark theme (007-DR-06)
+      try {
+        var t = localStorage.getItem('sst-theme')
+        if (t === 'light' || t === 'night') document.documentElement.setAttribute('data-theme', t)
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <filter id="sst-red-only" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+      </filter>
+    </svg>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

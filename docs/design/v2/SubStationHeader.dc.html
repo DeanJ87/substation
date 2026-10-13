@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;align-items:center;gap:40px;padding:0 32px;height:56px;background:var(--sst-panel);border-bottom:1px solid var(--sst-line);font-family:Inter,system-ui,sans-serif;color:var(--sst-text)">
+  <div style="display:flex;align-items:center;gap:10px;flex:none">
+    <svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="3" width="13" height="13" rx="2" fill="none" style="stroke:var(--sst-muted)" stroke-width="1.5"></rect><rect x="5.5" y="5.5" width="13" height="13" rx="2" fill="none" style="stroke:var(--sst-muted)" stroke-width="1.5"></rect><rect x="8" y="8" width="13" height="13" rx="2" fill="none" style="stroke:var(--sst-accent)" stroke-width="2"></rect><circle cx="14.5" cy="14.5" r="1.75" style="fill:var(--sst-accent)"></circle></svg>
+    <span style="font-weight:600;font-size:16px;letter-spacing:-0.01em">SubStation</span>
+  </div>
+  <nav style="display:flex;gap:28px;align-self:stretch;font-size:14px">
+    <sc-for list="{{ items }}" as="i" hint-placeholder-count="4">
+      <span style="display:flex;align-items:center;gap:8px;color:{{ i.color }};font-weight:{{ i.weight }};box-shadow:{{ i.shadow }}">{{ i.label }}<sc-if value="{{ i.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:16px;padding:0 6px;border-radius:999px;background:var(--sst-accent-tint);color:var(--sst-accent);border:1px solid var(--sst-accent-line)">{{ i.badge }}</span></sc-if></span>
+    </sc-for>
+  </nav>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:20px;font-size:13px">
+    <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sst-muted)"><span style="width:7px;height:7px;border-radius:50%;background:var(--sst-ok)"></span>Watching 3 folders</span>
+    <span style="width:1px;height:20px;background:var(--sst-line)"></span>
+    <span style="display:flex;align-items:center;gap:8px;color:var(--sst-muted)"><span style="width:26px;height:26px;border-radius:50%;border:1px solid var(--sst-line);background:var(--sst-panel-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--sst-text)">A</span>admin</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:56},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Library&quot;,&quot;Review&quot;,&quot;Calibration&quot;,&quot;Activity&quot;,&quot;Settings&quot;],&quot;default&quot;:&quot;Library&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active ?? 'Library';
+    const items = [['Library', ''], ['Review', '12'], ['Calibration', ''], ['Activity', '6'], ['Settings', '']].map(([label, badge]) => {
+      const on = label === active;
+      return { label, badge, hasBadge: !!badge, color: on ? 'var(--sst-text)' : 'var(--sst-muted)', weight: on ? 600 : 500, shadow: on ? 'inset 0 -2px 0 var(--sst-accent)' : 'none' };
+    });
+    return { items };
+  }
+}
+</script>
+</body>
+</html>

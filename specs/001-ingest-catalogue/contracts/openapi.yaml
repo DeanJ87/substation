@@ -1,0 +1,455 @@
+openapi: 3.1.0
+info:
+  title: SubStation API (spec 001 ingest and catalogue)
+  version: 0.1.0
+  license: { name: GPL-3.0-only }
+  description: >
+    Served by Django Ninja under /api/v1. All endpoints require an authenticated session
+    (django-allauth headless browser client: session cookie + X-CSRFToken). Admin-only endpoints are marked.
+    Authentication endpoints are allauth's own (/_allauth/browser/v1/...) and are not repeated here.
+servers: [{ url: /api/v1 }]
+security: [{ session: [] }]
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: sessionid }
+  parameters:
+    Cursor: { name: cursor, in: query, schema: { type: string } }
+    Limit: { name: limit, in: query, schema: { type: integer, default: 100, maximum: 1000 } }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string, description: plain English, voice guide }
+    Page:
+      type: object
+      required: [next_cursor]
+      properties: { next_cursor: { type: [string, "null"] } }
+    Library:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        mount_path: { type: string }
+        enabled: { type: boolean }
+        status: { enum: [ok, unreachable, scanning] }
+        site: { $ref: "#/components/schemas/Site" }
+        last_full_sweep_at: { type: [string, "null"], format: date-time }
+        frame_count: { type: integer }
+        sweep_interval_active_s: { type: integer }
+        sweep_interval_idle_s: { type: integer }
+    Site:
+      type: object
+      properties:
+        name: { type: [string, "null"] }
+        lat: { type: [number, "null"] }
+        lon: { type: [number, "null"] }
+    MetadataField:
+      type: object
+      required: [field, value, raw, source, source_detail, is_winner, set_by, at]
+      properties:
+        field: { type: string }
+        value: { type: [string, "null"], description: normalised value as text }
+        raw: { type: [string, "null"] }
+        source: { enum: [header, folder_pattern, filename_pattern, inferred, settings, user] }
+        source_detail: { type: [string, "null"], description: "e.g. header keyword FILTER, or the pattern that matched" }
+        is_winner: { type: boolean, description: the value in use; the others are alternatives }
+        set_by: { type: [string, "null"], description: username for source=user }
+        at: { type: string, format: date-time }
+    CopyRef:
+      type: object
+      required: [library, path, present, is_bad_prefixed, first_seen_at, last_seen_at]
+      properties:
+        library: { type: string }
+        path: { type: string }
+        present: { type: boolean }
+        is_bad_prefixed: { type: boolean }
+        first_seen_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+    CopyEvent:
+      type: object
+      required: [kind, details, at]
+      properties:
+        kind: { type: string }
+        details: { type: object }
+        at: { type: string, format: date-time }
+    Verdict:
+      type: object
+      required: [verdict, source, by, at]
+      properties:
+        verdict: { enum: [reject, accept, keep] }
+        source: { type: string }
+        by: { type: [string, "null"] }
+        at: { type: string, format: date-time }
+    HeaderSnapshot:
+      type: object
+      required: [image_index, image_id, geometry, sample_format, keywords, properties]
+      properties:
+        image_index: { type: integer }
+        image_id: { type: string }
+        geometry: { type: string }
+        sample_format: { type: string }
+        keywords: { type: object, additionalProperties: { type: object, properties: { value: {}, comment: { type: string } } } }
+        properties: { type: object }
+    FrameSummary:
+      type: object
+      required: [sha256, frame_type, status, target, panel, filter, exptime_s, ccd_temp_c, date_obs_utc, night, dataset_id, user_verdict, primary_path, copies]
+      properties:
+        sha256: { type: string }
+        frame_type: { type: string }
+        status: { enum: [pending, catalogued, missing, ignored, error] }
+        target: { type: [string, "null"] }
+        panel: { type: [integer, "null"] }
+        filter: { type: [string, "null"] }
+        exptime_s: { type: [number, "null"] }
+        ccd_temp_c: { type: [number, "null"] }
+        date_obs_utc: { type: [string, "null"], format: date-time }
+        night: { type: [string, "null"], format: date }
+        dataset_id: { type: [integer, "null"] }
+        user_verdict: { type: [string, "null"], enum: [reject, accept, keep, null] }
+        primary_path: { type: string }
+        copies: { type: integer }
+    Frame:
+      allOf:
+        - $ref: "#/components/schemas/FrameSummary"
+        - type: object
+          required: [classification_reason, classification_source, error, size_bytes, format, image_count, integration_index, metadata, conflicts, copy_list, history, verdicts, headers]
+          properties:
+            classification_reason: { type: string }
+            classification_source: { type: string }
+            error: { type: [string, "null"] }
+            size_bytes: { type: integer }
+            format: { type: string }
+            image_count: { type: integer }
+            integration_index: { type: [integer, "null"] }
+            metadata: { type: array, items: { $ref: "#/components/schemas/MetadataField" } }
+            conflicts: { type: array, items: { type: object, required: [field, values], properties: { field: { type: string }, values: { type: object, additionalProperties: { type: string }, description: "\"source:detail\" -> value" } } } }
+            copy_list: { type: array, items: { $ref: "#/components/schemas/CopyRef" } }
+            history: { type: array, items: { $ref: "#/components/schemas/CopyEvent" } }
+            verdicts: { type: array, items: { $ref: "#/components/schemas/Verdict" } }
+            headers: { type: array, items: { $ref: "#/components/schemas/HeaderSnapshot" } }
+    Dataset:
+      type: object
+      required: [id, display_name, target, panel, filter, camera, telescope, binning, gain, offset, state, state_reason, sub_count, user_rejected_count, integration_s, nights, first_utc, last_utc, last_night, last_night_subs]
+      properties:
+        id: { type: integer }
+        display_name: { type: string }
+        target: { type: string }
+        panel: { type: [integer, "null"] }
+        filter: { type: string }
+        camera: { type: string }
+        telescope: { type: string }
+        binning: { type: string }
+        gain: { type: [integer, "null"] }
+        offset: { type: [integer, "null"] }
+        state: { enum: [ok, needs_reconciliation, awaiting_calibration, integrating, stale] }
+        state_reason: { type: [string, "null"] }
+        sub_count: { type: integer }
+        user_rejected_count: { type: integer }
+        integration_s: { type: number }
+        nights: { type: integer }
+        first_utc: { type: [string, "null"], format: date-time }
+        last_utc: { type: [string, "null"], format: date-time }
+        last_night: { type: [string, "null"], format: date }
+        last_night_subs: { type: integer }
+    DatasetNight:
+      type: object
+      required: [night, sub_count, integration_s, user_rejected_count, first_utc, last_utc]
+      properties:
+        night: { type: string, format: date }
+        sub_count: { type: integer }
+        integration_s: { type: number }
+        user_rejected_count: { type: integer }
+        first_utc: { type: [string, "null"], format: date-time }
+        last_utc: { type: [string, "null"], format: date-time }
+    Night:
+      type: object
+      required: [date, site_key, sites, datasets, calibration_sets, other_frames, previous, next]
+      properties:
+        date: { type: string, format: date }
+        site_key: { type: string }
+        sites: { type: array, items: { type: string }, description: every site with frames that night }
+        datasets:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/DatasetNight"
+              - { type: object, required: [dataset], properties: { dataset: { $ref: "#/components/schemas/Dataset" } } }
+        calibration_sets: { type: array, items: { $ref: "#/components/schemas/CalibrationSet" } }
+        other_frames: { type: object, additionalProperties: { type: integer }, description: "frames in no dataset or set (masters, unknown), by type" }
+        previous: { type: [string, "null"], format: date, description: the site's previous night with frames }
+        next: { type: [string, "null"], format: date }
+    CalibrationSet:
+      type: object
+      required: [id, type, camera, filter, exptime_s, gain, offset, binning, set_temp_c, session_start_utc, session_end_utc, night, frame_count, filter_blocks]
+      properties:
+        id: { type: integer }
+        type: { enum: [flat, dark, dark_flat, bias] }
+        camera: { type: string }
+        filter: { type: [string, "null"], description: flats only }
+        exptime_s: { type: number }
+        gain: { type: [integer, "null"] }
+        offset: { type: [integer, "null"] }
+        binning: { type: string }
+        set_temp_c: { type: [number, "null"], description: most common SET-TEMP of the members }
+        session_start_utc: { type: string, format: date-time }
+        session_end_utc: { type: string, format: date-time }
+        night: { type: [string, "null"], format: date }
+        frame_count: { type: integer }
+        filter_blocks: { type: object, additionalProperties: { type: integer }, description: "darks, dark flats and bias: frames per NINA filter label" }
+    Master:
+      allOf:
+        - $ref: "#/components/schemas/FrameSummary"
+        - type: object
+          required: [camera, gain, offset, set_temp_c, sources, missing]
+          properties:
+            camera: { type: [string, "null"] }
+            gain: { type: [integer, "null"] }
+            offset: { type: [integer, "null"] }
+            set_temp_c: { type: [number, "null"], description: SET-TEMP, else CCD-TEMP }
+            sources: { type: object, additionalProperties: { type: [string, "null"] }, description: "field -> where its value came from; null when missing" }
+            missing: { type: array, items: { enum: [gain, offset, temperature] } }
+    ReconciliationItem:
+      type: object
+      required: [id, kind, reason, field, frame, dataset_id, suggestion, status, created_at]
+      properties:
+        id: { type: integer }
+        kind: { enum: [missing_field, frame_missing, master_metadata, ambiguous_master, classification_unknown, bad_without_twin] }
+        reason: { type: string }
+        field: { type: [string, "null"] }
+        frame: { oneOf: [{ $ref: "#/components/schemas/FrameSummary" }, { type: "null" }] }
+        dataset_id: { type: [integer, "null"] }
+        suggestion: { type: [object, "null"], description: "{value, why}" }
+        status: { enum: [open, resolved, dismissed] }
+        created_at: { type: string, format: date-time }
+    PathPattern:
+      type: object
+      required: [kind, pattern]
+      properties:
+        id: { type: integer, readOnly: true }
+        library_id: { type: [integer, "null"], description: null applies to every library }
+        scope_glob: { type: string, default: "**" }
+        kind: { enum: [folder, filename] }
+        pattern: { type: string, description: see path-patterns.md }
+        prefer_over_header: { type: array, items: { type: string } }
+        priority: { type: integer, default: 0 }
+        enabled: { type: boolean, default: true }
+        fields: { type: array, items: { type: string }, readOnly: true, description: fields it can fill }
+        error: { type: [string, "null"], readOnly: true, description: why a stored pattern no longer compiles }
+    PatternPreview:
+      type: object
+      required: [fields, samples, matching_files, would_change]
+      properties:
+        fields: { type: array, items: { type: string } }
+        samples:
+          type: array
+          items: { type: object, required: [path, matched, values], properties: { path: { type: string }, matched: { type: boolean }, values: { type: object } } }
+        matching_files: { type: integer }
+        would_change:
+          type: array
+          description: up to 50 frames whose values would change (fields the header already has are kept unless preferred)
+          items:
+            type: object
+            required: [sha256, path, changes]
+            properties:
+              sha256: { type: string }
+              path: { type: string }
+              changes: { type: array, items: { type: object, required: [field, current, new], properties: { field: { type: string }, current: { type: [string, "null"] }, new: { type: string } } } }
+    IgnoreRule:
+      type: object
+      required: [kind, value]
+      properties:
+        id: { type: integer, readOnly: true }
+        kind: { enum: [folder, glob, content] }
+        library_id: { type: [integer, "null"] }
+        value: { type: string, description: "folder path inside the library, a glob (path or file name), or a sha256" }
+        note: { type: [string, "null"] }
+        active: { type: boolean, readOnly: true }
+        created_by: { type: [string, "null"], readOnly: true }
+        created_at: { type: string, format: date-time, readOnly: true }
+        matches: { type: integer, readOnly: true, description: known files the rule covers }
+    QueueSummary:
+      type: object
+      required: [ready_by_priority, running, failed_recent, eta_seconds]
+      properties:
+        ready_by_priority: { type: object, additionalProperties: { type: integer }, description: "live (≥80), bulk (≥40), archive" }
+        running: { type: integer }
+        failed_recent: { type: integer }
+        eta_seconds: { type: [number, "null"] }
+paths:
+  /health:
+    get:
+      security: []
+      summary: Database, libraries, worker and disk status
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, journal_mode, libraries, workers_alive, disk_free_bytes, disk_total_bytes]
+                properties:
+                  status: { type: string }
+                  journal_mode: { type: string }
+                  libraries: { type: array, items: { type: object, required: [name, status], properties: { name: { type: string }, status: { type: string } } } }
+                  workers_alive: { type: integer }
+                  disk_free_bytes: { type: [integer, "null"] }
+                  disk_total_bytes: { type: [integer, "null"] }
+  /libraries:
+    get:
+      summary: List libraries discovered under /data/library
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Library" } } } } }
+  /libraries/{id}:
+    patch:
+      summary: Enable or disable, set site fallback and sweep intervals (admin)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Library" } } } }
+      responses: { "200": { description: ok }, "403": { description: not an admin } }
+  /libraries/{id}/rescan:
+    post:
+      summary: Queue a full sweep now
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "202": { description: queued } }
+  /datasets:
+    get:
+      summary: Datasets with counts and state
+      parameters:
+        - { name: state, in: query, schema: { type: string } }
+        - { name: target, in: query, schema: { type: string } }
+        - { name: filter, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/Dataset" } } } }] } } } }
+  /datasets/{id}:
+    get:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Dataset" } } } } }
+  /datasets/{id}/nights:
+    get:
+      summary: Per-night breakdown of a dataset
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DatasetNight" } } } } } }
+  /nights/{date}:
+    get:
+      summary: Everything catalogued on one observing night (all datasets and calibration sets)
+      parameters:
+        - { name: date, in: path, required: true, schema: { type: string, format: date } }
+        - { name: site, in: query, schema: { type: string }, description: site key; defaults to the site with the most frames that night }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Night" } } } }
+        "404": { description: nothing catalogued that night, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /frames:
+    get:
+      summary: Frames, filterable
+      parameters:
+        - { name: dataset, in: query, schema: { type: integer } }
+        - { name: night, in: query, schema: { type: string, format: date } }
+        - { name: type, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string }, description: path or target search }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/FrameSummary" } } } }] } } } }
+  /frames/{sha256}:
+    get:
+      parameters: [{ name: sha256, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Frame" } } } }, "404": { description: unknown content } }
+  /frames/metadata:
+    post:
+      summary: Set a user value for one field on many frames (applies to all copies and future identical content)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sha256s, field, value]
+              properties:
+                sha256s: { type: array, items: { type: string }, maxItems: 10000 }
+                field: { type: string }
+                value: { type: [string, number, "null"], description: null removes the user value }
+      responses:
+        "200": { description: "frames updated, datasets regrouped", content: { application/json: { schema: { type: object, required: [updated], properties: { updated: { type: integer } } } } } }
+        "422": { description: invalid value, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /frames/classification:
+    post:
+      summary: Override frame type for many frames
+      requestBody: { content: { application/json: { schema: { type: object, required: [sha256s, frame_type], properties: { sha256s: { type: array, items: { type: string } }, frame_type: { type: string } } } } } }
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: object, required: [updated], properties: { updated: { type: integer } } } } } } }
+  /calibration-sets:
+    get:
+      parameters:
+        - { name: type, in: query, schema: { type: string } }
+        - { name: night, in: query, schema: { type: string, format: date } }
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CalibrationSet" } } } } } }
+  /masters:
+    get:
+      summary: Imported masters with their metadata sources
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Master" } } } } } }
+  /reconciliation:
+    get:
+      parameters:
+        - { name: status, in: query, schema: { enum: [open, resolved, dismissed], default: open } }
+        - { name: kind, in: query, schema: { type: string } }
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ReconciliationItem" } } } } } }
+  /reconciliation/counts:
+    get:
+      summary: Open items per kind (for the navigation badge)
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: object, additionalProperties: { type: integer } } } } } }
+  /reconciliation/{id}/resolve:
+    post:
+      summary: Resolve by accepting the suggestion or giving a value
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { accept_suggestion: { type: boolean }, value: { type: [string, number, "null"] }, apply_to_similar: { type: boolean, description: same kind and field for files in the same folder } } } } } }
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: object, required: [resolved], properties: { resolved: { type: integer } } } } } }, "409": { description: already dealt with } }
+  /reconciliation/{id}/dismiss:
+    post:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: ok, content: { application/json: { schema: { type: object, required: [resolved], properties: { resolved: { type: integer } } } } } } }
+  /path-patterns:
+    get: { responses: { "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PathPattern" } } } } } } }
+    post:
+      summary: Create a pattern (admin); matching frames are re-resolved in the background
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/PathPattern" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/PathPattern" } } } }
+        "422": { description: invalid pattern (plain-English message), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /path-patterns/{id}:
+    patch:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/PathPattern" } } } }
+      responses: { "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/PathPattern" } } } } }
+    delete:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "204": { description: deleted } }
+  /path-patterns/preview:
+    post:
+      summary: Show what a pattern captures for sample paths and which existing frames would change
+      requestBody: { content: { application/json: { schema: { type: object, required: [pattern], properties: { pattern: { $ref: "#/components/schemas/PathPattern" }, sample_paths: { type: array, items: { type: string }, description: "empty: up to 12 real paths from the pattern's scope" } } } } } }
+      responses: { "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/PatternPreview" } } } }, "422": { description: invalid pattern, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } } }
+  /ignore-rules:
+    get: { responses: { "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/IgnoreRule" } } } } } } }
+    post:
+      summary: Ignore a folder, file names or a frame's content; covered frames leave their datasets
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/IgnoreRule" } } } }
+      responses:
+        "201": { description: created (or the identical active rule), content: { application/json: { schema: { $ref: "#/components/schemas/IgnoreRule" } } } }
+        "422": { description: invalid rule, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /ignore-rules/{id}:
+    delete:
+      summary: Undo an ignore rule; matching files are queued
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "204": { description: removed } }
+  /settings:
+    get: { summary: Installation settings (site fallback and filter aliases), responses: { "200": { description: ok } } }
+    patch: { summary: Update installation settings (admin), responses: { "200": { description: ok }, "403": { description: not an admin } } }
+  /queue/summary:
+    get: { responses: { "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/QueueSummary" } } } } } }
+  /events:
+    get:
+      summary: Server-Sent Events stream (see events.md)
+      responses: { "200": { description: text/event-stream } }

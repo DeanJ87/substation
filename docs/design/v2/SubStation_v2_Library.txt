@@ -1,0 +1,246 @@
+SUBSTATION V2 · 1 OF 3 · LIBRARY AND COLLECTIONS
+Library, collection, grouping
+Data model: a dataset is one rig, one filter and one framing, and can span any number of nights. A collection groups datasets of the same object across rigs, filters, framings and years. Datasets are suggested for a collection from their plate-solved centre and overlap; the user confirms.
+2 · Dataset screens
+3 · Activity, review, settings
+L1 · Library
+Home. Collections first, then datasets that aren't in a collection yet, each with SubStation's suggested collection and the overlap it measured. The Processing readout links to Activity. Cards show integration per filter so gaps are visible at a glance.
+Library
+16 datasets in 4 collections, 2 ungrouped · 3 rigs
+Search objects, rigs, filters
+Rig All
+New collection
+LAST NIGHT
+38
+subs · 7 October 2026 · 2 rigs
+ACCEPTED INTEGRATION
+134h 35m
+all collections
+PROCESSING
+6
+workers busy · Hα master integrating
+DISK
+1.0 TB
+free on /data/substation
+COLLECTIONS
+master preview
+North America and Pelican
+NGC 7000 · IC 5070 · Cygnus · 6 datasets
+Askar 71F
+SQA130
+Seestar S30 Pro
+Hα
+50h 50m
+OIII
+28h 10m
+SII
+14h 40m
+OSC
+7h 45m
+Aug 2023 to Oct 2026 · 80 sessions
+101h 25m
+Integrating
+Master stale
+master preview
+Heart Nebula
+IC 1805 · Cassiopeia · 5 datasets
+Askar 71F
+Hα
+2h 40m
+OIII
+2h 10m
+SII
+1h 40m
+L
+10m
+Sep to Oct 2026 · 5 sessions
+6h 30m
+Awaiting calibration
+Needs reconciliation
+master preview
+Andromeda Galaxy
+M 31 · Andromeda · 2 datasets
+Seestar S30 Pro
+Askar 71F
+OSC
+12h 10m
+L
+8h 00m
+Aug 2024 to Sep 2025 · 22 sessions
+20h 10m
+master preview
+Soul Nebula
+IC 1848 · Cassiopeia · 1 dataset
+SQA130
+Hα
+3h 20m
+Oct 2025 · 2 sessions
+3h 20m
+NOT IN A COLLECTION
+IC 1805 · Seestar S30 Pro · OSC
+2 sessions · 420 subs × 10 s · from 3 and 4 October 2026
+1h 10m
+Suggested: Heart Nebula. Centre 6′ away, 88% overlap.
+Choose…
+Add to Heart Nebula
+NGC 6888 · Askar 71F · Hα
+1 session · 24 subs × 300 s · 6 October 2026
+2h 00m
+No existing collection within 2°. Plate-solved as Crescent Nebula.
+Choose…
+New collection
+L2 · Collection
+One object across rigs and years. Framing shows every dataset's plate-solved field over the reference framing. The matrix shows accepted integration by rig and filter. The sessions timeline shows every night on every rig, so you can see where the data came from. Datasets open the dataset screens.
+Library / Collections
+North America and Pelican
+NGC 7000 · IC 5070 · 6 datasets · 3 rigs · 80 sessions from 14 August 2023 to 7 October 2026
+Add datasets
+Edit collection
+Stack combined masters
+Overview
+Datasets 6
+Sessions 80
+Masters 9
+FRAMING
+from plate solves · north up
+reference master · Askar 71F Hα
+Askar 71F · reference
+2.71° × 1.81°
+1.58″/px
+100%
+SQA130 · Cygnus Wall
+1.44° × 0.96°
+0.95″/px
+28%
+Seestar S30 Pro
+3.24° × 2.17°
+3.70″/px
+96%
+ACCEPTED INTEGRATION BY RIG AND FILTER
+RIG
+HΑ
+OIII
+SII
+OSC
+Askar 71F · ASI2600MM Pro
+490 mm · 1.58″/px · reference
+41h 20m
+22h 10m
+14h 40m
+—
+SQA130 · ASI6200MM Pro
+820 mm · 0.95″/px · Cygnus Wall
+9h 30m
+6h 00m
+—
+—
+Seestar S30 Pro
+150 mm · 3.70″/px · dual-band
+—
+—
+—
+7h 45m
+Total
+101h 25m accepted
+50h 50m
+28h 10m
+14h 40m
+7h 45m
+COMBINED MASTERS
+One master per filter. Every dataset is registered to the reference framing and resampled to 1.58″/px. Subs are weighted by their grade and by each rig's measured SNR.
+Hα combined master is stale: 41 new subs since 2 October.
+SESSIONS
+bar height is accepted integration that night · select a range to filter the datasets below
+Askar 71F
+61 sessions · 78h 10m
+SQA130
+10 sessions · 15h 30m
+Seestar S30 Pro
+9 sessions · 7h 45m
+Aug 2023
+2024
+2025
+2026
+DATASET
+STATE
+SESSIONS
+ACCEPTED
+GRADES
+LAST NIGHT
+Askar 71F · Hα
+Reference framing · 300 s · gain 100 · −10 °C
+Integrating v7
+31
+41h 20m
+496 of 541 kept
+7 Oct 2026
+Askar 71F · OIII
+300 s · gain 100 · −10 °C
+Master current · 2 Oct
+18
+22h 10m
+266 of 290 kept
+2 Oct 2026
+Askar 71F · SII
+300 s · gain 100 · −10 °C
+Master stale
+12
+14h 40m
+176 of 198 kept
+21 Sep 2026
+SQA130 · Hα · Cygnus Wall
+600 s · gain 100 · −15 °C
+Master current · 6 Oct
+6
+9h 30m
+57 of 63 kept
+6 Oct 2026
+SQA130 · OIII · Cygnus Wall
+600 s · gain 100 · −15 °C
+Master current · 8 Oct
+4
+6h 00m
+36 of 41 kept
+7 Oct 2026
+Seestar S30 Pro · OSC
+Dual-band filter · 10 s · alt-az, field rotation corrected
+Master current · 15 Sep 2025
+9
+7h 45m
+2,790 of 3,104 kept
+14 Sep 2025
+L3 · Add datasets to a collection
+Opened from a collection or from an ungrouped dataset. Candidates are ranked by plate-solved centre distance and overlap with the reference framing. Low overlap is allowed and marked as a separate panel. Nothing is moved on disk; collections are catalogue-only.
+Add datasets to North America and Pelican
+Matched against the reference framing, Askar 71F · Hα, centred at 20h 58m 47s +44° 19′ 52″.
+DATASET
+CENTRE OFFSET
+ROTATION
+OVERLAP
+SQA130 · SII · Cygnus Wall
+2 sessions · 12 subs · not in a collection
+3′ 12″
++5.1°
+28%
+Matches the existing Cygnus Wall panel
+Seestar S30 Pro · OSC · Pelican
+3 sessions · 1,080 subs · not in a collection
+48′ 05″
++1.2°
+41%
+Partial overlap. Kept as its own panel
+Askar 71F · Hα · 2022 framing
+In collection “Cygnus 2022”
+1′ 40″
+−32.0°
+81%
+Different rotation. Will be re-registered
+NGC 6888 · Askar 71F · Hα
+Not in a collection
+2° 51′
+0.0°
+0%
+No overlap. Different object
+Reference framing Askar 71F · Hα
+Cancel
+Add 2 datasets

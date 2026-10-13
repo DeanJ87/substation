@@ -1,0 +1,134 @@
+import { QueryClient } from '@tanstack/react-query'
+import {
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  Outlet,
+  redirect,
+} from '@tanstack/react-router'
+import { getSession, type SessionUser } from '../api/auth'
+import { Activity } from '../features/activity/Activity'
+import { DatasetScreen } from '../features/dataset/DatasetScreen'
+import { CollectionView } from '../features/library/CollectionView'
+import { Library } from '../features/library/Library'
+import { ReviewScreen } from '../features/review/ReviewScreen'
+import { SubDetail } from '../features/sub/SubDetail'
+import { NightView } from '../features/datasets/NightView'
+import { ReconciliationList } from '../features/reconciliation/ReconciliationList'
+import { CalibrationLibrary } from '../features/calibration/CalibrationLibrary'
+import { CalibrationSetView } from '../features/calibration/CalibrationSetView'
+import { SettingsPage } from '../features/settings/SettingsPage'
+import { AppFrame } from './AppFrame'
+import { SignIn } from './SignIn'
+
+interface Ctx {
+  queryClient: QueryClient
+}
+
+const root = createRootRouteWithContext<Ctx>()({ component: Outlet })
+
+const signIn = createRoute({ getParentRoute: () => root, path: '/sign-in', component: SignIn })
+
+const app = createRoute({
+  getParentRoute: () => root,
+  id: 'app',
+  beforeLoad: async ({ context }) => {
+    const user = await context.queryClient.ensureQueryData({ queryKey: ['session'], queryFn: getSession })
+    if (!user) throw redirect({ to: '/sign-in' })
+    return { user }
+  },
+  component: function App() {
+    const { user } = app.useRouteContext() as { user: SessionUser }
+    return <AppFrame user={user} />
+  },
+})
+
+const datasets = createRoute({ getParentRoute: () => app, path: '/', component: Library })
+const collection = createRoute({
+  getParentRoute: () => app,
+  path: '/collections/$id',
+  component: CollectionView,
+  validateSearch: (
+    q: Record<string, unknown>,
+  ): { tab?: 'overview' | 'datasets' | 'sessions' | 'masters' } => ({
+    tab: ['overview', 'datasets', 'sessions', 'masters'].includes(String(q.tab))
+      ? (q.tab as 'overview')
+      : undefined,
+  }),
+})
+const sub = createRoute({ getParentRoute: () => app, path: '/subs/$sha', component: SubDetail })
+const activity = createRoute({ getParentRoute: () => app, path: '/activity', component: Activity })
+const dataset = createRoute({
+  getParentRoute: () => app,
+  path: '/datasets/$id',
+  component: DatasetScreen,
+  validateSearch: (
+    q: Record<string, unknown>,
+  ): { tab?: 'subs' | 'quality' | 'calibration' | 'masters'; night?: string } => ({
+    tab: ['subs', 'quality', 'calibration', 'masters'].includes(String(q.tab))
+      ? (q.tab as 'subs')
+      : undefined,
+    night: typeof q.night === 'string' ? q.night : undefined,
+  }),
+})
+const nightRoute = createRoute({ getParentRoute: () => app, path: '/nights/$date', component: NightView })
+const review = createRoute({
+  getParentRoute: () => app,
+  path: '/review',
+  component: ReviewScreen,
+  validateSearch: (q: Record<string, unknown>): { dataset?: number } => ({
+    dataset: Number.isFinite(Number(q.dataset)) && q.dataset != null ? Number(q.dataset) : undefined,
+  }),
+})
+const calibration = createRoute({
+  getParentRoute: () => app,
+  path: '/calibration',
+  component: CalibrationLibrary,
+})
+const calibrationSet = createRoute({
+  getParentRoute: () => app,
+  path: '/calibration/sets/$id',
+  component: CalibrationSetView,
+})
+const settings = createRoute({ getParentRoute: () => app, path: '/settings', component: SettingsPage })
+// the old queue page: Activity is the one queue screen now (005-DR-01)
+const queue = createRoute({
+  getParentRoute: () => app,
+  path: '/queue',
+  beforeLoad: () => {
+    throw redirect({ to: '/activity' })
+  },
+})
+const reconcile = createRoute({
+  getParentRoute: () => app,
+  path: '/reconcile',
+  component: ReconciliationList,
+})
+
+export const routeTree = root.addChildren([
+  signIn,
+  app.addChildren([
+    datasets,
+    collection,
+    dataset,
+    sub,
+    nightRoute,
+    reconcile,
+    queue,
+    activity,
+    review,
+    calibration,
+    calibrationSet,
+    settings,
+  ]),
+])
+
+export function makeRouter(queryClient: QueryClient) {
+  return createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' })
+}
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: ReturnType<typeof makeRouter>
+  }
+}

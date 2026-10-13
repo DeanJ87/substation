@@ -1,0 +1,24 @@
+.stack {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  padding: 10px 14px;
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+  border: 1px solid var(--sst-line);
+  color: var(--sst-text);
+  font-size: 13px;
+  box-shadow: var(--sst-shadow);
+}
+.bad {
+  border-color: var(--sst-bad);
+}

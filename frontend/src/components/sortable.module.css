@@ -1,0 +1,25 @@
+.sortButton {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.arrow {
+  opacity: 0;
+  font-size: 0.8em;
+}
+.sortButton:hover .arrow,
+.sortButton:focus-visible .arrow {
+  opacity: 0.4;
+}
+.arrowOn {
+  font-size: 0.8em;
+  color: var(--sst-accent);
+}

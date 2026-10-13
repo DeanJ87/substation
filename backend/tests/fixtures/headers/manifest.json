@@ -1,0 +1,87 @@
+{
+ "capture/2026-09-28/DARK/2026-09-29_05-09-53_Halpha_-20.10_2.00s_0000.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/DARK/2026-09-29_05-09-53_Halpha_-20.10_2.00s_0000.xisf",
+  "source_sha256": "0e9a5ef7ce7bd51cc0394c5064efae59ce6b24a96ad2a0a0807ec7df4fe2a99f"
+ },
+ "capture/2026-09-28/DARK/2026-09-29_05-11-47_Halpha_-19.90_2.00s_0045.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/DARK/2026-09-29_05-11-47_Halpha_-19.90_2.00s_0045.xisf",
+  "source_sha256": "e8cd08154331e46483801c875ad3f773b279583a82033b789bb72184d4ea7fa4"
+ },
+ "capture/2026-09-28/FLAT/2026-09-29_05-02-35_Halpha_-20.10_2.00s_0000.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/FLAT/2026-09-29_05-02-35_Halpha_-20.10_2.00s_0000.xisf",
+  "source_sha256": "088ffd9a4846f7dd3deb1d679954299a6e2f0bd54f4a314e8d8673b802a7059a"
+ },
+ "capture/2026-09-28/LIGHT/._2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf": {
+  "kind": "AppleDouble",
+  "source": "Masters/ATR2600M/Darks/-10c/._masterDark_ATR2600M_-10c_600.00s.xisf",
+  "source_sha256": "f119ae475d40ae2e882300f4c5f2bdf22b789d4e4d34b1bb530ae01c3963a748"
+ },
+ "capture/2026-09-28/LIGHT/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/LIGHT/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf",
+  "source_sha256": "1fea7f9d4100ae7325e8b80b43df74fc235bff23dc545d101f3c4c8a9a0d827c"
+ },
+ "capture/2026-09-28/LIGHT/2026-09-28_20-50-41_Halpha_-20.00_600.00s_0031.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/LIGHT/2026-09-28_20-50-41_Halpha_-20.00_600.00s_0031.xisf",
+  "source_sha256": "002d62740dcf6f1f7e694dc92426b5c545c3b7e4a45f44f1abb730b2efc2ee4d"
+ },
+ "capture/2026-09-28/LIGHT/2026-09-29_02-03-37_Halpha_-19.90_600.00s_0002.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/LIGHT/2026-09-29_02-03-37_Halpha_-19.90_600.00s_0002.xisf",
+  "source_sha256": "d1632daa9785306156d27a9132599f6494219a44fb8769b16d7661834fc67d47"
+ },
+ "capture/2026-09-28/LIGHT/BAD_2026-09-28_20-50-41_Halpha_-20.00_600.00s_0031.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/LIGHT/BAD_2026-09-28_20-50-41_Halpha_-20.00_600.00s_0031.xisf",
+  "source_sha256": "002d62740dcf6f1f7e694dc92426b5c545c3b7e4a45f44f1abb730b2efc2ee4d"
+ },
+ "capture/2026-09-28/LIGHT/BAD_2026-09-29_01-29-50_Halpha_-19.90_600.00s_0031.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-09-28/LIGHT/BAD_2026-09-29_01-29-50_Halpha_-19.90_600.00s_0031.xisf",
+  "source_sha256": "6dbf40dcf659b4fd04ad5f6c54d24b5baade2eb3bae518842bb1e6603404ae7b"
+ },
+ "capture/2026-10-07/LIGHT/2026-10-07_20-27-58_OIII_-20.00_600.00s_0000.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-10-07/LIGHT/2026-10-07_20-27-58_OIII_-20.00_600.00s_0000.xisf",
+  "source_sha256": "0ba5be6fade5af4b114f5c7c253a11fd5e2a90928d1544c9d09c5119195e3b71"
+ },
+ "capture/2026-10-07/LIGHT/2026-10-08_00-03-30_OIII_-20.00_600.00s_0011.xisf": {
+  "kind": "xisf header-only",
+  "source": "2026-10-07/LIGHT/2026-10-08_00-03-30_OIII_-20.00_600.00s_0011.xisf",
+  "source_sha256": "3957b706dd7fca0d8fde860c7e2ee9affcdff41e8cdd13e4c057ad3a11e2ce4f"
+ },
+ "capture/fits/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.fits": {
+  "kind": "synthetic FITS with the real header keywords",
+  "source": "2026-09-28/LIGHT/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf",
+  "source_sha256": "1fea7f9d4100ae7325e8b80b43df74fc235bff23dc545d101f3c4c8a9a0d827c"
+ },
+ "capture/fits/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.fits.fz": {
+  "kind": "synthetic FITS with the real header keywords",
+  "source": "2026-09-28/LIGHT/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf",
+  "source_sha256": "1fea7f9d4100ae7325e8b80b43df74fc235bff23dc545d101f3c4c8a9a0d827c"
+ },
+ "masters/Bias/masterBias_ATR2600M_-10c.xisf": {
+  "kind": "xisf header-only",
+  "source": "Masters/ATR2600M/Bias/masterBias_ATR2600M_-10c.xisf",
+  "source_sha256": "84c31160d11b96efb583bb07948a1b0d881da66b191416f0f57362ba7543b2ab"
+ },
+ "masters/Darks/-20c/MasterDark_ATR2600M_-20c_600s.xisf": {
+  "kind": "xisf header-only",
+  "source": "Masters/ATR2600M/Darks/-20c/MasterDark_ATR2600M_-20c_600s.xisf",
+  "source_sha256": "8d35746dc975c1a6e1b93c4737d3f3735ae8103a2b51c060c61329ef830925a3"
+ },
+ "masters/Flats/2026-08-15/masterFlat_BIN-1_6224x4168_FILTER-OIII_mono.xisf": {
+  "kind": "xisf header-only",
+  "source": "MasterFlats/ATR2600M/2026-08-15/masterFlat_BIN-1_6224x4168_FILTER-OIII_mono.xisf",
+  "source_sha256": "87aef25e785bb52d5f5ed403621789794cd0e9989274cb0e583285148dc9779f"
+ },
+ "stripped/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf": {
+  "kind": "xisf header-only, removed ['FILTER', 'EXPTIME', 'EXPOSURE', 'Instrument:Filter:Name', 'Instrument:ExposureTime']",
+  "source": "2026-09-28/LIGHT/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf",
+  "source_sha256": "1fea7f9d4100ae7325e8b80b43df74fc235bff23dc545d101f3c4c8a9a0d827c"
+ }
+}

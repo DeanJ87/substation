@@ -1,0 +1,30 @@
+# A SubStation post-processing helper (spec 010) on any Linux machine — ideally one with an NVIDIA GPU.
+# It asks SubStation for the next master over HTTPS, runs GraXpert → BlurXTerminator → NoiseXTerminator, uploads
+# each stage and reports back. Run one, several, or none; SubStation waits (and says so) when none are connected.
+#
+#   SUBSTATION_URL=https://substation.example SUBSTATION_HELPER_TOKEN=… docker compose -f compose.helper.yml up -d
+#
+# RC-Astro's tools are fetched onto the tools volume at first start and activated there with a one-off code:
+#   docker compose -f compose.helper.yml exec helper /opt/finish/rc-astro/rc-astro license <code>
+# On a Mac, run backend/tools/substation_helper.py natively instead: Docker on macOS can't reach the Apple GPU.
+services:
+  helper:
+    image: ghcr.io/deanj87/substation-finisher:${SUBSTATION_TAG:-poc-substation}
+    command: ["helper"]
+    restart: unless-stopped
+    hostname: substation-helper  # RC-Astro ties its activation to the machine: keep the name and address stable
+    mac_address: "02:42:ac:53:54:02"
+    environment:
+      SUBSTATION_URL: ${SUBSTATION_URL:?}
+      SUBSTATION_HELPER_TOKEN: ${SUBSTATION_HELPER_TOKEN:?}
+      SUBSTATION_HELPER_NAME: ${SUBSTATION_HELPER_NAME:-}
+      RC_ASTRO_INSTALLER_URL: ${RC_ASTRO_INSTALLER_URL:-https://www.rc-astro-cdn.com/clients/2.6.10/rc-astro-cli-2.6.10-linux-x64.sh}
+    volumes:
+      - helper-tools:/opt/finish
+    # NVIDIA GPU (needs the NVIDIA container toolkit); remove on a CPU-only machine
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+volumes:
+  helper-tools: {}

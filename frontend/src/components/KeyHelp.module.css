@@ -1,0 +1,64 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--sst-scrim);
+  z-index: 50;
+}
+.dialog {
+  width: min(520px, calc(100% - 32px));
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--sst-line);
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, var(--sst-panel), var(--sst-card-end));
+}
+.dialog h2 {
+  margin: 0;
+}
+.label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sst-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.list div {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+  font-size: 14px;
+}
+.list dd {
+  margin: 0;
+}
+.list kbd {
+  font-family: var(--sst-font-mono);
+  font-size: 12px;
+  padding: 1px 6px;
+  border: 1px solid var(--sst-line);
+  border-radius: 4px;
+  background: var(--sst-panel-3);
+}
+.close {
+  align-self: flex-end;
+  padding: 6px 14px;
+  border: 1px solid var(--sst-line);
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--sst-text);
+  font: inherit;
+  cursor: pointer;
+}

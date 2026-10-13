@@ -1,0 +1,99 @@
+/* SubStation design tokens. Mirrors SQMeter's --sqm-* naming with the --sst- prefix.
+   Dark is the default. Set data-theme="light" or data-theme="night" on <html>. */
+:root {
+  --sst-bg: #080d14;
+  --sst-panel: #0d141d;
+  --sst-panel-2: #111b27;
+  --sst-panel-3: #0a1018;
+  --sst-card-end: #0a1119;
+  --sst-line: #1b2a38;
+  --sst-line-2: #142130;
+  --sst-text: #e7edf3;
+  --sst-muted: #8b9baa;
+  --sst-dim: #768798;
+  --sst-accent: #ee7bd0; /* Orchid: SubStation signature */
+  --sst-accent-tint: rgba(238, 123, 208, 0.12);
+  --sst-accent-line: rgba(238, 123, 208, 0.45);
+  --sst-on-accent: #080d14;
+  --sst-violet: #a78bfa;
+  --sst-ok: #5ee0a0;
+  --sst-warn: #f4c15d;
+  --sst-bad: #f26b62;
+  --sst-focus: #ee7bd0;
+  --sst-thumb: #04070b;
+  --sst-scrim: rgba(0, 0, 0, 0.5); /* overlays on images */
+  /* pure channels for palette previews (HOO, SHO): image data, the same in every theme */
+  --sst-ch-r: #ff0000;
+  --sst-ch-g: #00ff00;
+  --sst-ch-b: #0000ff;
+  --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+
+  --sst-font-sans: 'Inter', system-ui, sans-serif;
+  --sst-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sst-radius-sm: 0.55rem;
+  --sst-radius: 0.7rem;
+  --sst-radius-lg: 0.85rem;
+  --sst-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+
+  /* Type scale (rem, 16px base) */
+  --sst-fs-label: 0.6875rem; /* 11 uppercase, 0.08em tracking */
+  --sst-fs-small: 0.8125rem; /* 13 */
+  --sst-fs-body: 0.9375rem; /* 15 */
+  --sst-fs-h3: 1.125rem; /* 18 */
+  --sst-fs-h2: 1.5rem; /* 24 */
+  --sst-fs-h1: 2.25rem; /* 36 */
+  --sst-fs-readout: 3rem; /* 48 mono */
+  --sst-fs-hero: 6rem; /* 96 mono */
+}
+
+[data-theme='light'] {
+  --sst-bg: #f4f6f8;
+  --sst-panel: #ffffff;
+  --sst-panel-2: #edf1f4;
+  --sst-panel-3: #e8edf1;
+  --sst-card-end: #f8fafb;
+  --sst-line: #d3dbe2;
+  --sst-line-2: #e3e8ed;
+  --sst-text: #0d141d;
+  --sst-muted: #45525f;
+  --sst-dim: #55626e;
+  --sst-accent: #a3307f;
+  --sst-accent-tint: rgba(163, 48, 127, 0.08);
+  --sst-accent-line: rgba(163, 48, 127, 0.45);
+  --sst-on-accent: #ffffff;
+  --sst-violet: #6b46d6;
+  --sst-ok: #127a4a;
+  --sst-warn: #8a5a00;
+  --sst-bad: #be3229;
+  --sst-focus: #a3307f;
+  --sst-thumb: #1a222c;
+  --sst-scrim: rgba(0, 0, 0, 0.5); /* overlays on images */
+  --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+}
+
+/* Night vision: deep red on near-black only. No blue, green or white light.
+   Status colours collapse to red; verdicts rely on icon and shape. */
+[data-theme='night'] {
+  --sst-bg: #050000;
+  --sst-panel: #0c0101;
+  --sst-panel-2: #120202;
+  --sst-panel-3: #080000;
+  --sst-card-end: #080000;
+  --sst-line: #3a0a06;
+  --sst-line-2: #250604;
+  --sst-text: #ff4a3a;
+  --sst-muted: #e63a2c;
+  --sst-dim: #e63a2c;
+  --sst-accent: #ff4a3a;
+  --sst-accent-tint: rgba(255, 74, 58, 0.1);
+  --sst-accent-line: rgba(255, 74, 58, 0.5);
+  --sst-on-accent: #050000;
+  --sst-violet: #ff4a3a;
+  --sst-ok: #ff4a3a;
+  --sst-warn: #ff4a3a;
+  --sst-bad: #ff4a3a;
+  --sst-focus: #ff4a3a;
+  --sst-thumb: #000000;
+  --sst-scrim: rgba(0, 0, 0, 0.6); /* overlays on images */
+  --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+}

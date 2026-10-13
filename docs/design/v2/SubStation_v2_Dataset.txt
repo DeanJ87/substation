@@ -1,0 +1,406 @@
+SUBSTATION V2 · 2 OF 3 · DATASET
+Subs, quality, metadata, calibration, masters
+Grading is automatic. Every verdict can be overridden per sub or in bulk, from any screen that lists subs. Overrides are marked Manual, logged, and survive a re-grade. Metadata from plate solving and capture software is shown where present and marked Not recorded where not.
+1 · Library and collections
+3 · Activity, review, settings
+D1 · Subs
+Grouped by session, newest first, with each session's conditions in its header. Click selects, shift-click selects a range, Ctrl/Cmd-A selects the session. The bulk bar appears with a selection; A, W and R apply to every selected sub. A small M marks a manual override.
+Library / North America and Pelican
+Askar 71F · Hα
+31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026
+Re-grade
+Open review
+Integrating v7 · 52%
+Subs 541
+Quality
+Calibration
+Masters 7
+Sessions All 31
+Accepted
+452
+Down-weighted
+44
+Rejected
+45
+Manual
+4
+Sort Capture time
+3 selected
+from 7 October 2026
+Accept
+A
+Down-weight
+W
+Reject
+R
+Clear override
+Open in review
+7 October 2026
+24 subs · 2h 00m
+SQM 21.12 · 8.1 °C · 82% RH · guiding 0.62″ · cloud 23:27–23:42 (SQMeter)
+…_0009
+2.26″ · 1,350
+…_0010
+2.27″ · 1,264
+…_0011
+2.44″ · 1,406
+…_0012
+2.23″ · 1,401
+…_0013
+2.34″ · 1,313
+M
+…_0014
+2.67″ · 1,237
+…_0015
+2.34″ · 1,411
+…_0016
+2.24″ · 1,409
+…_0017
+2.22″ · 1,340
+…_0018
+2.44″ · 609
+…_0019
+2.59″ · 620
+…_0020
+2.58″ · 588
+…_0021
+2.36″ · 1,412
+…_0022
+2.30″ · 1,371
+…_0023
+2.75″ · 1,230
+…_0024
+2.35″ · 1,297
+2 October 2026
+16 subs · 1h 20m
+SQM 21.30 · 10.4 °C · 76% RH · guiding 0.55″
+…_0001
+2.41″ · 1,187
+…_0002
+2.39″ · 1,321
+…_0003
+2.61″ · 1,337
+…_0004
+2.39″ · 1,200
+…_0005
+2.57″ · 1,334
+…_0006
+2.54″ · 1,178
+…_0007
+2.40″ · 1,277
+…_0008
+2.47″ · 1,300
+M
+…_0009
+2.47″ · 1,196
+…_0010
+2.56″ · 1,287
+…_0011
+2.57″ · 1,286
+…_0012
+2.52″ · 1,256
+…_0013
+2.64″ · 1,294
+…_0014
+2.62″ · 1,160
+…_0015
+2.44″ · 1,225
+…_0016
+2.41″ · 1,166
+D2 · Quality
+Top: every session in the dataset. Each bar is the 10th to 90th percentile for that night with its median as a dot; SQM and guiding come from capture headers and leave gaps where they weren't recorded. Click a session to fill the lower chart and table with its subs. The inspector on the right shows the selected sub's image, verdict and overrides. Grading compares each sub with its own session's median.
+Library / North America and Pelican
+Askar 71F · Hα
+31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026
+Re-grade
+Open review
+Integrating v7 · 52%
+Subs 541
+Quality
+Calibration
+Masters 7
+SESSIONS · 31
+All
+2026
+2025
+2024
+2023
+FWHM
+median 2.38″
+Stars
+median 1,340
+Background
+median 446 ADU
+SQM
+20 of 31 recorded
+Guiding RMS
+25 of 31 recorded
+Aug 2023
+2024
+2025
+2026
+7 Oct
+7 OCTOBER 2026 · 24 SUBS
+FWHM
+SQM
+weighted
+rejected
+20:52
+21:52
+22:52
+23:52
+00:52
+	GRADE	TIME	FWHM	STARS	BG	SQM	ALT	REASON
+
+	
+							
+Show all 24 subs
+sub preview · auto-stretched
+Open full size
+NGC7000_Ha_300s_0014.fits · 22:02
+Accepted
+MANUAL
+Auto grade was Down-weighted: FWHM 2.71″, 17% above the session median. You accepted it at 9 Oct 2026, 10:14.
+Accept A
+Weight W
+Reject R
+Revert to auto grade
+FWHM
+2.67″ / 2.34″
+Stars
+1,237 / 1,325
+Background
+416 ADU
+Eccentricity
+0.36
+SQM
+21.15 SQMeter
+Altitude
+78° airmass 1.12
+All metadata
+D3 · Sub detail
+Everything known about one sub. Each field is tagged with where it came from: SubStation's own measurement, the plate solve, the capture software's FITS header, or a linked device such as SQMeter. Fields with no source show Not recorded rather than hiding, so a missing integration is obvious. Raw header is one click away.
+North America and Pelican / Askar 71F · Hα / 7 October 2026
+NGC7000_Ha_300s_0019.fits
+19 / 24
+Previous J
+Next K
+sub preview · auto-stretched · star detections overlaid
+Auto-stretch
+Linear
+Stars
+FWHM map
+Rejected
+auto · graded 7 Oct 2026, 23:33
+Accept A
+Weight W
+Reject R
+Star count 44% of the session median: likely cloud.
+SQM dropped from 21.12 to 20.31 at the same time and SQMeter reported cloud. Subs 18 and 20 show the same pattern.
+MEASURED
+SubStation
+FWHM
+2.52″ · 1.59 px
+SUBSTATION
+Stars
+598 of 1,358 median
+SUBSTATION
+Background
+519 ADU · +17%
+SUBSTATION
+Eccentricity
+0.39
+SUBSTATION
+SNR
+41.2
+SUBSTATION
+PLATE SOLVE
+ASTAP · 1.4 s
+Centre
+20h 58m 51s +44° 18′ 40″
+SOLVE
+Rotation
+87.4°
+SOLVE
+Pixel scale
+1.58″/px
+SOLVE
+Field
+2.71° × 1.81°
+SOLVE
+Offset
+1′ 14″ from reference
+SOLVE
+CAPTURE
+N.I.N.A. 3.1 header
+Camera
+ASI2600MM Pro · gain 100 · offset 50
+HEADER
+Sensor
+−10.0 °C · set −10
+HEADER
+Filter
+Hα 3 nm · wheel slot 1
+HEADER
+Focuser
+15,420 · 8.4 °C
+HEADER
+Guiding
+RMS 0.71″ · RA 0.48 Dec 0.52
+HEADER
+Mount
+Alt 64° · az 271° · pier west
+HEADER
+Airmass
+1.11
+HEADER
+CONDITIONS
+where recorded
+SQM
+20.31 mag/arcsec²
+SQMETER
+Cloud
+Cloudy · sky −6 °C vs ambient 8 °C
+SQMETER
+Ambient
+8.1 °C · 82% RH · dew point 5.2 °C
+HEADER
+Wind
+Not recorded
+—
+Moon
+23% · 41° away
+SUBSTATION
+Show raw FITS header · 142 keywords
+D4 · Dataset, calibration
+Which dark, flat and bias each session was calibrated with, and how good the match is. Flats are matched per session because rotation and dust change. Weak matches are flagged in plain English; any session can be pointed at different frames, which re-calibrates and re-grades only that session.
+Library / North America and Pelican
+Askar 71F · Hα
+31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026
+Subs 541
+Quality
+Calibration
+Masters 7
+2 sessions have a weak flat match. Their flats were taken more than 21 days apart from the lights. Dust shadows may not be removed. Grading still ran.
+SESSION
+SUBS
+DARK
+FLAT
+BIAS
+7 Oct 2026
+24
+Dark 300 s −10 °C · 30
+Exact match
+Flat Hα 87.2° · 5 Oct 2026
+Same rotation · 2 days before
+Bias gain 100 · 100
+Change
+2 Oct 2026
+16
+Dark 300 s −10 °C · 30
+Exact match
+Flat Hα 87.2° · 5 Oct 2026
+Same rotation · 3 days after
+Bias gain 100 · 100
+Change
+21 Sep 2026
+18
+Dark 300 s −10 °C · 30
+Exact match
+Flat Hα 87.1° · 5 Oct 2026
+Rotation within 0.1° · 14 days after
+Bias gain 100 · 100
+Change
+14 Sep 2026
+20
+Dark 300 s −10 °C · 30
+Exact match
+Flat Hα 86.8° · 12 Aug 2026
+Weak: 33 days before, rotation 0.4° off
+Bias gain 100 · 100
+Change
+2 Sep 2026
+12
+Dark 300 s −10 °C · 30
+Exact match
+Flat Hα 86.8° · 12 Aug 2026
+Weak: 21 days before
+Bias gain 100 · 100
+Change
+11 Sep 2025
+22
+Dark 300 s −10 °C · 25 · 2025 set
+Exact match
+Flat Hα 87.0° · 10 Sep 2025
+Same rotation · 1 day before
+Bias gain 100 · 100
+Change
+3 Sep 2024
+15
+Dark 300 s −10 °C · 25 · 2024 set
+Exact match
+Flat Hα 92.5° · 3 Sep 2024
+Same night
+Bias gain 100 · 100
+Change
+14 Aug 2023
+9
+Dark 300 s −10 °C · 20 · 2023 set
+Exact match
+Flat Hα 91.0° · 14 Aug 2023
+Same night
+Bias gain 100 · 100
+Change
+Show all 31 sessions
+D5 · Dataset, masters
+An integration in progress appears at the top with its pipeline steps and links to the worker running it. Finished masters are versions with their inputs and settings. A master goes stale when its inputs change; the reason is stated.
+Library / North America and Pelican
+Askar 71F · Hα
+31 sessions · 541 subs × 300 s · gain 100 · −10 °C · 14 August 2023 to 7 October 2026
+Subs 541
+Quality
+Calibration
+Masters 7
+Master v7 · integrating
+496 subs from 31 sessions · started 10:02 · about 9 min left · 4 workers
+View in Activity
+Cancel
+Select inputs
+496 subs
+Calibrate
+cached
+Register
+496 / 496
+Normalise
+308 / 496
+Integrate
+winsorised σ
+Write
+XISF 32-bit
+Master v6
+CURRENT
+455 subs · 29 sessions · 2 Oct 2026, 08:40 · winsorised σ 3.0 · grade weights
+INTEGRATION
+37h 55m
+FWHM
+2.29″
+Download
+Inputs
+Master v5
+SUPERSEDED
+431 subs · 27 sessions · 15 Sep 2026 · replaced by v6 (2 new sessions)
+INTEGRATION
+35h 55m
+FWHM
+2.31″
+Download
+Inputs
+Master v4
+SUPERSEDED
+398 subs · 24 sessions · 12 Sep 2025 · 2025 season
+INTEGRATION
+33h 10m
+FWHM
+2.35″
+Download
+Inputs

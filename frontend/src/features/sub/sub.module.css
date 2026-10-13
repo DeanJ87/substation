@@ -1,0 +1,111 @@
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+.left,
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.preview {
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-lg);
+  overflow: hidden;
+  background: var(--sst-thumb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sst-dim);
+}
+.preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 20px;
+}
+.fields {
+  margin: 0;
+}
+.field {
+  display: grid;
+  grid-template-columns: 120px 1fr 90px;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--sst-line-2);
+  font-size: 13px;
+}
+.field:last-child {
+  border-bottom: 0;
+}
+.field dt {
+  color: var(--sst-muted);
+}
+.field dd {
+  margin: 0;
+}
+.src {
+  text-align: right;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--sst-dim);
+}
+.raw {
+  font-size: 13px;
+}
+.raw th {
+  text-align: left;
+  color: var(--sst-muted);
+  font-weight: 500;
+  vertical-align: top;
+  width: 1%;
+}
+.raw th,
+.raw td {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.raw td {
+  overflow-wrap: anywhere;
+}
+/* the metadata sections: a rule under the folding heading, rows edge to edge in the card */
+.ruled {
+  border-top: 1px solid var(--sst-line);
+}
+.field {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+.overlayWrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  max-height: 100%;
+}
+.overlayWrap img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

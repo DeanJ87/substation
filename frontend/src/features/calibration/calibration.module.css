@@ -1,0 +1,274 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.page h1,
+.page header p {
+  margin: 0 0 4px;
+}
+.page h2 {
+  margin: 0 0 12px;
+}
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius);
+}
+.clickable {
+  cursor: pointer;
+}
+.sheetHead {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.tile {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+}
+.tile figcaption {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.thumb {
+  aspect-ratio: 3 / 2;
+  background: var(--sst-thumb);
+  display: grid;
+  place-items: center;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tileHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--sst-accent);
+  cursor: pointer;
+  font: inherit;
+}
+.built {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.builtHead {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.builtGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 18px;
+}
+@media (max-width: 800px) {
+  .builtGrid {
+    grid-template-columns: 1fr;
+  }
+}
+.builtImg {
+  width: 100%;
+  border-radius: var(--sst-radius);
+  display: block;
+  margin-bottom: 6px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+.facts dt {
+  color: var(--sst-muted);
+}
+.facts dd {
+  margin: 0;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.headActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.headActions select {
+  padding: 7px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}
+.blocking {
+  padding: 16px 18px;
+  border: 1px solid var(--sst-line);
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, var(--sst-panel), var(--sst-card-end));
+}
+.blockList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.blockList li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14px;
+}
+.tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid var(--sst-line);
+  margin-bottom: 12px;
+}
+.tab {
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--sst-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.tab[aria-selected='true'] {
+  color: var(--sst-text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--sst-accent);
+}
+.headActions select {
+  max-width: 280px;
+}
+
+.windowEdit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.headActions {
+  flex-wrap: wrap;
+}
+.headActions input {
+  padding: 7px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}
+.headActions input[type='search'] {
+  min-width: 240px;
+}
+.dateField {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--sst-muted);
+}
+.thumbCell {
+  width: 72px;
+}
+.thumbCell > button {
+  width: 64px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  background: var(--sst-panel-3);
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 12px;
+}
+.thumbCell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Long lists scroll inside their section (owner 2026-10-11), headings kept in view. */
+.pane {
+  max-height: min(60vh, 560px);
+  overflow-y: auto;
+}
+.pane th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sst-panel);
+}
+.nights {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 4px;
+}
+/* One table shape everywhere: full width, numbers right-aligned, row actions on one line. */
+.tableWrap {
+  background: var(--sst-panel);
+}
+.tableWrap table {
+  width: 100%;
+}
+.num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.actions {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+.rowActions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.rowActions .windowEdit {
+  flex-wrap: nowrap;
+}
+.sheetPane {
+  max-height: min(70vh, 720px);
+  overflow-y: auto;
+  padding-right: 4px;
+}

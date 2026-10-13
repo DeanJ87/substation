@@ -1,0 +1,41 @@
+# SubStation: three services sharing one local-disk volume. Edit the volume paths, then:
+#   docker compose -f compose.example.yml up -d        and open http://<host>:8080
+#
+# All three must run on the same host: the catalogue is SQLite on /data/substation (local disk, not a share).
+name: substation
+
+x-data: &data /path/to/substation:/data/substation   # local disk: database, work, previews, stacks
+
+services:
+  frontend:
+    image: ghcr.io/substation/substation-frontend:0.1
+    build: { context: .., dockerfile: docker/frontend.Dockerfile }
+    ports: ["${SUBSTATION_PORT:-8080}:8080"]   # host port: set SUBSTATION_PORT if 8080 is taken
+    depends_on: [api]
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/substation/substation-api:0.1
+    build: { context: .., dockerfile: docker/api.Dockerfile }
+    environment:
+      SUBSTATION_ADMIN_USERNAME: admin
+      SUBSTATION_ADMIN_PASSWORD: change-me-please
+      # SUBSTATION_SITE_NAME: Home
+      # SUBSTATION_SITE_LAT: "54.99"
+      # SUBSTATION_SITE_LON: "-1.66"
+    volumes:
+      - *data
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/substation/substation-worker:0.1
+    build: { context: .., dockerfile: docker/worker.Dockerfile }
+    environment:
+      SUBSTATION_WORKERS: "2"          # starting count; change it later in the UI
+    volumes:
+      - *data
+      - /path/to/capture:/data/library/capture:ro   # one line per library, always read-only
+      - /path/to/archive:/data/library/archive:ro
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped

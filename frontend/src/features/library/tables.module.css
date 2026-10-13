@@ -1,0 +1,71 @@
+/* Shared by the library, collection, dataset, sub and review screens (owner 2026-10-11: "tables being differing
+ * widths all over the place", sections fold, long lists scroll inside their section).
+ *
+ * A card whose folding section runs edge to edge (tables, lists): the heading keeps the card's side padding. */
+.flush {
+  padding: 14px 0 6px;
+}
+.flush > section > :first-child {
+  padding: 0 18px;
+}
+.flush > section > div > p,
+.flush .padded {
+  padding: 0 18px;
+}
+
+/* every table full width in its card, one cell padding */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th,
+.table td {
+  padding: 10px 14px;
+}
+.table th:first-child,
+.table td:first-child {
+  padding-left: 18px;
+}
+.table th:last-child,
+.table td:last-child {
+  padding-right: 18px;
+}
+/* numbers: right-aligned on one line, as narrow as they can be so text columns take the slack */
+.num,
+.table th.num,
+.table td.num {
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+  font-variant-numeric: tabular-nums;
+}
+/* sortable headings put a button in the cell; keep it at the right edge too */
+.num > button {
+  justify-content: flex-end;
+}
+.act,
+.table th.act,
+.table td.act {
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* a long list scrolls inside its section so the rest of the page stays in view */
+.pane {
+  max-height: min(60vh, 560px);
+  overflow-y: auto;
+}
+.pane thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sst-panel);
+}
+/* a row on its way out (e.g. its subs moving to another dataset): faded, but its note stays legible */
+.muted td:not(:last-child) {
+  opacity: 0.55;
+}
+.nowrap {
+  white-space: nowrap;
+}

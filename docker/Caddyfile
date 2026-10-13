@@ -1,0 +1,30 @@
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode gzip zstd
+
+	# Live events: stream immediately, never buffer
+	handle /api/v1/events {
+		reverse_proxy {$SUBSTATION_API:api:8000} {
+			flush_interval -1
+		}
+	}
+
+	# API, sign-in endpoints, Django admin and its static files
+	@backend path /api/* /_allauth/* /admin/* /static/*
+	handle @backend {
+		reverse_proxy {$SUBSTATION_API:api:8000}
+	}
+
+	# The React app; unknown paths fall back to index.html for client-side routes
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+}
