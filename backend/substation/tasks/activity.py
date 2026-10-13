@@ -110,6 +110,19 @@ def outcome(short: str, rv: object, target: str) -> str:
     )
 
 
+def _object_label(ds) -> str:  # noqa: ANN001
+    """ "Soul Nebula · Askar 71F + ATR2600M · SII": what's being worked on first, then the rig and filter. The
+    collection's common name ("IC 1848 - Soul Nebula" → "Soul Nebula") when it has one, else the dataset's target
+    (owner 2026-10-13: a stack listed only as "Master v1 · Askar 71F + ATR2600M · SII" said nothing of what)."""
+    from apps.catalogue.services.library import label
+
+    if ds is None:
+        return ""
+    col = ds.collection.name if ds.collection_id and ds.collection else ""
+    name = col.split(" - ", 1)[1] if " - " in col else (col or ds.target or "")
+    return " · ".join(p for p in (name, label(ds)) if p)
+
+
 def _target(t: Task) -> tuple[str, int | None, dict]:
     """(target text, dataset id, extra) for a task, from its arguments."""
     short = t.name.rsplit(".", 1)[-1]
@@ -121,20 +134,33 @@ def _target(t: Task) -> tuple[str, int | None, dict]:
             return str(args[2]), None, {}
         if short in ("calibrate_measure", "solve_light"):
             from apps.catalogue.models import Frame
-            from apps.catalogue.services.library import label
 
-            f = Frame.objects.select_related("dataset__rig").prefetch_related("copies").get(pk=args[0])
+            f = (
+                Frame.objects.select_related("dataset__rig", "dataset__collection")
+                .prefetch_related("copies")
+                .get(pk=args[0])
+            )
             c = next(iter(f.copies.all()), None)
             name = c.rel_path.rsplit("/", 1)[-1] if c else f.sha256[:12]
-            return (f"{label(f.dataset)} · {name}" if f.dataset else name), f.dataset_id, {}
+            return (f"{_object_label(f.dataset)} · {name}" if f.dataset else name), f.dataset_id, {}
         if short == "integrate":
-            from apps.catalogue.services.library import label
-            from apps.processing.masters import STEPS
+            from django.utils import timezone as _tz
+
+            from apps.processing.masters import RULES, STEPS
             from apps.processing.models import Master
 
-            m = Master.objects.select_related("dataset__rig").get(pk=args[0])
+            m = Master.objects.select_related("dataset__rig", "dataset__collection", "created_by").get(
+                pk=args[0]
+            )
+            when = _tz.localtime(m.created_at).strftime("%-d %b %H:%M")
+            who = (
+                f"queued by {m.created_by.get_username()} {when}"
+                if m.created_by
+                else f"started automatically {when}"
+            )
+            why = f"{who} · {RULES.get((m.recipe or {}).get('rule', 'default'), 'usable subs').lower()}"
             return (
-                f"Master v{m.version} · {label(m.dataset)}",
+                f"{_object_label(m.dataset)} · v{m.version}",
                 m.dataset_id,
                 {
                     "steps": STEPS,
@@ -142,14 +168,14 @@ def _target(t: Task) -> tuple[str, int | None, dict]:
                     "subs": m.sub_count,
                     "sessions": m.session_count,
                     "master_id": m.pk,
+                    "why": why,  # who or what started it, and with which subs (owner 2026-10-13)
                 },
             )
         if short == "postprocess_master":
-            from apps.catalogue.services.library import label
             from apps.processing.models import Master
 
-            m = Master.objects.select_related("dataset__rig").get(pk=args[0])
-            return f"Master v{m.version} · {label(m.dataset)}", m.dataset_id, {"master_id": m.pk}
+            m = Master.objects.select_related("dataset__rig", "dataset__collection").get(pk=args[0])
+            return f"{_object_label(m.dataset)} · v{m.version}", m.dataset_id, {"master_id": m.pk}
         if short == "build_master":
             # "Flat OIII · 28 Sep 2026 · ATR2600M · 50 frames" (owner 2026-10-11: build jobs had no target)
             from apps.processing.models import BuiltMaster

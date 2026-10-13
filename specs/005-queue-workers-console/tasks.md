@@ -24,3 +24,5 @@
   container sizes as Compose variables (005-DR-18)
 - [X] W18 (owner 2026-10-13) `calibrate_batch` for a stack's pruned subs, refilling the cache (005-DR-19)
 - [X] W19 (owner 2026-10-13) Lock-tolerant claim loop and watcher; `STALE_HEAVY_S = 900`; test (005-DR-20)
+- [X] W20 (owner 2026-10-13) `_object_label` for integrate, post-process, calibrate and solve jobs; stack `why`
+  line; test (005-DR-21)

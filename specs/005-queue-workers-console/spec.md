@@ -28,3 +28,7 @@
   exits over it (an exit restarted every worker and orphaned a running stack). A stacking-slot task is only taken
   back after 15 minutes without a heartbeat (light tasks: 2), so a disk stall can't make a running stack look dead
   and start a second one beside it.
+- **005-DR-21** (2026-10-13): Activity names what a job works on first: the collection's common name (else the
+  dataset's target), then rig and filter ("Soul Nebula · Askar 71F + ATR2600M · SII · v1"). A running stack also
+  says who or what started it and with which subs ("queued by admin 13 Oct 08:25 · accepted and down-weighted subs",
+  or "started automatically …").

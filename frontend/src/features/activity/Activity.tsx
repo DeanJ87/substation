@@ -421,7 +421,7 @@ function eta(j: Job): string | null {
 function RunningJob({ j }: { j: Job }) {
   const act = useJobAction()
   const cancelling = j.note.startsWith('Cancelling')
-  const ex = j.extra as { steps?: string[]; step?: string; subs?: number; sessions?: number }
+  const ex = j.extra as { steps?: string[]; step?: string; subs?: number; sessions?: number; why?: string }
   return (
     <article className={`${v.card} ${s.job}`}>
       <div className={s.jobHead}>
@@ -436,6 +436,7 @@ function RunningJob({ j }: { j: Job }) {
           <div className={`${v.muted} ${s.rowText}`}>
             {j.note || ' '}
             {ex.subs ? ` · ${ex.subs} subs from ${ex.sessions} sessions` : ''} · started {hhmm(j.started_at)}
+            {ex.why ? <div className={v.muted}>{String(ex.why)}</div> : null}
           </div>
         </div>
         <div className={v.actions}>
