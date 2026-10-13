@@ -127,7 +127,15 @@ def match_dark(light: Frame, darks: list[Frame], tol: float) -> tuple[Frame | No
         )
     fits = [d for d in usable if d.gain == light.gain and d.offset == light.offset]
     if not fits:
-        return None, "", f"no {light.exptime_s:g} s dark at gain {light.gain} and offset {light.offset}"
+        at = " and ".join(
+            x
+            for x in (
+                f"gain {light.gain}" if light.gain is not None else "",
+                f"offset {light.offset}" if light.offset is not None else "",
+            )
+            if x
+        )  # a camera that records no offset (a DSLR) isn't asked for one
+        return None, "", f"no {light.exptime_s:g} s dark" + (f" at {at}" if at else "")
     lt = light.ccd_temp_c if light.ccd_temp_c is not None else light.set_temp_c
     if lt is None:
         best = sorted(fits, key=lambda d: d.first_seen_at, reverse=True)[0]

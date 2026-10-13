@@ -95,3 +95,5 @@ requirement they close.
   `filter_time` split; segmented bars; NAS datasets recounted; test (006-DR-30)
 - [X] L56 (owner 2026-10-13) Rejected readout as the complement of Kept (006-DR-31)
 - [X] L57 (owner 2026-10-13) Home readouts replaced (`_home_readouts`, Library.tsx); test (006-DR-32)
+- [X] L58 (2026-10-13) Readout numbers formatted; missing-calibration reasons name the rig and leave out an offset
+  the camera never records ("no 180 s dark at gain 1600", not "… and offset None")

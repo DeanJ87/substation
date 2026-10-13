@@ -176,12 +176,14 @@ export function Library() {
       <div className={v.readouts}>
         <Link to={needs.review ? '/review' : needs.reconcile ? '/reconcile' : '/'} className={v.readout}>
           <div className={v.readoutLabel}>Needs you</div>
-          <div className={`${v.readoutValue} ${needsTotal ? v.accentValue : ''}`}>{needsTotal}</div>
+          <div className={`${v.readoutValue} ${needsTotal ? v.accentValue : ''}`}>
+            {needsTotal.toLocaleString('en-GB')}
+          </div>
           <div className={v.readoutDetail}>
             {needsTotal
               ? [
-                  needs.review ? `${needs.review} to review` : '',
-                  needs.reconcile ? `${needs.reconcile} to reconcile` : '',
+                  needs.review ? `${needs.review.toLocaleString('en-GB')} to review` : '',
+                  needs.reconcile ? `${needs.reconcile.toLocaleString('en-GB')} to reconcile` : '',
                   needs.stale ? `${needs.stale} stack${needs.stale === 1 ? '' : 's'} out of date` : '',
                 ]
                   .filter(Boolean)
@@ -191,14 +193,14 @@ export function Library() {
         </Link>
         <Link to="/calibration" className={v.readout}>
           <div className={v.readoutLabel}>Missing calibration</div>
-          <div className={v.readoutValue}>{missing.subs}</div>
+          <div className={v.readoutValue}>{missing.subs.toLocaleString('en-GB')}</div>
           <div className={v.readoutDetail}>
             {missing.subs ? (
               <>
                 subs waiting
                 {missing.top.slice(0, 2).map((m) => (
                   <div key={m.reason} className={v.muted}>
-                    {m.reason} ({m.subs})
+                    {m.reason} ({m.subs.toLocaleString('en-GB')})
                   </div>
                 ))}
               </>
@@ -209,7 +211,7 @@ export function Library() {
         </Link>
         <div className={v.readout}>
           <div className={v.readoutLabel}>Ready to stack</div>
-          <div className={v.readoutValue}>{ready.datasets}</div>
+          <div className={v.readoutValue}>{ready.datasets.toLocaleString('en-GB')}</div>
           <div className={v.readoutDetail}>
             {ready.top.length
               ? ready.top.slice(0, 2).map((x) => (
@@ -217,7 +219,7 @@ export function Library() {
                     <Link to="/datasets/$id" params={{ id: String(x.id) }}>
                       {x.name}
                     </Link>{' '}
-                    <span className={v.muted}>+{x.new} subs</span>
+                    <span className={v.muted}>+{x.new.toLocaleString('en-GB')} subs</span>
                   </div>
                 ))
               : 'nothing new since the last stacks'}
