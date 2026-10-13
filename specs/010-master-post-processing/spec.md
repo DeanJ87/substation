@@ -401,3 +401,9 @@ idle request for work). Activity shows it as a worker tile named after the machi
 the tool's own share ("RC-Astro 400% · 3 GB") and the tool's command line. CPU is measured from the processes'
 CPU time, so 100% is one core; work the tool hands to the GPU or Neural Engine doesn't show as CPU. Cancelling a
 job in SubStation stops the running tool within about 10 s instead of after it finishes.
+
+### Dropped connections (2026-10-13)
+
+A helper retries a request whose connection drops (up to four tries, waiting longer each time); a refusal from
+SubStation is final. A job a helper reports as failed goes back in the queue while it has attempts left, with the
+reason kept, and only fails once they are used up.

@@ -32,3 +32,6 @@
 - [X] C29 (owner 2026-10-13) `POST /calibration-sets/{id}/filter` + "Filter…" on a flat set's page; test (002-DR-18)
 - [X] C30 (owner 2026-10-13) Flat picker names link to the set; Glance says when a frame can't be drawn; scaled
   16-bit FITS (BZERO) are read without memory-mapping so unbuilt Sony flats preview (002-DR-19)
+- [X] C31 (owner 2026-10-13) `format_twin` + set-aside (`apps/ingest/processed.py`); `one_row_order` before
+  stacking (`calibration.py`, report `flipped`); NAS: twins set aside, affected flat masters rebuilt and their subs
+  recalibrated; tests (002-DR-20, 002-DR-21)

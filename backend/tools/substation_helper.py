@@ -30,7 +30,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-VERSION = "2"
+VERSION = "3"
 GRAXPERT = ["/Applications/GraXpert.app/Contents/MacOS/GraXpert", "GraXpert-linux", "graxpert"]
 RC_ASTRO = ["/Applications/RC-Astro/CLI/rc-astro", "/opt/finish/rc-astro/rc-astro", "rc-astro"]
 LABELS = {
@@ -146,26 +146,51 @@ class Api:
             req.add_header(k, v)
         return urllib.request.urlopen(req, timeout=kw.get("timeout", 120))
 
+    @staticmethod
+    def _again(what: str, call: Any, tries: int = 4) -> Any:
+        """A busy NAS or its proxy can drop a connection (a broken pipe mid-upload): try again before giving up.
+        An HTTP answer (a refusal, a 409) is final."""
+        for n in range(1, tries + 1):
+            try:
+                return call()
+            except urllib.error.HTTPError:
+                raise
+            except (urllib.error.URLError, OSError) as e:
+                if n == tries:
+                    raise
+                print(f"{what}: {e}; trying again ({n} of {tries - 1})", file=sys.stderr)
+                time.sleep(10 * n)
+        return None
+
     def post(self, path: str, data: dict) -> dict | None:
-        with self._req("POST", path, json.dumps(data).encode()) as r:
-            raw = r.read()
-            return json.loads(raw) if raw else None
+        def go() -> dict | None:
+            with self._req("POST", path, json.dumps(data).encode()) as r:
+                raw = r.read()
+                return json.loads(raw) if raw else None
+
+        return self._again(f"POST {path.split('?')[0]}", go)
 
     def download(self, path: str, dest: Path) -> None:
-        with self._req("GET", path, timeout=600) as r, dest.open("wb") as fh:
-            shutil.copyfileobj(r, fh, 8 << 20)
+        def go() -> None:
+            with self._req("GET", path, timeout=600) as r, dest.open("wb") as fh:
+                shutil.copyfileobj(r, fh, 8 << 20)
+
+        self._again("download", go)
 
     def upload(self, path: str, src: Path) -> None:
-        with src.open("rb") as fh:
-            req = self._req(
-                "POST",
-                path,
-                body=fh,
-                ctype="application/octet-stream",  # type: ignore[arg-type]
-                headers={"Content-Length": str(src.stat().st_size)},
-                timeout=900,
-            )
-            req.read()
+        def go() -> None:
+            with src.open("rb") as fh:
+                req = self._req(
+                    "POST",
+                    path,
+                    body=fh,
+                    ctype="application/octet-stream",  # type: ignore[arg-type]
+                    headers={"Content-Length": str(src.stat().st_size)},
+                    timeout=900,
+                )
+                req.read()
+
+        self._again("upload", go)
 
 
 def _cpu_seconds(t: str) -> float:

@@ -99,7 +99,8 @@ def night_for(date, lat: float | None, lon: float | None) -> Night:  # noqa: ANN
 
 def assign_dataset(frame: Frame) -> tuple[Dataset | None, Dataset | None]:
     """Set frame.dataset for lights. Returns (old, new) so both can be refreshed."""
-    old = frame.dataset
+    # a frame loaded a while ago (a batch of a long re-read) can name a dataset since removed: then it had none
+    old = Dataset.objects.filter(pk=frame.dataset_id).first() if frame.dataset_id else None
     new = None
     if frame.frame_type == FrameType.LIGHT and frame.status == FrameStatus.CATALOGUED:
         key = key_for(frame)

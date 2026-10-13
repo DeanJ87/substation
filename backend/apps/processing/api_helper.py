@@ -286,10 +286,20 @@ class HelperFailIn(Schema):
 
 @router.post("/tasks/{task_id}/fail", response={204: None})
 def job_failed(request, task_id: str, host: str, body: HelperFailIn):
+    """A run that went wrong. While it has attempts left it goes back in the queue (a dropped connection or a
+    helper restart shouldn't cost the master its post-processing); after that it fails with the helper's reason."""
+    from substation.tasks.worker import backoff
+
     t = _task(task_id, host)
-    Task.objects.filter(pk=t.pk).update(
-        status=TaskStatus.FAILED, finished_at=timezone.now(), error=f"Helper {host}: {body.reason}"[:2000]
-    )
+    reason = f"Helper {host}: {body.reason}"[:2000]
+    if t.attempts < t.max_attempts:
+        Task.objects.filter(pk=t.pk).update(
+            status=TaskStatus.READY, worker=None, run_after=timezone.now() + backoff(t.attempts), error=reason
+        )
+    else:
+        Task.objects.filter(pk=t.pk).update(
+            status=TaskStatus.FAILED, finished_at=timezone.now(), error=reason
+        )
     Worker.objects.filter(pk=f"helper:{host}"[:64]).update(
         state=WorkerState.IDLE, current_task=None, engine_command=None
     )

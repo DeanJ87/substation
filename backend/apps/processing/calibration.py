@@ -374,6 +374,33 @@ def _compare(new, previous: Frame, flat: bool, out: Path) -> dict:  # noqa: ANN0
     }
 
 
+def one_row_order(work: Path, prefix: str) -> int:
+    """Put every converted frame in the first one's row order. Siril writes XISF bottom-up and keeps NINA's FITS
+    top-down, so a set mixing the two (or the same flats saved in both formats) would stack each frame with an
+    upside-down twin: a mirrored master with every dust mote twice. Returns how many were flipped."""
+    import numpy as np
+    from astropy.io import fits
+
+    from .tasks import _top_down
+
+    files = sorted(work.glob(f"{prefix}[0-9]*.fit"))
+    if not files:
+        return 0
+    want = _top_down(files[0])
+    n = 0
+    for p in files[1:]:
+        if _top_down(p) == want:
+            continue
+        with fits.open(p, memmap=False) as hl:
+            hdu = hl[0]
+            data = np.flip(hdu.data, axis=-2)
+            header = hdu.header.copy()
+        header["ROWORDER"] = ("TOP-DOWN" if want else "BOTTOM-UP", "flipped by SubStation to match the set")
+        fits.PrimaryHDU(data=data, header=header).writeto(p, overwrite=True)
+        n += 1
+    return n
+
+
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
 def build_master(built_id: int) -> dict:
 
@@ -449,6 +476,7 @@ def build_master(built_id: int) -> dict:
             cal = master_fits(calibrator)  # before `cd`: converting a master changes Siril's directory
         eng.run(f"cd {work}")
         eng.run("convert raw -out=.", timeout=3600)  # any format → FITS sequence raw_00001.fit …
+        flipped = one_row_order(work, "raw_")
         out_dir = Path(settings.MASTERS_DIR) / _safe(cs.camera or "camera") / _safe(word)
         out_dir.mkdir(parents=True, exist_ok=True)
         name = _safe(
@@ -508,6 +536,8 @@ def build_master(built_id: int) -> dict:
         if a.ndim == 3:  # colour planes: analyse their mean
             a = a.mean(axis=0)
         report: dict = {"stats": frame_stats(a).as_dict()}
+        if flipped:  # frames in another row order, turned to match before stacking (see one_row_order)
+            report["flipped"] = flipped
         motes = None
         dust_map = None
         note = ""

@@ -45,3 +45,13 @@ def test_8_bit_captures_of_any_kind_are_set_aside():
     assert sorted(set_aside_all()) == sorted([sub.sha256, flat.sha256])
     assert IgnoreRule.objects.get(value=sub.sha256).note == EIGHT_BIT_NOTE
     assert not IgnoreRule.objects.filter(value=raw.sha256).exists()
+
+
+def test_an_xisf_copy_of_a_fits_exposure_is_set_aside():
+    """The same flat saved as FITS and XISF: the XISF copy goes, so a master never stacks a frame twice."""
+    when = datetime(2026, 3, 1, 5, tzinfo=UTC)
+    fit = light("g", "BITPIX=16", when, kind=FrameType.FLAT)
+    Frame.objects.filter(pk=fit.pk).update(format="fits")
+    xisf = light("h", "UInt16", when, kind=FrameType.FLAT)
+    assert set_aside_all() == [xisf.sha256]
+    assert IgnoreRule.objects.get(value=xisf.sha256).note.startswith("Same exposure as")

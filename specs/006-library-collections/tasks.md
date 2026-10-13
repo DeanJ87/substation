@@ -93,3 +93,4 @@ requirement they close.
   length; NAS datasets re-checked; unnamed collections named, duplicate Sh2-240 merged (006-DR-29)
 - [X] L55 (owner 2026-10-13) `Dataset.rejected_integration_s` (migration 0015, set by `recount_grades`); card
   `filter_time` split; segmented bars; NAS datasets recounted; test (006-DR-30)
+- [X] L56 (owner 2026-10-13) Rejected readout as the complement of Kept (006-DR-31)

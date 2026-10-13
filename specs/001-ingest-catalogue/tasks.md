@@ -5,3 +5,5 @@
   (`apps/ingest/processed.py`); existing ones set aside once on the NAS; test in `tests/unit/test_processed_copies.py`
 - [X] T122 (owner 2026-10-13) Site values out of the repo: compose variables, prepare-script variables, helper URL
   required, spike reports and e2e defaults without local paths
+- [X] T123 (2026-10-13) Regrouping a frame whose dataset was removed during a long re-read no longer fails
+  (`assign_dataset` looks the old dataset up); test

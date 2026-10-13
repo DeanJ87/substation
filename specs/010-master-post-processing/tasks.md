@@ -61,3 +61,5 @@
 - [X] T031 (owner 2026-10-13) Helper CPU/RAM samples (helper and tool process trees, via `ps`) sent with progress
   every 10 s and with idle claims; stored as the helper worker's resource samples; Activity labels helper tiles by
   machine and the engine by tool; cancel stops the tool at once; image gains `procps`; test
+- [X] T032 (owner 2026-10-13) Helper `_again` retry for post/download/upload; `/fail` requeues while attempts
+  remain; test

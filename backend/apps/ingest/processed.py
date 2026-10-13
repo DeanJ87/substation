@@ -40,12 +40,32 @@ def raw_twin(f: Frame) -> Frame | None:
     return next((t for t in twins if not _is_float(t)), None)
 
 
+def format_twin(f: Frame) -> Frame | None:
+    """The FITS copy of this XISF frame, when the capture software saved the same exposure in both formats (same
+    camera, type and DATE-OBS). Siril reads XISF bottom-up and NINA's FITS top-down, so stacking both mirrors a
+    flat: every dust mote twice (NGC 7822 flats, 2026-10-13). The XISF copy is the one set aside."""
+    if f.format != "xisf" or f.date_obs_utc is None:
+        return None
+    return (
+        Frame.objects.filter(camera=f.camera, frame_type=f.frame_type, date_obs_utc=f.date_obs_utc)
+        .exclude(pk=f.pk)
+        .exclude(format="xisf")
+        .exclude(status=FrameStatus.IGNORED)
+        .first()
+    )
+
+
 def set_aside(f: Frame) -> bool:
     """Ignore `f` if it is an 8-bit capture or a processed copy of a raw light. Returns True when a rule was made."""
     if IgnoreRule.objects.filter(active=True, kind=IgnoreKind.CONTENT, value=f.sha256).exists():
         return False
     if is_eight_bit(f):
         note = EIGHT_BIT_NOTE
+    elif (fits_twin := format_twin(f)) is not None:
+        copy = Copy.objects.filter(frame=fits_twin, present=True).first()
+        note = (
+            f"Same exposure as {copy.rel_path.rsplit('/', 1)[-1] if copy else fits_twin.sha256[:12]} (FITS)"
+        )
     else:
         twin = raw_twin(f)
         if twin is None:
@@ -57,7 +77,8 @@ def set_aside(f: Frame) -> bool:
 
 
 def set_aside_all() -> list[str]:
-    """Every catalogued 8-bit capture and float light with a raw twin; returns the hashes set aside."""
+    """Every catalogued 8-bit capture, XISF copy of a FITS exposure and float light with a raw twin; returns the
+    hashes set aside."""
     out = []
     for f in Frame.objects.filter(status=FrameStatus.CATALOGUED).prefetch_related("headers"):
         if set_aside(f):

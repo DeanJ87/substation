@@ -36,3 +36,13 @@ with both).
   filter.
 - **002-DR-19**: In the flat picker, a flat set's name links to its page, and every row's hover preview shows an
   image: the built master, else one of its flats; when none can be drawn the card says so instead of staying blank.
+
+## Amendment 2026-10-13: one exposure, one format; one row order per master
+
+- **002-DR-20**: When the capture software saved the same exposure as both FITS and XISF (same camera, type and
+  DATE-OBS), the XISF copy is set aside by a content ignore rule noted "Same exposure as <file> (FITS)". Stacking
+  both would mirror a flat: Siril reads XISF bottom-up and NINA's FITS top-down, so every dust mote and the OAG
+  shadow appear twice (found on the NGC 7822 flats: three sets of 50 FITS + the same 50 as XISF).
+- **002-DR-21**: Before a master is stacked, every converted frame is put in the first frame's row order, so no
+  master mixes orientations even when a set legitimately holds both formats. The build report says how many were
+  turned.

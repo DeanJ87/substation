@@ -155,3 +155,5 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   bar is split into usable (graded and kept), waiting (for calibration or grading) and rejected, with the totals on
   hover; the right-hand figure is the time captured, and the card's foot reads "usable of captured". Datasets keep
   their rejected exposure alongside the accepted (`rejected_integration_s`).
+- **006-DR-31** (2026-10-13): Library readouts never add past 100%: "Rejected" is shown as 100% minus the rounded
+  "Kept", as the two together are every graded sub.

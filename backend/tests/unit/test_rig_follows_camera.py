@@ -66,3 +66,23 @@ def test_a_focal_length_rounded_differently_is_the_same_rig():
     )
     HeaderSnapshot.objects.create(frame=f, geometry="6000:4000", keywords={"FOCALLEN": {"value": 490.0}})
     assert ensure_rig(d) == sony and Rig.objects.count() == 1
+
+
+def test_a_frame_whose_dataset_was_removed_regroups_without_failing():
+    """A long re-read holds frames loaded earlier; their dataset may be removed meanwhile (2026-10-13)."""
+    from apps.catalogue.services.grouping import assign_dataset
+
+    d = Dataset.objects.create(group_key="gone", target="M 1")
+    f = Frame.objects.create(
+        sha256="c" * 64,
+        size_bytes=1,
+        format="fits",
+        first_seen_at=T,
+        status=FrameStatus.CATALOGUED,
+        frame_type=FrameType.LIGHT,
+        dataset=d,
+    )
+    stale = Frame.objects.get(pk=f.pk)  # loaded before the dataset goes
+    Dataset.objects.filter(pk=d.pk).delete()
+    old, _new = assign_dataset(stale)
+    assert old is None

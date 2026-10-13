@@ -612,7 +612,12 @@ function Stats({ q, rig, from, to }: { q: string; rig: string; from: string; to:
             </div>
             <div>
               <span className={v.sectionLabel}>Rejected</span>
-              <strong className={`${v.mono} ${v.bad}`}>{pct(d.failure_rate)}</strong>
+              <strong className={`${v.mono} ${v.bad}`}>
+                {/* kept + rejected is every graded sub: rounded on its own each could make 101% */}
+                {d.success_rate != null && d.failure_rate != null
+                  ? `${100 - Math.round(d.success_rate * 100)}%`
+                  : pct(d.failure_rate)}
+              </strong>
               <span className={v.muted}>cloud, seeing, tracking</span>
             </div>
             <div>

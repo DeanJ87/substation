@@ -127,3 +127,27 @@ def test_a_helper_shows_in_activity_with_cpu_ram_and_its_tool(helper, tmp_path):
     assert w.kind == "helper" and w.host == "mac" and w.engine_label == "RC-Astro"
     assert w.cpu_pct == 410 and w.engine_rss_bytes == 3 << 30 and len(w.history) == 2
     assert w.job and w.job.progress == 0.7
+
+
+def test_a_failure_goes_back_in_the_queue_while_attempts_remain(helper, tmp_path):
+    """A dropped connection (a broken pipe mid-upload) shouldn't cost the master its post-processing."""
+    m = _master(tmp_path)
+    enqueue(postprocess_master, m.pk)
+    job = helper.post("/api/v1/helper/claim", {"host": "mac"}, content_type="application/json").json()
+    r = helper.post(
+        f"/api/v1/helper/tasks/{job['task_id']}/fail?host=mac",
+        {"reason": "<urlopen error [Errno 32] Broken pipe>"},
+        content_type="application/json",
+    )
+    assert r.status_code == 204
+    t = Task.objects.get(pk=job["task_id"])
+    assert t.status == TaskStatus.READY and t.worker_id is None and "Broken pipe" in (t.error or "")
+    Task.objects.filter(pk=t.pk).update(
+        attempts=t.max_attempts, status=TaskStatus.RUNNING, worker_id="helper:mac"
+    )
+    helper.post(
+        f"/api/v1/helper/tasks/{t.pk}/fail?host=mac",
+        {"reason": "still broken"},
+        content_type="application/json",
+    )
+    assert Task.objects.get(pk=t.pk).status == TaskStatus.FAILED
