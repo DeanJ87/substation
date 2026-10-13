@@ -65,3 +65,10 @@ Solves were recorded but not used anywhere an image is shown; labelling what is 
   GPL-3.0), and are computed from the stored solve; no engine call.
 - **Fix**: fields under a degree were read as degrees (Siril prints `26m 55.59s`, read as 26.9°). The reading is
   fixed and the 26 affected solves are dropped so the solve backfill redoes them.
+
+## Amendment 2026-10-13: framing shows finished masters on top
+
+- **009-DR-10**: In a collection's framing, a dataset with a solved master shows the master's finished look: the
+  last post-processing stage that's done (e.g. NoiseXTerminator) when its preview is the master's size, else the
+  master's own preview. Stacks are drawn over datasets that only have a single sub's preview, so a noisy sub never
+  covers a clean master.

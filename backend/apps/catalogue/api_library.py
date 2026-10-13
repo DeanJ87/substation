@@ -468,6 +468,33 @@ class CandidateOut(Schema):
     rotation_diff: float | None = None
 
 
+def _master_image(m) -> str:  # noqa: ANN001
+    """The master's finished look when post-processing has run (its last stage that's done, e.g. NoiseXTerminator),
+    else its own preview. A stage is used only when its preview is the master's size, so it sits exactly where the
+    master's solve puts it (owner 2026-10-13: show masters, fully processed when available)."""
+
+    from PIL import Image
+
+    base = f"/api/v1/stacks/{m.pk}/preview"
+    runs = (m.report or {}).get("post_runs") or []
+    if not runs or not m.preview_path:
+        return base
+    run = runs[-1]
+    done = [
+        i for i, st in enumerate(run.get("stages", [])) if st.get("state") == "done" and st.get("preview")
+    ]
+    if not done:
+        return base
+    stage = run["stages"][done[-1]]
+    try:
+        with Image.open(m.preview_path) as a, Image.open(stage["preview"]) as b:
+            if a.size != b.size:
+                return base
+    except OSError:
+        return base
+    return f"/api/v1/stacks/{m.pk}/post/{run['run']}/{done[-1]}/preview"
+
+
 class FramingOut(Schema):
     dataset_id: int
     label: str
@@ -522,7 +549,7 @@ def collection_framing(request, id: int, reference: int | None = None, project: 
             m = f["master"]
             some = Frame.objects.filter(dataset=d, frame_type="light").prefetch_related("headers").first()
             img_corners = [[round(a, 5), round(b, 5)] for a, b in master_corners(m, some, ref)]
-            url, kind = f"/api/v1/stacks/{m.pk}/preview", "master"
+            url, kind = _master_image(m), "master"
         elif f["image"]:
             ps = PlateSolve.objects.select_related("frame").get(frame_id=f["image"])
             img_corners = [[round(a, 5), round(b, 5)] for a, b in image_corners(ps, ref)]

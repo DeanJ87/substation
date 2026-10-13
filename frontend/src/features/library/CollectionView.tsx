@@ -825,9 +825,10 @@ function Framing({ id, project }: { id: number; project: number | null }) {
   const ref = all.find((r) => r.reference) ?? all[0]
   const chosen = selected ?? new Set(mosaic ? rows.map((r) => r.dataset_id) : [ref.dataset_id])
   const pal = palette ? PALETTES[palette] : null
-  const imaged = (pal ? all.filter((r) => r.filter && pal.map[r.filter]) : rows).filter(
-    (r) => chosen.has(r.dataset_id) && (r.image_url || r.image) && r.image_corners.length === 4,
-  )
+  // stacks drawn over single subs (owner 2026-10-13: a noisy sub covered a clean 12-hour master)
+  const imaged = (pal ? all.filter((r) => r.filter && pal.map[r.filter]) : rows)
+    .filter((r) => chosen.has(r.dataset_id) && (r.image_url || r.image) && r.image_corners.length === 4)
+    .sort((a, b) => Number(a.image_kind === 'master') - Number(b.image_kind === 'master'))
   const pick = (r: FramingRow, e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {
     const ids = rows.map((x) => x.dataset_id)
     const next = new Set(chosen)

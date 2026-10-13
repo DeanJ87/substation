@@ -73,3 +73,4 @@ the requirement they close.
 - [X] A8 (owner 2026-10-13) Masters are solved with SIP distortion (`platesolve … -order=3`) and keep the full
   WCS; labels are placed through it (`astropy.wcs`), not the centre-rotation-scale summary that drifted a few
   arcminutes towards the edges (NGC 3077 on M81); labels of close neighbours step apart instead of overprinting
+- [X] P20 (owner 2026-10-13) `_master_image` for framing; masters drawn last; test (009-DR-10)
