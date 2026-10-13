@@ -46,3 +46,7 @@ with both).
 - **002-DR-21**: Before a master is stacked, every converted frame is put in the first frame's row order, so no
   master mixes orientations even when a set legitimately holds both formats. The build report says how many were
   turned.
+- **002-DR-22** (2026-10-13): A master SubStation builds takes its camera and telescope from its own header (Siril
+  keeps its frames'), resolved through the equipment aliases like a light, not from its set's label at build time.
+  A later rig merge or correction then reaches the master too. (17 Sony masters built while the Sony frames were
+  filed under the ATR2600M rig had kept "ATR2600M", showing ATR2600M data before the camera was bought.)

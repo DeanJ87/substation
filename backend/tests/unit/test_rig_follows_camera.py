@@ -86,3 +86,31 @@ def test_a_frame_whose_dataset_was_removed_regroups_without_failing():
     Dataset.objects.filter(pk=d.pk).delete()
     old, _new = assign_dataset(stale)
     assert old is None
+
+
+def test_a_built_master_takes_its_camera_from_its_header(settings, tmp_path):
+    """Sony flats built while filed under another rig stayed labelled with it: the header wins now."""
+    import numpy as np
+    from astropy.io import fits
+
+    from apps.catalogue.models import CalibrationSet
+    from apps.processing.calibration import _register
+    from apps.processing.models import BuiltMaster
+
+    settings.MASTERS_DIR = tmp_path
+    cs = CalibrationSet.objects.create(
+        type=FrameType.FLAT,
+        camera="ATR2600M",
+        filter_norm="OSC",
+        exptime_s=3.2,
+        frame_count=3,
+        session_start_utc=T,
+        session_end_utc=T,
+    )
+    bm = BuiltMaster.objects.create(calibration_set=cs, state="done", method="", report={})
+    out = tmp_path / "master_flat.fit"
+    hdr = fits.Header([("INSTRUME", "Sony A7 III"), ("TELESCOP", "Askar 71F")])
+    fits.PrimaryHDU(np.ones((4, 6), dtype=np.float32), header=hdr).writeto(out)
+    f = _register(bm, cs, out)
+    f.refresh_from_db()
+    assert f.camera == "Sony A7 III" and f.telescope == "Askar 71F"

@@ -277,6 +277,17 @@ def _register(bm: BuiltMaster, cs: CalibrationSet, out: Path) -> Frame:
             .values_list("telescope", flat=True)
             .first(),
         }
+        # camera and telescope come from the master's own header (Siril keeps its frames'), resolved like a light's
+        # through the equipment aliases, so a later rig merge or correction reaches the master too. The set's
+        # values were the aliases in force when it was built, and outranked the header (Sony flats built while
+        # filed under the ATR2600M rig stayed "ATR2600M", 2026-10-13); they're used only when the header is silent.
+        from astropy.io import fits as _fits
+
+        hdr = _fits.getheader(out)
+        if str(hdr.get("INSTRUME") or "").strip():
+            values["camera"] = str(hdr["INSTRUME"]).strip()
+        if str(hdr.get("TELESCOP") or "").strip():
+            values["telescope"] = str(hdr["TELESCOP"]).strip()
         frame.metadata.filter(source=MetadataSource.INFERRED).delete()
         MetadataValue.objects.bulk_create(
             [

@@ -35,3 +35,5 @@
 - [X] C31 (owner 2026-10-13) `format_twin` + set-aside (`apps/ingest/processed.py`); `one_row_order` before
   stacking (`calibration.py`, report `flipped`); NAS: twins set aside, affected flat masters rebuilt and their subs
   recalibrated; tests (002-DR-20, 002-DR-21)
+- [X] C32 (owner 2026-10-13) `_register` uses the header's INSTRUME/TELESCOP; NAS: built masters relabelled from
+  their headers (17 changed), 17 empty leftover ATR2600M datasets settled; test (002-DR-22)
