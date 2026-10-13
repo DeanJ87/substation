@@ -16,6 +16,10 @@ class Library(models.Model):
     name = models.CharField(max_length=200, unique=True, help_text="directory name under /data/library")
     mount_path = models.CharField(max_length=1000)
     enabled = models.BooleanField(default=True)
+    allow_delete = models.BooleanField(
+        default=False,
+        help_text="SubStation may move binned files to quarantine here and delete them (spec 011)",
+    )
     site_name = models.CharField(max_length=200, null=True, blank=True)
     site_lat = models.FloatField(null=True, blank=True)
     site_lon = models.FloatField(null=True, blank=True)

@@ -743,6 +743,7 @@ class LibraryStatsOut(Schema):
     avg_sqm: float | None
     sqm_subs: int
     nights: int
+    binned: int = 0  # of `frames`, in the bin or deleted (spec 011)
 
 
 @router.get("/library/stats", response=LibraryStatsOut)
@@ -755,45 +756,55 @@ def library_stats(
 ):
     """Totals for what the Library's filters show (006, owner 2026-10-10): lights taken, hours per filter and
     rig, how many were kept or rejected, and the average SQM where the capture recorded it."""
+    from django.db.models import Q
+
     from apps.processing.api import COND, _num
     from apps.processing.effective import effective
     from apps.processing.models import MachineGrade
 
     from .models import Frame, FrameStatus, FrameType
 
-    frames = (
-        Frame.objects.filter(frame_type=FrameType.LIGHT, status=FrameStatus.CATALOGUED, dataset__isnull=False)
-        .select_related("dataset__rig", "night")
-        .prefetch_related("verdicts", "headers")
-    )
-    if date_from:
-        frames = frames.filter(night__date__gte=date_from)
-    if date_to:
-        frames = frames.filter(night__date__lte=date_to)
-    if rig:
-        frames = frames.filter(dataset__rig__name=rig)
-    if q:
-        from django.db.models import Q
+    def scoped(qs, ds: str):  # noqa: ANN001, ANN202
+        qs = qs.select_related(f"{ds}__rig", "night").prefetch_related("verdicts", "headers")
+        if date_from:
+            qs = qs.filter(night__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(night__date__lte=date_to)
+        if rig:
+            qs = qs.filter(**{f"{ds}__rig__name": rig})
+        if q:
+            qs = qs.filter(
+                Q(**{f"{ds}__target__icontains": q})
+                | Q(**{f"{ds}__collection__name__icontains": q})
+                | Q(**{f"{ds}__filter_norm__icontains": q})
+                | Q(**{f"{ds}__rig__name__icontains": q})
+            )
+        return qs
 
-        frames = frames.filter(
-            Q(dataset__target__icontains=q)
-            | Q(dataset__collection__name__icontains=q)
-            | Q(dataset__filter_norm__icontains=q)
-            | Q(dataset__rig__name__icontains=q)
-        )
-    grades = {g.frame_id: g for g in MachineGrade.objects.filter(frame__in=frames)}
+    lights = Frame.objects.filter(frame_type=FrameType.LIGHT)
+    live = scoped(lights.filter(status=FrameStatus.CATALOGUED, dataset__isnull=False), "dataset")
+    # binned and deleted subs still count: history outlives the files (spec 011)
+    gone = scoped(
+        lights.filter(status__in=[FrameStatus.BINNED, FrameStatus.DELETED], binned_dataset__isnull=False),
+        "binned_dataset",
+    )
+    frames = [*live, *gone]
+    grades = {g.frame_id: g for g in MachineGrade.objects.filter(frame__in=[f.pk for f in frames])}
     by_filter: dict[str, float] = defaultdict(float)
     by_rig: dict[str, float] = defaultdict(float)
     n = graded = kept = rejected = 0
     hours = accepted = 0.0
     sqms: list[float] = []
     nights = set()
+    binned = 0
     for f in frames:
         n += 1
+        ds = f.dataset or f.binned_dataset
+        binned += f.status != FrameStatus.CATALOGUED
         h = (f.exptime_s or 0) / 3600
         hours += h
-        by_filter[f.dataset.filter_norm or "?"] += h  # type: ignore[union-attr]
-        by_rig[f.dataset.rig.name if f.dataset and f.dataset.rig else "?"] += h
+        by_filter[ds.filter_norm or "?"] += h  # type: ignore[union-attr]
+        by_rig[ds.rig.name if ds and ds.rig else "?"] += h
         nights.add(f.night_id)
         g = grades.get(f.pk)
         e = effective(f, list(f.verdicts.all()), g)
@@ -824,4 +835,5 @@ def library_stats(
         avg_sqm=round(sum(sqms) / len(sqms), 2) if sqms else None,
         sqm_subs=len(sqms),
         nights=len(nights - {None}),
+        binned=binned,
     )

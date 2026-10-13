@@ -70,6 +70,8 @@ def refresh_frames(frames: list[Frame]) -> int:
     touched: dict[int, Dataset] = {}
     changed = 0
     for frame in frames:
+        if frame.status in (FrameStatus.BINNED, FrameStatus.DELETED):  # the bin decides these (spec 011)
+            continue
         covered = _covered(frame, rules)
         if covered == (frame.status == FrameStatus.IGNORED):
             continue

@@ -1,9 +1,11 @@
 // Ignored folders, file names and subs (T091), with undo. Ignored content stays ignored wherever it appears.
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { LoadMore } from '../../components/LoadMore'
-import { Button, Skeleton } from '../../components/ui'
+import { toast } from '../../components/Toasts'
+import { Button, ConfirmButton, Skeleton } from '../../components/ui'
+import { binMessage } from './Bin'
 import { useAddIgnore, useIgnoreRules, useUndoIgnore, type IgnoreRule } from '../metadata/queries'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
@@ -21,6 +23,15 @@ export function IgnoreRules() {
   const rows = rules.data?.pages.flat() ?? []
   const add = useAddIgnore()
   const undo = useUndoIgnore()
+  const qc = useQueryClient()
+  // the files a rule sets aside (e.g. 8-bit captures) into the bin (spec 011)
+  const binRule = useMutation({
+    mutationFn: async (id: number) =>
+      unwrap(await api.POST('/ignore-rules/{id}/bin', { params: { path: { id } } })),
+    onSuccess: (r) => toast(binMessage(r)),
+    onSettled: () => void qc.invalidateQueries(),
+    meta: { failed: "Couldn't bin the files" },
+  })
   const libraries = useQuery({
     queryKey: ['libraries'],
     queryFn: async () => unwrap(await api.GET('/libraries')),
@@ -85,9 +96,20 @@ export function IgnoreRules() {
                   {r.note && ` · ${r.note}`}
                 </div>
               </div>
-              <Button onClick={() => undo.mutate(r.id)} disabled={r.id < 0}>
-                Undo
-              </Button>
+              <span className={s.rowActions}>
+                {(r.matches ?? 0) > 0 && (
+                  <ConfirmButton
+                    question={<>Bin these {r.matches} files?</>}
+                    confirm="Bin them"
+                    onConfirm={() => binRule.mutate(r.id)}
+                  >
+                    Bin these files
+                  </ConfirmButton>
+                )}
+                <Button onClick={() => undo.mutate(r.id)} disabled={r.id < 0}>
+                  Undo
+                </Button>
+              </span>
             </li>
           ))}
           {rules.isSuccess && rows.length === 0 && <li className="muted">Nothing is ignored.</li>}

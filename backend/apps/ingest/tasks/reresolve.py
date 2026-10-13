@@ -9,6 +9,7 @@ from substation.tasks import PRIORITY_BULK, report_progress, station_task
 
 from ..resolve import resolve_frame
 
+BIN = [FrameStatus.BINNED, FrameStatus.DELETED]  # in the bin, or gone (spec 011): not re-read
 BATCH = 500
 
 
@@ -65,7 +66,7 @@ def reresolve_library(library_id: int | None) -> dict:
         copies = copies.filter(library_id=library_id)
     shas = list(
         Frame.objects.filter(pk__in=copies.values("frame_id"))
-        .exclude(status__in=[FrameStatus.PENDING, FrameStatus.ERROR, FrameStatus.IGNORED])
+        .exclude(status__in=[FrameStatus.PENDING, FrameStatus.ERROR, FrameStatus.IGNORED, *BIN])
         .values_list("pk", flat=True)
     )
     touched: dict[int, Dataset] = {}
@@ -88,7 +89,7 @@ def reresolve_targets(names: list[str]) -> dict:
     touched: dict[int, Dataset] = {}
     before: dict[int, int] = {}
     for frame in Frame.objects.filter(target__in=names).exclude(
-        status__in=[FrameStatus.PENDING, FrameStatus.ERROR, FrameStatus.IGNORED]
+        status__in=[FrameStatus.PENDING, FrameStatus.ERROR, FrameStatus.IGNORED, *BIN]
     ):
         old, new = resolve_frame(frame)
         for d in (old, new):
@@ -126,7 +127,9 @@ def reextract_headers(library_id: int | None = None) -> dict:
     from ..fields import extract
     from ..resolve import record_header_values
 
-    frames = Frame.objects.exclude(status__in=[FrameStatus.PENDING, FrameStatus.ERROR, FrameStatus.IGNORED])
+    frames = Frame.objects.exclude(
+        status__in=[FrameStatus.PENDING, FrameStatus.ERROR, FrameStatus.IGNORED, *BIN]
+    )
     if library_id is not None:
         frames = frames.filter(copies__library_id=library_id).distinct()
     shas = list(frames.values_list("pk", flat=True))

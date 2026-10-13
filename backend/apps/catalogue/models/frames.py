@@ -45,6 +45,8 @@ class FrameStatus(models.TextChoices):
     MISSING = "missing"
     IGNORED = "ignored"
     ERROR = "error"
+    BINNED = "binned"  # in the bin (spec 011): moved to the library's quarantine, or only hidden
+    DELETED = "deleted"  # its file is gone; the record stays for history
 
 
 class ClassificationSource(models.TextChoices):
@@ -99,6 +101,16 @@ class Frame(models.Model):
     first_seen_at = models.DateTimeField()
     catalogued_at = models.DateTimeField(null=True, blank=True)
 
+    # the bin (spec 011): why and when it went, by whom, and when its file is deleted (none: only hidden)
+    binned_at = models.DateTimeField(null=True, blank=True)
+    bin_reason = models.TextField(blank=True, default="")
+    binned_by = models.CharField(max_length=150, blank=True, default="")
+    purge_after = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    binned_dataset = models.ForeignKey(  # the dataset it left, so history (stats) can still count it
+        "catalogue.Dataset", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
     class Meta:
         indexes = [
             models.Index(fields=["dataset", "date_obs_utc"], name="frame_dataset_time_idx"),
@@ -124,6 +136,9 @@ class Copy(models.Model):
     first_seen_at = models.DateTimeField()
     last_seen_at = models.DateTimeField()
     missing_since = models.DateTimeField(null=True, blank=True)
+    binned_from = models.CharField(
+        max_length=2000, null=True, blank=True, help_text="where it was before the bin moved it (to restore)"
+    )
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["library", "rel_path"], name="copy_unique_path")]

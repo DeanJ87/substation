@@ -37,10 +37,13 @@ class LibraryOut(Schema):
     frame_count: int
     sweep_interval_active_s: int
     sweep_interval_idle_s: int
+    allow_delete: bool = False  # SubStation may move binned files to quarantine and delete them (spec 011)
+    writable: bool = False  # the library is mounted so SubStation can write to it
 
 
 class LibraryIn(Schema):
     enabled: bool | None = None
+    allow_delete: bool | None = None
     site: SiteSchema | None = None
     sweep_interval_active_s: int | None = None
     sweep_interval_idle_s: int | None = None
@@ -58,6 +61,8 @@ def _library_out(lib: Library, count: int) -> LibraryOut:
         frame_count=count,
         sweep_interval_active_s=lib.sweep_interval_active_s,
         sweep_interval_idle_s=lib.sweep_interval_idle_s,
+        allow_delete=lib.allow_delete,
+        writable=os.access(lib.mount_path, os.W_OK),
     )
 
 
@@ -79,6 +84,8 @@ def patch_library(request, id: int, body: LibraryIn):  # noqa: A002
     data = body.dict(exclude_unset=True)
     if "enabled" in data and data["enabled"] is not None:
         lib.enabled = data["enabled"]
+    if data.get("allow_delete") is not None:
+        lib.allow_delete = data["allow_delete"]
     if data.get("site") is not None:
         site = data["site"]
         if site.get("lat") is not None and not -90 <= site["lat"] <= 90:
@@ -146,7 +153,7 @@ class RegradePreviewOut(Schema):
     by_change: dict[str, int]
 
 
-EDITABLE = {"calibration", "grading", "stacking", "notifications", "queue", "post", "paths"}
+EDITABLE = {"calibration", "grading", "stacking", "notifications", "queue", "post", "paths", "bin"}
 CHOICES = {
     ("stacking", "rejection"): {"winsorized", "sigma", "linear"},
     ("stacking", "weighting"): {"grade", "snr", "equal"},
@@ -174,6 +181,12 @@ def _clean_processing(data: dict) -> dict:
                     raise ApiError(422, "invalid", f"The {k} address must start with http:// or https://.")
             if any(e not in EVENTS for e in values.get("events") or []):
                 raise ApiError(422, "invalid", "Unknown notification event.")
+        if section == "bin":
+            for k, v in values.items():
+                if k not in ("auto_bin_rejected_days", "purge_after_days") or not isinstance(v, int) or v < 0:
+                    raise ApiError(422, "invalid", "Days must be a whole number, 0 or more.")
+            if values.get("purge_after_days") == 0:
+                raise ApiError(422, "invalid", "Keep binned files at least a day before they're deleted.")
         for k, v in values.items():
             if (section, k) in CHOICES and v not in CHOICES[(section, k)]:
                 raise ApiError(

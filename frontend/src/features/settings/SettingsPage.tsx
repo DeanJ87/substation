@@ -4,6 +4,7 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, type ReactNode } from 'react'
 import { Appearance } from './Appearance'
+import { Bin } from './Bin'
 import { DraftProvider, useSettings } from './draft'
 import { IgnoreRules } from './IgnoreRules'
 import { PathPatterns } from './PathPatterns'
@@ -29,7 +30,7 @@ const TABS: Tab[] = [
   {
     id: 'library',
     label: 'Library',
-    sections: ['folders', 'paths', 'sources', 'patterns', 'ignored'],
+    sections: ['folders', 'paths', 'sources', 'patterns', 'ignored', 'bin'],
     body: (
       <>
         <Folders />
@@ -37,6 +38,7 @@ const TABS: Tab[] = [
         <MetadataSources />
         <PathPatterns />
         <IgnoreRules />
+        <Bin />
       </>
     ),
   },

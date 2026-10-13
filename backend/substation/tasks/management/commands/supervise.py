@@ -198,6 +198,15 @@ class Command(BaseCommand):
                     auto_stacks()
                 except Exception:  # noqa: BLE001
                     log.exception("Automatic stacks failed")
+                try:  # the bin's daily tidy (spec 011): bin long-rejected subs, delete what's past its date
+                    from apps.catalogue.services.binning import tidy_due
+                    from apps.ingest.tasks.bin import tidy_bin
+                    from substation.tasks import enqueue as _enqueue
+
+                    if not os.environ.get("SUBSTATION_ONLY_QUEUES") and tidy_due():
+                        _enqueue(tidy_bin, dedupe_key="tidy-bin")
+                except Exception:  # noqa: BLE001
+                    log.exception("Queueing the bin's tidy failed")
                 last_measure = time.monotonic()
             close_old_connections()
             time.sleep(1)

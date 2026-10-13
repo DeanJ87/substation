@@ -168,6 +168,185 @@
     "title": "AnnotationsOut",
     "type": "object"
    },
+   "BinIn": {
+    "properties": {
+     "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+     },
+     "sha256s": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Sha256S",
+      "type": "array"
+     }
+    },
+    "required": [
+     "sha256s"
+    ],
+    "title": "BinIn",
+    "type": "object"
+   },
+   "BinListOut": {
+    "properties": {
+     "auto_bin_rejected_days": {
+      "title": "Auto Bin Rejected Days",
+      "type": "integer"
+     },
+     "bytes_in_quarantine": {
+      "title": "Bytes In Quarantine",
+      "type": "integer"
+     },
+     "deleted": {
+      "title": "Deleted",
+      "type": "integer"
+     },
+     "hidden": {
+      "title": "Hidden",
+      "type": "integer"
+     },
+     "moved": {
+      "title": "Moved",
+      "type": "integer"
+     },
+     "purge_after_days": {
+      "title": "Purge After Days",
+      "type": "integer"
+     },
+     "rows": {
+      "items": {
+       "$ref": "#/components/schemas/BinRow"
+      },
+      "title": "Rows",
+      "type": "array"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "total",
+     "moved",
+     "hidden",
+     "bytes_in_quarantine",
+     "deleted",
+     "auto_bin_rejected_days",
+     "purge_after_days",
+     "rows"
+    ],
+    "title": "BinListOut",
+    "type": "object"
+   },
+   "BinOut": {
+    "properties": {
+     "binned": {
+      "default": 0,
+      "title": "Binned",
+      "type": "integer"
+     },
+     "hidden": {
+      "default": 0,
+      "title": "Hidden",
+      "type": "integer"
+     },
+     "moved": {
+      "default": 0,
+      "title": "Moved",
+      "type": "integer"
+     },
+     "not_restored": {
+      "default": 0,
+      "title": "Not Restored",
+      "type": "integer"
+     },
+     "restored": {
+      "default": 0,
+      "title": "Restored",
+      "type": "integer"
+     }
+    },
+    "title": "BinOut",
+    "type": "object"
+   },
+   "BinRow": {
+    "properties": {
+     "binned_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Binned At"
+     },
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "frame_type": {
+      "title": "Frame Type",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "purge_after": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Purge After"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "sha256": {
+      "title": "Sha256",
+      "type": "string"
+     },
+     "size_bytes": {
+      "title": "Size Bytes",
+      "type": "integer"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     }
+    },
+    "required": [
+     "sha256",
+     "name",
+     "frame_type",
+     "target",
+     "reason",
+     "by",
+     "binned_at",
+     "purge_after",
+     "size_bytes"
+    ],
+    "title": "BinRow",
+    "type": "object"
+   },
    "BlockingOut": {
     "properties": {
      "collection": {
@@ -3213,6 +3392,17 @@
    },
    "LibraryIn": {
     "properties": {
+     "allow_delete": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Allow Delete"
+     },
      "enabled": {
       "anyOf": [
        {
@@ -3262,6 +3452,11 @@
    },
    "LibraryOut": {
     "properties": {
+     "allow_delete": {
+      "default": false,
+      "title": "Allow Delete",
+      "type": "boolean"
+     },
      "enabled": {
       "title": "Enabled",
       "type": "boolean"
@@ -3308,6 +3503,11 @@
      "sweep_interval_idle_s": {
       "title": "Sweep Interval Idle S",
       "type": "integer"
+     },
+     "writable": {
+      "default": false,
+      "title": "Writable",
+      "type": "boolean"
      }
     },
     "required": [
@@ -3341,6 +3541,11 @@
        }
       ],
       "title": "Avg Sqm"
+     },
+     "binned": {
+      "default": 0,
+      "title": "Binned",
+      "type": "integer"
      },
      "by_filter": {
       "additionalProperties": {
@@ -8371,6 +8576,157 @@
  },
  "openapi": "3.1.0",
  "paths": {
+  "/bin": {
+   "get": {
+    "operationId": "apps_catalogue_api_bin_list_bin",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BinListOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "List Bin",
+    "tags": [
+     "catalogue"
+    ]
+   },
+   "post": {
+    "description": "Bin files by hand: moved to their library's quarantine where SubStation may delete, else hidden.",
+    "operationId": "apps_catalogue_api_bin_bin_files",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BinIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BinOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Bin Files",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/bin/restore": {
+   "post": {
+    "operationId": "apps_catalogue_api_bin_restore_files",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BinIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BinOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Restore Files",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/bin/tidy": {
+   "post": {
+    "description": "Run the daily tidy now: bin long-rejected subs, delete what's past its date.",
+    "operationId": "apps_catalogue_api_bin_tidy_now",
+    "parameters": [],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Accepted"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Tidy Now",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/built-masters/{id}/preview": {
    "get": {
     "operationId": "apps_processing_api_calibration_built_preview",
@@ -10081,6 +10437,44 @@
     ]
    }
   },
+  "/datasets/{id}/bin-rejected": {
+   "post": {
+    "description": "Every rejected sub in the dataset (by the grader or by hand), unless marked Keep.",
+    "operationId": "apps_catalogue_api_bin_bin_rejected",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BinOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Bin Rejected",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/datasets/{id}/nights": {
    "get": {
     "operationId": "apps_catalogue_api_nights_dataset_nights",
@@ -11750,6 +12144,44 @@
      }
     ],
     "summary": "Delete Ignore Rule",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/ignore-rules/{id}/bin": {
+   "post": {
+    "description": "The files an ignore rule sets aside (e.g. 8-bit captures), into the bin.",
+    "operationId": "apps_catalogue_api_bin_bin_ignored",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BinOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Bin Ignored",
     "tags": [
      "catalogue"
     ]

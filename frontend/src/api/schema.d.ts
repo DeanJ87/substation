@@ -4,6 +4,64 @@
  */
 
 export interface paths {
+    "/bin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bin */
+        get: operations["apps_catalogue_api_bin_list_bin"];
+        put?: never;
+        /**
+         * Bin Files
+         * @description Bin files by hand: moved to their library's quarantine where SubStation may delete, else hidden.
+         */
+        post: operations["apps_catalogue_api_bin_bin_files"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bin/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Files */
+        post: operations["apps_catalogue_api_bin_restore_files"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bin/tidy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tidy Now
+         * @description Run the daily tidy now: bin long-rejected subs, delete what's past its date.
+         */
+        post: operations["apps_catalogue_api_bin_tidy_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/built-masters/{id}/preview": {
         parameters: {
             query?: never;
@@ -573,6 +631,26 @@ export interface paths {
         get: operations["apps_catalogue_api_get_dataset"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/datasets/{id}/bin-rejected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bin Rejected
+         * @description Every rejected sub in the dataset (by the grader or by hand), unless marked Keep.
+         */
+        post: operations["apps_catalogue_api_bin_bin_rejected"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1186,6 +1264,26 @@ export interface paths {
         post?: never;
         /** Delete Ignore Rule */
         delete: operations["apps_catalogue_api_ignore_delete_ignore_rule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ignore-rules/{id}/bin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bin Ignored
+         * @description The files an ignore rule sets aside (e.g. 8-bit captures), into the bin.
+         */
+        post: operations["apps_catalogue_api_bin_bin_ignored"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2373,6 +2471,84 @@ export interface components {
             /** Solved */
             solved: boolean;
         };
+        /** BinIn */
+        BinIn: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Sha256S */
+            sha256s: string[];
+        };
+        /** BinListOut */
+        BinListOut: {
+            /** Auto Bin Rejected Days */
+            auto_bin_rejected_days: number;
+            /** Bytes In Quarantine */
+            bytes_in_quarantine: number;
+            /** Deleted */
+            deleted: number;
+            /** Hidden */
+            hidden: number;
+            /** Moved */
+            moved: number;
+            /** Purge After Days */
+            purge_after_days: number;
+            /** Rows */
+            rows: components["schemas"]["BinRow"][];
+            /** Total */
+            total: number;
+        };
+        /** BinOut */
+        BinOut: {
+            /**
+             * Binned
+             * @default 0
+             */
+            binned: number;
+            /**
+             * Hidden
+             * @default 0
+             */
+            hidden: number;
+            /**
+             * Moved
+             * @default 0
+             */
+            moved: number;
+            /**
+             * Not Restored
+             * @default 0
+             */
+            not_restored: number;
+            /**
+             * Restored
+             * @default 0
+             */
+            restored: number;
+        };
+        /** BinRow */
+        BinRow: {
+            /** Binned At */
+            binned_at: string | null;
+            /** By */
+            by: string;
+            /** Frame Type */
+            frame_type: string;
+            /** Name */
+            name: string;
+            /** Purge After */
+            purge_after: string | null;
+            /** Reason */
+            reason: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Target */
+            target: string | null;
+        };
         /** BlockingOut */
         BlockingOut: {
             /** Collection */
@@ -3393,6 +3569,8 @@ export interface components {
         };
         /** LibraryIn */
         LibraryIn: {
+            /** Allow Delete */
+            allow_delete?: boolean | null;
             /** Enabled */
             enabled?: boolean | null;
             site?: components["schemas"]["SiteSchema"] | null;
@@ -3403,6 +3581,11 @@ export interface components {
         };
         /** LibraryOut */
         LibraryOut: {
+            /**
+             * Allow Delete
+             * @default false
+             */
+            allow_delete: boolean;
             /** Enabled */
             enabled: boolean;
             /** Frame Count */
@@ -3422,6 +3605,11 @@ export interface components {
             sweep_interval_active_s: number;
             /** Sweep Interval Idle S */
             sweep_interval_idle_s: number;
+            /**
+             * Writable
+             * @default false
+             */
+            writable: boolean;
         };
         /** LibraryStatsOut */
         LibraryStatsOut: {
@@ -3429,6 +3617,11 @@ export interface components {
             accepted_hours: number;
             /** Avg Sqm */
             avg_sqm: number | null;
+            /**
+             * Binned
+             * @default 0
+             */
+            binned: number;
             /** By Filter */
             by_filter: {
                 [key: string]: number;
@@ -5050,6 +5243,99 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    apps_catalogue_api_bin_list_bin: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BinListOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_bin_bin_files: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BinIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BinOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_bin_restore_files: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BinIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BinOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_bin_tidy_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     apps_processing_api_calibration_built_preview: {
         parameters: {
             query?: {
@@ -5942,6 +6228,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatasetOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_bin_bin_rejected: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BinOut"];
                 };
             };
         };
@@ -6842,6 +7150,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    apps_catalogue_api_bin_bin_ignored: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BinOut"];
+                };
             };
         };
     };

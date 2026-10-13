@@ -34,6 +34,7 @@ export type Processing = {
   notifications: { ntfy: string; webhook: string; events: string[] }
   queue: { priority_mode: string }
   paths: { map: { from: string; to: string }[] }
+  bin: { auto_bin_rejected_days: number; purge_after_days: number }
   post: {
     enabled: boolean
     steps: PostStep[]
@@ -68,6 +69,8 @@ const LABELS: Record<string, string> = {
   'stacking.auto_every_n': 'New subs per automatic master',
   'stacking.format': 'Output',
   'paths.map': 'File paths',
+  'bin.auto_bin_rejected_days': 'Bin rejected subs after (days)',
+  'bin.purge_after_days': 'Delete binned files after (days)',
   'post.enabled': 'Post-process new masters',
   'post.steps': 'Post-processing steps',
   'post.gpu': 'Use the GPU',

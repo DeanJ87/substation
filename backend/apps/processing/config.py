@@ -32,6 +32,8 @@ DEFAULTS: dict = {
     "notifications": {"ntfy": "", "webhook": "", "events": ["master_finished", "job_failed"]},
     # 008-DR-05: new subs jump the queue (so tonight's session is graded as it comes in), or everything in order
     "queue": {"priority_mode": "new_first"},
+    # the bin (spec 011): rejected subs binned after this many days (0: never), binned files deleted after this
+    "bin": {"auto_bin_rejected_days": 30, "purge_after_days": 30},
     # owner 2026-10-12: show files where people can open them, not as downloads. Each entry maps a server path
     # prefix to how it looks from a viewer's machine (e.g. /data/library/organised -> Z:\\Photography\\Deep Sky\\Organised);
     # a browser can override these for itself.

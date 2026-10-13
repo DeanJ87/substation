@@ -8,6 +8,8 @@
 #   SUBSTATION_CATALOGUES  Siril's offline star catalogues, for plate solving
 #   SUBSTATION_LIBRARY     the organised image library, mounted read-only
 #   SUBSTATION_ARCHIVE     a second, archive library, mounted read-only
+#   SUBSTATION_LIBRARY_MODE  "ro" (default) or "rw": rw lets the bin (spec 011) move files to quarantine and delete
+#                          them, in libraries also switched to "SubStation may delete files here" in Settings
 #   SUBSTATION_ADMIN_USERNAME / SUBSTATION_ADMIN_PASSWORD, SUBSTATION_HELPER_TOKEN
 name: substation
 
@@ -17,9 +19,9 @@ x-base: &base
 
 x-station: &station ${SUBSTATION_STATION:?set SUBSTATION_STATION}:/data/substation
 x-catalogues: &catalogues ${SUBSTATION_CATALOGUES:?set SUBSTATION_CATALOGUES}:/home/substation/.local/share/kstars:ro
-# read-only: SubStation never writes to an image library
-x-library: &library ${SUBSTATION_LIBRARY:?set SUBSTATION_LIBRARY}:/data/library/organised:ro
-x-archive: &archive ${SUBSTATION_ARCHIVE:?set SUBSTATION_ARCHIVE}:/data/library/archive:ro
+# read-only unless SUBSTATION_LIBRARY_MODE=rw: then only the bin writes, and only where Settings allows it
+x-library: &library ${SUBSTATION_LIBRARY:?set SUBSTATION_LIBRARY}:/data/library/organised:${SUBSTATION_LIBRARY_MODE:-ro}
+x-archive: &archive ${SUBSTATION_ARCHIVE:?set SUBSTATION_ARCHIVE}:/data/library/archive:${SUBSTATION_LIBRARY_MODE:-ro}
 
 services:
   frontend:

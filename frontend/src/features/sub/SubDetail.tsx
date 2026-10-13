@@ -3,7 +3,8 @@
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Button, ErrorState, PageLoading } from '../../components/ui'
+import { Button, ConfirmButton, ErrorState, PageLoading } from '../../components/ui'
+import { useBinFiles } from '../settings/Bin'
 import { VerdictIcon } from '../../components/VerdictBadge'
 import { nightText } from '../format'
 import { previewUrl, useLiveRefresh, useProcessing, useVerdict } from '../v2/hooks'
@@ -28,6 +29,7 @@ export function SubDetail() {
   useLiveRefresh()
   const { sha } = route.useParams()
   const q = useProcessing(sha)
+  const bin = useBinFiles()
   const [mode, setMode] = useState<'auto' | 'stars' | 'fwhm'>('auto')
   const [look, setLook] = useState<LookMode | null>(null)
   const [annotate, setAnnotate] = useAnnotateSwitch()
@@ -131,6 +133,17 @@ export function SubDetail() {
           >
             Next <kbd>K</kbd>
           </Button>
+          <ConfirmButton
+            question="Bin this sub?"
+            confirm="Bin"
+            onConfirm={() =>
+              bin.mutate([sha], {
+                onSuccess: () => n.next && navigate({ to: '/subs/$sha', params: { sha: n.next } }),
+              })
+            }
+          >
+            Bin
+          </ConfirmButton>
         </div>
       </header>
       <section className={`${v.card} ${tb.flush}`}>

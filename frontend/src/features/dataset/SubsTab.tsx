@@ -2,7 +2,11 @@
 // range, Ctrl/Cmd-A selects the session; the bulk bar and A, W, R apply to the selection; U reverts.
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
-import { Button } from '../../components/ui'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api, unwrap } from '../../api/client'
+import { toast } from '../../components/Toasts'
+import { Button, ConfirmButton } from '../../components/ui'
+import { binMessage, useBinFiles } from '../settings/Bin'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
@@ -52,6 +56,15 @@ export function SubsTab({
   const verdict = useVerdict()
   const navigate = useNavigate()
   const stack = useStartStack(dataset.id)
+  const qc = useQueryClient()
+  const bin = useBinFiles()
+  const binRejected = useMutation({
+    mutationFn: async () =>
+      unwrap(await api.POST('/datasets/{id}/bin-rejected', { params: { path: { id: dataset.id } } })),
+    onSuccess: (r) => toast(binMessage(r)),
+    onSettled: () => void qc.invalidateQueries(),
+    meta: { failed: "Couldn't bin the rejected subs" },
+  })
   // 004 T009: a master of exactly these subs, whatever their grades (included and excluded by hand)
   // the Masters tab opens at once, with the new master waiting there
   const stackSelected = () => {
@@ -176,7 +189,20 @@ export function SubsTab({
             </button>
           )}
         </div>
-        <span className={v.muted}>Sort: capture time</span>
+        <span className={v.actions}>
+          {count('reject') > 0 && (
+            <ConfirmButton
+              question={
+                <>Bin all {count('reject')} rejected subs? You can restore them from Settings → Bin.</>
+              }
+              confirm="Bin them"
+              onConfirm={() => binRejected.mutate()}
+            >
+              Bin {count('reject')} rejected
+            </ConfirmButton>
+          )}
+          <span className={v.muted}>Sort: capture time</span>
+        </span>
       </div>
 
       {selected.size > 0 && (
@@ -196,6 +222,20 @@ export function SubsTab({
             <Button onClick={() => apply('keep')}>
               <VerdictIcon state="down" size={14} title="" /> Down-weight <kbd>W</kbd>
             </Button>
+            <ConfirmButton
+              question={
+                <>
+                  Bin {selected.size} sub{selected.size === 1 ? '' : 's'}?
+                </>
+              }
+              confirm="Bin"
+              onConfirm={() => {
+                bin.mutate([...selected])
+                setSelected(new Set())
+              }}
+            >
+              Bin
+            </ConfirmButton>
             <Button onClick={() => apply('reject')}>
               <VerdictIcon state="reject" size={14} title="" /> Reject <kbd>R</kbd>
             </Button>

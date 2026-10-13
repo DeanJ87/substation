@@ -141,7 +141,9 @@ def mark_frames_missing(library_id: int, before: datetime) -> int:
             copies__library_id=library_id, copies__present=False, copies__missing_since__lt=before
         )
         .exclude(copies__present=True)
-        .exclude(status__in=[FrameStatus.MISSING, FrameStatus.IGNORED])
+        .exclude(
+            status__in=[FrameStatus.MISSING, FrameStatus.IGNORED, FrameStatus.BINNED, FrameStatus.DELETED]
+        )
         .distinct()
     )
     n = 0
