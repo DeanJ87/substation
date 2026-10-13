@@ -184,10 +184,15 @@ class Watcher:
                 if not holding:
                     self.stop.wait(0.5)
                     continue
-                libs = [lib for lib in discover_libraries() if lib.enabled]
-                self._start_observers(libs)
-                self._drain_events()
-                self._due_sweeps(libs)
+                try:
+                    libs = [lib for lib in discover_libraries() if lib.enabled]
+                    self._start_observers(libs)
+                    self._drain_events()
+                    self._due_sweeps(libs)
+                except OperationalError as e:  # a locked database: wait it out, don't exit (2026-10-13)
+                    log.warning("Watcher couldn't reach the database (%s); trying again shortly", e)
+                    self.stop.wait(5)
+                    continue
                 self.stop.wait(0.5)
         finally:
             self.stop.set()

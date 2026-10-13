@@ -13,6 +13,10 @@ from .models import ResourceSample, Task, TaskStatus, Worker, WorkerState
 log = logging.getLogger(__name__)
 
 STALE_HEARTBEAT_S = 120  # a disk stall (QLC NVMe under two builds, 2026-10-12) can delay heartbeats a minute
+# a stack or master build is an hour of work: only take it back after a long silence. A disk stall that locked the
+# database for 4 minutes made a running stack look dead; it was requeued while still running and a second stack
+# started beside it (2026-10-13)
+STALE_HEAVY_S = 900
 SAMPLE_RETENTION = timedelta(hours=1)  # the plan keeps an hour; Activity draws the last 15 minutes
 FINISHED_RETENTION = timedelta(days=7)
 
@@ -24,8 +28,14 @@ def requeue_orphans(lenient: bool = False) -> int:
     `lenient` (a supervisor's first minutes): a redeploy replaces every container at once, and the new ones have
     new names, so the old containers' tasks only show up here, as orphans. They were stopped, not crashed: put
     them all back rather than fail the single-attempt ones (master builds) (2026-10-12)."""
-    cutoff = timezone.now() - timedelta(seconds=STALE_HEARTBEAT_S)
-    stale = Task.objects.filter(status=TaskStatus.RUNNING, heartbeat_at__lt=cutoff)
+    from django.db.models import Q
+
+    now = timezone.now()
+    cutoff = now - timedelta(seconds=STALE_HEARTBEAT_S)
+    heavy_cutoff = now - timedelta(seconds=STALE_HEAVY_S)
+    stale = Task.objects.filter(status=TaskStatus.RUNNING).filter(
+        Q(heartbeat_at__lt=heavy_cutoff) | (Q(heartbeat_at__lt=cutoff) & ~Q(slot="siril_heavy"))
+    )
     over = stale.filter(attempts__gte=F("max_attempts")) if not lenient else stale.none()
     n_failed = over.update(
         status=TaskStatus.FAILED,

@@ -11,7 +11,7 @@ import traceback
 from datetime import timedelta
 
 import psutil
-from django.db import close_old_connections
+from django.db import OperationalError, close_old_connections
 from django.utils import timezone
 
 from . import Cancelled, Reschedule, current_task_id
@@ -155,10 +155,18 @@ class WorkerProcess:
         done = 0
         while not self.stopping.is_set():
             close_old_connections()
-            task = claim(self.worker_id, self._heavy_slots())
+            try:
+                task = claim(self.worker_id, self._heavy_slots())
+                if task is None:
+                    Worker.objects.filter(pk=self.worker_id).update(state=WorkerState.IDLE, current_task=None)
+                    self._queue_changed(final=True)
+            except OperationalError as e:
+                # the database can be locked for minutes while the disk it shares with stacks stalls: wait it out
+                # rather than exit (an exit restarts every worker and orphans what they were running, 2026-10-13)
+                log.warning("Couldn't reach the queue (%s); trying again shortly", e)
+                self.stopping.wait(5)
+                continue
             if task is None:
-                Worker.objects.filter(pk=self.worker_id).update(state=WorkerState.IDLE, current_task=None)
-                self._queue_changed(final=True)
                 if max_tasks is not None:
                     break
                 self.stopping.wait(IDLE_POLL_S)

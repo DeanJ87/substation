@@ -24,3 +24,7 @@
 - **005-DR-19** (2026-10-13): A stack whose subs' calibrated copies were pruned from the cache calibrates them in
   batches: subs sharing their masters are one sequence and one Siril command (every thread), not one call each; the
   results go back into the cache. A group Siril can't do in one go falls back to one at a time.
+- **005-DR-20** (2026-10-13): A worker or the watcher that finds the database locked waits and tries again; it never
+  exits over it (an exit restarted every worker and orphaned a running stack). A stacking-slot task is only taken
+  back after 15 minutes without a heartbeat (light tasks: 2), so a disk stall can't make a running stack look dead
+  and start a second one beside it.
