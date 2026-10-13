@@ -20,3 +20,6 @@
 - [X] W15 (owner 2026-10-13) `/work/queue?kind=` and toggling chips in Activity (005-DR-15)
 - [X] W16 (owner 2026-10-13) `heavy_memory` sets all cores and 80% for stacking jobs (005-DR-16); deploy script
   waits for heavy tasks and keeps a paused queue paused (005-DR-17)
+- [X] W17 (owner 2026-10-13) `stack_threads`/`stack_mem_ratio` settings (migration, API, Workers UI); worker
+  container sizes as Compose variables (005-DR-18)
+- [X] W18 (owner 2026-10-13) `calibrate_batch` for a stack's pruned subs, refilling the cache (005-DR-19)

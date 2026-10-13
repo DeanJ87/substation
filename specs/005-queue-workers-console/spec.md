@@ -17,3 +17,10 @@
   and 60%.)
 - **005-DR-17**: A deploy waits for a running stack or master build to finish (up to an hour) before restarting any
   worker, and leaves a paused queue paused.
+- **005-DR-18** (2026-10-13): Resources fit the installation, not one machine: Settings → Workers sets Siril's
+  threads and memory share while stacking (blank: every core, 80%); the Compose stack takes the worker containers'
+  count, workers each, CPUs and memory cap as variables (`SUBSTATION_WORKER_REPLICAS`, `SUBSTATION_WORKERS_EACH`,
+  `SUBSTATION_WORKER_CPUS`, `SUBSTATION_WORKER_MEMORY`), defaulting to 2 × 2 workers, 3 CPUs, 7 GB.
+- **005-DR-19** (2026-10-13): A stack whose subs' calibrated copies were pruned from the cache calibrates them in
+  batches: subs sharing their masters are one sequence and one Siril command (every thread), not one call each; the
+  results go back into the cache. A group Siril can't do in one go falls back to one at a time.

@@ -290,11 +290,15 @@ class _Live:
 
 
 def _inputs(m: Master, members: list[MasterMember], work: Path) -> dict[int, MasterMember]:
+    """Each member's calibrated sub, linked as work/sub_NNNNN.fit. Subs whose cached calibration was pruned are
+    calibrated again in batches (calibrate_batch) and put back in the cache, so the next stack finds them."""
     from .models import CalibrationMatch, MatchState
-    from .tasks import calibrate_file, source_path
+    from .tasks import calibrate_batch, calibrate_file, source_path
 
     order: dict[int, MasterMember] = {}
     redo = work / "recal"
+    todo: list = []  # (frame, match, source, where the result goes)
+    links: list[tuple[Path, Path]] = []  # (result, sub_NNNNN link) for those
     for i, mm in enumerate(members, start=1):
         dest = work / f"sub_{i:05d}.fit"
         cal = Path(mm.frame.measurement.calibrated_path) if mm.frame.measurement.calibrated_path else None
@@ -307,12 +311,21 @@ def _inputs(m: Master, members: list[MasterMember], work: Path) -> dict[int, Mas
                 mm.included, mm.reason = False, "no copy on disk" if src is None else "no longer matched"
                 mm.save(update_fields=["included", "reason"])
                 continue
-            redo.mkdir(exist_ok=True)
-            calibrate_file(mm.frame, cm, src, redo, dest)
+            out = cal if cal is not None else redo / f"sub_{i:05d}.fit"  # back into the cache where it was
+            todo.append((mm.frame, cm, src, out))
+            links.append((out, dest))
         order[i] = mm
-        if i % 10 == 0:
-            _step(m, f"Calibrate ({i} of {len(members)})", 0.1 + 0.1 * i / len(members))
-    shutil.rmtree(redo, ignore_errors=True)
+    if todo:
+        _step(m, f"Calibrate ({len(todo)} subs)", 0.1)
+        redo.mkdir(exist_ok=True)
+        left = {f.pk for f in calibrate_batch(todo, redo)}
+        for k, (frame, cm, src, out) in enumerate(todo, start=1):
+            if frame.pk in left:  # one at a time, as before
+                calibrate_file(frame, cm, src, redo, out)
+            if k % 10 == 0:
+                _step(m, f"Calibrate ({k} of {len(todo)})", 0.1 + 0.1 * k / len(todo))
+        for out, dest in links:
+            os.symlink(out, dest)
     return order
 
 

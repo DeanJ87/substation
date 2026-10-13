@@ -364,15 +364,25 @@ def engine() -> Siril:
 @contextlib.contextmanager
 def heavy_memory(share: float | None = None):  # noqa: ANN201
     """For a stacking-slot job (integrate, combine, build a master): Siril may use at least `share` of free memory
-    (SUBSTATION_SIRIL_HEAVY_MEM, default 0.8) and every CPU this container has while it runs, then goes back to the
+    (Settings → Workers, else SUBSTATION_SIRIL_HEAVY_MEM, default 0.8) and every CPU this container has (or the
+    stacking threads set there) while it runs, then goes back to the
     per-worker share and threads. There is one stacking slot, so this can't overcommit the way giving every worker
     that much would (005 T003). With 2 threads and 60% a 135-sub stack ran over an hour (2026-10-13)."""
     global _heavy_active
-    share = share if share is not None else float(os.environ.get("SUBSTATION_SIRIL_HEAVY_MEM", "0.8"))
+    stack_threads, stack_ratio = None, None
+    try:  # Settings → Workers → while stacking (005-DR-16), for this installation's hardware
+        from apps.libraries.models import InstallationSettings
+
+        st = InstallationSettings.load()
+        stack_threads, stack_ratio = st.stack_threads, st.stack_mem_ratio
+    except Exception:  # noqa: BLE001 (no database, e.g. the engine's own tests)
+        pass
+    if share is None:
+        share = stack_ratio or float(os.environ.get("SUBSTATION_SIRIL_HEAVY_MEM", "0.8"))
     eng = engine()
     before, threads_before = eng.mem_ratio, eng.threads
     want = max(before, share)
-    cores = max(threads_before, os.cpu_count() or threads_before)
+    cores = stack_threads or max(threads_before, os.cpu_count() or threads_before)
     if want != before:
         eng.run(f"setmem {want}", check=False)
         eng.mem_ratio = want

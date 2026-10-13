@@ -11,6 +11,10 @@
 #   SUBSTATION_LIBRARY_MODE  "ro" (default) or "rw": rw lets the bin (spec 011) move files to quarantine and delete
 #                          them, in libraries also switched to "SubStation may delete files here" in Settings
 #   SUBSTATION_ADMIN_USERNAME / SUBSTATION_ADMIN_PASSWORD, SUBSTATION_HELPER_TOKEN
+# Sized for this hardware, with defaults (005-DR-18):
+#   SUBSTATION_WORKER_REPLICAS  worker containers (2)      SUBSTATION_WORKERS_EACH  workers in each (2)
+#   SUBSTATION_WORKER_CPUS      CPUs each may use (3)     SUBSTATION_WORKER_MEMORY memory cap each (7g)
+# Siril's threads and memory while stacking are in Settings → Workers.
 name: substation
 
 x-base: &base
@@ -61,7 +65,7 @@ services:
     cpu_shares: 512
     image: ghcr.io/deanj87/substation-worker:${SUBSTATION_TAG:-poc-substation}
     environment:
-      SUBSTATION_WORKERS: "2"           # per container; two containers (deploy.replicas) make four
+      SUBSTATION_WORKERS: ${SUBSTATION_WORKERS_EACH:-2}  # per container; × deploy.replicas
       SUBSTATION_SKIP_QUEUES: finish,finish_ctl  # post-processing runs on a helper (api_helper.py)
       SUBSTATION_SIRIL_THREADS: "2"
       SUBSTATION_SIRIL_MEM_RATIO: "0.25"
@@ -75,9 +79,9 @@ services:
     deploy:
       # scale out, not up: two containers, each capped, so a runaway Siril build takes down its own container,
       # not the one handling live subs. Stacking slots (Settings → Workers) are shared through the database.
-      replicas: 2
+      replicas: ${SUBSTATION_WORKER_REPLICAS:-2}
       resources:
-        limits: { cpus: "3", memory: 7g }
+        limits: { cpus: "${SUBSTATION_WORKER_CPUS:-3}", memory: "${SUBSTATION_WORKER_MEMORY:-7g}" }
 
 networks:
   internal: {}

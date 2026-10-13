@@ -57,6 +57,14 @@ class InstallationSettings(models.Model):
     siril_mem_ratio = models.FloatField(
         null=True, blank=True, help_text="share of free memory each Siril may use; null = 0.9 ÷ workers"
     )
+    stack_threads = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="Siril threads while a stack or master build runs; null = every core"
+    )
+    stack_mem_ratio = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="share of free memory while stacking; null = SUBSTATION_SIRIL_HEAVY_MEM (0.8)",
+    )
     work_used = models.JSONField(
         default=dict, blank=True, help_text="bytes in the work folder by part, measured by the supervisor"
     )

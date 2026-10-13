@@ -7056,6 +7056,28 @@
       ],
       "title": "Site Name"
      },
+     "stack_mem_ratio": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stack Mem Ratio"
+     },
+     "stack_threads": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stack Threads"
+     },
      "work_budget_gb": {
       "anyOf": [
        {
@@ -7088,6 +7110,11 @@
       "default": false,
       "title": "Can Edit",
       "type": "boolean"
+     },
+     "cores": {
+      "default": 1,
+      "title": "Cores",
+      "type": "integer"
      },
      "cpu_threads": {
       "title": "Cpu Threads",
@@ -7174,6 +7201,28 @@
        }
       ],
       "title": "Site Name"
+     },
+     "stack_mem_ratio": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stack Mem Ratio"
+     },
+     "stack_threads": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stack Threads"
      },
      "updated_by": {
       "anyOf": [

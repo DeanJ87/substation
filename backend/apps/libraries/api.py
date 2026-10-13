@@ -120,6 +120,9 @@ class SettingsOut(Schema):
     siril_threads: int | None = None
     siril_mem_ratio: float | None = None
     siril_mem_effective: float | None = None
+    stack_threads: int | None = None  # while stacking (005-DR-16); none: every core
+    stack_mem_ratio: float | None = None  # while stacking; none: 0.8
+    cores: int = 1  # what a worker container has
     updated_by: str | None
     processing: dict
     cpu_threads: int
@@ -140,6 +143,8 @@ class SettingsIn(Schema):
     work_budget_gb: float | None = None
     siril_threads: int | None = None
     siril_mem_ratio: float | None = None
+    stack_threads: int | None = None
+    stack_mem_ratio: float | None = None
 
 
 class SettingsPreviewIn(Schema):
@@ -262,6 +267,9 @@ def _out(s: InstallationSettings) -> SettingsOut:
         work_budget_gb=s.work_budget_gb or settings.STACK_WORK_BUDGET_GB,
         siril_threads=s.siril_threads,
         siril_mem_ratio=s.siril_mem_ratio,
+        stack_threads=s.stack_threads,
+        stack_mem_ratio=s.stack_mem_ratio,
+        cores=os.cpu_count() or 1,
         siril_mem_effective=_mem_effective(),
         updated_by=s.updated_by.get_username() if s.updated_by else None,
         processing={k: v for k, v in processing_settings().items() if k in EDITABLE},
@@ -301,6 +309,10 @@ def patch_settings(request, body: SettingsIn):  # type: ignore[no-untyped-def]
         raise ApiError(422, "invalid", f"Siril threads must be 1–{os.cpu_count() or 64}.")
     if data.get("siril_mem_ratio") is not None and not 0.05 <= data["siril_mem_ratio"] <= 0.9:
         raise ApiError(422, "invalid", "Memory share must be 5–90%.")
+    if data.get("stack_threads") is not None and not 1 <= data["stack_threads"] <= 256:
+        raise ApiError(422, "invalid", "Stacking threads must be 1–256.")
+    if data.get("stack_mem_ratio") is not None and not 0.1 <= data["stack_mem_ratio"] <= 0.95:
+        raise ApiError(422, "invalid", "Stacking memory share must be 10–95%.")
     if data.get("work_budget_gb") is not None and not 5 <= data["work_budget_gb"] <= 20000:
         raise ApiError(422, "invalid", "Work budget must be 5 GB–20 TB.")
     regrade = data.pop("regrade", False)

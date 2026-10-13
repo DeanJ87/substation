@@ -612,6 +612,9 @@ export function Workers() {
   const [budget, setBudget] = useState<number | null>(null)
   const [threads, setThreads] = useState<string | null>(null)
   const [mem, setMem] = useState<string | null>(null)
+  // while a stack or master build runs (005-DR-16): blank means every core and 80%
+  const [stackThreads, setStackThreads] = useState<string | null>(null)
+  const [stackMem, setStackMem] = useState<string | null>(null)
   const save = useSaveSettings("Couldn't apply the worker settings")
   const reset = () => {
     setCount(null)
@@ -619,10 +622,12 @@ export function Workers() {
     setBudget(null)
     setThreads(null)
     setMem(null)
+    setStackThreads(null)
+    setStackMem(null)
   }
   // the new values become the shown ones at once; a failure brings the edits back
   const apply = () => {
-    const was = { count, heavy, budget, threads, mem }
+    const was = { count, heavy, budget, threads, mem, stackThreads, stackMem }
     save.mutate(
       {
         ...(count != null ? { worker_count: count } : {}),
@@ -630,6 +635,8 @@ export function Workers() {
         ...(budget != null ? { work_budget_gb: budget } : {}),
         ...(threads != null ? { siril_threads: threads ? Number(threads) : null } : {}),
         ...(mem != null ? { siril_mem_ratio: mem ? Number(mem) / 100 : null } : {}),
+        ...(stackThreads != null ? { stack_threads: stackThreads ? Number(stackThreads) : null } : {}),
+        ...(stackMem != null ? { stack_mem_ratio: stackMem ? Number(stackMem) / 100 : null } : {}),
       },
       {
         onError: () => {
@@ -638,6 +645,8 @@ export function Workers() {
           setBudget(was.budget)
           setThreads(was.threads)
           setMem(was.mem)
+          setStackThreads(was.stackThreads)
+          setStackMem(was.stackMem)
         },
       },
     )
@@ -647,7 +656,14 @@ export function Workers() {
   const readOnly = !d.can_edit
   const workers = count ?? d.worker_count ?? d.workers_alive
   const slots = heavy ?? d.siril_heavy_slots
-  const dirty = count != null || heavy != null || budget != null || threads != null || mem != null
+  const dirty =
+    count != null ||
+    heavy != null ||
+    budget != null ||
+    threads != null ||
+    mem != null ||
+    stackThreads != null ||
+    stackMem != null
   return (
     <SettingsSection id="workers" title="Workers">
       <p className="muted">
@@ -711,6 +727,29 @@ export function Workers() {
             value={mem ?? (d.siril_mem_ratio != null ? Math.round(d.siril_mem_ratio * 100) : '')}
             disabled={readOnly}
             onChange={(e) => setMem(e.target.value)}
+          />
+        </label>
+        <label className={s.inline}>
+          Threads while stacking
+          <input
+            type="number"
+            min={1}
+            placeholder={`all: ${d.cores}`}
+            value={stackThreads ?? d.stack_threads ?? ''}
+            disabled={readOnly}
+            onChange={(e) => setStackThreads(e.target.value)}
+          />
+        </label>
+        <label className={s.inline}>
+          Memory while stacking (% of free)
+          <input
+            type="number"
+            min={10}
+            max={95}
+            placeholder="auto: 80"
+            value={stackMem ?? (d.stack_mem_ratio != null ? Math.round(d.stack_mem_ratio * 100) : '')}
+            disabled={readOnly}
+            onChange={(e) => setStackMem(e.target.value)}
           />
         </label>
       </div>

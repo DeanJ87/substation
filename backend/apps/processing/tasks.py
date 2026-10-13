@@ -359,6 +359,73 @@ def calibrate_file(frame: Frame, cm: CalibrationMatch, src: Path, tmp: Path, des
         p.unlink(missing_ok=True)
 
 
+def calibrate_batch(items: list[tuple[Frame, CalibrationMatch, Path, Path]], tmp: Path) -> list[Frame]:
+    """Calibrate many subs at once into their `dest`s: subs sharing their masters (and colour) are converted to one
+    sequence and calibrated by one Siril command, which uses every thread, instead of one Siril round trip each
+    (135 subs took 12 minutes that way, Siril a quarter busy, 2026-10-13). Returns the frames it couldn't do, for
+    calibrate_file one at a time. Changes Siril's directory."""
+    from apps.engine.siril import engine
+
+    from .calibration import one_row_order
+
+    groups: dict[tuple, list[tuple[Frame, CalibrationMatch, Path, Path]]] = {}
+    for it in items:
+        frame, cm = it[0], it[1]
+        key = (cm.dark_id, cm.flat_id, is_colour_frame(frame), planes(frame) == 3)
+        groups.setdefault(key, []).append(it)
+    left: list[Frame] = []
+    eng = engine()
+    for n, ((_dark, _flat, colour, rgb), group) in enumerate(groups.items()):
+        g = tmp / f"batch{n}"
+        shutil.rmtree(g, ignore_errors=True)
+        g.mkdir(parents=True)
+        try:
+            for j, (_f, _cm, src, _dest) in enumerate(group, start=1):
+                os.symlink(src, g / f"src_{j:05d}{src.suffix.lower()}")
+            eng.run(f"cd {g}")
+            eng.run("convert light -out=.", timeout=3600)  # any format → light_00001.fit …, in input order
+            lights = sorted(g.glob("light_[0-9]*.fit"))
+            if len(lights) != len(group):  # a file Siril couldn't read: do this group one at a time
+                left += [f for f, *_ in group]
+                continue
+            one_row_order(g, "light_")  # one row order, so one orientation of each master fits them all
+            td = _top_down(lights[0])
+            cm = group[0][1]
+            dark = oriented_master(master_fits(cm.dark), td) if cm.dark else None
+            flat = oriented_master(master_fits(cm.flat), td) if cm.flat else None
+            cfa = " -cfa -equalize_cfa -debayer" if colour and not rgb else ""
+            prefix = "pp_"
+            if dark and flat:
+                eng.run(f"calibrate light_ -dark={dark} -flat={flat} -cc=dark{cfa} -prefix=pp_", timeout=7200)
+            elif flat:  # 8-bit colour lights: the camera already removed the black level
+                eng.run(f"calibrate light_ -flat={flat}{cfa} -prefix=pp_", timeout=7200)
+            elif colour and not rgb:  # calibrated in the camera (Seestar): only debayer, kept at 16 bits
+                eng.run("set16bits")
+                try:
+                    eng.run("calibrate light_ -cfa -debayer -prefix=pp_", timeout=7200)
+                finally:
+                    eng.run("set32bits")
+            else:
+                prefix = ""  # nothing to apply: the converted files are the result
+            for j, (frame, _cm, _src, dest) in enumerate(group, start=1):
+                produced = g / f"{prefix}light_{j:05d}.fit"
+                if not produced.exists():
+                    left.append(frame)
+                    continue
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(produced, dest)
+        except Exception:  # noqa: BLE001 (the group is done one at a time instead)
+            log.warning(
+                "Batch calibration of %s subs failed; calibrating them one at a time",
+                len(group),
+                exc_info=True,
+            )
+            left += [f for f, *_ in group]
+        finally:
+            shutil.rmtree(g, ignore_errors=True)
+    return left
+
+
 def prune_calibrated(budget_bytes: int | None = None) -> int:
     """Calibrated subs are a cache (a debayered 24 MP sub is ~290 MB): keep the newest within the budget and
     delete the oldest. Integration touches its inputs first and recalibrates any that were pruned."""

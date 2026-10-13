@@ -4785,6 +4785,10 @@ export interface components {
             site_lon?: number | null;
             /** Site Name */
             site_name?: string | null;
+            /** Stack Mem Ratio */
+            stack_mem_ratio?: number | null;
+            /** Stack Threads */
+            stack_threads?: number | null;
             /** Work Budget Gb */
             work_budget_gb?: number | null;
             /** Worker Count */
@@ -4797,6 +4801,11 @@ export interface components {
              * @default false
              */
             can_edit: boolean;
+            /**
+             * Cores
+             * @default 1
+             */
+            cores: number;
             /** Cpu Threads */
             cpu_threads: number;
             /** Filter Aliases */
@@ -4821,6 +4830,10 @@ export interface components {
             site_lon: number | null;
             /** Site Name */
             site_name: string | null;
+            /** Stack Mem Ratio */
+            stack_mem_ratio?: number | null;
+            /** Stack Threads */
+            stack_threads?: number | null;
             /** Updated By */
             updated_by: string | null;
             /**
