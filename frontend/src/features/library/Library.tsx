@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Button, EmptyState, ErrorState, Skeleton, Spinner } from '../../components/ui'
 import { VerdictBadge, type VerdictState } from '../../components/VerdictBadge'
-import { bytes, integrationText, nightText } from '../format'
+import { integrationText, nightText } from '../format'
 import {
   stackPreviewUrl,
   useCollectionActions,
@@ -37,6 +37,13 @@ function monthSpan(a: string | null, b: string | null): string {
     new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
   if (!a || !b) return ''
   return f(a) === f(b) ? f(a) : `${f(a)} to ${f(b)}`
+}
+
+type Readouts = {
+  needs_you?: { review: number; reconcile: number; stale: number }
+  missing_calibration?: { subs: number; top: { reason: string; subs: number }[] }
+  ready_to_stack?: { datasets: number; top: { id: number; name: string; new: number }[] }
+  this_month?: { hours: number; nights: number; last: { hours: number; nights: number } }
 }
 
 export function Library() {
@@ -92,8 +99,12 @@ export function Library() {
       (!rig || u.rig === rig) &&
       inRange((u.nights ?? []).map(String)),
   )
-  const r = d.readouts as Record<string, number | string | boolean | null>
-  const free = bytes(r.disk_free_bytes as number | null)
+  const r = d.readouts as Readouts
+  const needs = r.needs_you ?? { review: 0, reconcile: 0, stale: 0 }
+  const needsTotal = needs.review + needs.reconcile + needs.stale
+  const missing = r.missing_calibration ?? { subs: 0, top: [] }
+  const ready = r.ready_to_stack ?? { datasets: 0, top: [] }
+  const month = r.this_month ?? { hours: 0, nights: 0, last: { hours: 0, nights: 0 } }
   const empty = d.counts.datasets === 0
 
   return (
@@ -161,37 +172,64 @@ export function Library() {
 
       <Stats q={search.trim()} rig={rig} from={from} to={to} />
 
+      {/* what's worth knowing on opening SubStation (owner 2026-10-13): what to do next, not machine status */}
       <div className={v.readouts}>
-        <div className={v.readout}>
-          <div className={v.readoutLabel}>Last night</div>
-          <div className={`${v.readoutValue} ${v.accentValue}`}>{String(r.last_night_subs ?? 0)}</div>
+        <Link to={needs.review ? '/review' : needs.reconcile ? '/reconcile' : '/'} className={v.readout}>
+          <div className={v.readoutLabel}>Needs you</div>
+          <div className={`${v.readoutValue} ${needsTotal ? v.accentValue : ''}`}>{needsTotal}</div>
           <div className={v.readoutDetail}>
-            {r.last_night ? (
-              <Link to="/nights/$date" params={{ date: String(r.last_night) }}>
-                subs · {nightText(String(r.last_night))} · {String(r.last_night_rigs)} rig
-                {r.last_night_rigs === 1 ? '' : 's'}
-              </Link>
+            {needsTotal
+              ? [
+                  needs.review ? `${needs.review} to review` : '',
+                  needs.reconcile ? `${needs.reconcile} to reconcile` : '',
+                  needs.stale ? `${needs.stale} stack${needs.stale === 1 ? '' : 's'} out of date` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : 'nothing waiting'}
+          </div>
+        </Link>
+        <Link to="/calibration" className={v.readout}>
+          <div className={v.readoutLabel}>Missing calibration</div>
+          <div className={v.readoutValue}>{missing.subs}</div>
+          <div className={v.readoutDetail}>
+            {missing.subs ? (
+              <>
+                subs waiting
+                {missing.top.slice(0, 2).map((m) => (
+                  <div key={m.reason} className={v.muted}>
+                    {m.reason} ({m.subs})
+                  </div>
+                ))}
+              </>
             ) : (
-              'no subs yet'
+              'every sub has its calibration'
             )}
           </div>
-        </div>
-        <div className={v.readout}>
-          <div className={v.readoutLabel}>Accepted integration</div>
-          <div className={v.readoutValue}>{integrationText(Number(r.accepted_integration_s ?? 0))}</div>
-          <div className={v.readoutDetail}>all collections</div>
-        </div>
-        <Link to="/activity" className={v.readout}>
-          <div className={v.readoutLabel}>Processing</div>
-          <div className={v.readoutValue}>{String(r.workers_busy ?? 0)}</div>
-          <div className={v.readoutDetail}>workers busy{r.main_job ? ` · ${String(r.main_job)}` : ''}</div>
         </Link>
         <div className={v.readout}>
-          <div className={v.readoutLabel}>Disk</div>
-          <div className={v.readoutValue}>
-            {free.value} <span className={v.muted}>{free.unit}</span>
+          <div className={v.readoutLabel}>Ready to stack</div>
+          <div className={v.readoutValue}>{ready.datasets}</div>
+          <div className={v.readoutDetail}>
+            {ready.top.length
+              ? ready.top.slice(0, 2).map((x) => (
+                  <div key={x.id}>
+                    <Link to="/datasets/$id" params={{ id: String(x.id) }}>
+                      {x.name}
+                    </Link>{' '}
+                    <span className={v.muted}>+{x.new} subs</span>
+                  </div>
+                ))
+              : 'nothing new since the last stacks'}
           </div>
-          <div className={v.readoutDetail}>free on /data/substation</div>
+        </div>
+        <div className={v.readout}>
+          <div className={v.readoutLabel}>This month</div>
+          <div className={v.readoutValue}>{integrationText(month.hours * 3600)}</div>
+          <div className={v.readoutDetail}>
+            {month.nights} night{month.nights === 1 ? '' : 's'} · last month{' '}
+            {integrationText(month.last.hours * 3600)} over {month.last.nights}
+          </div>
         </div>
       </div>
 

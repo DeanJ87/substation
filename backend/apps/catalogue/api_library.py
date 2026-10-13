@@ -197,6 +197,73 @@ def _main_job() -> str:
     return ""
 
 
+def _home_readouts() -> dict:
+    """What's worth knowing on opening SubStation (owner 2026-10-13): what needs you, what calibration is missing,
+    what's ready to stack, and this month against last."""
+    from collections import Counter
+    from datetime import timedelta
+
+    from django.db.models import Count
+    from django.utils import timezone
+
+    from apps.catalogue.models import ReconciliationItem, ReconciliationStatus
+    from apps.processing.api import review_count
+    from apps.processing.models import CalibrationMatch, Master, MasterMember, MasterState, MatchState
+
+    from .models import Frame, FrameStatus, FrameType
+
+    review = review_count(None)["count"]
+    reconcile = ReconciliationItem.objects.filter(status=ReconciliationStatus.OPEN).count()
+    stale = Master.objects.filter(state=MasterState.STALE).count()
+
+    awaiting = CalibrationMatch.objects.filter(
+        state=MatchState.AWAITING, frame__status=FrameStatus.CATALOGUED
+    )
+    reasons = Counter(
+        (r or "").removeprefix("Awaiting calibration: ").strip()
+        for r in awaiting.values_list("reason", flat=True)
+    )
+    missing = [{"reason": k, "subs": n} for k, n in reasons.most_common(3) if k]
+
+    # usable subs (accepted or down-weighted) beyond those its latest stack included
+    ready: list[dict] = []
+    for d in Dataset.objects.filter(sub_count__gt=0).select_related("collection"):
+        usable = (d.accepted_count or 0) + (d.down_count or 0)
+        last = (
+            Master.objects.filter(dataset=d)
+            .exclude(state__in=[MasterState.DELETED, MasterState.FAILED, MasterState.CANCELLED])
+            .order_by("-created_at")
+            .first()
+        )
+        if last is not None and last.state in (MasterState.QUEUED, MasterState.RUNNING):
+            continue
+        used = MasterMember.objects.filter(master=last, included=True).count() if last else 0
+        if usable - used >= 3:
+            ready.append({"id": d.pk, "name": d.display_name, "new": usable - used})
+    ready.sort(key=lambda x: -int(x["new"]))
+
+    today = timezone.localdate()
+    start = today.replace(day=1)
+    prev = (start - timedelta(days=1)).replace(day=1)
+    lights = Frame.objects.filter(
+        frame_type=FrameType.LIGHT,
+        status__in=[FrameStatus.CATALOGUED, FrameStatus.BINNED, FrameStatus.DELETED],
+    )
+
+    def month(a, b) -> dict:  # noqa: ANN001
+        m = lights.filter(night__date__gte=a, night__date__lt=b).aggregate(
+            s=Sum("exptime_s"), n=Count("night", distinct=True)
+        )
+        return {"hours": round((m["s"] or 0) / 3600, 1), "nights": m["n"] or 0}
+
+    return {
+        "needs_you": {"review": review, "reconcile": reconcile, "stale": stale},
+        "missing_calibration": {"subs": awaiting.count(), "top": missing},
+        "ready_to_stack": {"datasets": len(ready), "top": ready[:3]},
+        "this_month": {**month(start, today + timedelta(days=1)), "last": month(prev, start)},
+    }
+
+
 @router.get("/library", response=LibraryHomeOut)
 def library(request):
     cols = [_card(c) for c in Collection.objects.order_by("name")]
@@ -234,6 +301,7 @@ def library(request):
             "integrating": any("stack" in n or "master" in n for n in running),
             "disk_free_bytes": free,
             "main_job": _main_job(),
+            **_home_readouts(),
         },
         collections=cols,
         ungrouped=ungrouped,

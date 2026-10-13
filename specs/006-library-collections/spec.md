@@ -157,3 +157,8 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   their rejected exposure alongside the accepted (`rejected_integration_s`).
 - **006-DR-31** (2026-10-13): Library readouts never add past 100%: "Rejected" is shown as 100% minus the rounded
   "Kept", as the two together are every graded sub.
+- **006-DR-32** (2026-10-13): The Library opens on four readouts that say what to do next: **Needs you** (subs to
+  review, items to reconcile, stacks out of date; links to Review or Reconcile), **Missing calibration** (subs
+  waiting and the commonest reasons; links to Calibration), **Ready to stack** (datasets with 3+ usable subs beyond
+  their latest stack, the biggest first, linked) and **This month** (hours and nights captured, against last month).
+  Machine status (workers, disk) lives in the header and Activity.
