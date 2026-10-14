@@ -17,7 +17,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.catalogue.models import Copy, CopyEvent, CopyEventKind, Frame, FrameStatus
-from apps.catalogue.services.ignore import content_ignored
+from apps.catalogue.services.ignore import PathRules, content_ignored
 from apps.catalogue.services.tracking import mark_present, touch_dataset
 from apps.catalogue.services.verdicts import apply_bad_prefix
 from apps.libraries.models import Library
@@ -48,6 +48,10 @@ def sha256_file(path: Path, size: int) -> str:
 def hash_file(library_id: int, rel_path: str, first_seen: float) -> dict:
     lib = Library.objects.get(pk=library_id)
     path = Path(lib.mount_path) / rel_path
+    # the rules again, now: a rule added after this file was queued (darks shot in daylight, ignored while
+    # Robocopy was still copying them, 2026-10-14) must still keep it out
+    if PathRules.load().matches(library_id, rel_path):
+        return {"result": "ignored by a rule"}
     try:
         st = os.stat(path)
     except FileNotFoundError:

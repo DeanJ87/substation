@@ -130,3 +130,16 @@ def test_frame_whose_every_copy_is_in_an_ignored_folder_is_ignored(library, admi
     assert Frame.objects.get(copies__rel_path=f"keep/{A}").status == FrameStatus.CATALOGUED
     run(library)  # the ignored copy isn't reported missing
     assert not Frame.objects.filter(status=FrameStatus.MISSING).exists()
+
+
+def test_a_rule_added_after_a_file_was_queued_still_keeps_it_out(library):
+    """2026-10-14: daylight darks were ignored while Robocopy was still copying them; one queued before the rule
+    was still catalogued. A queued file is checked against the rules again when it is read."""
+    from apps.catalogue.models import IgnoreKind, IgnoreRule
+
+    put(L0928 / A, library / "night" / A)
+    lib = next(lib for lib in discover_libraries() if Path(lib.mount_path) == library)
+    sweep_library(lib)  # queued, not yet read
+    IgnoreRule.objects.create(kind=IgnoreKind.GLOB, value="2026-09-28_20-05-02_*")
+    WorkerProcess("w-test").run(max_tasks=50)
+    assert not Frame.objects.filter(copies__rel_path=f"night/{A}").exists()

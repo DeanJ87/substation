@@ -337,3 +337,4 @@ then T051 → T052 → T055 → T056, then T057 and T058 (UI) in parallel, T059 
   (`assign_dataset` looks the old dataset up); test
 - [X] T123 (2026-10-14) `rms_from_name` ignores the frame number after an empty `_RMS_`; NINA's lights pattern on the
   rig set to carry `RMS$$RMSARCSEC$$`, and its dark, bias and flat patterns to file into `_CalibrationFrames`
+- [X] T124 (2026-10-14) `hash_file` re-checks path rules before reading; test

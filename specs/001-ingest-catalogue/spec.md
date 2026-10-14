@@ -344,3 +344,9 @@ NINA doesn't write guiding RMS into the header, so the rig's lights pattern carr
 (`…_600.00s_RMS$$RMSARCSEC$$_$$FRAMENR$$`). When nothing was guided, NINA writes `_RMS_` and the frame number
 follows; that number must never be read as the RMS. After `_` or a space only a decimal counts (`_RMS0.62_`,
 `guiding_0.8`); after `-`, `=` or nothing, any number does.
+
+## Amendment 2026-10-14: rules hold for files already queued
+
+Darks shot in daylight were ignored with a file-name rule while Robocopy was still copying them; one queued before
+the rule was saved was still read and catalogued. A queued file is now checked against the folder and file-name
+rules again when it is read, and left out if one matches.
