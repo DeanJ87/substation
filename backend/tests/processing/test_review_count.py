@@ -214,6 +214,16 @@ def test_a_session_can_use_other_masters(admin_client):
         frame_type=FrameType.MASTER_DARK,
         exptime_s=600,
     )
+    Frame.objects.create(  # a flat for it: a session is only calibrated with both (002-DR-26)
+        sha256="f3" * 32,
+        size_bytes=1,
+        format="fits",
+        first_seen_at=T,
+        camera="ATR2600M",
+        status=FrameStatus.CATALOGUED,
+        frame_type=FrameType.MASTER_FLAT,
+        filter_norm="Hα",
+    )
     choices = admin_client.get(f"/api/v1/datasets/{ds.pk}/sessions/2026-03-06/calibration").json()
     assert [d["sha256"] for d in choices["darks"]] == [dark.pk]
     r = admin_client.post(

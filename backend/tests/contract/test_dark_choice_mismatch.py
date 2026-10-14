@@ -75,3 +75,24 @@ def test_back_to_automatic_drops_a_calibration_made_with_the_wrong_dark(admin_cl
     cm = CalibrationMatch.objects.get(frame=sub)
     assert not cm.pinned and cm.state == MatchState.AWAITING and r["pending"] == 1
     assert not SubMeasurement.objects.filter(frame=sub).exists()  # nothing stacked or judged from it
+
+
+def test_a_flat_chosen_with_no_matching_dark_waits_for_one(admin_client):
+    """M 42 · B, 2026-10-14: a flat chosen for a session with no dark calibrated 41 subs without one."""
+    from apps.processing.matching import update_match
+    from substation.tasks.models import Task
+
+    ds, sub, wrong, right = _setup()
+    right.status = FrameStatus.IGNORED
+    right.save(update_fields=["status"])
+    flat = _frame("d4", frame_type=FrameType.MASTER_FLAT, camera="ATR2600M", filter_norm="G")
+    r = admin_client.post(URL.format(ds.pk), {"flat": flat.pk}, content_type="application/json").json()
+    cm = CalibrationMatch.objects.get(frame=sub)
+    assert (
+        r["queued"] == 0 and r["pending"] == 1 and cm.state == MatchState.AWAITING and cm.flat_id == flat.pk
+    )
+    assert "120 s dark" in cm.reason and not Task.objects.filter(name__endswith="calibrate_measure").exists()
+    right.status = FrameStatus.CATALOGUED  # tonight's dark arrives
+    right.save(update_fields=["status"])
+    cm = update_match(sub)
+    assert cm.state == MatchState.MATCHED and cm.dark_id == right.pk and cm.flat_id == flat.pk

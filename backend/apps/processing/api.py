@@ -1341,22 +1341,43 @@ def change_session_calibration(request, id: int, night: date, body: SessionCalib
                 )
                 cm.save()
             return RecalibrationOut(pending=len(lights), sessions={str(night): len(lights)}, queued=0)
+    from .matching import match
+
+    queued = waiting = 0
     for f in lights:
         cm, _ = CalibrationMatch.objects.get_or_create(frame=f)
         cm.dark_id = body.dark or cm.dark_id
         cm.flat_id = body.flat or cm.flat_id
-        cm.state, cm.pinned, cm.reason, cm.weak = MatchState.MATCHED, True, "", False
+        cm.pinned, cm.weak = True, False
         cm.pending_flat_set = None
         cm.dark_note = "Chosen by you" if body.dark else cm.dark_note
         cm.flat_note = "Chosen by you" if body.flat else cm.flat_note
-        cm.save()
-        queue_measure(f, force=True)
+        m = None
+        if cm.dark_id is None or cm.flat_id is None:
+            # only one was chosen: the other comes from matching, and with none to be had the session waits for
+            # it rather than being calibrated without (a flat chosen for M 42 · B calibrated 41 subs with no dark)
+            m = match(f)
+            if cm.dark_id is None and m.dark is not None:
+                cm.dark, cm.dark_note = m.dark, m.dark_note
+            if cm.flat_id is None and m.flat is not None:
+                cm.flat, cm.flat_note = m.flat, m.flat_note
+        if (cm.dark_id is not None and cm.flat_id is not None) or (
+            m is not None and (m.no_calibration or (m.flat_only and cm.flat_id is not None))
+        ):
+            cm.state, cm.reason = MatchState.MATCHED, ""
+            cm.save()
+            queue_measure(f, force=True)
+            queued += 1
+        else:
+            cm.state, cm.reason = MatchState.AWAITING, (m or match(f)).reason
+            cm.save()
+            waiting += 1
     Master.objects.filter(
         dataset_id=id, state=MasterState.CURRENT, members__frame__in=lights, members__included=True
     ).distinct().update(
         state=MasterState.STALE, state_reason=f"Calibration changed for the {night:%-d %b} session."
     )
-    return RecalibrationOut(pending=0, sessions={str(night): len(lights)}, queued=len(lights))
+    return RecalibrationOut(pending=waiting, sessions={str(night): len(lights)}, queued=queued)
 
 
 def _back_to_automatic(dataset_id: int, night: date, lights: list[Frame]) -> RecalibrationOut:

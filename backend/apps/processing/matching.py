@@ -386,10 +386,10 @@ def update_match(light: Frame, cache: dict | None = None) -> CalibrationMatch | 
             existing.dark, existing.dark_note = m.dark, m.dark_note
         if not existing.flat_id and m.flat:
             existing.flat, existing.flat_note = m.flat, m.flat_note
-        if existing.dark_id and existing.flat_id:
+        if (existing.dark_id and existing.flat_id) or m.no_calibration or (m.flat_only and existing.flat_id):
             existing.state, existing.reason = MatchState.MATCHED, ""
-        elif existing.state != MatchState.MATCHED:
-            existing.reason = m.reason
+        else:  # still missing one: it waits, whatever it said before (a pinned flat with no dark was "matched")
+            existing.state, existing.reason = MatchState.AWAITING, m.reason
         existing.save()
         return existing
     m = match(light, cache)

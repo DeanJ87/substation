@@ -91,3 +91,5 @@
   request uses it with one shared key (002-DR-25); test
 - [X] D-26 (2026-10-14) Session dark choices carry `mismatch`, notes show gain/offset/temperature, fitting first;
   picker groups them and warns; `automatic: true` resets a session (002-DR-26); tests
+- [X] D-27 (2026-10-14) A hand-picked flat or dark alone no longer marks a session ready: the other comes from
+  matching or the session waits; a pinned match missing one goes back to waiting on a rematch (002-DR-26); tests

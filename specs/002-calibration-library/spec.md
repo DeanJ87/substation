@@ -342,3 +342,6 @@ exposure (0.00654 / 0.00655 s) and sets required an exact match.
   how it differs ("gain 120, the subs are 100"), with a warning when one is picked and when none fits. A session
   chosen by hand can go back to automatic: its choice is forgotten, it is matched again, and a sub calibrated with
   masters it no longer uses loses that calibration and its grade until it is calibrated again.
+  A session given only a flat (or only a dark) by hand takes the other from matching; with none to be had it waits
+  for one instead of being calibrated without it (a flat chosen for M 42 · B calibrated 41 subs with no dark), except
+  on rigs calibrated with a flat alone.
