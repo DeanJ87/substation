@@ -122,13 +122,15 @@ def rematch_lights() -> dict:
             queue_measure(f, force=True)
             queued += 1
     from apps.catalogue.models import Dataset
+    from apps.ingest.tasks.reresolve import tidy_datasets
 
     from .effective import recount_grades
 
+    tidy = tidy_datasets()  # 006-DR-34: stale or emptied datasets, whatever moved their subs
     for ds in Dataset.objects.all():
         recount_grades(ds)
     emit("dataset.updated", {"dataset_id": None})
-    return {"lights": n, "queued": queued}
+    return {"lights": n, "queued": queued, **tidy}
 
 
 def _wait_for_earlier_rematch() -> None:
