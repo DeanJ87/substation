@@ -599,8 +599,10 @@ def integrate(master_id: int) -> dict:
         elif mosaic:
             # register by plate solution onto one canvas that holds every sub (004-DR-23)
             notes = _fit_registered(eng, work, len(order))
+            # full resolution: downscaled, a 10 s Seestar sub shows ~16 stars and none solve; at full size, 150–250
+            # (IC 4605, 2026-10-14). Siril writes the solution into each sub's header: harmless for cached subs
             eng.run(
-                "seqplatesolve sub_ -force -downscale",
+                "seqplatesolve sub_ -force",
                 timeout=7200,
                 on_line=_Live(m, "Plate solve", 0.2, 0.45, len(order)),
             )

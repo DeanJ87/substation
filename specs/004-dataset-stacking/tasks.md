@@ -52,4 +52,6 @@
   `-weight=noise`) instead of sharpness, so a 240 s sub counts for about four 60 s ones; noted on the master
 - [X] D-T6 (2026-10-14) `mosaic_reason` (solve spread, else Seestar names); mosaic path in `integrate`
   (seqplatesolve, seqapplyreg -framing=max, stack -maximize -overlap_norm -feather); tests (004-DR-23)
+- [X] D-T8 (2026-10-14) Mosaic plate solving at full resolution: with `-downscale` only 9 of 77 IC 4605 subs
+  solved (~16 stars each); without, 5 of 5 in a test
 - [ ] D-T7 Re-stack IC 4605 · IRCUT as a mosaic and check every solved sub is used
