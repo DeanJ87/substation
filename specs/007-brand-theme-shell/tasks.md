@@ -91,3 +91,5 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
 - [X] B40 (2026-10-14) Specs 001, 002, 005 and 007 rebuilt: their main text and several amendments had been
   overwritten on 2026-10-11 by scripts that opened the file for writing before reading it; restored from the first
   commit and the session record, owner quotes rewritten in neutral words
+- [X] B41 (2026-10-14) All jsx-a11y rules as errors in `.oxlintrc.json`; axe e2e updated (Map, Bin, Activity, the
+  viewer modal, WCAG 2.2 tags) and run in CI against the stack (007-DR-27)

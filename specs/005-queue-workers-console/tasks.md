@@ -91,3 +91,5 @@
 - [X] W32 (2026-10-14) SQLite removed: settings, health journal mode, entrypoint import and network-disk warning,
   `copy_database`, SQLite-only tests; CI's backend job runs on PostgreSQL; containers require the URL
 - [X] W34 (2026-10-14) `CONN_MAX_AGE` 0 in the API (env for workers), PostgreSQL `max_connections=200`
+- [X] W35 (2026-10-14) CI: makemigrations check, pip-audit, npm audit, Compose validation, shellcheck of scripts/,
+  e2e accessibility job on `compose.ci.yml`, Trivy on published images; `scripts/check.sh` (005-DR-27)

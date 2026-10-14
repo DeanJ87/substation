@@ -46,7 +46,9 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=,format=short
       - id: ver
-        run: echo "v=$(sed -n 's/^version = "\(.*\)"/\1/p' backend/pyproject.toml) · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7} · $(date -u '+%-d %b %Y %H:%M')" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "v=$(sed -n 's/^version = "\(.*\)"/\1/p' backend/pyproject.toml) · ${GITHUB_REF_NAME} · ${GITHUB_SHA::7} · $(date -u '+%-d %b %Y %H:%M')" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v7
         with:
           build-args: SUBSTATION_VERSION=${{ steps.ver.outputs.v }}
@@ -58,6 +60,17 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.svc }}
           cache-to: type=gha,mode=max,scope=${{ matrix.svc }}
+      # 005-DR-27: a published image has no critical vulnerability that already has a fix
+      - name: Scan the image (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ghcr.io/deanj87/substation-${{ matrix.svc }}:${{ steps.ver.outputs.sha }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
 
   # 005-DR-26: the `edge` git branch follows the newest development commit whose images are all built, as the

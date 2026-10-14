@@ -1,0 +1,18 @@
+# CI's end-to-end stack (005-DR-27): the reference stack with images built from this checkout (never pulled), the
+# header-only test fixtures as the library, and the web app on :8088.
+#   docker compose -f docker/compose.yml -f docker/compose.ci.yml up -d --wait
+services:
+  frontend:
+    image: substation-frontend:ci
+    pull_policy: never
+    ports: !override ["8088:8080"]
+  api:
+    image: substation-api:ci
+    pull_policy: never
+    environment:
+      SUBSTATION_INGEST_VERIFY_COMPLETE: "0"
+  worker:
+    image: substation-worker:ci
+    pull_policy: never
+    environment:
+      SUBSTATION_INGEST_VERIFY_COMPLETE: "0"

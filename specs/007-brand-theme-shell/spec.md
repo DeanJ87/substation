@@ -426,3 +426,11 @@ Taken on the recommendation in the design review (owner may overrule):
   matches any part of a name; a catalogue designation matches with or without its space ("ngc7635", "NGC 7635"); a
   date or partial date ("2026-09") finds nights; three or more characters also match file names. Binned files are
   not listed.
+
+## Amendment 2026-10-14: accessibility is checked, not hoped for
+
+- **007-DR-27**: SubStation meets WCAG 2.2 level AA in all three themes (dark, light, night vision). Two checks enforce
+  it: every jsx-a11y lint rule is an error (alt text, labelled controls, keyboard equivalents for pointer handlers,
+  no positive tabindex, valid ARIA, and the rest), and CI runs axe (WCAG 2.0/2.1/2.2 A and AA) against the real stack
+  on every screen (Library, a dataset, Calibration, Reconcile, Settings, Activity, Map, Bin) in each theme and on the
+  sub viewer. A violation fails the build. Map tiles are third-party pictures and are left out of the scan.

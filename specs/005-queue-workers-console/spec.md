@@ -260,3 +260,13 @@ SQLite support was then removed rather than kept as a second, untested path.
   redeployed with the previous images minutes before the new ones were published (2026-10-14). The reference
   stack's services have `pull_policy: always`, so any deploy checks the registry for the tag rather than reusing a
   local copy; a deploy whose images haven't changed recreates nothing.
+
+## Amendment 2026-10-14: what CI checks
+
+- **005-DR-27**: A change merges only when CI passes all of: backend lint, format, types, migrations matching the
+  models, the test suite on PostgreSQL, and a dependency audit (pip-audit); the API contract unchanged unless
+  regenerated; frontend lint (including every accessibility rule), types, format, unit tests, build and an npm
+  audit of runtime dependencies (high and critical); secrets, workflow, Dockerfile, shell script and Compose
+  checks; the whole stack built from the checkout and checked end to end for accessibility; and, when images are
+  published, a scan that fails on a critical vulnerability with a known fix. `scripts/check.sh` runs the same
+  checks locally and stops at the first failure.

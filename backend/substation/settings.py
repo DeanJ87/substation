@@ -170,7 +170,8 @@ TASKS = {
 }
 # Refuse to hash an image shorter than its header says (it is still being written). Off only for tests,
 # whose fixtures are header-only.
-INGEST_VERIFY_COMPLETE = True
+# 0 only for header-only test fixtures (CI e2e)
+INGEST_VERIFY_COMPLETE = env("INGEST_VERIFY_COMPLETE", "1") == "1"
 # Calibrate, measure and grade lights as they are catalogued (specs 002, 003). Off in host tests.
 PROCESSING_ENABLED = env("PROCESSING", "1") == "1"
 # Siril's share of the machine: CPU threads (0 = half the CPUs) and the fraction of memory it may use.
