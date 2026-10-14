@@ -109,3 +109,9 @@
   height: 100%;
   pointer-events: none;
 }
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}

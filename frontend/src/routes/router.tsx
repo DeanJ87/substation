@@ -66,11 +66,18 @@ const dataset = createRoute({
   component: DatasetScreen,
   validateSearch: (
     q: Record<string, unknown>,
-  ): { tab?: 'subs' | 'quality' | 'calibration' | 'masters'; night?: string } => ({
+  ): {
+    tab?: 'subs' | 'quality' | 'calibration' | 'masters'
+    night?: string
+    sub?: string // the viewer is open on this sub (spec 012)
+    show?: 'flagged' // the subs grid shows only flagged subs: what Review was (spec 012)
+  } => ({
     tab: ['subs', 'quality', 'calibration', 'masters'].includes(String(q.tab))
       ? (q.tab as 'subs')
       : undefined,
     night: typeof q.night === 'string' ? q.night : undefined,
+    sub: typeof q.sub === 'string' && /^[0-9a-f]{64}$/.test(q.sub) ? q.sub : undefined,
+    show: q.show === 'flagged' ? 'flagged' : undefined,
   }),
 })
 const nightRoute = createRoute({ getParentRoute: () => app, path: '/nights/$date', component: NightView })

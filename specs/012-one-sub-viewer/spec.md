@@ -2,7 +2,7 @@
 
 **Feature Branch**: `poc-substation`
 **Created**: 2026-10-14
-**Status**: Proposed: for the owner to agree before any build (the map, section 5, is built)
+**Status**: Agreed 2026-10-14; viewer, Flagged filter and map built; night page and dataset labels to do
 **Input**: Owner request, 2026-10-14: Review (`/review?dataset=10`), the dataset page (`/datasets/10`), the sub page
 (`/subs/<sha>`) and the night page (`/nights/2026-09-25`) all solve a similar problem and together make a convoluted
 experience; propose something better. Also asked for: a map on the sub page.
@@ -99,11 +99,21 @@ experience; propose something better. Also asked for: a map on the sub page.
 - **SC-003**: Every place a dataset is named uses the same label.
 - **SC-004**: From a night, every sub shot that night can be stepped through in capture order without going back.
 
-## Questions for the owner
+## Decisions (owner, 2026-10-14)
 
-1. Should Review stay in the main menu as the queue (proposed), or become only the "Flagged" chip on each dataset
-   plus the count in the header?
-2. Should the viewer open over the grid (a large panel you close to get back), or replace the page with the grid
-   collapsed to a filmstrip?
-3. Dataset label: is "IC 434 · Askar 71F + ATR2600M · Hα" right, or should the rig be dropped when the target has
-   only one rig?
+1. Review is a filter on each dataset, not a screen: the "Flagged" chip on the Subs tab, and "Review N flagged" in the
+   dataset header. Review leaves the main menu; `/review` opens the dataset with the most flagged subs, filtered,
+   with the viewer on the first (the home page's "Needs you" link uses it).
+2. Viewers open as modals over the page they came from; they don't need pages of their own. `/subs/<sha>` opens
+   the sub's dataset with the viewer on it.
+3. Dataset labels keep the rig even when a target has only one, for consistency.
+
+## Built 2026-10-14
+
+- The sub viewer is a modal over the dataset's Subs tab (`?sub=<sha>`), stepping through what the grid shows (all,
+  flagged, a verdict, by hand), named at the top ("Flagged subs", 2 / 5). J or → next, K or ← previous, A/W/R/U
+  decide, Z 100% view, X aberration inspector, Esc closes. In the flagged list a decision moves on to the next
+  flagged sub, as Review did. A tile opens with a double-click, its name, or Enter on a single selection.
+- The dataset subtitle gives nights in order (a sub after midnight belongs to the night before).
+- Still to do: Blink with best (Space) in the viewer; the night page (section 4); one dataset label everywhere
+  (section 2); hiding "Not recorded" rows.

@@ -13,7 +13,7 @@ import v from '../v2/v2.module.css'
 import { CalibrationTab } from './CalibrationTab'
 import { MastersTab } from './MastersTab'
 import { QualityTab } from './QualityTab'
-import { SubsTab } from './SubsTab'
+import { isFlagged, SubsTab } from './SubsTab'
 
 const route = getRouteApi('/app/datasets/$id')
 export type Tab = 'subs' | 'quality' | 'calibration' | 'masters'
@@ -58,6 +58,14 @@ export function DatasetScreen() {
     ],
   ]
 
+  // what Review was (spec 012): rejected, down-weighted or near a threshold, and not decided by hand
+  const flagged = (subs.data ?? []).filter(isFlagged)
+  const flaggedFirst = flagged[0]?.sha256
+  const flaggedCount = flagged.length
+  const firstNight = (subs.data ?? [])
+    .map((x) => x.night)
+    .filter((x): x is string => !!x)
+    .sort()[0]
   return (
     <div className={v.page}>
       <header className={v.head}>
@@ -79,11 +87,9 @@ export function DatasetScreen() {
           <div className={v.sub}>
             {d.nights} session{d.nights === 1 ? '' : 's'} · {exposureText || `${d.sub_count} subs`}
             {d.gain != null && ` · gain ${d.gain}`}
-            {(subs.data ?? [])[0] && d.first_utc && ` · ${nightText(d.first_utc.slice(0, 10))}`}
-            {d.last_night &&
-              d.first_utc &&
-              d.last_night !== d.first_utc.slice(0, 10) &&
-              ` to ${nightText(d.last_night)}`}
+            {/* nights, not UTC dates: a sub after midnight belongs to the night before (spec 012) */}
+            {firstNight && ` · ${nightText(firstNight)}`}
+            {d.last_night && firstNight && d.last_night !== firstNight && ` to ${nightText(d.last_night)}`}
             {d.camera && ` · ${d.camera}`}
           </div>
           {d.state_reason && (
@@ -94,9 +100,16 @@ export function DatasetScreen() {
         </div>
         <div className={v.actions}>
           <Regrade id={dsId} />
-          <Link to="/review" search={{ dataset: dsId }} className={v.pill}>
-            Open review
-          </Link>
+          {flaggedFirst && (
+            <Link
+              to="/datasets/$id"
+              params={{ id: String(dsId) }}
+              search={{ tab: 'subs', show: 'flagged', sub: flaggedFirst }}
+              className={v.pill}
+            >
+              Review {flaggedCount} flagged
+            </Link>
+          )}
           {failed && (
             <button className={v.pill} onClick={() => setTab('masters')} title={failed.error ?? ''}>
               <VerdictBadge state="reject" label={`Master v${failed.version} failed`} />

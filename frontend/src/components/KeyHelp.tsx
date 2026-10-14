@@ -10,30 +10,19 @@ const EVERYWHERE: [string, string][] = [
 ]
 const SCREENS: { match: RegExp; title: string; keys: [string, string][] }[] = [
   {
-    match: /^\/review/,
-    title: 'Review',
-    keys: [
-      ['J or →', 'Next flagged sub'],
-      ['K or ←', 'Previous flagged sub'],
-      ['Space', 'Blink with best sub'],
-      ['A', 'Accept'],
-      ['W', 'Down-weight'],
-      ['R', 'Reject'],
-      ['Shift + A, W or R', 'Apply to adjacent flagged subs'],
-      ['U', 'Revert to auto'],
-      ['Z', '100% view (1, 2, 0: zoom; Esc: close)'],
-      ['X', 'Aberration inspector'],
-      ['I', 'Open sub'],
-    ],
-  },
-  {
     match: /^\/datasets\//,
-    title: 'Dataset',
+    title: 'Dataset and sub viewer',
     keys: [
-      ['A', 'Accept'],
+      ['Enter or double-click', 'Open the selected sub in the viewer'],
+      ['J or →', 'Viewer: next sub in the list'],
+      ['K or ←', 'Viewer: previous sub'],
+      ['A', 'Accept (selected subs, or the sub in the viewer)'],
       ['W', 'Down-weight'],
       ['R', 'Reject'],
       ['U', 'Revert to auto'],
+      ['Z', 'Viewer: 100% view (1, 2, 0: zoom; Esc: close)'],
+      ['X', 'Viewer: aberration inspector'],
+      ['Esc', 'Close the viewer'],
     ],
   },
 ]

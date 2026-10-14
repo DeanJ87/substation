@@ -675,3 +675,13 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.tileOpen {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

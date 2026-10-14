@@ -1,5 +1,6 @@
-// Sub detail (design v2 D3): preview, verdict with reason, and every field tagged with where it came from;
-// J and K step through the session.
+// Sub detail (design v2 D3): preview, verdict with reason, and every field tagged with where it came from.
+// Spec 012: it opens as a modal over the list it was opened from and steps through that list (J or → next, K or ←
+// previous). /subs/<sha> opens the sub's dataset with the viewer on it.
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
@@ -18,6 +19,38 @@ import { SiteMap } from '../map/SiteMap'
 import tb from '../library/tables.module.css'
 
 const route = getRouteApi('/app/subs/$sha')
+
+/** /subs/<sha>: the sub's dataset with the viewer open on it; a sub with no dataset is shown on its own. */
+export function SubDetail() {
+  const { sha } = route.useParams()
+  const q = useProcessing(sha)
+  const navigate = useNavigate()
+  const dsId = q.data?.dataset_id
+  useEffect(() => {
+    if (dsId)
+      void navigate({
+        to: '/datasets/$id',
+        params: { id: String(dsId) },
+        search: { tab: 'subs', sub: sha },
+        replace: true,
+      })
+  }, [dsId, sha, navigate])
+  if (q.isError)
+    return (
+      <ErrorState title="Couldn't load this sub" onRetry={() => q.refetch()}>
+        {q.error.message}
+      </ErrorState>
+    )
+  if (!q.data || dsId) return <PageLoading />
+  return (
+    <div className={v.page}>
+      <SubView sha={sha} />
+    </div>
+  )
+}
+
+/** Where the viewer steps: the shas of the list it was opened from, and what to call that list. */
+export type SubList = { shas: string[]; label: string; onPick: (sha: string) => void }
 const LABEL = {
   accept: 'Accepted',
   down: 'Down-weighted',
@@ -26,9 +59,16 @@ const LABEL = {
   integ: 'Not graded yet',
 }
 
-export function SubDetail() {
+export function SubView({
+  sha,
+  list,
+  afterVerdict,
+}: {
+  sha: string
+  list?: SubList
+  afterVerdict?: () => void
+}) {
   useLiveRefresh()
-  const { sha } = route.useParams()
   const q = useProcessing(sha)
   const bin = useBinFiles()
   const [mode, setMode] = useState<'auto' | 'stars' | 'fwhm'>('auto')
@@ -46,17 +86,40 @@ export function SubDetail() {
   const navigate = useNavigate()
   const verdict = useVerdict()
   const d = q.data
+  // the list it was opened from, else the dataset in capture order
+  const at = list ? list.shas.indexOf(sha) : -1
+  const n: { index?: number; count?: number; previous?: string; next?: string } = list
+    ? {
+        index: at + 1,
+        count: list.shas.length,
+        previous: at > 0 ? list.shas[at - 1] : undefined,
+        next: at >= 0 && at < list.shas.length - 1 ? list.shas[at + 1] : undefined,
+      }
+    : ((d?.neighbours ?? {}) as { index?: number; count?: number; previous?: string; next?: string })
+  const go = (to: string | undefined) => {
+    if (!to) return
+    if (list) list.onPick(to)
+    else void navigate({ to: '/subs/$sha', params: { sha: to } })
+  }
+  const decide = (kind: 'accept' | 'keep' | 'reject' | 'auto') =>
+    verdict.mutate(
+      { sha256s: [sha], verdict: kind },
+      { onSuccess: () => kind !== 'auto' && afterVerdict?.() },
+    )
   useEffect(() => {
     function key(e: KeyboardEvent) {
       if (!d || (e.target as HTMLElement).closest('input, select, textarea') || e.metaKey || e.ctrlKey) return
       const k = e.key.toLowerCase()
-      const n = d.neighbours as { previous?: string; next?: string }
-      if (k === 'j' && n.previous) void navigate({ to: '/subs/$sha', params: { sha: n.previous } })
-      else if (k === 'k' && n.next) void navigate({ to: '/subs/$sha', params: { sha: n.next } })
-      else if (k === 'a') verdict.mutate({ sha256s: [sha], verdict: 'accept' })
-      else if (k === 'w') verdict.mutate({ sha256s: [sha], verdict: 'keep' })
-      else if (k === 'r') verdict.mutate({ sha256s: [sha], verdict: 'reject' })
-      else if (k === 'u') verdict.mutate({ sha256s: [sha], verdict: 'auto' })
+      if (k === 'j' || e.key === 'ArrowRight') go(n.next)
+      else if (k === 'k' || e.key === 'ArrowLeft') go(n.previous)
+      else if (k === 'a') decide('accept')
+      else if (k === 'w') decide('keep')
+      else if (k === 'r') decide('reject')
+      else if (k === 'u') decide('auto')
+      else if (k === 'z' && d.sub.has_preview) setLook('full')
+      else if (k === 'x' && d.sub.has_preview) setLook('inspector')
+      else return
+      e.preventDefault()
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
@@ -69,11 +132,10 @@ export function SubDetail() {
     )
   if (!d) return <PageLoading />
   const sub = d.sub
-  const n = d.neighbours as { index?: number; count?: number; previous?: string; next?: string }
   const st = verdictState(sub)
   const c = d.calibration as Record<string, string | boolean | null>
   return (
-    <div className={v.page}>
+    <div className={s.view}>
       <header className={v.head}>
         <div>
           <div className={v.crumbs}>
@@ -105,6 +167,7 @@ export function SubDetail() {
               </>
             )}
           </div>
+          {list && <div className={v.muted}>{list.label}</div>}
           <h1 className={v.mono} style={{ fontSize: 24 }}>
             {sub.file}
           </h1>
@@ -122,24 +185,18 @@ export function SubDetail() {
               {n.index} / {n.count}
             </span>
           ) : null}
-          <Button
-            disabled={!n.previous}
-            onClick={() => n.previous && navigate({ to: '/subs/$sha', params: { sha: n.previous } })}
-          >
-            Previous <kbd>J</kbd>
+          <Button disabled={!n.previous} onClick={() => go(n.previous)}>
+            Previous <kbd>K</kbd>
           </Button>
-          <Button
-            disabled={!n.next}
-            onClick={() => n.next && navigate({ to: '/subs/$sha', params: { sha: n.next } })}
-          >
-            Next <kbd>K</kbd>
+          <Button disabled={!n.next} onClick={() => go(n.next)}>
+            Next <kbd>J</kbd>
           </Button>
           <ConfirmButton
             question="Bin this sub?"
             confirm="Bin"
             onConfirm={() =>
               bin.mutate([sha], {
-                onSuccess: () => n.next && navigate({ to: '/subs/$sha', params: { sha: n.next } }),
+                onSuccess: () => go(n.next),
               })
             }
           >
@@ -263,13 +320,13 @@ export function SubDetail() {
                   ` · graded ${new Date(d.graded_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`}
               </span>
               <span className={v.actions} style={{ marginLeft: 'auto' }}>
-                <Button onClick={() => verdict.mutate({ sha256s: [sha], verdict: 'accept' })}>
+                <Button onClick={() => decide('accept')}>
                   Accept <kbd>A</kbd>
                 </Button>
-                <Button onClick={() => verdict.mutate({ sha256s: [sha], verdict: 'keep' })}>
+                <Button onClick={() => decide('keep')}>
                   Weight <kbd>W</kbd>
                 </Button>
-                <Button onClick={() => verdict.mutate({ sha256s: [sha], verdict: 'reject' })}>
+                <Button onClick={() => decide('reject')}>
                   Reject <kbd>R</kbd>
                 </Button>
               </span>

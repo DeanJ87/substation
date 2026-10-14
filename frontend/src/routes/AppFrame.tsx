@@ -11,12 +11,10 @@ import { Lockup } from '../components/Logo'
 import { WorkFlyout } from '../components/WorkFlyout'
 import { ThemeProvider } from '../design/ThemeContext'
 import { useQueueSummary } from '../features/queue/queries'
-import { useReviewCount } from '../features/v2/hooks'
 import s from './frame.module.css'
 
 const NAV = [
   { to: '/', label: 'Library' },
-  { to: '/review', label: 'Review' },
   { to: '/calibration', label: 'Calibration' },
   { to: '/map', label: 'Map' },
   { to: '/activity', label: 'Activity' },
@@ -43,7 +41,6 @@ function Frame({ user }: { user: SessionUser }) {
   })
   const libraries =
     (health.data as { libraries?: { name: string; status: string }[] } | undefined)?.libraries ?? []
-  const reviewCount = useReviewCount()
   const act = useQueueSummary()
   const running = act.data?.running ?? 0
   const failed = act.data?.failed_open ?? 0
@@ -72,11 +69,6 @@ function Frame({ user }: { user: SessionUser }) {
               activeProps={{ className: `${s.navLink} ${s.navActive}` }}
             >
               {n.label}
-              {n.to === '/review' && (reviewCount.data?.count ?? 0) > 0 && (
-                <span className={s.count} aria-label={`${reviewCount.data?.count} to review`}>
-                  {reviewCount.data?.count.toLocaleString('en-GB')}
-                </span>
-              )}
               {n.to === '/activity' && failed > 0 ? (
                 <span
                   className={`${s.count} ${s.countBad}`}

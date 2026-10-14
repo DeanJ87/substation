@@ -1,11 +1,13 @@
 // Subs (design v2 D1): tiles grouped by session, newest first; filters; click selects, shift-click selects a
 // range, Ctrl/Cmd-A selects the session; the bulk bar and A, W, R apply to the selection; U reverts.
-import { Link, useNavigate } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
 import { Button, ConfirmButton } from '../../components/ui'
+import { Modal } from '../../components/Modal'
+import { SubView } from '../sub/SubDetail'
 import { binMessage, useBinFiles } from '../settings/Bin'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
@@ -26,7 +28,14 @@ import v from '../v2/v2.module.css'
 import { conditionsText } from './DatasetScreen'
 import s from './dataset.module.css'
 
-type Filter = 'all' | 'accept' | 'down' | 'reject' | 'manual' | 'waiting'
+type Filter = 'all' | 'flagged' | 'accept' | 'down' | 'reject' | 'manual' | 'waiting'
+
+const route = getRouteApi('/app/datasets/$id')
+
+/** What Review used to list (003-DR-05, spec 012): rejected, down-weighted or near a threshold, not decided by hand. */
+export function isFlagged(x: Sub): boolean {
+  return !x.manual && (x.verdict === 'reject' || x.verdict === 'down' || x.near_threshold)
+}
 
 export function verdictState(sub: Sub): VerdictState {
   if (sub.verdict === 'accept') return 'accept'
@@ -50,7 +59,18 @@ export function SubsTab({
   subs: Sub[]
   sessions: Session[]
 }) {
-  const [filter, setFilter] = useState<Filter>('all')
+  const search = route.useSearch()
+  const [localFilter, setLocalFilter] = useState<Filter>('all')
+  const filter: Filter = search.show === 'flagged' ? 'flagged' : localFilter
+  const setFilter = (f: Filter) => {
+    setLocalFilter(f === 'flagged' ? 'all' : f)
+    void navigate({
+      to: '/datasets/$id',
+      params: { id: String(dataset.id) },
+      search: { ...search, show: f === 'flagged' ? 'flagged' : undefined },
+      replace: true,
+    })
+  }
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [anchor, setAnchor] = useState<string | null>(null)
   const verdict = useVerdict()
@@ -79,19 +99,36 @@ export function SubsTab({
       search: { tab: 'masters' },
     })
   }
-  // Review lists flagged subs; it opens on this dataset (003-DR-05)
-  const openReview = () => void navigate({ to: '/review', search: { dataset: dataset.id } })
+  // the viewer (spec 012): a modal over this grid, stepping through what the grid shows
+  const openSub = (sha: string) =>
+    void navigate({
+      to: '/datasets/$id',
+      params: { id: String(dataset.id) },
+      search: { ...search, tab: 'subs', sub: sha },
+    })
+  const closeSub = () =>
+    void navigate({
+      to: '/datasets/$id',
+      params: { id: String(dataset.id) },
+      search: { ...search, sub: undefined },
+    })
+  const openReview = () => {
+    const first = [...selected][0]
+    if (first) openSub(first)
+  }
 
   const visible = useMemo(
     () =>
       subs.filter((x) =>
         filter === 'all'
           ? true
-          : filter === 'manual'
-            ? x.manual
-            : filter === 'waiting'
-              ? !x.verdict
-              : x.verdict === filter,
+          : filter === 'flagged'
+            ? isFlagged(x)
+            : filter === 'manual'
+              ? x.manual
+              : filter === 'waiting'
+                ? !x.verdict
+                : x.verdict === filter,
       ),
     [subs, filter],
   )
@@ -106,11 +143,13 @@ export function SubsTab({
   const groups = useProgressive(byNight, 8, filter)
   const order = useMemo(() => byNight.flatMap(([, list]) => list.map((x) => x.sha256)), [byNight])
   const count = (f: Filter) =>
-    f === 'manual'
-      ? subs.filter((x) => x.manual).length
-      : f === 'waiting'
-        ? subs.filter((x) => !x.verdict).length
-        : subs.filter((x) => x.verdict === f).length
+    f === 'flagged'
+      ? subs.filter(isFlagged).length
+      : f === 'manual'
+        ? subs.filter((x) => x.manual).length
+        : f === 'waiting'
+          ? subs.filter((x) => !x.verdict).length
+          : subs.filter((x) => x.verdict === f).length
 
   function click(sha: string, e: React.MouseEvent) {
     const next = new Set(selected)
@@ -131,7 +170,7 @@ export function SubsTab({
 
   useEffect(() => {
     function key(e: KeyboardEvent) {
-      if ((e.target as HTMLElement).closest('input, select, textarea')) return
+      if (search.sub || (e.target as HTMLElement).closest('input, select, textarea')) return
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
         const night = anchor ? subs.find((x) => x.sha256 === anchor)?.night : byNight[0]?.[0]
         const list = byNight.find(([n]) => n === night)?.[1] ?? []
@@ -164,6 +203,16 @@ export function SubsTab({
           <button className={v.pill} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
             Sessions <strong>All {dataset.nights}</strong>
           </button>
+          {count('flagged') > 0 && (
+            <button
+              className={v.pill}
+              aria-pressed={filter === 'flagged'}
+              onClick={() => setFilter('flagged')}
+              title="Rejected, down-weighted or within 10% of a threshold, and not decided by hand"
+            >
+              Flagged <span className={v.mono}>{count('flagged')}</span>
+            </button>
+          )}
           {(
             [
               ['accept', 'Accepted', 'accept'],
@@ -242,7 +291,11 @@ export function SubsTab({
             <Button onClick={() => apply('auto')}>
               Clear override <kbd>U</kbd>
             </Button>
-            <Button onClick={openReview}>Open in review</Button>
+            {selected.size === 1 && (
+              <Button onClick={openReview}>
+                Open <kbd>Enter</kbd>
+              </Button>
+            )}
             <Button
               onClick={stackSelected}
               disabled={selected.size < 2}
@@ -268,9 +321,52 @@ export function SubsTab({
           resetKey={filter}
           selected={selected}
           onClick={click}
+          onOpen={openSub}
         />
       ))}
       <LoadMore hasMore={groups.hasMore} loading={false} onMore={groups.more} />
+      {search.sub && (
+        <Modal label="Sub" onClose={closeSub}>
+          <SubView
+            sha={search.sub}
+            list={{
+              shas: order.includes(search.sub) ? order : subs.map((x) => x.sha256),
+              label: {
+                all: 'All subs',
+                flagged: 'Flagged subs',
+                accept: 'Accepted subs',
+                down: 'Down-weighted subs',
+                reject: 'Rejected subs',
+                manual: 'Decided by hand',
+                waiting: 'Not graded yet',
+              }[filter],
+              onPick: (sha) =>
+                void navigate({
+                  to: '/datasets/$id',
+                  params: { id: String(dataset.id) },
+                  search: { ...search, sub: sha },
+                  replace: true,
+                }),
+            }}
+            afterVerdict={
+              filter === 'flagged'
+                ? () => {
+                    // reviewing: the next flagged sub, as Review did
+                    const i = order.indexOf(search.sub!)
+                    const next = order[i + 1]
+                    if (next)
+                      void navigate({
+                        to: '/datasets/$id',
+                        params: { id: String(dataset.id) },
+                        search: { ...search, sub: next },
+                        replace: true,
+                      })
+                  }
+                : undefined
+            }
+          />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -283,6 +379,7 @@ function SessionGroup({
   resetKey,
   selected,
   onClick,
+  onOpen,
 }: {
   datasetId: number
   night: string
@@ -291,6 +388,7 @@ function SessionGroup({
   resetKey: unknown
   selected: Set<string>
   onClick: (sha: string, e: React.MouseEvent) => void
+  onOpen: (sha: string) => void
 }) {
   const { visible, hasMore, more } = useProgressive(list, 120, resetKey)
   return (
@@ -329,6 +427,7 @@ function SessionGroup({
               sub={x}
               selected={selected.has(x.sha256)}
               onClick={(e) => onClick(x.sha256, e)}
+              onOpen={() => onOpen(x.sha256)}
             />
           ))}
         </div>
@@ -342,10 +441,12 @@ function Tile({
   sub,
   selected,
   onClick,
+  onOpen,
 }: {
   sub: Sub
   selected: boolean
   onClick: (e: React.MouseEvent) => void
+  onOpen: () => void
 }) {
   const st = verdictState(sub)
   const title = sub.reason ?? sub.awaiting_reason ?? sub.error ?? 'Not graded yet'
@@ -354,6 +455,7 @@ function Tile({
       <button
         className={s.tileHit}
         onClick={onClick}
+        onDoubleClick={onOpen}
         aria-pressed={selected}
         aria-label={`Select ${sub.file}: ${title}`}
       />
@@ -370,9 +472,9 @@ function Tile({
         <span className={`${s.check} ${selected ? s.checkOn : ''}`} aria-hidden />
       </div>
       <div className={s.tileFoot}>
-        <Link to="/subs/$sha" params={{ sha: sub.sha256 }} className={`${s.tileName} ${v.mono}`}>
+        <button type="button" onClick={onOpen} className={`${s.tileName} ${s.tileOpen} ${v.mono}`}>
           {shortName(sub.file)}
-        </Link>
+        </button>
         <div className={`${v.mono} ${s.tileStats}`}>
           {sub.exptime_s ? `${sub.exptime_s} s · ` : ''}
           {fwhmText(sub)} · {num(sub.stars)}
