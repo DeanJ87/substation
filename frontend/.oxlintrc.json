@@ -1,11 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "react",
-    "typescript",
-    "jsx-a11y",
-    "import"
-  ],
+  "plugins": ["react", "typescript", "jsx-a11y", "import"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -45,9 +40,5 @@
     "jsx-a11y/scope": "error",
     "jsx-a11y/tabindex-no-positive": "error"
   },
-  "ignorePatterns": [
-    "dist/**",
-    "coverage/**",
-    "src/api/schema.d.ts"
-  ]
+  "ignorePatterns": ["dist/**", "coverage/**", "src/api/schema.d.ts"]
 }
