@@ -89,3 +89,5 @@
   flat sets; tests (002-DR-24)
 - [X] D-25 (2026-10-14) `enqueue(..., fresh=True)`: joins a waiting run, queues after a running one; every re-match
   request uses it with one shared key (002-DR-25); test
+- [X] D-26 (2026-10-14) Session dark choices carry `mismatch`, notes show gain/offset/temperature, fitting first;
+  picker groups them and warns; `automatic: true` resets a session (002-DR-26); tests

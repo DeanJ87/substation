@@ -337,3 +337,8 @@ exposure (0.00654 / 0.00655 s) and sets required an exact match.
   one more run after it, since the running one may have read the masters before the new one existed (three dark
   masters built a few minutes apart: the 60 s one finished during the re-match the 2 s one started, and its lights
   stayed blocked). All the places that ask for a re-match share one key, so at most one runs and one waits.
+- **002-DR-26 The dark picker never hides a mismatch.** Each master dark or bias offered for a session shows its gain,
+  offset and temperature. Those that fit the session's subs are listed first; the rest are listed apart, each saying
+  how it differs ("gain 120, the subs are 100"), with a warning when one is picked and when none fits. A session
+  chosen by hand can go back to automatic: its choice is forgotten, it is matched again, and a sub calibrated with
+  masters it no longer uses loses that calibration and its grade until it is calibrated again.

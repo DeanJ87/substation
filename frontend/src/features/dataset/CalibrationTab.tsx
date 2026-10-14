@@ -306,7 +306,12 @@ function ChangePanel({
       unwrap(
         await api.POST('/datasets/{id}/sessions/{night}/calibration', {
           params: { path: { id: datasetId, night } },
-          body: { dark: dark ?? null, flat: set == null ? (flat ?? null) : null, flat_set: set },
+          body: {
+            dark: dark ?? null,
+            flat: set == null ? (flat ?? null) : null,
+            flat_set: set,
+            automatic: false,
+          },
         }),
       ),
     scope: { id: `session-${datasetId}-${night}` },
@@ -341,6 +346,23 @@ function ChangePanel({
         ['subs', datasetId],
       ],
     ),
+  })
+  const automatic = useMutation({
+    mutationFn: async () =>
+      unwrap(
+        await api.POST('/datasets/{id}/sessions/{night}/calibration', {
+          params: { path: { id: datasetId, night } },
+          body: { automatic: true },
+        }),
+      ),
+    onSuccess: (r) =>
+      toast(
+        r.pending
+          ? `Back to automatic: ${r.pending} sub${r.pending === 1 ? '' : 's'} wait for a matching dark or flat`
+          : `Back to automatic: ${r.queued} sub${r.queued === 1 ? '' : 's'} calibrating`,
+      ),
+    onSettled: () => void qc.invalidateQueries(),
+    meta: { failed: "Couldn't go back to automatic" },
   })
   type Row = {
     key: string
@@ -388,7 +410,15 @@ function ChangePanel({
   const mine = flats.filter((f) => f.same)
   const other = flats.filter((f) => !f.same)
   const shown = others ? [...mine, ...other] : mine
+  const fitting = (q.data?.darks ?? []).filter((m) => !(m.mismatch ?? []).length)
+  const misfits = (q.data?.darks ?? []).filter((m) => (m.mismatch ?? []).length)
+  const pickedMisfit = misfits.find((m) => m.sha256 === pick.dark)
   const use = () => {
+    if (pick.dark === 'auto') {
+      automatic.mutate()
+      onClose()
+      return
+    }
     const flat = flats.find((f) => f.key === pick.flat)
     apply.mutate({
       ...pick,
@@ -417,15 +447,40 @@ function ChangePanel({
             onChange={(e) => setPick({ ...pick, dark: e.target.value || undefined })}
           >
             <option value="">Keep the current one</option>
-            {q.data?.darks.map((m) => (
-              <option key={m.sha256} value={m.sha256}>
-                {m.label}
-                {m.note ? ` · ${m.note}` : ''}
-              </option>
-            ))}
+            <option value="auto">Automatic: let SubStation choose</option>
+            {/* what fits first; the rest say how they differ, so a mismatch is never picked unawares (002-DR-26) */}
+            <optgroup label="Match these subs">
+              {fitting.map((m) => (
+                <option key={m.sha256} value={m.sha256}>
+                  {m.label}
+                  {m.note ? ` · ${m.note}` : ''}
+                </option>
+              ))}
+            </optgroup>
+            {misfits.length > 0 && (
+              <optgroup label="Don't match these subs">
+                {misfits.map((m) => (
+                  <option key={m.sha256} value={m.sha256}>
+                    ✗ {m.label} · {(m.mismatch ?? []).join('; ')}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </label>
       </div>
+      {fitting.length === 0 && q.data && (
+        <p className={v.warn}>
+          No master dark or bias matches these subs. A dark that doesn't match leaves the wrong bias level and
+          dark current in every sub; shoot one at their settings, or leave the session waiting.
+        </p>
+      )}
+      {pickedMisfit && (
+        <p className={v.warn}>
+          That one doesn't match these subs: {(pickedMisfit.mismatch ?? []).join('; ')}. It will calibrate
+          them, but not well.
+        </p>
+      )}
       {q.isPending && <Spinner label="Loading flats" />}
       {q.data && (
         <>
@@ -534,7 +589,7 @@ function ChangePanel({
       )}
       <div className={v.actions}>
         <button type="button" className={v.pill} disabled={!(pick.dark || pick.flat)} onClick={use}>
-          Use and re-calibrate
+          {pick.dark === 'auto' ? 'Go back to automatic' : 'Use and re-calibrate'}
         </button>
         <button type="button" className={v.pill} onClick={onClose}>
           Cancel

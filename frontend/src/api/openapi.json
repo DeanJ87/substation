@@ -3886,6 +3886,14 @@
       "title": "Label",
       "type": "string"
      },
+     "mismatch": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Mismatch",
+      "type": "array"
+     },
      "night": {
       "anyOf": [
        {
@@ -6884,6 +6892,11 @@
    },
    "SessionCalibrationIn": {
     "properties": {
+     "automatic": {
+      "default": false,
+      "title": "Automatic",
+      "type": "boolean"
+     },
      "dark": {
       "anyOf": [
        {

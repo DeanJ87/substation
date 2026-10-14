@@ -3794,6 +3794,11 @@ export interface components {
             frames?: number | null;
             /** Label */
             label: string;
+            /**
+             * Mismatch
+             * @default []
+             */
+            mismatch: string[];
             /** Night */
             night?: string | null;
             /** Note */
@@ -4784,6 +4789,11 @@ export interface components {
         };
         /** SessionCalibrationIn */
         SessionCalibrationIn: {
+            /**
+             * Automatic
+             * @default false
+             */
+            automatic: boolean;
             /** Dark */
             dark?: string | null;
             /** Flat */

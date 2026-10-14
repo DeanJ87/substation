@@ -990,6 +990,9 @@ class MasterChoice(Schema):
     sha256: str
     label: str
     note: str
+    # a dark or bias: how it differs from the session's subs, plainly ("gain 120, the subs are 100"); empty when
+    # it fits (002-DR-26)
+    mismatch: list[str] = []
     thumb: str | None = None
     # for the flat table (owner 2026-10-12)
     filter: str = ""
@@ -1026,6 +1029,38 @@ class SessionCalibrationIn(Schema):
     dark: str | None = None
     flat: str | None = None
     flat_set: int | None = None
+    automatic: bool = (
+        False  # forget what was chosen by hand: SubStation matches the session again (002-DR-26)
+    )
+
+
+def dark_mismatch(m: Frame, light: Frame, tol: float) -> list[str]:
+    """How a master dark or bias differs from a light, in the light's terms; empty when it fits."""
+    from .matching import _temp
+
+    out = []
+    if (
+        m.frame_type == FrameType.MASTER_DARK
+        and m.exptime_s is not None
+        and light.exptime_s is not None
+        and abs(m.exptime_s - light.exptime_s) >= 0.01
+    ):
+        out.append(f"{m.exptime_s:g} s, the subs are {light.exptime_s:g} s")
+    if light.gain is not None and m.gain != light.gain:
+        out.append(f"gain {m.gain if m.gain is not None else 'not recorded'}, the subs are {light.gain}")
+    if light.offset is not None and m.offset != light.offset:
+        out.append(
+            f"offset {m.offset if m.offset is not None else 'not recorded'}, the subs are {light.offset}"
+        )
+    lt, mt = _temp(light), _temp(m)
+    if m.frame_type == FrameType.MASTER_DARK and lt is not None:
+        if mt is None:
+            out.append("temperature not recorded")
+        elif abs(mt - lt) > tol:
+            out.append(f"{mt:g} °C, the subs are {lt:g} °C")
+    if (m.xbin or 1) != (light.xbin or 1):
+        out.append(f"binning {m.xbin or 1}, the subs are {light.xbin or 1}")
+    return out
 
 
 def _session_lights(dataset_id: int, night: date) -> list[Frame]:
@@ -1072,17 +1107,28 @@ def session_choices(request, id: int, night: date):  # noqa: A002
     )
 
     def note(m: Frame) -> str:
-        bits = []
+        # every value, always: a dark that hid its gain looked as good as one that fits (002-DR-26)
+        from .matching import _temp
+
+        bits = [
+            f"gain {m.gain if m.gain is not None else '?'}",
+            f"offset {m.offset if m.offset is not None else '?'}",
+        ]
+        t = _temp(m)
+        if m.frame_type == FrameType.MASTER_DARK:
+            bits.append(f"{t:g} °C" if t is not None else "no temperature")
         if m.night:
             days = (night - m.night.date).days
             bits.append(
                 "same night" if days == 0 else f"{abs(days)} days {'before' if days > 0 else 'after'}"
             )
-        if m.gain is not None:
-            bits.append(f"gain {m.gain}")
         if m.telescope:
             bits.append(m.telescope)
         return " · ".join(bits)
+
+    from .config import processing_settings
+
+    tol = float(processing_settings()["calibration"].get("temp_tolerance_c", 2.0))
 
     sets = _flat_sets(f0, night)
     built_shas = {x.sha for x in sets if x.built}
@@ -1098,14 +1144,18 @@ def session_choices(request, id: int, night: date):  # noqa: A002
                 .distinct()
             }
         ),
-        darks=[
-            MasterChoice(
-                sha256=m.pk,
-                label=master_label(m) or ("Bias" if m.frame_type == FrameType.MASTER_BIAS else m.pk[:12]),
-                note=note(m),
-            )
-            for m in darks
-        ],
+        darks=sorted(
+            (
+                MasterChoice(
+                    sha256=m.pk,
+                    label=master_label(m) or ("Bias" if m.frame_type == FrameType.MASTER_BIAS else m.pk[:12]),
+                    note=note(m),
+                    mismatch=dark_mismatch(m, f0, tol),
+                )
+                for m in darks
+            ),
+            key=lambda c: len(c.mismatch),
+        ),
         flats=[
             MasterChoice(
                 sha256=m.pk,
@@ -1256,6 +1306,8 @@ def change_session_calibration(request, id: int, night: date, body: SessionCalib
     lights = _session_lights(id, night)
     if not lights:
         raise ApiError(404, "not_found", "That session has no subs.")
+    if body.automatic:
+        return _back_to_automatic(id, night, lights)
     for sha in (body.dark, body.flat):
         if sha and not Frame.objects.filter(pk=sha, frame_type__startswith="master_").exists():
             raise ApiError(422, "invalid", "Choose one of the listed masters.")
@@ -1305,6 +1357,49 @@ def change_session_calibration(request, id: int, night: date, body: SessionCalib
         state=MasterState.STALE, state_reason=f"Calibration changed for the {night:%-d %b} session."
     )
     return RecalibrationOut(pending=0, sessions={str(night): len(lights)}, queued=len(lights))
+
+
+def _back_to_automatic(dataset_id: int, night: date, lights: list[Frame]) -> RecalibrationOut:
+    """Forget the masters chosen by hand for a session and match it again. A sub calibrated with masters it no
+    longer matches loses that calibration and its grade, so nothing is stacked or judged from it; it is calibrated
+    again once it matches."""
+    from apps.catalogue.models import Dataset
+
+    from .effective import recount_grades
+    from .matching import update_match
+    from .models import Master, MasterState
+    from .tasks import queue_measure
+
+    CalibrationMatch.objects.filter(frame__in=lights).update(pinned=False, pending_flat_set=None)
+    pending = queued = 0
+    for f in lights:
+        cm = update_match(f)
+        sm = SubMeasurement.objects.filter(frame=f).first()
+        same = (
+            cm is not None
+            and cm.state == MatchState.MATCHED
+            and sm is not None
+            and (sm.dark_id, sm.flat_id) == (cm.dark_id, cm.flat_id)
+        )
+        if sm is not None and not same:
+            for p in (sm.calibrated_path, sm.preview_path):
+                if p:
+                    Path(p).unlink(missing_ok=True)
+            sm.delete()
+            MachineGrade.objects.filter(frame=f).delete()
+        if cm is not None and cm.state == MatchState.MATCHED:
+            if not same:
+                queue_measure(f, force=True)
+                queued += 1
+        else:
+            pending += 1
+    Master.objects.filter(
+        dataset_id=dataset_id, state=MasterState.CURRENT, members__frame__in=lights, members__included=True
+    ).distinct().update(
+        state=MasterState.STALE, state_reason=f"Calibration changed for the {night:%-d %b} session."
+    )
+    recount_grades(Dataset.objects.get(pk=dataset_id))
+    return RecalibrationOut(pending=pending, sessions={str(night): len(lights)}, queued=queued)
 
 
 class SolvingOut(Schema):
