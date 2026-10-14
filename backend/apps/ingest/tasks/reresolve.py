@@ -13,6 +13,31 @@ BIN = [FrameStatus.BINNED, FrameStatus.DELETED]  # in the bin, or gone (spec 011
 BATCH = 500
 
 
+def tidy_datasets() -> dict:
+    """Recount datasets whose figures no longer match their subs, and remove those left with no subs and no stacks
+    (006-DR-34). Subs moved by an earlier regroup had left four M 42 datasets showing 1–2 subs that were no longer
+    theirs, beside the datasets that now held them."""
+    from django.db.models import Count, Q
+
+    from apps.catalogue.models import FrameType
+    from apps.catalogue.services.grouping import refresh_dataset
+    from apps.processing.models import Master
+
+    live = Q(frames__status=FrameStatus.CATALOGUED, frames__frame_type=FrameType.LIGHT)
+    recounted = removed = 0
+    for d in Dataset.objects.annotate(n=Count("frames", filter=live)):
+        if d.n == d.sub_count:
+            continue
+        if d.n == 0 and not Master.objects.filter(dataset=d).exists():
+            d.delete()
+            removed += 1
+            continue
+        refresh_dataset(d)
+        touch_dataset(d)
+        recounted += 1
+    return {"recounted": recounted, "removed": removed}
+
+
 def keep_collections(moves: list[tuple[Dataset | None, Dataset | None]]) -> None:
     """A dataset made by a regroup (a merged name or rig) belongs to the collection its subs came from: merging
     names in a collection left every regrouped dataset outside it, and the collection looked emptied (2026-10-14)."""
@@ -98,7 +123,8 @@ def reresolve_library(library_id: int | None) -> dict:
         report_progress(min(1.0, (i + BATCH) / max(1, len(shas))), f"re-reading {len(shas)} frames' values")
     keep_collections(moves)
     settle(touched, before)
-    return {"frames": len(shas), "datasets": len(touched)}
+    tidy = tidy_datasets()
+    return {"frames": len(shas), "datasets": len(touched), **tidy}
 
 
 @station_task(queue_name="ingest", priority=PRIORITY_BULK + 20, max_attempts=3)

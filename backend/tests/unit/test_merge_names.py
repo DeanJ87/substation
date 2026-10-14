@@ -150,3 +150,19 @@ def test_a_dataset_made_by_a_merge_stays_in_the_collection(admin_client, monkeyp
     made = Dataset.objects.get(target="M 42", filter_norm="B")
     assert made.collection_id == col.pk
     assert set(Dataset.objects.values_list("collection_id", flat=True)) == {col.pk}
+
+
+def test_a_full_reread_removes_datasets_left_empty_and_recounts_stale_ones():
+    """006-DR-34: four M 42 datasets kept showing 1–2 subs that had moved to the merged datasets."""
+    from apps.ingest.tasks.reresolve import tidy_datasets
+
+    kept = light(30, "M 42", "L").dataset
+    assert kept is not None
+    ghost = Dataset.objects.create(group_key="ghost", target="M 42", filter_norm="L", sub_count=2)
+    stale = Dataset.objects.filter(pk=kept.pk)
+    stale.update(sub_count=9)
+    held = Dataset.objects.create(group_key="held", target="M 42", filter_norm="G", sub_count=1)
+    Master.objects.create(dataset=held, version=1, state="current")  # its stack keeps it
+    r = tidy_datasets()
+    assert not Dataset.objects.filter(pk=ghost.pk).exists() and Dataset.objects.filter(pk=held.pk).exists()
+    assert Dataset.objects.get(pk=kept.pk).sub_count == 1 and r["removed"] == 1

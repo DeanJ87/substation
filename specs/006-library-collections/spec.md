@@ -169,3 +169,6 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   dataset already holds the new combination, a new one is made, and it now joins the collection its subs came from
   (the one most of them came from). Merging M 42 and orion had left every regrouped M 42 dataset outside the
   collection, which then showed only the few subs that hadn't moved.
+- **006-DR-34 A full re-read tidies datasets.** After re-reading every frame, datasets whose figures no longer match
+  their subs are recounted, and those left with no subs and no stacks are removed (subs moved by an earlier regroup
+  had left four datasets showing 1–2 subs that now belonged to the merged datasets).
