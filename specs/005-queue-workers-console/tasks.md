@@ -85,5 +85,5 @@
   CI job running the suite on PostgreSQL 17 (005-DR-24)
 - [X] W26 (2026-10-14) `copy_database` (table to table, one transaction, sequences reset, migration check); test;
   rehearsed on a snapshot of the live database: 633,151 rows in 77 s, every table's count equal
-- [X] W31 (2026-10-14) `SUBSTATION_IMPORT_SQLITE` import on API start; password as a Compose secret from a variable
+- [X] W31 (2026-10-14) `SUBSTATION_IMPORT_SQLITE` import on API start; password from a variable (a Compose secret file is root-only, so the API couldn't read it: found in the rehearsal)
 - [ ] W27 Move the NAS installation to PostgreSQL

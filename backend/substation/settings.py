@@ -105,8 +105,8 @@ TEMPLATES = [
 
 # --- Database: PostgreSQL when SUBSTATION_DATABASE_URL is set, else SQLite in WAL mode (research R1) ----------
 # SQLite suits one host with the database on local disk. Several hosts, network storage or Kubernetes need
-# PostgreSQL (005-DR-24): postgres://user:password@host:5432/name (the password may instead come from
-# SUBSTATION_DATABASE_PASSWORD_FILE, for Docker and Kubernetes secrets).
+# PostgreSQL (005-DR-24): postgres://user:password@host:5432/name. The password may instead come from
+# SUBSTATION_DATABASE_PASSWORD, or SUBSTATION_DATABASE_PASSWORD_FILE (a mounted Kubernetes or Docker secret).
 def _database() -> dict:
     from urllib.parse import unquote, urlparse
 
@@ -124,7 +124,7 @@ def _database() -> dict:
     u = urlparse(url)
     if u.scheme not in ("postgres", "postgresql"):
         raise ImproperlyConfigured("SUBSTATION_DATABASE_URL must be a postgres:// URL.")
-    password = unquote(u.password or "")
+    password = env("DATABASE_PASSWORD", "") or unquote(u.password or "")
     secret = env("DATABASE_PASSWORD_FILE", "")
     if secret:
         password = Path(secret).read_text().strip()

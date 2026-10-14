@@ -243,7 +243,8 @@ and it can't be shared across Kubernetes nodes.
   `/health` reports `postgresql` where SQLite reports its journal mode. With `SUBSTATION_IMPORT_SQLITE=1` the API
   does the move itself on start: it migrates the SQLite file, copies it into the empty PostgreSQL, then renames the
   file `substation.db.imported-<time>`; workers start only after (they wait for the API). The database password
-  can come from a stack variable as a Compose secret, so nothing has to be written on the host.
+  comes from a stack variable (`SUBSTATION_DATABASE_PASSWORD`), or a mounted secret file on Kubernetes, so nothing
+  has to be written on the host.
 
 ## Amendment 2026-10-14: stopping is cheap; releases and the reference stack
 

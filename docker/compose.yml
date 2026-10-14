@@ -15,7 +15,7 @@ x-base: &base
 
 x-env: &env
   SUBSTATION_DATABASE_URL: postgres://substation@postgres:5432/substation
-  SUBSTATION_DATABASE_PASSWORD_FILE: /run/secrets/db_password
+  SUBSTATION_DATABASE_PASSWORD: ${SUBSTATION_DB_PASSWORD:?set SUBSTATION_DB_PASSWORD}
 
 x-station: &station ${SUBSTATION_DATA:?set SUBSTATION_DATA}/station:/data/substation
 x-catalogues: &catalogues ${SUBSTATION_DATA:?set SUBSTATION_DATA}/catalogues:/home/substation/.local/share/kstars:ro
@@ -25,10 +25,6 @@ x-library: &library ${SUBSTATION_LIBRARY:?set SUBSTATION_LIBRARY}:/data/library/
 # an optional second library (an archive); unset, it is an empty hidden folder SubStation ignores
 x-library-2: &library2 ${SUBSTATION_LIBRARY_2:-${SUBSTATION_DATA}/station/.no-library}:/data/library/${SUBSTATION_LIBRARY_2_NAME:-.no-library}:${SUBSTATION_LIBRARY_MODE:-ro}
 
-secrets:
-  db_password:
-    environment: SUBSTATION_DB_PASSWORD  # from .env or the stack's variables; handed to the containers as a file
-
 services:
   postgres:
     <<: *base
@@ -36,8 +32,7 @@ services:
     environment:
       POSTGRES_USER: substation
       POSTGRES_DB: substation
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-    secrets: [db_password]
+      POSTGRES_PASSWORD: ${SUBSTATION_DB_PASSWORD:?set SUBSTATION_DB_PASSWORD}
     volumes:
       - ${SUBSTATION_DATA:?set SUBSTATION_DATA}/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -65,7 +60,6 @@ services:
       SUBSTATION_HELPER_TOKEN: ${SUBSTATION_HELPER_TOKEN:-}  # post-processing helpers on other machines (spec 010)
       # moving from SQLite: 1 imports station/substation.db into an empty PostgreSQL on start, then renames it
       SUBSTATION_IMPORT_SQLITE: ${SUBSTATION_IMPORT_SQLITE:-}
-    secrets: [db_password]
     volumes:
       - *station
       - *catalogues
@@ -85,7 +79,6 @@ services:
       SUBSTATION_SIRIL_MEM_RATIO: ${SUBSTATION_SIRIL_MEM_RATIO:-}
       SUBSTATION_STOP_GRACE_S: "60"  # a stop puts running work back in the queue; it resumes (005-DR-25)
     stop_grace_period: 90s
-    secrets: [db_password]
     volumes:
       - *station
       - *catalogues
