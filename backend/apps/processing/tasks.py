@@ -395,13 +395,17 @@ def calibrate_batch(items: list[tuple[Frame, CalibrationMatch, Path, Path]], tmp
             cfa = " -cfa -equalize_cfa -debayer" if colour and not rgb else ""
             prefix = "pp_"
             if dark and flat:
-                eng.run(f"calibrate light_ -dark={dark} -flat={flat} -cc=dark{cfa} -prefix=pp_", timeout=7200)
+                eng.run(
+                    f"calibrate light_ -dark={dark} -flat={flat} -cc=dark{cfa} -prefix=pp_",
+                    timeout=7200,
+                    quiet=True,
+                )
             elif flat:  # 8-bit colour lights: the camera already removed the black level
-                eng.run(f"calibrate light_ -flat={flat}{cfa} -prefix=pp_", timeout=7200)
+                eng.run(f"calibrate light_ -flat={flat}{cfa} -prefix=pp_", timeout=7200, quiet=True)
             elif colour and not rgb:  # calibrated in the camera (Seestar): only debayer, kept at 16 bits
                 eng.run("set16bits")
                 try:
-                    eng.run("calibrate light_ -cfa -debayer -prefix=pp_", timeout=7200)
+                    eng.run("calibrate light_ -cfa -debayer -prefix=pp_", timeout=7200, quiet=True)
                 finally:
                     eng.run("set32bits")
             else:

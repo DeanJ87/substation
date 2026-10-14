@@ -81,7 +81,7 @@ def test_a_sub_that_crashes_siril_costs_only_itself(tmp_path, monkeypatch):
         loaded = ""
         saved: list[str] = []
 
-        def run(self, cmd, timeout=600, check=True, on_line=None):
+        def run(self, cmd, timeout=600, check=True, on_line=None, quiet=False):
             if cmd.startswith("load "):
                 self.loaded = cmd.split()[1]
             if cmd.startswith("platesolve"):

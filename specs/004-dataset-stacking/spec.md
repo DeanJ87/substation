@@ -267,3 +267,10 @@ split it into, and subs far from the reference share too few stars with it.
   sub saved in the stack's own folder with its solution (the calibrated cache is never written to). A sub Siril can't
   solve, or that crashes it (IC 4605: a segfault at sub 284 of 413 ended the whole stack), is left out and named in
   the master's notes; Siril starts again for the next. `seqplatesolve` then only reads the solutions.
+
+### Amendment 2026-10-14: long steps run while Siril reports
+
+- **004-DR-25 A long step is stopped for silence, not length.** Registration, plate solving, calibration, stacking
+  and combining can run for hours on a large mosaic (a 411-sub colour mosaic was stopped at 86% after the fixed two
+  hours while still reporting progress). These steps now fail only when Siril prints nothing for two hours, and
+  still stop after a day in all.

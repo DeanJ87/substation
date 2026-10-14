@@ -642,11 +642,15 @@ def integrate(master_id: int) -> dict:
                 at = sorted(order).index(i) + 1
                 eng.run(f"unselect sub_ {at} {at}", check=False)
             eng.run(
-                "seqplatesolve sub_", timeout=7200, on_line=_Live(m, "Plate solve", 0.45, 0.5, len(order))
+                "seqplatesolve sub_",
+                timeout=7200,
+                quiet=True,
+                on_line=_Live(m, "Plate solve", 0.45, 0.5, len(order)),
             )
             eng.run(
                 "seqapplyreg sub_ -framing=max",
                 timeout=7200,
+                quiet=True,
                 on_line=_Live(m, "Register", 0.5, 0.6, len(order)),
             )
             notes.append(f"{mosaic}: registered by plate solution and stacked onto one canvas.")
@@ -659,15 +663,23 @@ def integrate(master_id: int) -> dict:
             best = max(order, key=lambda i: order[i].frame.measurement.stars or 0)
             notes = _fit_registered(eng, work, len(order))
             eng.run(f"setref sub_ {sorted(order).index(best) + 1}")
-            eng.run("register sub_", timeout=7200, on_line=_Live(m, "Register", 0.2, 0.6, len(order)))
+            eng.run(
+                "register sub_", timeout=7200, quiet=True, on_line=_Live(m, "Register", 0.2, 0.6, len(order))
+            )
             notes.append(f"Reference: sub with most stars ({order[best].frame.measurement.stars:,}).")
         else:
             # two passes: Siril picks the sharpest, roundest sub as the reference (best FWHM)
-            eng.run("register sub_ -2pass", timeout=7200, on_line=_Live(m, "Register", 0.2, 0.4, len(order)))
+            eng.run(
+                "register sub_ -2pass",
+                timeout=7200,
+                quiet=True,
+                on_line=_Live(m, "Register", 0.2, 0.4, len(order)),
+            )
             notes = _fit_registered(eng, work, len(order))
             eng.run(
                 "seqapplyreg sub_ -framing=current",
                 timeout=7200,
+                quiet=True,
                 on_line=_Live(m, "Register", 0.4, 0.6, len(order)),
             )
         if "registered" not in ck["done"]:
@@ -722,6 +734,7 @@ def integrate(master_id: int) -> dict:
                 "  ", " "
             ),
             timeout=7200,
+            quiet=True,
             on_line=_Live(m, "Integrate", 0.6, 0.9, len(order)),
         )
         _step(m, "Write", 0.9)

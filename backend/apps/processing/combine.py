@@ -184,6 +184,7 @@ def _mosaic(eng, sources: list[Path], work: Path) -> Path | None:  # noqa: ANN00
     r = eng.run(
         "stack r_m_ rej n -norm=addscale -overlap_norm -maximize -feather=300 -out=mosaic",
         timeout=7200,
+        quiet=True,
         check=False,
     )
     out = work / "mosaic.fit"
@@ -275,6 +276,7 @@ def _mosaic_all(eng, groups: dict[int, list[Path]], ref: Path, work: Path) -> di
             r = eng.run(
                 f"stack r_m_ rej n -norm=addscale -overlap_norm -maximize -feather=300 -filter-incl -out=stk_{k}",
                 timeout=7200,
+                quiet=True,
                 check=False,
             )
             if not r.ok or not (work / f"stk_{k}.fit").exists():

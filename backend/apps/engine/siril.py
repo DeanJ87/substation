@@ -23,6 +23,7 @@ from typing import Literal
 
 log = logging.getLogger("substation.engine")
 
+LONGEST = 24 * 3600  # a quiet-timeout command still stops after a day
 STATUS = re.compile(r"^status: (\w+)(?: (.*))?$")
 SETUP = (
     "requires 1.4.0",  # must come first, or Siril runs nothing and still says success
@@ -201,14 +202,23 @@ class Siril:
             shutil.rmtree(getattr(self, "_dir", ""), ignore_errors=True)
 
     # -- commands ------------------------------------------------------------------------------------
-    def _wait(self, done, timeout: float, command: str, on_line=None) -> list[str]:  # noqa: ANN001
+    def _wait(self, done, timeout: float, command: str, on_line=None, quiet: bool = False) -> list[str]:  # noqa: ANN001
+        """`quiet`: the timeout counts from Siril's last line of output, not from the start, so a long command that
+        keeps reporting is never cut off (a 411-sub mosaic stack ran past two hours and was killed at 86%); it still
+        stops at LONGEST in all."""
         got: list[str] = []
-        end = time.monotonic() + timeout
+        start = time.monotonic()
+        end = start + timeout
         while True:
-            left = end - time.monotonic()
-            if left <= 0:
+            now = time.monotonic()
+            left = end - now
+            if left <= 0 or (quiet and now - start > LONGEST):
                 raise EngineError(
-                    command, got, f"Siril took longer than {timeout:.0f} s on “{command.split()[0]}”."
+                    command,
+                    got,
+                    f"Siril printed nothing for {timeout:.0f} s on “{command.split()[0]}”."
+                    if quiet and left <= 0
+                    else f"Siril took longer than {(LONGEST if quiet else timeout):.0f} s on “{command.split()[0]}”.",
                 )
             try:
                 line = self._lines.get(timeout=min(left, 1.0))
@@ -234,6 +244,8 @@ class Siril:
                     f"{' | '.join(self._stdout[-3:]) or 'none'}).",
                 )
             got.append(line)
+            if quiet:
+                end = time.monotonic() + timeout
             if on_line is not None:
                 try:
                     on_line(line)
@@ -265,7 +277,14 @@ class Siril:
             shutil.rmtree(getattr(self, "_dir", ""), ignore_errors=True)
             raise Cancelled(f"Cancelled during “{command.split()[0]}”.")
 
-    def run(self, command: str, timeout: float = 600, check: bool = True, on_line=None) -> CommandResult:  # noqa: ANN001
+    def run(  # noqa: ANN201
+        self,
+        command: str,
+        timeout: float = 600,
+        check: bool = True,
+        on_line=None,
+        quiet: bool = False,  # noqa: ANN001
+    ) -> CommandResult:
         """Run one command and wait for its status line. Raises EngineError on failure if `check`. `on_line` sees
         every line Siril prints while the command runs ("progress: 42%", "log: …"), for live progress."""
         with self._lock:
@@ -286,7 +305,7 @@ class Siril:
                 )
 
             try:
-                lines = self._wait(done, timeout, command, on_line)
+                lines = self._wait(done, timeout, command, on_line, quiet)
             finally:
                 self.current = None
             m = STATUS.match(lines[-1])
