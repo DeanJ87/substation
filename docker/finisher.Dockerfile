@@ -6,7 +6,7 @@
 # GraXpert (GPL-3.0) is baked in, pinned by version and checksum. RC-Astro's tools are proprietary: never in this
 # image. The entrypoint unpacks them onto the persistent /opt/finish volume at first start, from
 # RC_ASTRO_INSTALLER_URL, and activates them with RC_ASTRO_EMAIL / RC_ASTRO_KEY (compose variables, never in git).
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/venv UV_PYTHON_DOWNLOADS=never
 RUN apt-get update && apt-get install -y --no-install-recommends procps \
