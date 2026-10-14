@@ -96,3 +96,5 @@
 - [X] D-28 (2026-10-14) QA rejects darks, bias and dark flats above 20% of full scale; `flat_calibrator` skips
   built dark-flat masters that bright (002-DR-27); tests
 - [X] D-29 (2026-10-14) A re-match waits for an earlier one still running (002-DR-25); test
+- [X] D-30 (2026-10-14) A master with no build record (its set merged away) is measured from its file before it may
+  calibrate flats (002-DR-27); test

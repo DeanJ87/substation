@@ -175,9 +175,16 @@ def flat_calibrator(cs: CalibrationSet) -> Frame | None:
         )
 
     def lit(f: Frame) -> bool:
-        """A master SubStation built that came out far too bright to be dark (002-DR-27)."""
+        """A master far too bright to be dark (002-DR-27): from its build's report, or, for a master whose build
+        is gone (its set merged away) or that came from elsewhere, from the file itself."""
         bm = BuiltMaster.objects.filter(frame=f, state="done").order_by("-pk").first()
         med = ((bm.report or {}).get("stats") or {}).get("median") if bm else None
+        if med is None:
+            p = _path(f)
+            try:
+                med = float(np.median(read_data(p, f.integration_index or 0)[::8, ::8])) if p else None
+            except Exception:  # noqa: BLE001 — unreadable: the build reports that itself
+                med = None
         return med is not None and med > DARK_MAX_LEVEL * FULL_SCALE
 
     for kind in (FrameType.MASTER_DARK_FLAT, FrameType.MASTER_DARK):
