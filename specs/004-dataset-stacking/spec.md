@@ -262,3 +262,8 @@ split it into, and subs far from the reference share too few stars with it.
   `-maximize -overlap_norm -feather=100`, so levels match where subs overlap and their edges blend. The master's
   notes say it was stacked as a mosaic and why. A sub that can't be plate solved is left out with "Couldn't
   register: no plate solution for this sub." Fixed panels (NINA's "Panel 1") are still datasets of their own.
+
+- **004-DR-24** (2026-10-14): A mosaic's subs are plate solved one at a time before the canvas is laid out, each solved
+  sub saved in the stack's own folder with its solution (the calibrated cache is never written to). A sub Siril can't
+  solve, or that crashes it (IC 4605: a segfault at sub 284 of 413 ended the whole stack), is left out and named in
+  the master's notes; Siril starts again for the next. `seqplatesolve` then only reads the solutions.

@@ -511,6 +511,37 @@ def _fit_registered(eng, work: Path, n: int) -> list[str]:  # noqa: ANN001
     )
 
 
+def _solve_each(eng, work: Path, order: dict[int, MasterMember], m: Master) -> tuple[list[int], list[int]]:  # noqa: ANN001
+    """Plate solve every sub on its own (004-DR-23), at full resolution (downscaled, a 10 s Seestar sub shows too few
+    stars). Each solved sub is saved in the stack's folder with its solution, replacing the link to the cached
+    calibrated sub so the cache is never written to. A sub Siril can't solve, or that crashes it, is left out; Siril
+    starts again for the next one."""
+    from apps.engine.siril import EngineError
+
+    solved: list[int] = []
+    unsolved: list[int] = []
+    n = len(order)
+    for k, i in enumerate(sorted(order), start=1):
+        name = f"sub_{i:05d}"
+        try:
+            eng.run(f"cd {work}")
+            eng.run(f"load {name}", timeout=180)
+            if eng.run("platesolve -force", timeout=180, check=False).ok:
+                (work / f"{name}.fit").unlink(
+                    missing_ok=True
+                )  # a link to the cache: write our own copy instead
+                eng.run(f"save {name}", timeout=180)
+                solved.append(i)
+            else:
+                unsolved.append(i)
+        except EngineError as exc:  # Siril crashed on this sub: the next command starts it again
+            log.warning("Plate solving %s failed: %s", name, exc)
+            unsolved.append(i)
+        if k % 10 == 0 or k == n:
+            _step(m, f"Plate solve ({k} of {n})", 0.2 + 0.25 * k / n)
+    return solved, unsolved
+
+
 def _checkpoint(work: Path, master_pk: int) -> dict:
     """What an earlier, interrupted run of this master finished (005-DR-25); nothing when there was none."""
     import json
@@ -597,21 +628,32 @@ def integrate(master_id: int) -> dict:
             notes = list(ck.get("notes", []))
             notes.append("Resumed after a restart: registration was already done.")
         elif mosaic:
-            # register by plate solution onto one canvas that holds every sub (004-DR-23)
+            # register by plate solution onto one canvas that holds every sub (004-DR-23). Each sub is solved on its
+            # own first: a sub that crashes Siril (IC 4605, 2026-10-14: a segfault at sub 284 of 413 took the whole
+            # stack down) costs only itself; seqplatesolve then lays out the canvas from those solutions
             notes = _fit_registered(eng, work, len(order))
-            # full resolution: downscaled, a 10 s Seestar sub shows ~16 stars and none solve; at full size, 150–250
-            # (IC 4605, 2026-10-14). Siril writes the solution into each sub's header: harmless for cached subs
+            solved, unsolved = _solve_each(eng, work, order, m)
+            if len(solved) < 2:
+                raise RuntimeError(f"Only {len(solved)} of {len(order)} subs could be plate solved.")
+            eng.run(f"cd {work}")
+            for (
+                i
+            ) in unsolved:  # positions in the sequence, not file numbers (subs can be missing from the run)
+                at = sorted(order).index(i) + 1
+                eng.run(f"unselect sub_ {at} {at}", check=False)
             eng.run(
-                "seqplatesolve sub_ -force",
-                timeout=7200,
-                on_line=_Live(m, "Plate solve", 0.2, 0.45, len(order)),
+                "seqplatesolve sub_", timeout=7200, on_line=_Live(m, "Plate solve", 0.45, 0.5, len(order))
             )
             eng.run(
                 "seqapplyreg sub_ -framing=max",
                 timeout=7200,
-                on_line=_Live(m, "Register", 0.45, 0.6, len(order)),
+                on_line=_Live(m, "Register", 0.5, 0.6, len(order)),
             )
             notes.append(f"{mosaic}: registered by plate solution and stacked onto one canvas.")
+            if unsolved:
+                notes.append(
+                    f"{len(unsolved)} sub{'s' if len(unsolved) != 1 else ''} couldn't be plate solved."
+                )
         elif (m.recipe.get("options") or {}).get("reference") == "most_stars":
             # the sub with the most stars is the reference; one pass keeps that choice (004 FR-004)
             best = max(order, key=lambda i: order[i].frame.measurement.stars or 0)
