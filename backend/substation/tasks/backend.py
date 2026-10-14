@@ -1,4 +1,4 @@
-"""SubStation's task backend for the Django Tasks API: tasks are rows in SQLite (research R2)."""
+"""SubStation's task backend for the Django Tasks API: tasks are rows in the database (research R2)."""
 
 from __future__ import annotations
 

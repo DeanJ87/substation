@@ -3285,8 +3285,6 @@ export interface components {
             disk_free_bytes: number | null;
             /** Disk Total Bytes */
             disk_total_bytes: number | null;
-            /** Journal Mode */
-            journal_mode: string;
             /** Libraries */
             libraries: components["schemas"]["LibraryHealth"][];
             /** Status */

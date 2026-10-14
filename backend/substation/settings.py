@@ -103,27 +103,19 @@ TEMPLATES = [
 ]
 
 
-# --- Database: PostgreSQL when SUBSTATION_DATABASE_URL is set, else SQLite in WAL mode (research R1) ----------
-# SQLite suits one host with the database on local disk. Several hosts, network storage or Kubernetes need
-# PostgreSQL (005-DR-24): postgres://user:password@host:5432/name. The password may instead come from
+# --- Database: PostgreSQL (005-DR-24) --------------------------------------------------------------------------
+# SUBSTATION_DATABASE_URL=postgres://user:password@host:5432/name. The password may instead come from
 # SUBSTATION_DATABASE_PASSWORD, or SUBSTATION_DATABASE_PASSWORD_FILE (a mounted Kubernetes or Docker secret).
 def _database() -> dict:
     from urllib.parse import unquote, urlparse
 
-    url = env("DATABASE_URL", "") or ""
-    if not url:
-        return {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": env("DB_PATH", str(STATION_ROOT / "substation.db")),
-            "OPTIONS": {
-                "transaction_mode": "IMMEDIATE",
-                "timeout": 180,  # commits can queue behind a slow disk for a minute or more (2026-10-12)
-                "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;",
-            },
-        }
+    # unset (tools, image builds, a development checkout): a local PostgreSQL; the containers insist on it being set
+    url = env("DATABASE_URL", "") or "postgres://substation@localhost:5432/substation"
     u = urlparse(url)
     if u.scheme not in ("postgres", "postgresql"):
-        raise ImproperlyConfigured("SUBSTATION_DATABASE_URL must be a postgres:// URL.")
+        raise ImproperlyConfigured(
+            "Set SUBSTATION_DATABASE_URL to the PostgreSQL database (postgres://user@host:5432/name)."
+        )
     password = env("DATABASE_PASSWORD", "") or unquote(u.password or "")
     secret = env("DATABASE_PASSWORD_FILE", "")
     if secret:

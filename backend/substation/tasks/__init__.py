@@ -1,4 +1,4 @@
-"""SubStation tasks: Django's Tasks API plus the options our SQLite backend needs (research R2).
+"""SubStation tasks: Django's Tasks API plus the options our database backend needs (research R2).
 
 Define tasks with `station_task` (a thin layer over `django_tasks.task`) and enqueue them with `enqueue`,
 which adds a dedupe key. Inside a running task, `report_progress` updates the queue console and

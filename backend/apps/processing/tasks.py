@@ -104,8 +104,7 @@ def rematch_lights() -> dict:
         "night"
     )
     n = queued = 0
-    # ids first, then fresh chunks: an open cursor would pin an old snapshot, and SQLite refuses a write from a
-    # stale snapshot at once (SQLITE_BUSY_SNAPSHOT) instead of waiting
+    # ids first, then fresh chunks: a long-open cursor would hold one snapshot for the whole run
     ids = list(lights.values_list("pk", flat=True))
     for f in (f for i in range(0, len(ids), 200) for f in lights.filter(pk__in=ids[i : i + 200])):
         cm = _retry_locked(lambda f=f: update_match(f, cache))

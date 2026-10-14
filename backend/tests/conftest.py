@@ -62,14 +62,12 @@ def standard_client(standard_user) -> Client:
 
 def manage(*args: str, timeout: float = 60, **kwargs) -> subprocess.Popen:
     """Start `manage.py <args>` against the test database (for multi-process tests)."""
-    db = settings.DATABASES["default"]
-    env: dict[str, str] = {**os.environ, "DJANGO_SETTINGS_MODULE": "substation.settings"}
-    if db["ENGINE"].endswith("sqlite3"):
-        env["SUBSTATION_DB_PATH"] = str(db["NAME"])
-    else:  # the test database, which pytest-django has already switched NAME to
-        env["SUBSTATION_DATABASE_URL"] = (
-            f"postgres://{db['USER']}:{db['PASSWORD']}@{db['HOST']}:{db['PORT']}/{db['NAME']}"
-        )
+    db = settings.DATABASES["default"]  # NAME is already the test database
+    env: dict[str, str] = {
+        **os.environ,
+        "DJANGO_SETTINGS_MODULE": "substation.settings",
+        "SUBSTATION_DATABASE_URL": f"postgres://{db['USER']}:{db['PASSWORD']}@{db['HOST']}:{db['PORT']}/{db['NAME']}",
+    }
     return subprocess.Popen(
         [sys.executable, str(BACKEND / "manage.py"), *args], cwd=BACKEND, env=env, **kwargs
     )

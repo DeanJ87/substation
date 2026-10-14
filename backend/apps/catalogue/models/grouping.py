@@ -28,8 +28,8 @@ class DatasetState(models.TextChoices):
 
 class Dataset(models.Model):
     # Uniqueness lives in group_key, built in code from the grouping fields. A multi-column unique
-    # constraint cannot be used: the key contains NULLs (no panel, no gain), and SQLite treats NULLs as
-    # distinct (Django silently skips nulls_distinct=False on SQLite, so no index would be created).
+    # constraint cannot be used: the key contains NULLs (no panel, no gain), which a unique index treats as
+    # distinct unless NULLS NOT DISTINCT.
     group_key = models.CharField(max_length=1000, unique=True)
     target = models.CharField(max_length=300)
     panel = models.PositiveSmallIntegerField(null=True, blank=True)

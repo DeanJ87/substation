@@ -18,16 +18,14 @@ if ! touch "$ROOT/.write-test-$ROLE" 2>/dev/null; then
 fi
 rm -f "$ROOT/.write-test-$ROLE"
 
-FSTYPE="$(stat -f -c %T "$ROOT" 2>/dev/null || echo unknown)"
-if [ -z "${SUBSTATION_DATABASE_URL:-}" ]; then  # SQLite lives in $ROOT; PostgreSQL doesn't mind (005-DR-24)
-  case "$FSTYPE" in
-    nfs*|cifs|smb*|fuse.sshfs)
-      echo "Warning: $ROOT is on a network filesystem ($FSTYPE). SQLite needs local disk; expect" >&2
-      echo "'database is locked' errors. Use local storage, or PostgreSQL (SUBSTATION_DATABASE_URL)." >&2
-      ;;
-  esac
-fi
 mkdir -p "$ROOT/work" "$ROOT/previews" "$ROOT/stacks" "$ROOT/config"
+
+if [ "$ROLE" = api ] || [ "$ROLE" = worker ]; then
+  if [ -z "${SUBSTATION_DATABASE_URL:-}" ]; then
+    echo "SubStation can't start: set SUBSTATION_DATABASE_URL to its PostgreSQL database (see docker/compose.yml)." >&2
+    exit 1
+  fi
+fi
 
 case "$ROLE" in
   api)
@@ -41,15 +39,6 @@ case "$ROLE" in
       fi
       sleep 2
     done
-    # 005-DR-24: an existing SQLite catalogue moves into an empty PostgreSQL once, then is set aside
-    if [ -n "${SUBSTATION_DATABASE_URL:-}" ] && [ "${SUBSTATION_IMPORT_SQLITE:-}" = 1 ] && [ -f "$ROOT/substation.db" ]; then
-      echo "SubStation api: importing $ROOT/substation.db into PostgreSQL."
-      env -u SUBSTATION_DATABASE_URL SUBSTATION_DB_PATH="$ROOT/substation.db" python manage.py migrate --noinput
-      python manage.py copy_database "$ROOT/substation.db"
-      mv "$ROOT/substation.db" "$ROOT/substation.db.imported-$(date -u +%Y%m%d%H%M)"
-      rm -f "$ROOT/substation.db-wal" "$ROOT/substation.db-shm"
-      echo "SubStation api: import done; the SQLite file is kept beside it, renamed."
-    fi
     python manage.py bootstrap_admin
     exec python -m uvicorn substation.asgi:application --host 0.0.0.0 --port 8000 --proxy-headers \
          --forwarded-allow-ips='*'

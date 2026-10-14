@@ -82,19 +82,6 @@ Deployments:
 
 A Helm chart is planned. Until then these are the pieces it will contain.
 
-## SQLite instead of PostgreSQL
-
-Without `SUBSTATION_DATABASE_URL`, SubStation keeps its catalogue in SQLite at `/data/substation/substation.db`.
-That suits one machine with the station folder on a local disk; it doesn't work on network storage or across
-several machines.
-
-To move an existing SQLite installation to PostgreSQL, point the reference stack's `SUBSTATION_DATA` at the
-folder that holds `station/substation.db` and set `SUBSTATION_IMPORT_SQLITE=1` for the first start. The API brings
-the SQLite file up to date, copies every row into the new, empty PostgreSQL in one transaction, and renames the file
-to `substation.db.imported-<time>`; the workers start once it's done. If anything fails, nothing is half-copied and
-the file stays where it was. Remove the variable afterwards. (By hand, the same is `manage.py copy_database
-<file>`; it refuses a database that already has data unless you add `--replace`.)
-
 ## Post-processing helpers
 
 GraXpert and RC-Astro run best on a machine with a GPU. A helper on that machine takes post-processing jobs from

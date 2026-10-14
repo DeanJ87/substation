@@ -228,23 +228,19 @@ deploy branch were each tried the same day and removed.
 - **005-DR-23**: Rolling out is the operator's choice (005-DR-26); SubStation's part is to make any rollout safe
   (005-DR-25) and to upgrade its database on start.
 
-## Amendment 2026-10-14: PostgreSQL
+## Amendment 2026-10-14: PostgreSQL only
 
-SQLite suits one host with its database on local disk; on network storage it caused the lock storms of 2026-10-13,
-and it can't be shared across Kubernetes nodes.
+SQLite suited one host with its database on local disk; on network storage it caused the lock storms of
+2026-10-13, and it can't be shared across Kubernetes nodes. The installation moved to PostgreSQL the same day, and
+SQLite support was then removed rather than kept as a second, untested path.
 
-- **005-DR-24**: SubStation runs on SQLite (the default) or PostgreSQL, chosen by `SUBSTATION_DATABASE_URL`
-  (`postgres://user:password@host:5432/name`; the password may come from `SUBSTATION_DATABASE_PASSWORD_FILE`). The
-  task claim serialises workers with an advisory lock on PostgreSQL, so no task is taken twice and heavy slots hold;
-  leases use the same upsert on both. The whole test suite runs against both in CI. `manage.py copy_database
-  <substation.db>` moves an installation: with SubStation stopped and both databases at the same migrations, every
-  row of every table is copied with its own id in one transaction, booleans converted and times kept as stored,
-  then sequences reset. It refuses a PostgreSQL database that already holds users or frames unless `--replace`.
-  `/health` reports `postgresql` where SQLite reports its journal mode. With `SUBSTATION_IMPORT_SQLITE=1` the API
-  does the move itself on start: it migrates the SQLite file, copies it into the empty PostgreSQL, then renames the
-  file `substation.db.imported-<time>`; workers start only after (they wait for the API). The database password
-  comes from a stack variable (`SUBSTATION_DATABASE_PASSWORD`), or a mounted secret file on Kubernetes, so nothing
-  has to be written on the host.
+- **005-DR-24**: SubStation's database is PostgreSQL (`SUBSTATION_DATABASE_URL=postgres://user@host:5432/name`; the
+  password in the URL, `SUBSTATION_DATABASE_PASSWORD`, or `SUBSTATION_DATABASE_PASSWORD_FILE` for a mounted secret).
+  The api and worker containers refuse to start without the URL; tools and image builds fall back to a local
+  PostgreSQL. Task claims are serialised with an advisory lock, so no task is taken twice and heavy slots hold. The
+  test suite runs against PostgreSQL (CI starts one; locally, one on port 5432). The owner's catalogue was moved
+  with a one-off copy (629,702 rows in 52 s, rehearsed first on a snapshot); the copy command and the SQLite import
+  were then removed, and the old file is kept on the NAS as `substation.db.imported-202610141126`.
 
 ## Amendment 2026-10-14: stopping is cheap; releases and the reference stack
 

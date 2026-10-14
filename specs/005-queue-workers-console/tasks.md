@@ -86,4 +86,6 @@
 - [X] W26 (2026-10-14) `copy_database` (table to table, one transaction, sequences reset, migration check); test;
   rehearsed on a snapshot of the live database: 633,151 rows in 77 s, every table's count equal
 - [X] W31 (2026-10-14) `SUBSTATION_IMPORT_SQLITE` import on API start; password from a variable (a Compose secret file is root-only, so the API couldn't read it: found in the rehearsal)
-- [ ] W27 Move the NAS installation to PostgreSQL
+- [X] W27 (2026-10-14) NAS moved to PostgreSQL via the reference stack (Portainer GitOps, stack 50): 629,702 rows
+- [X] W32 (2026-10-14) SQLite removed: settings, health journal mode, entrypoint import and network-disk warning,
+  `copy_database`, SQLite-only tests; CI's backend job runs on PostgreSQL; containers require the URL

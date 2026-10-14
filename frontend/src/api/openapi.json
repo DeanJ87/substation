@@ -2578,10 +2578,6 @@
       ],
       "title": "Disk Total Bytes"
      },
-     "journal_mode": {
-      "title": "Journal Mode",
-      "type": "string"
-     },
      "libraries": {
       "items": {
        "$ref": "#/components/schemas/LibraryHealth"
@@ -2606,7 +2602,6 @@
     "required": [
      "status",
      "database",
-     "journal_mode",
      "libraries",
      "workers_alive",
      "disk_free_bytes",

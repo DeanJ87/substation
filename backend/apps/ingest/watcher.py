@@ -147,7 +147,7 @@ class Watcher:
     def _heartbeat(self) -> None:
         """Keep (or take) the lease every few seconds on its own thread, so a sweep of a big library (minutes)
         doesn't let it lapse: then Activity said "Not watching" and another worker started sweeping too. A busy
-        database ("database is locked") is retried quietly; the lease is only given up once it has really run
+        database is retried quietly; the lease is only given up once it has really run
         out, not on one missed renewal."""
         last_ok = 0.0
         while not self.stop.is_set():

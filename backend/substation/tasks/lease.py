@@ -1,4 +1,4 @@
-"""Leases: one holder at a time across processes and containers (an atomic upsert, SQLite or PostgreSQL)."""
+"""Leases: one holder at a time across processes and containers (an atomic upsert)."""
 
 from __future__ import annotations
 

@@ -26,8 +26,7 @@ cp docker/.env.example docker/.env   # then fill it in (docs/user/install.md)
 docker compose -f docker/compose.yml up -d
 ```
 
-Libraries are mounted read-only under `/data/library/<name>`; the catalogue is PostgreSQL (or SQLite for a single
-machine). Docker Compose, Portainer, Kubernetes and updating: `docs/user/install.md`.
+Libraries are mounted read-only under `/data/library/<name>`; the catalogue is PostgreSQL. Docker Compose, Portainer, Kubernetes and updating: `docs/user/install.md`.
 
 ## Development
 

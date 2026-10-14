@@ -1,5 +1,6 @@
-"""Test settings: the real settings with temporary /data paths and a file-based test database
-(file, not in-memory, so worker subprocesses in queue tests share it)."""
+"""Test settings: the real settings with temporary /data paths. Tests need PostgreSQL: SUBSTATION_DATABASE_URL, or
+a local one on port 5432 (docker run -e POSTGRES_PASSWORD=substation -e POSTGRES_USER=substation -p 5432:5432
+postgres:17-alpine)."""
 
 import os
 import tempfile
@@ -9,16 +10,14 @@ _TMP = Path(os.environ.get("SUBSTATION_TEST_TMP") or tempfile.mkdtemp(prefix="su
 os.environ["SUBSTATION_TEST_TMP"] = str(_TMP)  # subprocesses reuse the same directory
 os.environ.setdefault("SUBSTATION_DATA_DIR", str(_TMP / "data"))
 os.environ.setdefault("SUBSTATION_SECRET_KEY", "test-secret-key-not-for-production")
+os.environ.setdefault("SUBSTATION_DATABASE_URL", "postgres://substation:substation@localhost:5432/substation")  # noqa: E501
 
 from .settings import *  # noqa: E402,F403
 from .settings import DATA_DIR, DATABASES  # noqa: E402
 
 for sub in ("library", "substation"):
     (DATA_DIR / sub).mkdir(parents=True, exist_ok=True)
-if DATABASES["default"]["ENGINE"].endswith("sqlite3"):
-    DATABASES["default"]["TEST"] = {"NAME": str(_TMP / "test.db")}
-else:  # PostgreSQL (005-DR-24): the suite runs against both in CI
-    DATABASES["default"]["TEST"] = {"NAME": "test_substation"}
+DATABASES["default"]["TEST"] = {"NAME": "test_substation"}
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]  # fast tests only
 
 INGEST_VERIFY_COMPLETE = False  # fixtures are header-only

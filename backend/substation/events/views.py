@@ -1,6 +1,6 @@
 """GET /api/v1/events: Server-Sent Events (research R12, contracts/events.md).
 
-Polls the Event table every 500 ms (SQLite has no LISTEN/NOTIFY), resumes from Last-Event-ID, sends a
+Polls the Event table every 500 ms (LISTEN/NOTIFY would do; polling is simple and enough), resumes from Last-Event-ID, sends a
 heartbeat comment every 15 s, and sends `resync` when the requested id has already been pruned.
 """
 

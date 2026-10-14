@@ -58,8 +58,6 @@ services:
       SUBSTATION_SITE_NAME: ${SUBSTATION_SITE_NAME:-}
       SUBSTATION_CSRF_TRUSTED_ORIGINS: ${SUBSTATION_URL:-}  # the address you sign in at, behind a proxy
       SUBSTATION_HELPER_TOKEN: ${SUBSTATION_HELPER_TOKEN:-}  # post-processing helpers on other machines (spec 010)
-      # moving from SQLite: 1 imports station/substation.db into an empty PostgreSQL on start, then renames it
-      SUBSTATION_IMPORT_SQLITE: ${SUBSTATION_IMPORT_SQLITE:-}
     volumes:
       - *station
       - *catalogues

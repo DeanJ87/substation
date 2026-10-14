@@ -10,6 +10,5 @@
 | `compose.yml` + `.env.example` | | the reference stack: PostgreSQL and the three services |
 | `compose.traefik.yml` | | an override for running behind Traefik |
 | `compose.helper.yml` | | a helper on a Linux machine with an NVIDIA GPU |
-| `compose.local-test.yml` | | building and trying the images locally |
 
-Installing, updating and moving from SQLite: `docs/user/install.md`.
+Installing and updating: `docs/user/install.md`.

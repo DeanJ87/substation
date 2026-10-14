@@ -22,7 +22,6 @@ class LibraryHealth(Schema):
 class HealthOut(Schema):
     status: str
     database: str
-    journal_mode: str
     version: str = ""  # "0.1.0 · poc-substation · 1a2b3c4 · 11 Oct 2026"; empty in a dev checkout
     libraries: list[LibraryHealth]
     workers_alive: int
@@ -32,12 +31,8 @@ class HealthOut(Schema):
 
 @router.get("", response=HealthOut, auth=None)
 def health(request):  # type: ignore[no-untyped-def]
-    if connection.vendor == "sqlite":
-        with connection.cursor() as cur:
-            cur.execute("PRAGMA journal_mode")
-            mode = cur.fetchone()[0]
-    else:
-        mode = connection.vendor  # "postgresql"
+    with connection.cursor() as cur:  # the database answers
+        cur.execute("SELECT 1")
     cutoff = timezone.now() - timedelta(seconds=30)
     alive = Worker.objects.filter(heartbeat_at__gte=cutoff).exclude(state=WorkerState.STOPPED).count()
     libs = [
@@ -54,7 +49,6 @@ def health(request):  # type: ignore[no-untyped-def]
         version=settings.SUBSTATION_VERSION,
         status="ok",
         database="ok",
-        journal_mode=mode,
         libraries=libs,
         workers_alive=alive,
         disk_free_bytes=free,
