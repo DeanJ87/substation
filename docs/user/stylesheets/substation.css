@@ -1,0 +1,86 @@
+/* SubStation theme for MkDocs Material.
+   mkdocs.yml:
+     theme:
+       name: material
+       font: false            # fonts are self-hosted, see @font-face below
+       palette:
+         - scheme: substation
+           toggle: { icon: material/weather-sunny, name: Light }
+         - scheme: substation-light
+           toggle: { icon: material/weather-night, name: Night vision }
+         - scheme: substation-night
+           toggle: { icon: material/brightness-4, name: Dark }
+     extra_css:
+       - stylesheets/substation.css
+*/
+
+@font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("../fonts/JetBrainsMono-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+:root {
+  --md-text-font: "Inter";
+  --md-code-font: "JetBrains Mono";
+}
+
+[data-md-color-scheme="substation"] {
+  --sst-bg: #080d14; --sst-panel: #0d141d; --sst-panel-2: #111b27; --sst-panel-3: #0a1018;
+  --sst-line: #1b2a38; --sst-line-2: #142130; --sst-text: #e7edf3; --sst-muted: #8b9baa; --sst-dim: #768798;
+  --sst-accent: #ee7bd0; --sst-on-accent: #080d14;
+  color-scheme: dark;
+}
+[data-md-color-scheme="substation-light"] {
+  --sst-bg: #f4f6f8; --sst-panel: #ffffff; --sst-panel-2: #edf1f4; --sst-panel-3: #e8edf1;
+  --sst-line: #d3dbe2; --sst-line-2: #e3e8ed; --sst-text: #0d141d; --sst-muted: #45525f; --sst-dim: #55626e;
+  --sst-accent: #a3307f; --sst-on-accent: #ffffff;
+  color-scheme: light;
+}
+[data-md-color-scheme="substation-night"] {
+  --sst-bg: #050000; --sst-panel: #0c0101; --sst-panel-2: #120202; --sst-panel-3: #080000;
+  --sst-line: #3a0a06; --sst-line-2: #250604; --sst-text: #ff4a3a; --sst-muted: #e63a2c; --sst-dim: #e63a2c;
+  --sst-accent: #ff4a3a; --sst-on-accent: #050000;
+  color-scheme: dark;
+}
+
+/* Token mapping: identical structure to SQMeter's docs override */
+[data-md-color-scheme^="substation"] {
+  --md-default-bg-color: var(--sst-bg);
+  --md-default-fg-color: var(--sst-text);
+  --md-default-fg-color--light: var(--sst-muted);
+  --md-default-fg-color--lighter: var(--sst-dim);
+  --md-default-fg-color--lightest: var(--sst-line);
+  --md-primary-fg-color: var(--sst-panel);
+  --md-primary-bg-color: var(--sst-text);
+  --md-primary-bg-color--light: var(--sst-muted);
+  --md-accent-fg-color: var(--sst-accent);
+  --md-accent-fg-color--transparent: color-mix(in srgb, var(--sst-accent) 12%, transparent);
+  --md-typeset-color: var(--sst-text);
+  --md-typeset-a-color: var(--sst-accent);
+  --md-code-bg-color: var(--sst-panel-3);
+  --md-code-fg-color: var(--sst-text);
+  --md-code-hl-color: color-mix(in srgb, var(--sst-accent) 18%, transparent);
+  --md-footer-bg-color: var(--sst-panel-3);
+  --md-footer-bg-color--dark: var(--sst-bg);
+  --md-footer-fg-color: var(--sst-text);
+  --md-footer-fg-color--light: var(--sst-muted);
+  --md-admonition-bg-color: var(--sst-panel);
+  --md-admonition-fg-color: var(--sst-text);
+}
+
+.md-header, .md-tabs { background: var(--sst-panel); border-bottom: 1px solid var(--sst-line); box-shadow: none; }
+.md-tabs__link--active, .md-tabs__item--active .md-tabs__link { color: var(--sst-text); box-shadow: inset 0 -2px 0 var(--sst-accent); }
+.md-nav__link--active { color: var(--sst-accent); }
+.md-typeset a { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+.md-typeset a:hover { text-decoration-thickness: 2px; }
+.md-typeset h1, .md-typeset h2 { color: var(--sst-text); font-weight: 600; letter-spacing: -0.01em; }
+.md-typeset code { border: 1px solid var(--sst-line-2); border-radius: 0.35rem; }
+.md-typeset pre > code { border-radius: var(--sst-radius, 0.7rem); }
+.md-typeset table:not([class]) { font-variant-numeric: tabular-nums; border: 1px solid var(--sst-line); border-radius: 0.7rem; }
+.md-typeset table:not([class]) th { background: var(--sst-panel-2); color: var(--sst-muted); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.md-typeset .admonition, .md-typeset details {
+  background: linear-gradient(180deg, var(--sst-panel), var(--sst-panel-3));
+  border: 1px solid var(--sst-line); border-left-width: 1px; border-radius: 0.7rem; box-shadow: none;
+}
+.md-typeset .md-button { border: 1px solid var(--sst-line); color: var(--sst-text); border-radius: 0.55rem; }
+.md-typeset .md-button--primary { background: color-mix(in srgb, var(--sst-accent) 12%, transparent); border-color: var(--sst-accent); color: var(--sst-accent); }
+.md-search__form { background: var(--sst-panel-3); border: 1px solid var(--sst-line); }
+:focus-visible { outline: 2px solid var(--sst-accent); outline-offset: 2px; }
