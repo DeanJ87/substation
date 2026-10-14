@@ -257,4 +257,6 @@ SQLite support was then removed rather than kept as a second, untested path.
   start-up waits up to two minutes for the database, for platforms without start ordering. Once a development
   commit's images are all built, CI moves the `edge` git branch to it, so tools that poll git (Portainer GitOps,
   Argo CD, Flux) follow `edge` and never redeploy before the images exist: polling the development branch itself
-  redeployed with the previous images minutes before the new ones were published (2026-10-14).
+  redeployed with the previous images minutes before the new ones were published (2026-10-14). The reference
+  stack's services have `pull_policy: always`, so any deploy checks the registry for the tag rather than reusing a
+  local copy; a deploy whose images haven't changed recreates nothing.

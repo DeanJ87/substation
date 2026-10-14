@@ -45,12 +45,14 @@ services:
   frontend:
     <<: *base
     image: ghcr.io/deanj87/substation-frontend:${SUBSTATION_VERSION:-latest}
+    pull_policy: always  # a moving tag (edge, latest, 1.4) is checked on every deploy; unchanged images stay
     ports: ["${SUBSTATION_PORT:-8080}:8080"]
     depends_on: [api]
 
   api:
     <<: *base
     image: ghcr.io/deanj87/substation-api:${SUBSTATION_VERSION:-latest}
+    pull_policy: always  # a moving tag (edge, latest, 1.4) is checked on every deploy; unchanged images stay
     environment:
       <<: *env
       SUBSTATION_ADMIN_USERNAME: ${SUBSTATION_ADMIN_USERNAME:-admin}
@@ -69,6 +71,7 @@ services:
   worker:
     <<: *base
     image: ghcr.io/deanj87/substation-worker:${SUBSTATION_VERSION:-latest}
+    pull_policy: always  # a moving tag (edge, latest, 1.4) is checked on every deploy; unchanged images stay
     environment:
       <<: *env
       SUBSTATION_WORKERS: ${SUBSTATION_WORKERS_EACH:-2}  # per container; change it later in Settings → Workers
