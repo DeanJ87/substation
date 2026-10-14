@@ -99,6 +99,7 @@ def _same_night_flat_arrived(f: Frame, done: SubMeasurement, cm) -> bool:  # noq
 
 @station_task(queue_name="process", max_attempts=2)
 def rematch_lights() -> dict:
+    _wait_for_earlier_rematch()
     cache: dict = {}
     lights = Frame.objects.filter(frame_type=FrameType.LIGHT, status=FrameStatus.CATALOGUED).select_related(
         "night"
@@ -128,6 +129,27 @@ def rematch_lights() -> dict:
         recount_grades(ds)
     emit("dataset.updated", {"dataset_id": None})
     return {"lights": n, "queued": queued}
+
+
+def _wait_for_earlier_rematch() -> None:
+    """One re-match at a time (002-DR-25): a later run waits for one already going, which may have read the masters
+    before the newest; running together, three re-matches of every light slowed each other (2026-10-14)."""
+    from django.db.models import Q
+
+    from substation.tasks import Reschedule, current_task_id
+    from substation.tasks.models import Task, TaskStatus
+
+    task_id = current_task_id.get()
+    me = Task.objects.filter(pk=task_id).values("pk", "started_at").first() if task_id else None
+    if me is None:
+        return
+    earlier = (
+        Task.objects.filter(name__endswith=".rematch_lights", status=TaskStatus.RUNNING)
+        .exclude(pk=me["pk"])
+        .filter(Q(started_at__lt=me["started_at"]) | Q(started_at=me["started_at"], pk__lt=me["pk"]))
+    )
+    if earlier.exists():
+        raise Reschedule(60, "Waiting for the re-match already running.")
 
 
 def _save_stars(calibrated: Path, stars: list, out: Path) -> None:

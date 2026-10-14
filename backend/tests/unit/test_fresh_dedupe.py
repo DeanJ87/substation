@@ -29,3 +29,29 @@ def test_without_fresh_a_running_task_is_still_joined():
     first = enqueue(rematch_lights, dedupe_key="other")
     Task.objects.filter(pk=first.id).update(status=TaskStatus.RUNNING)
     assert enqueue(rematch_lights, dedupe_key="other").id == first.id
+
+
+def test_a_later_rematch_waits_for_one_already_running():
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.processing.tasks import _wait_for_earlier_rematch
+    from substation.tasks import Reschedule, current_task_id
+
+    now = timezone.now()
+    first = enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)
+    Task.objects.filter(pk=first.id).update(status=TaskStatus.RUNNING, started_at=now - timedelta(minutes=3))
+    second = enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)
+    Task.objects.filter(pk=second.id).update(status=TaskStatus.RUNNING, started_at=now)
+    token = current_task_id.set(str(second.id))
+    try:
+        with pytest.raises(Reschedule):
+            _wait_for_earlier_rematch()
+    finally:
+        current_task_id.reset(token)
+    token = current_task_id.set(str(first.id))
+    try:
+        _wait_for_earlier_rematch()  # the earlier one carries on
+    finally:
+        current_task_id.reset(token)

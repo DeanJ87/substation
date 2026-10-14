@@ -349,3 +349,5 @@ exposure (0.00654 / 0.00655 s) and sets required an exact match.
   rejected by QA with the reason (light reached the sensor: a cover off or a flat panel on), and a flat build passes
   over a built dark-flat master that bright for the next calibrator (a dark at that exposure, else the bias). A set of
   KStars "dark flats" at 29,400 ADU, as bright as the flats, had calibrated a flat set down to nothing.
+  A re-match that starts while an earlier one is still going waits for it (three ran side by side and slowed each
+  other).

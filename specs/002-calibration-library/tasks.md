@@ -95,3 +95,4 @@
   matching or the session waits; a pinned match missing one goes back to waiting on a rematch (002-DR-26); tests
 - [X] D-28 (2026-10-14) QA rejects darks, bias and dark flats above 20% of full scale; `flat_calibrator` skips
   built dark-flat masters that bright (002-DR-27); tests
+- [X] D-29 (2026-10-14) A re-match waits for an earlier one still running (002-DR-25); test
