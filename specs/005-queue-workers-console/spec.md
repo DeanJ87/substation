@@ -254,4 +254,7 @@ SQLite support was then removed rather than kept as a second, untested path.
   PostgreSQL, `.env.example`, `compose.traefik.yml`) with no site values in it, and a guide for Compose, image
   watchers, Portainer GitOps and Kubernetes (`docs/user/install.md`). A one-site compose file and NAS preparation
   script were removed from the repository; an installation's own values live in its stack variables. The API's
-  start-up waits up to two minutes for the database, for platforms without start ordering.
+  start-up waits up to two minutes for the database, for platforms without start ordering. Once a development
+  commit's images are all built, CI moves the `edge` git branch to it, so tools that poll git (Portainer GitOps,
+  Argo CD, Flux) follow `edge` and never redeploy before the images exist: polling the development branch itself
+  redeployed with the previous images minutes before the new ones were published (2026-10-14).

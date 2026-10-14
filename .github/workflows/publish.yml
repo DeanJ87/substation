@@ -59,3 +59,18 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.svc }}
           cache-to: type=gha,mode=max,scope=${{ matrix.svc }}
 
+
+  # 005-DR-26: the `edge` git branch follows the newest development commit whose images are all built, as the
+  # `edge` image tag does. Anything that polls git (Portainer GitOps, Argo CD, Flux) follows `edge` and so never sees a
+  # commit before its images exist. Releases are git tags, which only ever point at built commits too.
+  edge-branch:
+    needs: image
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Move edge to this commit
+        run: git push --force origin "${GITHUB_SHA}:refs/heads/edge"

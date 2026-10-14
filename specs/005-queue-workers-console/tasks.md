@@ -79,6 +79,7 @@
 - [X] W28 (2026-10-14) Image tags (semver, latest, edge, commit); `docker/compose.yml` with PostgreSQL,
   `.env.example`, `compose.traefik.yml`; NAS compose and prepare script out of the repo; entrypoint waits for the
   database; install guide (005-DR-26)
+- [X] W33 (2026-10-14) `edge` git branch moved by CI after the images; NAS stack to poll it
 - [ ] W29 Helm chart
 - [ ] W30 Delete the Mac deploy scripts once the NAS runs from the reference stack
 - [X] W25 (2026-10-14) PostgreSQL: `SUBSTATION_DATABASE_URL` settings, advisory-locked claim, health; psycopg;

@@ -21,7 +21,7 @@ Images are on GitHub's registry, `ghcr.io/deanj87/substation-{frontend,api,worke
 | `1.4.2` | one release, never changes |
 | `1.4` | the newest patch of 1.4: fixes only |
 | `latest` | the newest release |
-| `edge` | every build of the development branch: newest features, least tested |
+| `edge` | every build of the development branch: newest features, least tested (the `edge` git branch follows it) |
 | `2194c51` | one commit, never changes |
 
 Pick one with `SUBSTATION_VERSION`. Run all four containers on the same version.
@@ -60,8 +60,9 @@ got, and new subs still appear straight away.
 - **Automatically**: an image watcher (Watchtower, or diun to be told instead) on `edge`, `1.4` or `latest`.
 - **Portainer**: add the stack from this repository (Stacks → Add stack → Repository: `docker/compose.yml`, plus
   `docker/compose.traefik.yml` as an additional file if you use Traefik), put your `.env` values in the stack's
-  environment variables, and switch on GitOps updates with "Re-pull image" and "Force redeployment", so a new
-  image on your tag is picked up even when the files haven't changed.
+  environment variables, and switch on GitOps polling with "Re-pull image". Point it at the **`edge` branch** for
+  `SUBSTATION_VERSION=edge`: that branch only moves once a commit's images are built, so Portainer never redeploys
+  before the new images exist (a development branch moves first, and its images arrive minutes later).
 
 An update stops the workers. Whatever they were doing goes back in the queue, and a stack picks up from what it
 had finished (its calibrated and registered subs) rather than starting again, so updating while a long stack runs
