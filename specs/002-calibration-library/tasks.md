@@ -82,3 +82,6 @@
   recalibrated; tests (002-DR-20, 002-DR-21)
 - [X] C32 (owner 2026-10-13) `_register` uses the header's INSTRUME/TELESCOP; NAS: built masters relabelled from
   their headers (17 changed), 17 empty leftover ATR2600M datasets settled; test (002-DR-22)
+- [X] C33 (2026-10-14) `auto_builds` (settled sets, grown sets, blocked flats retried after a helper master) in the
+  supervisor under a lease; `RAW_TYPES`/`BUILD_PRIORITY` moved to `calibration.py`; tests (002-DR-23). The two
+  new bias sets and the 15 blocked flat sets were built by hand the same day

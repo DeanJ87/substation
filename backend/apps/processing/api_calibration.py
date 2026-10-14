@@ -15,16 +15,8 @@ from substation.events.emit import emit
 from substation.tasks import PRIORITY_BULK, enqueue
 
 from . import calibration as svc
+from .calibration import BUILD_PRIORITY, RAW_TYPES  # noqa: E402
 from .models import BuiltMaster, CalibrationQA
-
-RAW_TYPES = (FrameType.BIAS, FrameType.DARK_FLAT, FrameType.DARK, FrameType.FLAT)
-# bias and dark flats first, so flats can be calibrated by them; darks need nothing, so they come last
-BUILD_PRIORITY: dict[str, int] = {
-    FrameType.BIAS: 3,
-    FrameType.DARK_FLAT: 3,
-    FrameType.FLAT: 2,
-    FrameType.DARK: 1,
-}
 
 
 class QAFrameOut(Schema):

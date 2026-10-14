@@ -67,3 +67,9 @@ each machine mounts the share, e.g. a Windows drive letter) lets them open it in
 - **008-DR-10**: Masters and combined masters MUST show where their file is, with a Copy path button, instead of a
   download. Server paths are mapped by prefix (Settings → Library → File paths, for everyone), and a browser MAY
   keep its own mappings, which win. Windows targets (a drive letter or `\\server`) get backslashes.
+
+## Amendment 2026-10-14: Pushover
+
+- **008-DR-13**: Notifications can go to Pushover as well as ntfy and a webhook: a user (or group) key and the
+  application's API token, each 30 letters and digits. A failed job is sent at high priority; a link opens the item
+  in SubStation. Only admins see the keys and private addresses; other users see that a channel is set.

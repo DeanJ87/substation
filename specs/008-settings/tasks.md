@@ -70,3 +70,5 @@ requirement they close. G57 and G58 refer to `docs/design/design-review.md` sect
 
 - [X] P1 `file_path` on masters and combined masters; `processing.paths.map` setting
 - [X] P2 `FilePath` component (mapping, Copy path) replaces Download; File paths section with per-browser overrides; tests
+- [X] T28 (2026-10-14) Pushover channel in `notify.send`, settings validation, keys hidden from non-admins,
+  Settings → Notifications fields; tests (008-DR-13)

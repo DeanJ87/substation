@@ -198,6 +198,16 @@ class Command(BaseCommand):
                     auto_stacks()
                 except Exception:  # noqa: BLE001
                     log.exception("Automatic stacks failed")
+                try:  # 002-DR-23: masters from settled calibration sessions; one container at a time
+                    from apps.processing.calibration import auto_builds
+                    from substation.tasks.lease import acquire
+
+                    if not os.environ.get("SUBSTATION_ONLY_QUEUES") and acquire(
+                        "auto-builds", host, ttl_s=240
+                    ):
+                        auto_builds()
+                except Exception:  # noqa: BLE001
+                    log.exception("Automatic calibration builds failed")
                 try:  # the bin's daily tidy (spec 011): bin long-rejected subs, delete what's past its date
                     from apps.catalogue.services.binning import tidy_due
                     from apps.ingest.tasks.bin import tidy_bin

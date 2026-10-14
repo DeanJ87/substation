@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import shutil
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
@@ -180,6 +181,62 @@ def flat_calibrator(cs: CalibrationSet) -> Frame | None:
         if got is not None:
             return got
     return nearest(base.filter(frame_type=FrameType.MASTER_BIAS))
+
+
+RAW_TYPES = (FrameType.BIAS, FrameType.DARK_FLAT, FrameType.DARK, FrameType.FLAT)
+# bias and dark flats first, so flats can be calibrated by them; darks need nothing, so they come last
+BUILD_PRIORITY: dict[str, int] = {
+    FrameType.BIAS: 3,
+    FrameType.DARK_FLAT: 3,
+    FrameType.FLAT: 2,
+    FrameType.DARK: 0,
+}
+SETTLED = timedelta(minutes=20)  # no new frame for this long: the session has finished arriving
+# what a blocked flat may have been waiting for
+HELPERS: dict[str, tuple[str, ...]] = {FrameType.FLAT: (FrameType.BIAS, FrameType.DARK_FLAT, FrameType.DARK)}
+
+
+def auto_builds(now=None) -> list[int]:  # noqa: ANN001
+    """002-DR-23: queue a master for each raw calibration set that needs one, and return the sets queued.
+
+    A set needs one when it has 3+ usable frames, nothing has arrived for SETTLED, and either it has never been built,
+    frames arrived after its last master, or its last build was blocked and a master that could unblock it (a bias,
+    dark flat or dark at the same camera, gain and offset) has been built since. A set with a build queued or
+    running waits; a failed build is not retried by itself."""
+    from django.db.models import Max
+
+    from .config import processing_settings
+
+    if not processing_settings()["calibration"].get("auto_build", True):
+        return []
+    now = now or timezone.now()
+    queued = []
+    for cs in CalibrationSet.objects.filter(type__in=RAW_TYPES):
+        frames = Frame.objects.filter(calibration_set=cs, status=FrameStatus.CATALOGUED)
+        info = frames.aggregate(newest=Max("first_seen_at"))
+        if frames.count() < 3 or info["newest"] is None or now - info["newest"] < SETTLED:
+            continue
+        builds = BuiltMaster.objects.filter(calibration_set=cs)
+        if builds.filter(state__in=["queued", "running"]).exists():
+            continue
+        last = builds.order_by("-pk").first()
+        due = last is None or (last.state == "done" and info["newest"] > last.created_at)
+        if not due and last is not None and last.state == "blocked" and cs.type in HELPERS:
+            since = last.finished_at or last.created_at
+            due = BuiltMaster.objects.filter(
+                state="done",
+                finished_at__gt=since,
+                calibration_set__type__in=HELPERS[cs.type],
+                calibration_set__camera=cs.camera,
+                calibration_set__gain=cs.gain,
+                calibration_set__offset=cs.offset,
+            ).exists()
+        if due:
+            request_build(cs, priority=PRIORITY_BULK + BUILD_PRIORITY.get(cs.type, 0))
+            queued.append(cs.pk)
+    if queued:
+        log.info("Automatic calibration builds queued for %s set(s)", len(queued))
+    return queued
 
 
 def request_build(cs: CalibrationSet, force: bool = False, priority: int = PRIORITY_BULK) -> BuiltMaster:

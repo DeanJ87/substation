@@ -1,12 +1,15 @@
 """Notifications (spec 008 T15, 008-DR-06): "sent when something needs you, not for routine work". Channels are an
-ntfy topic URL and a webhook URL, kept in InstallationSettings.processing["notifications"]. A failed send is logged
+ntfy topic URL, a webhook URL and Pushover (008-DR-13), kept in InstallationSettings.processing["notifications"]. A failed send is logged
 and never fails the work that triggered it."""
 
 from __future__ import annotations
 
 import json
 import logging
+import urllib.parse
 import urllib.request
+
+PUSHOVER = "https://api.pushover.net/1/messages.json"
 
 log = logging.getLogger("substation.notify")
 
@@ -33,6 +36,19 @@ def send(event: str, title: str, message: str, url: str | None = None, cfg: dict
     if cfg.get("webhook"):
         body = json.dumps({"event": event, "title": title, "message": message, "url": url}).encode()
         failed += _post("webhook", cfg["webhook"], body, {"Content-Type": "application/json"})
+    if cfg.get("pushover_user") and cfg.get("pushover_token"):
+        form = {
+            "token": cfg["pushover_token"],
+            "user": cfg["pushover_user"],
+            "title": title,
+            "message": message,
+        }
+        if url:
+            form.update(url=url, url_title="Open in SubStation")
+        if event == "job_failed":
+            form["priority"] = "1"  # a failure that needs you: shown with high priority
+        body = urllib.parse.urlencode(form).encode()
+        failed += _post("pushover", PUSHOVER, body, {"Content-Type": "application/x-www-form-urlencoded"})
     return failed
 
 

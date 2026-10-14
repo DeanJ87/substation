@@ -12,6 +12,9 @@ DEFAULTS: dict = {
         "weak_flat_days": None,  # opt-in; age alone is not evidence (spec 002, owner amendment)
         # cameras that record no sensor temperature (DSLRs): bias stands in when no dark matches (owner 2026-10-13)
         "bias_for_uncooled": False,  # owner 2026-10-13
+        # 002-DR-23: build a master once a calibration session has settled, and retry a blocked one when what it
+        # waited for (a bias, a dark flat) has been built
+        "auto_build": True,
     },
     "grading": {
         "version": 1,
@@ -29,7 +32,13 @@ DEFAULTS: dict = {
     "spike_profile": {"wfwhm": 1.5, "stars": 0.6, "background": 2.0, "roundness": 0.85},
     # equipment aliases (rig merges, spec 006 FR-001): header name -> the name it is the same as
     "equipment": {"camera": {}, "telescope": {}, "rig": {}},
-    "notifications": {"ntfy": "", "webhook": "", "events": ["master_finished", "job_failed"]},
+    "notifications": {
+        "ntfy": "",
+        "webhook": "",
+        "pushover_user": "",  # 008-DR-13: Pushover user (or group) key and the application's API token
+        "pushover_token": "",
+        "events": ["master_finished", "job_failed"],
+    },
     # 008-DR-05: new subs jump the queue (so tonight's session is graded as it comes in), or everything in order
     "queue": {"priority_mode": "new_first"},
     # the bin (spec 011): rejected subs binned after this many days (0: never), binned files deleted after this

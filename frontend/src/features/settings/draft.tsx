@@ -31,7 +31,13 @@ export type Processing = {
     auto_every_n: number
     format: string
   }
-  notifications: { ntfy: string; webhook: string; events: string[] }
+  notifications: {
+    ntfy: string
+    webhook: string
+    pushover_user: string
+    pushover_token: string
+    events: string[]
+  }
   queue: { priority_mode: string }
   paths: { map: { from: string; to: string }[] }
   bin: { auto_bin_rejected_days: number; purge_after_days: number }
@@ -76,6 +82,8 @@ const LABELS: Record<string, string> = {
   'post.gpu': 'Use the GPU',
   'notifications.ntfy': 'ntfy topic',
   'notifications.webhook': 'Webhook',
+  'notifications.pushover_user': 'Pushover user key',
+  'notifications.pushover_token': 'Pushover API token',
   'notifications.events': 'Notify about',
 }
 

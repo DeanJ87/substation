@@ -975,7 +975,7 @@ const EVENTS: [string, string][] = [
   ['session_summary', 'Session summary'],
 ]
 
-/** Notifications (008-DR-06): ntfy and a webhook, which events, and a test send. */
+/** Notifications (008-DR-06, 008-DR-13): ntfy, a webhook or Pushover, which events, and a test send. */
 export function Notifications() {
   const { draft, set, readOnly, changes } = useDraft()
   const test = useMutation({
@@ -1005,6 +1005,27 @@ export function Notifications() {
             disabled={readOnly}
             placeholder="https://example.org/hook"
             onChange={(e) => set('notifications', 'webhook', e.target.value)}
+          />
+        </label>
+        <label className={s.inline}>
+          Pushover user key
+          <input
+            value={n.pushover_user ?? ''}
+            disabled={readOnly}
+            placeholder="your user or group key"
+            autoComplete="off"
+            onChange={(e) => set('notifications', 'pushover_user', e.target.value.trim())}
+          />
+        </label>
+        <label className={s.inline}>
+          Pushover API token
+          <input
+            type="password"
+            value={n.pushover_token ?? ''}
+            disabled={readOnly}
+            placeholder="the application's token"
+            autoComplete="off"
+            onChange={(e) => set('notifications', 'pushover_token', e.target.value.trim())}
           />
         </label>
       </div>

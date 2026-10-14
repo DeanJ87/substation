@@ -186,6 +186,17 @@ def _clean_processing(data: dict) -> dict:
                     raise ApiError(422, "invalid", f"The {k} address must start with http:// or https://.")
             if any(e not in EVENTS for e in values.get("events") or []):
                 raise ApiError(422, "invalid", "Unknown notification event.")
+            import re
+
+            for k, label in (
+                ("pushover_user", "Pushover user key"),
+                ("pushover_token", "Pushover API token"),
+            ):
+                v = (values.get(k) or "").strip()
+                if v and not re.fullmatch(r"[A-Za-z0-9]{30}", v):
+                    raise ApiError(
+                        422, "invalid", f"The {label} is 30 letters and digits, as Pushover shows it."
+                    )
         if section == "bin":
             for k, v in values.items():
                 if k not in ("auto_bin_rejected_days", "purge_after_days") or not isinstance(v, int) or v < 0:
@@ -284,6 +295,11 @@ def _out(s: InstallationSettings) -> SettingsOut:
 def get_settings(request):  # type: ignore[no-untyped-def]
     out = _out(InstallationSettings.load())
     out.can_edit = is_admin(request.user)
+    if not out.can_edit and isinstance(out.processing.get("notifications"), dict):
+        # keys and private topics are for admins: other users see that a channel is set, not what it is
+        out.processing["notifications"] = {
+            k: ("set" if v and k != "events" else v) for k, v in out.processing["notifications"].items()
+        }
     return out
 
 
@@ -356,8 +372,10 @@ def test_notification(request):  # type: ignore[no-untyped-def]
     from substation.notify import config, send
 
     cfg = config()
-    if not (cfg.get("ntfy") or cfg.get("webhook")):
-        raise ApiError(422, "invalid", "Add an ntfy topic or webhook first.")
+    if not (
+        cfg.get("ntfy") or cfg.get("webhook") or (cfg.get("pushover_user") and cfg.get("pushover_token"))
+    ):
+        raise ApiError(422, "invalid", "Add an ntfy topic, a webhook or Pushover keys first.")
     failed = send("test", "SubStation test", "Test notification.", cfg=cfg)
     return NotifyTestOut(sent=not failed, failed=failed)
 

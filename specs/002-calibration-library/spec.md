@@ -305,3 +305,15 @@ with both).
   keeps its frames'), resolved through the equipment aliases like a light, not from its set's label at build time.
   A later rig merge or correction then reaches the master too. (17 Sony masters built while the Sony frames were
   filed under the ATR2600M rig had kept "ATR2600M", showing ATR2600M data before the camera was bought.)
+
+## Amendment 2026-10-14: masters build themselves
+
+Two new bias sets sat unbuilt, and the 15 flat sets blocked for want of a bias stayed blocked once the bias existed:
+masters were built only from the Build buttons.
+
+- **002-DR-23**: SubStation builds a master for a raw calibration set (bias, dark flat, dark, flat) once it has 3+
+  usable frames and nothing has arrived for 20 minutes, and again when frames arrive after its last master. A
+  flat build blocked for want of a bias, dark flat or dark is retried once such a master at the same camera, gain
+  and offset has been built. A set with a build queued or running waits; a failed build is not retried by itself.
+  Checked every five minutes by one worker container at a time; Settings → Calibration can switch it off
+  (`calibration.auto_build`). A finished master re-matches waiting lights, which queues their calibration.
