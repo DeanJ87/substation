@@ -217,16 +217,16 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   3 hours. A FITS Siril only links when converting is copied, never moved as a link, and a linked frame is replaced,
   never written through, so nothing can change a file in an image library.
 
-## Amendment 2026-10-14: updates without scripts
+## Amendment 2026-10-14: updates without scripts (GitOps)
 
 Deploys used scripts on the owner's Mac that logged in to the NAS over SSH to pause the queue, wait for stacks and
-restart containers. One hung for eight hours on an SSH call. SubStation now updates itself.
+restart containers; one hung for eight hours on an SSH call. An installation may run anywhere, so nothing may push
+to it and the app does not update itself: the installation pulls.
 
-- **005-DR-23**: Every 10 minutes the API container asks GitHub for the newest successful image build of the branch
-  it runs (`SUBSTATION_UPDATE_REPO`). When that build is newer than the running one and automatic updates are on
-  (Settings → Workers → Updates; on by default), it pauses the queue, waits until no stack or master build is
-  running, then calls the stack's Portainer webhook (`SUBSTATION_UPDATE_WEBHOOK`) naming the build
-  (`SUBSTATION_TAG=<short commit>`). When the new version starts, the queue resumes, unless it had been paused by
-  hand. If the new version isn't running 20 minutes later the update is marked failed with the reason, the queue
-  resumes, and that build isn't tried again by itself. "Update now" and "Don't update now" do the same by hand.
-  Without both variables updates are off and say so. Nothing logs in to the NAS.
+- **005-DR-23**: Once every image for a commit is built, CI publishes a deploy branch (`deploy/<branch>`) holding
+  only the compose file with the images pinned to that commit. Portainer runs the stack from that branch with GitOps
+  polling, so it redeploys only when a complete release exists and always with the exact images. Site values
+  (domain, paths, secrets) stay stack variables in Portainer. On a redeploy, a worker container is given up to three
+  hours to stop: its workers take no new work and running stacks finish (`stop_grace_period: 3h`,
+  `SUBSTATION_STOP_GRACE_S` just under it); a task still running after that is requeued as before. SubStation
+  doesn't check for updates or call Portainer. An in-app updater built earlier the same day was removed.

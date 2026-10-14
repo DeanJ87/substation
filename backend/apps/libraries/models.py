@@ -71,9 +71,6 @@ class InstallationSettings(models.Model):
     processing = models.JSONField(
         default=dict, blank=True, help_text="calibration, grading and stacking settings"
     )
-    updates = models.JSONField(
-        default=dict, blank=True, help_text="the in-app updater's state (substation.updates)"
-    )
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     updated_at = models.DateTimeField(auto_now=True)
 

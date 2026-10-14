@@ -1902,61 +1902,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/settings/updates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Updates */
-        get: operations["apps_libraries_api_get_updates"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Patch Updates */
-        patch: operations["apps_libraries_api_patch_updates"];
-        trace?: never;
-    };
-    "/settings/updates/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cancel Update */
-        post: operations["apps_libraries_api_cancel_update"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/settings/updates/now": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Update Now
-         * @description Check now and, if a newer build exists, update once no stack is running.
-         */
-        post: operations["apps_libraries_api_update_now"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/solving": {
         parameters: {
             query?: never;
@@ -5298,64 +5243,10 @@ export interface components {
             /** Weight */
             weight: number;
         };
-        /** UpdateBuild */
-        UpdateBuild: {
-            /** Built At */
-            built_at?: string | null;
-            /** Sha */
-            sha: string;
-            /**
-             * Title
-             * @default
-             */
-            title: string;
-            /**
-             * Url
-             * @default
-             */
-            url: string;
-        };
         /** UpdatedOut */
         UpdatedOut: {
             /** Updated */
             updated: number;
-        };
-        /** UpdatesIn */
-        UpdatesIn: {
-            /** Auto */
-            auto: boolean;
-        };
-        /** UpdatesOut */
-        UpdatesOut: {
-            /** Auto */
-            auto: boolean;
-            /** Available */
-            available: boolean;
-            /** Branch */
-            branch: string;
-            /**
-             * Check Error
-             * @default
-             */
-            check_error: string;
-            /** Checked At */
-            checked_at?: string | null;
-            /** Configured */
-            configured: boolean;
-            /** Last */
-            last?: {
-                [key: string]: unknown;
-            } | null;
-            latest?: components["schemas"]["UpdateBuild"] | null;
-            /**
-             * Reason
-             * @default
-             */
-            reason: string;
-            /** Running */
-            running: string;
-            /** State */
-            state: string;
         };
         /** UserIn */
         UserIn: {
@@ -8288,90 +8179,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourceUse"][];
-                };
-            };
-        };
-    };
-    apps_libraries_api_get_updates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdatesOut"];
-                };
-            };
-        };
-    };
-    apps_libraries_api_patch_updates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdatesIn"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdatesOut"];
-                };
-            };
-        };
-    };
-    apps_libraries_api_cancel_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdatesOut"];
-                };
-            };
-        };
-    };
-    apps_libraries_api_update_now: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpdatesOut"];
                 };
             };
         };

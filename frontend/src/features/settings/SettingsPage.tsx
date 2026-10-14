@@ -9,7 +9,6 @@ import { DraftProvider, useSettings } from './draft'
 import { IgnoreRules } from './IgnoreRules'
 import { PathPatterns } from './PathPatterns'
 import { Rigs } from './Rigs'
-import { Updates } from './Updates'
 import {
   CalibrationMatching,
   Folders,
@@ -58,17 +57,7 @@ const TABS: Tab[] = [
       </>
     ),
   },
-  {
-    id: 'workers',
-    label: 'Workers',
-    sections: ['workers', 'updates'],
-    body: (
-      <>
-        <Workers />
-        <Updates />
-      </>
-    ),
-  },
+  { id: 'workers', label: 'Workers', sections: ['workers'], body: <Workers /> },
   { id: 'notifications', label: 'Notifications', sections: ['notifications'], body: <Notifications /> },
   { id: 'users', label: 'Users', sections: ['users'], body: <Users /> },
   { id: 'appearance', label: 'Appearance', sections: ['appearance'], body: <Appearance /> },

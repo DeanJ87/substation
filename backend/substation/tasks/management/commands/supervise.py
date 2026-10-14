@@ -186,13 +186,6 @@ class Command(BaseCommand):
                         discover_libraries()
                 except Exception:  # noqa: BLE001
                     log.exception("Housekeeping failed")
-                if not options["no_web"]:  # the API container decides when to update (005-DR-23)
-                    try:
-                        from substation.updates import tick
-
-                        tick()
-                    except Exception:  # noqa: BLE001
-                        log.exception("The update check failed")
                 last_housekeeping = time.monotonic()
             if time.monotonic() - last_measure > 300:
                 try:
@@ -223,7 +216,9 @@ class Command(BaseCommand):
         for c in everyone:
             if c.alive():
                 c.proc.send_signal(signal.SIGTERM)  # type: ignore[union-attr]
-        deadline = time.monotonic() + 30
+        # a redeploy stops the container: running stacks finish first, up to the container's stop grace period
+        # (005-DR-23); SUBSTATION_STOP_GRACE_S is set a little under it so nothing is killed mid-write
+        deadline = time.monotonic() + int(os.environ.get("SUBSTATION_STOP_GRACE_S", "30"))
         for c in everyone:
             if c.proc is not None:
                 try:
