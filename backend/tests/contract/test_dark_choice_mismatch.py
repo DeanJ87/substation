@@ -94,5 +94,6 @@ def test_a_flat_chosen_with_no_matching_dark_waits_for_one(admin_client):
     assert "120 s dark" in cm.reason and not Task.objects.filter(name__endswith="calibrate_measure").exists()
     right.status = FrameStatus.CATALOGUED  # tonight's dark arrives
     right.save(update_fields=["status"])
-    cm = update_match(sub)
-    assert cm.state == MatchState.MATCHED and cm.dark_id == right.pk and cm.flat_id == flat.pk
+    again = update_match(sub)
+    assert again is not None and again.state == MatchState.MATCHED
+    assert again.dark_id == right.pk and again.flat_id == flat.pk
