@@ -18,6 +18,7 @@ const NAV = [
   { to: '/calibration', label: 'Calibration' },
   { to: '/map', label: 'Map' },
   { to: '/activity', label: 'Activity' },
+  { to: '/bin', label: 'Bin' },
   { to: '/settings', label: 'Settings' },
 ] as const
 

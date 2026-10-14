@@ -18,6 +18,7 @@ import { ReconciliationList } from '../features/reconciliation/ReconciliationLis
 import { CalibrationLibrary } from '../features/calibration/CalibrationLibrary'
 import { CalibrationSetView } from '../features/calibration/CalibrationSetView'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { BinPage } from '../features/bin/BinPage'
 import { MapView } from '../features/map/MapView'
 import { AppFrame } from './AppFrame'
 import { SignIn } from './SignIn'
@@ -57,6 +58,7 @@ const collection = createRoute({
       : undefined,
   }),
 })
+const binRoute = createRoute({ getParentRoute: () => app, path: '/bin', component: BinPage })
 const mapRoute = createRoute({ getParentRoute: () => app, path: '/map', component: MapView })
 const sub = createRoute({ getParentRoute: () => app, path: '/subs/$sha', component: SubDetail })
 const activity = createRoute({ getParentRoute: () => app, path: '/activity', component: Activity })
@@ -118,6 +120,7 @@ export const routeTree = root.addChildren([
   signIn,
   app.addChildren([
     mapRoute,
+    binRoute,
     datasets,
     collection,
     dataset,

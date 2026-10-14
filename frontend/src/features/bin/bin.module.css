@@ -1,0 +1,97 @@
+.tidy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 20px;
+}
+.tidy p {
+  margin: 4px 0 0;
+  max-width: 820px;
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--sst-line);
+}
+.pane {
+  max-height: 70vh;
+  overflow: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 12px;
+  background: var(--sst-panel);
+  color: var(--sst-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--sst-line);
+}
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sst-line);
+  vertical-align: middle;
+}
+.picked td {
+  background: var(--sst-accent-tint);
+}
+.check {
+  width: 32px;
+}
+.thumbCell {
+  width: 76px;
+}
+.thumb {
+  display: block;
+  width: 64px;
+  height: 43px;
+  object-fit: cover;
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+}
+.name {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.why {
+  max-width: 360px;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+.more {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+}
+.unit {
+  font-size: 0.5em;
+  color: var(--sst-muted);
+}
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

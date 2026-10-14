@@ -71,3 +71,11 @@ Stats count every frame ever catalogued, including binned and deleted ones: fram
 
 - Rejected subs older than the waiting period stop taking disk space within the purge period, with no step by hand.
 - No file is moved or deleted in a library that hasn't been allowed.
+
+## Amendment 2026-10-14: the bin has its own page
+
+- **011-DR-07**: The bin is a page in the main menu (`/bin`): readouts (files in the bin, space in quarantine, only
+  hidden, deleted so far), what the daily tidy does and a "Tidy now", and a table of binned files with a preview,
+  why and by whom, when binned and when they go, filterable by reason, with a multi-select Restore. How long things
+  wait and which libraries may be deleted from stay in Settings → Library → Bin, which links to the page. A binned
+  file in a read-only library is only hidden, so its preview is still drawn from the file.

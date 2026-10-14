@@ -1,16 +1,12 @@
 // The bin (spec 011, owner 2026-10-13): binned files wait in their library's quarantine folder, then are deleted
 // for good; rejected subs bin themselves after a while. Libraries SubStation may not delete in only hide files.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
-import { Button } from '../../components/ui'
-import { bytes } from '../format'
 import { useDraft } from './draft'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
-
-const day = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 
 export function Bin() {
   const qc = useQueryClient()
@@ -23,23 +19,9 @@ export function Bin() {
     onSettled: () => void qc.invalidateQueries({ queryKey: ['libraries'] }),
     meta: { failed: "Couldn't change the library" },
   })
-  const restore = useMutation({
-    mutationFn: async (sha: string) =>
-      unwrap(await api.POST('/bin/restore', { body: { sha256s: [sha], reason: '' } })),
-    onSuccess: (r) =>
-      toast(r.restored ? 'Restored.' : "Couldn't restore it: something else is in its old place."),
-    onSettled: () => void qc.invalidateQueries(),
-    meta: { failed: "Couldn't restore the file" },
-  })
-  const tidy = useMutation({
-    mutationFn: async () => unwrap(await api.POST('/bin/tidy')),
-    onSuccess: () => toast('Tidying the bin.'),
-    meta: { failed: "Couldn't start the tidy" },
-  })
   if (!draft) return null
   const b = draft.bin ?? { auto_bin_rejected_days: 30, purge_after_days: 30 }
   const d = bin.data
-  const q = bytes(d?.bytes_in_quarantine)
   return (
     <SettingsSection id="bin" title="Bin" meta={d ? d.total : undefined}>
       <p className="muted">
@@ -111,36 +93,10 @@ export function Bin() {
             </li>
           ))}
       </ul>
-      <strong>In the bin</strong>
-      {d && (
-        <p className="muted">
-          {d.total.toLocaleString('en-GB')} file{d.total === 1 ? '' : 's'}: {d.moved.toLocaleString('en-GB')}{' '}
-          in quarantine ({q.value} {q.unit}), {d.hidden.toLocaleString('en-GB')} only hidden ·{' '}
-          {d.deleted.toLocaleString('en-GB')} deleted so far
-        </p>
-      )}
-      <ul className={s.patternList}>
-        {(d?.rows ?? []).map((r) => (
-          <li key={r.sha256} className={s.patternRow}>
-            <div>
-              <strong className={s.mono}>{r.name}</strong>
-              <div className="muted">
-                {r.reason}
-                {r.binned_at ? ` · binned ${day(r.binned_at)}` : ''}
-                {r.purge_after ? ` · deleted ${day(r.purge_after)}` : ' · hidden, not deleted'}
-              </div>
-            </div>
-            <div className={s.rowActions}>
-              <Button disabled={readOnly || restore.isPending} onClick={() => restore.mutate(r.sha256)}>
-                Restore
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <Button disabled={readOnly || tidy.isPending} onClick={() => tidy.mutate()}>
-        Tidy now
-      </Button>
+      <p className="muted">
+        {d ? `${d.total.toLocaleString('en-GB')} file${d.total === 1 ? '' : 's'} in the bin. ` : ''}
+        <Link to="/bin">Open the bin</Link> to see them, restore any, or tidy now.
+      </p>
     </SettingsSection>
   )
 }

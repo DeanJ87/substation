@@ -12,3 +12,5 @@
 Notes (2026-10-13): frames keep `binned_dataset` (the dataset they left) so Library stats still count binned and
 deleted subs, with a `binned` total. Libraries report `writable`; "may delete" can only be switched on where the
 mount is writable. Tests: `tests/unit/test_binning.py` (move, hide-only, restore, purge, auto-bin, API, history).
+- [X] T20 (2026-10-14) `/bin` page (readouts, tidy, reason filter, multi-restore), menu item; settings section slimmed;
+  glance falls back to a hidden copy (011-DR-07)

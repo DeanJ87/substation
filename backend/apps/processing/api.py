@@ -16,7 +16,16 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from apps.catalogue.api import router
-from apps.catalogue.models import Dataset, Frame, FrameStatus, FrameType, UserVerdict, Verdict, VerdictSource
+from apps.catalogue.models import (
+    Copy,
+    Dataset,
+    Frame,
+    FrameStatus,
+    FrameType,
+    UserVerdict,
+    Verdict,
+    VerdictSource,
+)
 from apps.catalogue.services.tracking import touch_dataset
 from substation.api import ApiError, Schema
 from substation.events.emit import emit
@@ -479,6 +488,13 @@ def glance_image(request, sha256: str):
         return send(cached)
     frame = get_object_or_404(Frame, pk=sha256)
     src = source_path(frame)
+    if (
+        src is None
+    ):  # a binned file in a read-only library is only hidden: it is still there to look at (spec 011)
+        for c in Copy.objects.filter(frame=frame).select_related("library"):
+            if (Path(c.library.mount_path) / c.rel_path).is_file():
+                src = Path(c.library.mount_path) / c.rel_path
+                break
     if src is None:
         return HttpResponse(status=404)
     try:
