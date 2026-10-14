@@ -230,3 +230,17 @@ to it and the app does not update itself: the installation pulls.
   hours to stop: its workers take no new work and running stacks finish (`stop_grace_period: 3h`,
   `SUBSTATION_STOP_GRACE_S` just under it); a task still running after that is requeued as before. SubStation
   doesn't check for updates or call Portainer. An in-app updater built earlier the same day was removed.
+
+## Amendment 2026-10-14: PostgreSQL
+
+SQLite suits one host with its database on local disk; on network storage it caused the lock storms of 2026-10-13,
+and it can't be shared across Kubernetes nodes.
+
+- **005-DR-24**: SubStation runs on SQLite (the default) or PostgreSQL, chosen by `SUBSTATION_DATABASE_URL`
+  (`postgres://user:password@host:5432/name`; the password may come from `SUBSTATION_DATABASE_PASSWORD_FILE`). The
+  task claim serialises workers with an advisory lock on PostgreSQL, so no task is taken twice and heavy slots hold;
+  leases use the same upsert on both. The whole test suite runs against both in CI. `manage.py copy_database
+  <substation.db>` moves an installation: with SubStation stopped and both databases at the same migrations, every
+  row of every table is copied with its own id in one transaction, booleans converted and times kept as stored,
+  then sequences reset. It refuses a PostgreSQL database that already holds users or frames unless `--replace`.
+  `/health` reports `postgresql` where SQLite reports its journal mode.

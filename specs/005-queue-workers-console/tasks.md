@@ -77,3 +77,8 @@
   build; worker `stop_grace_period: 3h` and `SUBSTATION_STOP_GRACE_S` in the supervisor (005-DR-23)
 - [ ] W24 Portainer: run the stack from `deploy/poc-substation` (GitOps polling, `docker/compose.nas.yml`), site
   values as stack variables; then delete the Mac deploy scripts
+- [X] W25 (2026-10-14) PostgreSQL: `SUBSTATION_DATABASE_URL` settings, advisory-locked claim, health; psycopg;
+  CI job running the suite on PostgreSQL 17 (005-DR-24)
+- [X] W26 (2026-10-14) `copy_database` (table to table, one transaction, sequences reset, migration check); test;
+  rehearsed on a snapshot of the live database: 633,151 rows in 77 s, every table's count equal
+- [ ] W27 Move the NAS installation to PostgreSQL

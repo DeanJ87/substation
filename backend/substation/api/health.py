@@ -32,9 +32,12 @@ class HealthOut(Schema):
 
 @router.get("", response=HealthOut, auth=None)
 def health(request):  # type: ignore[no-untyped-def]
-    with connection.cursor() as cur:
-        cur.execute("PRAGMA journal_mode")
-        mode = cur.fetchone()[0]
+    if connection.vendor == "sqlite":
+        with connection.cursor() as cur:
+            cur.execute("PRAGMA journal_mode")
+            mode = cur.fetchone()[0]
+    else:
+        mode = connection.vendor  # "postgresql"
     cutoff = timezone.now() - timedelta(seconds=30)
     alive = Worker.objects.filter(heartbeat_at__gte=cutoff).exclude(state=WorkerState.STOPPED).count()
     libs = [

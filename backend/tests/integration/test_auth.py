@@ -24,7 +24,7 @@ def test_events_require_session():
 def test_health_is_public():
     r = Client().get("/api/v1/health")
     assert r.status_code == 200
-    assert r.json()["journal_mode"] == "wal"
+    assert r.json()["journal_mode"] in ("wal", "postgresql")  # SQLite in WAL mode, or PostgreSQL
 
 
 def test_sign_in_and_out(admin_user):

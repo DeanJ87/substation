@@ -1,4 +1,6 @@
-"""Atomic claim of the next task (research R2): one IMMEDIATE transaction, UPDATE … RETURNING (SQLite ≥ 3.35).
+"""Atomic claim of the next task (research R2): one transaction, UPDATE … RETURNING. SQLite serialises writers
+(IMMEDIATE transactions); on PostgreSQL an advisory lock does, so two workers never take the same task or more
+heavy tasks than there are slots (005-DR-24).
 
 Ordering: priority (high first), then enqueue time. Tasks in the `siril_heavy` slot only start while fewer
 than the configured number of heavy tasks are running (spec 005). While the queue is paused ("Pause new work"),
@@ -12,15 +14,17 @@ from django.utils import timezone
 
 from .models import Task
 
+CLAIM_LOCK = 0x5355_4253  # one claim at a time on PostgreSQL
+
 _CLAIM_SQL = """
 UPDATE substation_tasks_task
    SET status = 'running', worker_id = %s, started_at = %s, heartbeat_at = %s,
        attempts = attempts + 1, progress = NULL, progress_note = ''
- WHERE id = (
+ WHERE status = 'ready' AND id = (
        SELECT id FROM substation_tasks_task
         WHERE status = 'ready' AND run_after <= %s
           AND (queue = 'ingest'
-               OR NOT COALESCE((SELECT queue_paused FROM libraries_installationsettings LIMIT 1), 0))
+               OR NOT COALESCE((SELECT queue_paused FROM libraries_installationsettings LIMIT 1), FALSE))
           {queues}
           AND (slot = 'light'
                OR (SELECT COUNT(*) FROM substation_tasks_task
@@ -56,6 +60,8 @@ def claim(
         params = list(skip)
     sql = _CLAIM_SQL.replace("{queues}", clause)
     with transaction.atomic(), connection.cursor() as cur:
+        if connection.vendor == "postgresql":
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", [CLAIM_LOCK])
         cur.execute(sql, [worker_id, db_now, db_now, db_now, *params, heavy_slots])
         row = cur.fetchone()
     if row is None:

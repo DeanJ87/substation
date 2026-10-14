@@ -66,7 +66,7 @@ def map_places(request):
     )
     places: dict[str, dict] = {}
     for r in sorted(rows, key=lambda r: -r["n"]):  # the busiest spot anchors its place
-        lat, lon = r["site_lat"], r["site_lon"]
+        lat, lon = float(r["site_lat"] or 0), float(r["site_lon"] or 0)
         wide = NEAR_DEG / max(math.cos(math.radians(lat)), 0.05)
         p = next(
             (q for q in places.values() if abs(q["at"][0] - lat) < NEAR_DEG and abs(q["at"][1] - lon) < wide),

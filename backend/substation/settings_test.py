@@ -15,7 +15,10 @@ from .settings import DATA_DIR, DATABASES  # noqa: E402
 
 for sub in ("library", "substation"):
     (DATA_DIR / sub).mkdir(parents=True, exist_ok=True)
-DATABASES["default"]["TEST"] = {"NAME": str(_TMP / "test.db")}
+if DATABASES["default"]["ENGINE"].endswith("sqlite3"):
+    DATABASES["default"]["TEST"] = {"NAME": str(_TMP / "test.db")}
+else:  # PostgreSQL (005-DR-24): the suite runs against both in CI
+    DATABASES["default"]["TEST"] = {"NAME": "test_substation"}
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]  # fast tests only
 
 INGEST_VERIFY_COMPLETE = False  # fixtures are header-only

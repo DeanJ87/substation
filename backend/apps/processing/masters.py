@@ -344,12 +344,13 @@ def mosaic_reason(frames: list[Frame]) -> str | None:
 
     from .models import PlateSolve, SolveState
 
-    solves = list(
-        PlateSolve.objects.filter(frame__in=frames, state=SolveState.SOLVED).values_list(
+    solves: list[tuple[float, float, float, float]] = [
+        (a, b, c, d)
+        for a, b, c, d in PlateSolve.objects.filter(frame__in=frames, state=SolveState.SOLVED).values_list(
             "ra_deg", "dec_deg", "fov_w_deg", "fov_h_deg"
         )
-    )
-    solves = [r for r in solves if None not in r]
+        if a is not None and b is not None and c is not None and d is not None
+    ]
     if len(solves) >= max(3, len(frames) // 2):
         ra0 = statistics.median(r[0] for r in solves)
         dec0 = statistics.median(r[1] for r in solves)

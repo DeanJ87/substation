@@ -32,6 +32,25 @@ jobs:
           uv run python manage.py export_openapi ../frontend/src/api/openapi.json
           git diff --exit-code -- ../frontend/src/api/openapi.json
 
+  # the same suite against PostgreSQL (005-DR-24): SQLite and PostgreSQL are both supported databases
+  backend-postgres:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: substation, POSTGRES_PASSWORD: test, POSTGRES_DB: substation }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U substation" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SUBSTATION_DATABASE_URL: postgres://substation:test@localhost:5432/substation
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv sync --frozen --python 3.12
+      - run: uv run pytest
+
   frontend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }

@@ -7,6 +7,8 @@ import os
 import secrets
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -100,18 +102,45 @@ TEMPLATES = [
     }
 ]
 
-# --- Database: SQLite in WAL mode (research R1) ---------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": env("DB_PATH", str(STATION_ROOT / "substation.db")),
-        "OPTIONS": {
-            "transaction_mode": "IMMEDIATE",
-            "timeout": 180,  # commits can queue behind a slow disk for a minute or more (2026-10-12)
-            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;",
-        },
+
+# --- Database: PostgreSQL when SUBSTATION_DATABASE_URL is set, else SQLite in WAL mode (research R1) ----------
+# SQLite suits one host with the database on local disk. Several hosts, network storage or Kubernetes need
+# PostgreSQL (005-DR-24): postgres://user:password@host:5432/name (the password may instead come from
+# SUBSTATION_DATABASE_PASSWORD_FILE, for Docker and Kubernetes secrets).
+def _database() -> dict:
+    from urllib.parse import unquote, urlparse
+
+    url = env("DATABASE_URL", "") or ""
+    if not url:
+        return {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": env("DB_PATH", str(STATION_ROOT / "substation.db")),
+            "OPTIONS": {
+                "transaction_mode": "IMMEDIATE",
+                "timeout": 180,  # commits can queue behind a slow disk for a minute or more (2026-10-12)
+                "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;",
+            },
+        }
+    u = urlparse(url)
+    if u.scheme not in ("postgres", "postgresql"):
+        raise ImproperlyConfigured("SUBSTATION_DATABASE_URL must be a postgres:// URL.")
+    password = unquote(u.password or "")
+    secret = env("DATABASE_PASSWORD_FILE", "")
+    if secret:
+        password = Path(secret).read_text().strip()
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": (u.path or "/substation").lstrip("/") or "substation",
+        "USER": unquote(u.username or "substation"),
+        "PASSWORD": password,
+        "HOST": u.hostname or "localhost",
+        "PORT": str(u.port or 5432),
+        "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
     }
-}
+
+
+DATABASES = {"default": _database()}
 ATOMIC_REQUESTS = False
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
