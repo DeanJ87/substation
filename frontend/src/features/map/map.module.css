@@ -110,6 +110,8 @@
 }
 .site {
   padding: 4px 0 0;
+  /* Leaflet's panes carry z-indexes up to 1000: keep them inside this box so a modal opened over the page covers them */
+  isolation: isolate;
 }
 .mini {
   height: 180px;
