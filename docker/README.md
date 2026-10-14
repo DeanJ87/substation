@@ -3,9 +3,13 @@
 | File | Image | Contents |
 |---|---|---|
 | `frontend.Dockerfile` + `Caddyfile` | `substation-frontend` | built React app on Caddy; proxies `/api`, `/_allauth`, `/admin` to the API |
-| `api.Dockerfile` | `substation-api` | Django API (uvicorn), migrations, bootstrap admin; no Siril, no library mounts |
-| `worker.Dockerfile` | `substation-worker` | watcher, task workers and Siril 1.4.2; the only service that mounts libraries |
-| `entrypoint.sh` | api, worker | `api` or `worker` role |
-| `compose.example.yml` | | the three services and their mounts |
+| `api.Dockerfile` | `substation-api` | Django API (uvicorn), migrations, bootstrap admin; no Siril |
+| `worker.Dockerfile` | `substation-worker` | watcher, task workers and Siril 1.4.2; mounts the libraries |
+| `finisher.Dockerfile` | `substation-finisher` | a post-processing helper (GraXpert, RC-Astro) for another machine |
+| `entrypoint.sh` | all | `api`, `worker` or `helper` role |
+| `compose.yml` + `.env.example` | | the reference stack: PostgreSQL and the three services |
+| `compose.traefik.yml` | | an override for running behind Traefik |
+| `compose.helper.yml` | | a helper on a Linux machine with an NVIDIA GPU |
+| `compose.local-test.yml` | | building and trying the images locally |
 
-Build all three from the repository root: `docker compose -f docker/compose.example.yml build`.
+Installing, updating and moving from SQLite: `docs/user/install.md`.

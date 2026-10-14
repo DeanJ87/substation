@@ -14,7 +14,7 @@ import psutil
 from django.db import OperationalError, close_old_connections
 from django.utils import timezone
 
-from . import Cancelled, Reschedule, current_task_id
+from . import Cancelled, Interrupted, Reschedule, current_task_id, shutting_down
 from .backend import load_task
 from .claim import claim
 from .models import ResourceSample, Task, TaskStatus, Worker, WorkerKind, WorkerState
@@ -78,8 +78,10 @@ class WorkerProcess:
 
     def install_signals(self) -> None:
         def stop(signum, frame):  # noqa: ANN001, ARG001
-            log.info("Worker %s finishing its current task, then stopping.", self.worker_id)
+            # 005-DR-25: Siril is stopped and the task put back in the queue; it resumes from its checkpoints
+            log.info("Worker %s stopping: its task goes back in the queue.", self.worker_id)
             self.stopping.set()
+            shutting_down.set()
 
         signal.signal(signal.SIGTERM, stop)
         signal.signal(signal.SIGINT, stop)
@@ -222,6 +224,15 @@ class WorkerProcess:
                 progress_note="Cancelled while running.",
             )
             log.info("Task %s cancelled while running.", row.name)
+        except Interrupted as r:
+            Task.objects.filter(pk=row.pk).update(
+                status=TaskStatus.READY,
+                run_after=timezone.now(),
+                attempts=max(row.attempts - 1, 0),
+                progress_note=str(r)[:300],
+                worker=None,
+            )
+            log.info("Task %s put back in the queue: the worker is stopping.", row.name)
         except Reschedule as r:
             Task.objects.filter(pk=row.pk).update(
                 status=TaskStatus.READY,

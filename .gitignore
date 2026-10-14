@@ -31,6 +31,7 @@ test-results/
 
 # Local runtime data and secrets
 .env*
+!.env.example
 backend/var/
 data/
 *.db

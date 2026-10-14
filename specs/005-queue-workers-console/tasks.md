@@ -73,10 +73,14 @@
 - [X] W21 (2026-10-14) Batch outputs in the stack's folder; linked outputs copied; `one_row_order` replaces links;
   prune keeps files touched in the last 3 h; tests (005-DR-22)
 - [X] W22 (2026-10-14) In-app updater removed again (GitOps instead); `InstallationSettings.updates` dropped
-- [X] W23 (2026-10-14) CI `deploy-branch` job: compose with pinned image tags on `deploy/<branch>` after all images
-  build; worker `stop_grace_period: 3h` and `SUBSTATION_STOP_GRACE_S` in the supervisor (005-DR-23)
-- [ ] W24 Portainer: run the stack from `deploy/poc-substation` (GitOps polling, `docker/compose.nas.yml`), site
-  values as stack variables; then delete the Mac deploy scripts
+- [X] W23 (2026-10-14) CI deploy branch tried, then removed in favour of release tags (005-DR-26)
+- [X] W24 (2026-10-14) `Interrupted`, worker SIGTERM requeues; Siril stops on shutdown; `integrate` checkpoints
+  (inputs, registered) and resumes; tests (005-DR-25)
+- [X] W28 (2026-10-14) Image tags (semver, latest, edge, commit); `docker/compose.yml` with PostgreSQL,
+  `.env.example`, `compose.traefik.yml`; NAS compose and prepare script out of the repo; entrypoint waits for the
+  database; install guide (005-DR-26)
+- [ ] W29 Helm chart
+- [ ] W30 Delete the Mac deploy scripts once the NAS runs from the reference stack
 - [X] W25 (2026-10-14) PostgreSQL: `SUBSTATION_DATABASE_URL` settings, advisory-locked claim, health; psycopg;
   CI job running the suite on PostgreSQL 17 (005-DR-24)
 - [X] W26 (2026-10-14) `copy_database` (table to table, one transaction, sequences reset, migration check); test;

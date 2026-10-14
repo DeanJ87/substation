@@ -1,60 +1,106 @@
-# Install with Compose
+# Install and update
 
-SubStation is three containers that work together:
+SubStation is four containers that work together:
 
 | Service | What it does |
 |---|---|
 | `frontend` | Serves the web interface on one port |
-| `api` | The catalogue and its database |
+| `api` | The catalogue and its API; upgrades the database on start |
 | `worker` | Watches your folders, reads files and does the heavy work (Siril lives here) |
+| `postgres` | The catalogue's database |
 
-All three must run on **the same machine**. The catalogue is a SQLite database, which needs a local disk.
+The project publishes images and a reference stack; how and when you roll out a new version is up to you. Every
+way below uses the same images.
 
-## The `/data` layout
+## Versions
+
+Images are on GitHub's registry, `ghcr.io/deanj87/substation-{frontend,api,worker}`, tagged:
+
+| Tag | What it is |
+|---|---|
+| `1.4.2` | one release, never changes |
+| `1.4` | the newest patch of 1.4: fixes only |
+| `latest` | the newest release |
+| `edge` | every build of the development branch: newest features, least tested |
+| `2194c51` | one commit, never changes |
+
+Pick one with `SUBSTATION_VERSION`. Run all four containers on the same version.
+
+## The folders
 
 ```
-/data/substation          read-write, local disk: database, work files, previews and stacks
-/data/library/<name>      read-only: one folder per library (capture folder, archive, …)
+SUBSTATION_DATA/station      read-write: work files, previews, masters
+SUBSTATION_DATA/postgres     read-write: the database
+SUBSTATION_DATA/catalogues   Siril's star catalogues, for plate solving
+SUBSTATION_DATA/db_password  the database password (one line)
+your libraries               read-only: one folder per library (capture folder, archive, …)
 ```
 
-Each folder under `/data/library` becomes a library named after it. Mount every library **read-only**
-(`:ro`); SubStation never needs to write there.
+Each library is mounted at `/data/library/<name>` and shows in SubStation under that name. Mount libraries
+read-only; SubStation never writes there unless you switch on the bin's deleting (Settings → Bin) and mount
+that library read-write.
 
-!!! warning "Keep `/data/substation` on local disk"
-    Don't put `/data/substation` on a network share (SMB or NFS). SQLite needs real file locking, and a
-    share can corrupt the catalogue. Your libraries can be anywhere, including shares.
+Put `SUBSTATION_DATA` on fast local storage (an SSD). Libraries can be anywhere, including network shares.
 
-## Start it
+## Docker Compose
 
-1. Copy `docker/compose.example.yml` and edit the volume lines: the local folder for `/data/substation`,
-   and one line per library.
-2. Set `SUBSTATION_ADMIN_USERNAME` and `SUBSTATION_ADMIN_PASSWORD` for the first admin account.
-3. Optionally set your site (`SUBSTATION_SITE_LAT`, `SUBSTATION_SITE_LON`). SubStation reads the site from
-   your headers when it can; this is the fallback for working out which night a sub belongs to.
-4. Run:
+1. Copy `docker/compose.yml` and `docker/.env.example` (as `.env`) into a folder.
+2. Fill in `.env`: where `SUBSTATION_DATA` is, your library folder, the admin password, the version.
+3. Create the password file: `openssl rand -hex 24 > $SUBSTATION_DATA/db_password`.
+4. `docker compose up -d`, then open `http://<your machine>:8080` and sign in.
 
-    ```bash
-    docker compose -f compose.yml up -d
-    ```
+Behind a reverse proxy, add an override: `docker/compose.traefik.yml` is one for Traefik
+(`docker compose -f compose.yml -f compose.traefik.yml up -d`, with `SUBSTATION_DOMAIN` and `SUBSTATION_URL`).
 
-5. Open `http://<your machine>:8080` and sign in. If port 8080 is taken, set `SUBSTATION_PORT`.
-
-On first start SubStation reads every library. A large archive takes a while; the queue indicator in the
-header shows how far it has got, and live subs still appear straight away.
-
-## More workers
-
-`SUBSTATION_WORKERS` sets how many files a worker container handles at once (2 by default). For more, either
-raise it or run more worker containers on the same machine:
-
-```bash
-docker compose up -d --scale worker=3
-```
-
-Work is shared safely: each task runs once, and only one container watches the folders at a time. The number
-of Siril stacks allowed at once is a separate setting, so more containers never means more stacks than your
-memory allows.
+On first start SubStation reads every library. A large archive takes a while; the header shows how far it has
+got, and new subs still appear straight away.
 
 ## Updating
 
-Pull the new images and run `docker compose up -d` again. The database is upgraded on start.
+- **By hand**: `docker compose pull && docker compose up -d`. The database is upgraded on start.
+- **Automatically**: an image watcher (Watchtower, or diun to be told instead) on `edge`, `1.4` or `latest`.
+- **Portainer**: add the stack from this repository (Stacks → Add stack → Repository: `docker/compose.yml`, plus
+  `docker/compose.traefik.yml` as an additional file if you use Traefik), put your `.env` values in the stack's
+  environment variables, and switch on GitOps updates with "Re-pull image" and "Force redeployment", so a new
+  image on your tag is picked up even when the files haven't changed.
+
+An update stops the workers. Whatever they were doing goes back in the queue, and a stack picks up from what it
+had finished (its calibrated and registered subs) rather than starting again, so updating while a long stack runs
+costs minutes, not the whole stack.
+
+## Kubernetes (k3s and others)
+
+Run PostgreSQL (a managed one, or an operator such as CloudNativePG) and the three SubStation images as
+Deployments:
+
+- `api` and `frontend`: any number of replicas; `GET /api/v1/health` for readiness and liveness on the API.
+- `worker`: as many replicas as you like; work is shared through the database. Each needs the station volume and
+  the libraries, so those must be volumes every worker node can mount (ReadWriteMany for the station, read-only
+  for libraries).
+- Settings come from environment variables as in `.env.example`; the database password from a Secret, via
+  `SUBSTATION_DATABASE_PASSWORD_FILE`.
+- Give workers `terminationGracePeriodSeconds: 90`; a stopped worker hands its work back and it resumes.
+
+A Helm chart is planned. Until then these are the pieces it will contain.
+
+## SQLite instead of PostgreSQL
+
+Without `SUBSTATION_DATABASE_URL`, SubStation keeps its catalogue in SQLite at `/data/substation/substation.db`.
+That suits one machine with the station folder on a local disk; it doesn't work on network storage or across
+several machines.
+
+To move an existing SQLite installation to PostgreSQL:
+
+1. Update to the version you'll move with, and let it start once (so both databases end up at the same
+   migrations).
+2. Stop SubStation. Start PostgreSQL alone and run the API image's migrations against it once:
+   `docker compose run --rm api python manage.py migrate`.
+3. Copy: `docker compose run --rm -v <old station folder>:/old:ro api python manage.py copy_database /old/substation.db`.
+   It copies every row in one go and refuses a database that already has data unless you add `--replace`.
+4. Start everything. Keep the SQLite file until you're happy.
+
+## Post-processing helpers
+
+GraXpert and RC-Astro run best on a machine with a GPU. A helper on that machine takes post-processing jobs from
+SubStation over HTTPS (spec 010): set `SUBSTATION_HELPER_TOKEN` on the stack and the same token on the helper, and
+`SUBSTATION_SKIP_QUEUES=finish,finish_ctl` so the workers leave those jobs to it.

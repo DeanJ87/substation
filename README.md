@@ -22,11 +22,12 @@ License v3.0.
 ## Running
 
 ```bash
-docker compose -f docker/compose.example.yml up -d
+cp docker/.env.example docker/.env   # then fill it in (docs/user/install.md)
+docker compose -f docker/compose.yml up -d
 ```
 
-Mount capture folders read-only under `/data/library/<name>` and a local folder at `/data/substation`.
-See `specs/001-ingest-catalogue/contracts/container.md`.
+Libraries are mounted read-only under `/data/library/<name>`; the catalogue is PostgreSQL (or SQLite for a single
+machine). Docker Compose, Portainer, Kubernetes and updating: `docs/user/install.md`.
 
 ## Development
 

@@ -217,19 +217,16 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   3 hours. A FITS Siril only links when converting is copied, never moved as a link, and a linked frame is replaced,
   never written through, so nothing can change a file in an image library.
 
-## Amendment 2026-10-14: updates without scripts (GitOps)
+## Amendment 2026-10-14: updates without scripts
 
 Deploys used scripts on the owner's Mac that logged in to the NAS over SSH to pause the queue, wait for stacks and
-restart containers; one hung for eight hours on an SSH call. An installation may run anywhere, so nothing may push
-to it and the app does not update itself: the installation pulls.
+restart containers; one hung for eight hours on an SSH call. SubStation is installed by other people on plain
+Compose, Portainer or Kubernetes, so the project publishes releases and each installation pulls them in its own
+way; nothing pushes to an installation and the app does not update itself. An in-app updater and a CI-written
+deploy branch were each tried the same day and removed.
 
-- **005-DR-23**: Once every image for a commit is built, CI publishes a deploy branch (`deploy/<branch>`) holding
-  only the compose file with the images pinned to that commit. Portainer runs the stack from that branch with GitOps
-  polling, so it redeploys only when a complete release exists and always with the exact images. Site values
-  (domain, paths, secrets) stay stack variables in Portainer. On a redeploy, a worker container is given up to three
-  hours to stop: its workers take no new work and running stacks finish (`stop_grace_period: 3h`,
-  `SUBSTATION_STOP_GRACE_S` just under it); a task still running after that is requeued as before. SubStation
-  doesn't check for updates or call Portainer. An in-app updater built earlier the same day was removed.
+- **005-DR-23**: Rolling out is the operator's choice (005-DR-26); SubStation's part is to make any rollout safe
+  (005-DR-25) and to upgrade its database on start.
 
 ## Amendment 2026-10-14: PostgreSQL
 
@@ -244,3 +241,17 @@ and it can't be shared across Kubernetes nodes.
   row of every table is copied with its own id in one transaction, booleans converted and times kept as stored,
   then sequences reset. It refuses a PostgreSQL database that already holds users or frames unless `--replace`.
   `/health` reports `postgresql` where SQLite reports its journal mode.
+
+## Amendment 2026-10-14: stopping is cheap; releases and the reference stack
+
+- **005-DR-25**: A worker told to stop (SIGTERM: a redeploy, a scale-down, a Kubernetes eviction) stops Siril at
+  once and puts its task back in the queue without counting an attempt. A stack keeps a checkpoint in its work
+  folder (inputs linked, registration done) and, run again, carries on from the last one; without a usable
+  checkpoint it starts again. So an update during a long stack costs minutes. Stop grace is 90 s in the reference
+  stack (`SUBSTATION_STOP_GRACE_S` 60 in the supervisor).
+- **005-DR-26**: Images are tagged per release (`1.4.2`, `1.4`, `latest`, from git tags `v*`), `edge` for every
+  development build, and by commit. The repository ships a reference Compose stack (`docker/compose.yml` with
+  PostgreSQL, `.env.example`, `compose.traefik.yml`) with no site values in it, and a guide for Compose, image
+  watchers, Portainer GitOps and Kubernetes (`docs/user/install.md`). A one-site compose file and NAS preparation
+  script were removed from the repository; an installation's own values live in its stack variables. The API's
+  start-up waits up to two minutes for the database, for platforms without start ordering.

@@ -61,3 +61,13 @@ def asks_to_stop(label: str) -> str:
     Task.objects.filter(pk=str(current_task_id.get())).update(cancel_requested=True)
     report_progress(0.5, "half way")
     return "finished anyway"
+
+
+@station_task(queue_name="default", max_attempts=1)
+def stopped_by_redeploy(label: str) -> str:
+    """Its worker is told to stop mid-task, as a redeploy does (005-DR-25)."""
+    from substation.tasks import check_interrupted, shutting_down
+
+    shutting_down.set()
+    check_interrupted()
+    return label

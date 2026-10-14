@@ -1,0 +1,100 @@
+# SubStation: the reference stack (005-DR-26). Copy .env.example to .env next to this file, fill it in, then:
+#   docker compose up -d                  and open http://<host>:${SUBSTATION_PORT:-8080}
+#   docker compose pull && docker compose up -d      to update (or let an image watcher do it)
+#
+# Behind a reverse proxy, add an override (compose.traefik.yml is an example):
+#   docker compose -f compose.yml -f compose.traefik.yml up -d
+#
+# Images: SUBSTATION_VERSION picks the tag: a release ("1.4.2", or "1.4" for its patches), "latest" (the newest
+# release), "edge" (every build of the development branch) or a commit ("2194c51").
+name: substation
+
+x-base: &base
+  restart: unless-stopped
+  networks: [internal]
+
+x-env: &env
+  SUBSTATION_DATABASE_URL: postgres://substation@postgres:5432/substation
+  SUBSTATION_DATABASE_PASSWORD_FILE: /run/secrets/db_password
+
+x-station: &station ${SUBSTATION_DATA:?set SUBSTATION_DATA}/station:/data/substation
+x-catalogues: &catalogues ${SUBSTATION_DATA:?set SUBSTATION_DATA}/catalogues:/home/substation/.local/share/kstars:ro
+# your images, read-only unless SUBSTATION_LIBRARY_MODE=rw (only the bin writes, and only where Settings allows);
+# more than two: add a line per folder in an override file, each under /data/library/<name>
+x-library: &library ${SUBSTATION_LIBRARY:?set SUBSTATION_LIBRARY}:/data/library/${SUBSTATION_LIBRARY_NAME:-library}:${SUBSTATION_LIBRARY_MODE:-ro}
+# an optional second library (an archive); unset, it is an empty hidden folder SubStation ignores
+x-library-2: &library2 ${SUBSTATION_LIBRARY_2:-${SUBSTATION_DATA}/station/.no-library}:/data/library/${SUBSTATION_LIBRARY_2_NAME:-.no-library}:${SUBSTATION_LIBRARY_MODE:-ro}
+
+secrets:
+  db_password:
+    file: ${SUBSTATION_DATA:?set SUBSTATION_DATA}/db_password  # one line; created by you, readable only by you
+
+services:
+  postgres:
+    <<: *base
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: substation
+      POSTGRES_DB: substation
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes:
+      - ${SUBSTATION_DATA:?set SUBSTATION_DATA}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U substation -d substation"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    shm_size: 256m
+
+  frontend:
+    <<: *base
+    image: ghcr.io/deanj87/substation-frontend:${SUBSTATION_VERSION:-latest}
+    ports: ["${SUBSTATION_PORT:-8080}:8080"]
+    depends_on: [api]
+
+  api:
+    <<: *base
+    image: ghcr.io/deanj87/substation-api:${SUBSTATION_VERSION:-latest}
+    environment:
+      <<: *env
+      SUBSTATION_ADMIN_USERNAME: ${SUBSTATION_ADMIN_USERNAME:-admin}
+      SUBSTATION_ADMIN_PASSWORD: ${SUBSTATION_ADMIN_PASSWORD:?set SUBSTATION_ADMIN_PASSWORD}
+      SUBSTATION_SITE_NAME: ${SUBSTATION_SITE_NAME:-}
+      SUBSTATION_CSRF_TRUSTED_ORIGINS: ${SUBSTATION_URL:-}  # the address you sign in at, behind a proxy
+      SUBSTATION_HELPER_TOKEN: ${SUBSTATION_HELPER_TOKEN:-}  # post-processing helpers on other machines (spec 010)
+    secrets: [db_password]
+    volumes:
+      - *station
+      - *catalogues
+      - *library  # so previews can be drawn from frames not processed yet
+      - *library2
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  worker:
+    <<: *base
+    image: ghcr.io/deanj87/substation-worker:${SUBSTATION_VERSION:-latest}
+    environment:
+      <<: *env
+      SUBSTATION_WORKERS: ${SUBSTATION_WORKERS_EACH:-2}  # per container; change it later in Settings → Workers
+      SUBSTATION_SKIP_QUEUES: ${SUBSTATION_SKIP_QUEUES:-}  # "finish,finish_ctl" when helpers do post-processing
+      SUBSTATION_SIRIL_THREADS: ${SUBSTATION_SIRIL_THREADS:-}  # per Siril outside stacking; empty: every core
+      SUBSTATION_SIRIL_MEM_RATIO: ${SUBSTATION_SIRIL_MEM_RATIO:-}
+      SUBSTATION_STOP_GRACE_S: "60"  # a stop puts running work back in the queue; it resumes (005-DR-25)
+    stop_grace_period: 90s
+    secrets: [db_password]
+    volumes:
+      - *station
+      - *catalogues
+      - *library
+      - *library2
+    depends_on:
+      api: { condition: service_healthy }
+    deploy:
+      replicas: ${SUBSTATION_WORKER_REPLICAS:-1}
+      resources:
+        limits: { cpus: "${SUBSTATION_WORKER_CPUS:-4}", memory: "${SUBSTATION_WORKER_MEMORY:-8g}" }
+
+networks:
+  internal: {}

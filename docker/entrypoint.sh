@@ -9,7 +9,7 @@ ROLE="${1:-api}"
 ROOT="${SUBSTATION_DATA_DIR:-/data}/substation"
 
 if [ "$ROLE" != helper ] && [ ! -d "$ROOT" ]; then
-  echo "SubStation can't start: $ROOT is missing. Mount a local folder there (see compose.example.yml)." >&2
+  echo "SubStation can't start: $ROOT is missing. Mount a folder there (see docker/compose.yml)." >&2
   exit 1
 fi
 if ! touch "$ROOT/.write-test-$ROLE" 2>/dev/null; then
@@ -19,17 +19,28 @@ fi
 rm -f "$ROOT/.write-test-$ROLE"
 
 FSTYPE="$(stat -f -c %T "$ROOT" 2>/dev/null || echo unknown)"
-case "$FSTYPE" in
-  nfs*|cifs|smb*|fuse.sshfs)
-    echo "Warning: $ROOT is on a network filesystem ($FSTYPE). SubStation's database needs local disk;" >&2
-    echo "expect 'database is locked' errors. Put /data/substation on storage local to the Docker host." >&2
-    ;;
-esac
+if [ -z "${SUBSTATION_DATABASE_URL:-}" ]; then  # SQLite lives in $ROOT; PostgreSQL doesn't mind (005-DR-24)
+  case "$FSTYPE" in
+    nfs*|cifs|smb*|fuse.sshfs)
+      echo "Warning: $ROOT is on a network filesystem ($FSTYPE). SQLite needs local disk; expect" >&2
+      echo "'database is locked' errors. Use local storage, or PostgreSQL (SUBSTATION_DATABASE_URL)." >&2
+      ;;
+  esac
+fi
 mkdir -p "$ROOT/work" "$ROOT/previews" "$ROOT/stacks" "$ROOT/config"
 
 case "$ROLE" in
   api)
-    python manage.py migrate --noinput
+    # the database may still be starting (Kubernetes has no depends_on): try for two minutes
+    tries=0
+    until python manage.py migrate --noinput; do
+      tries=$((tries + 1))
+      if [ "$tries" -ge 60 ]; then
+        echo "SubStation api: couldn't reach the database to migrate it after 2 minutes." >&2
+        exit 1
+      fi
+      sleep 2
+    done
     python manage.py bootstrap_admin
     exec python -m uvicorn substation.asgi:application --host 0.0.0.0 --port 8000 --proxy-headers \
          --forwarded-allow-ips='*'

@@ -1,0 +1,19 @@
+# Override for running behind Traefik on an external "proxy" network, with Let's Encrypt:
+#   docker compose -f compose.yml -f compose.traefik.yml up -d
+# Needs SUBSTATION_DOMAIN and SUBSTATION_URL=https://<that domain> in .env.
+services:
+  frontend:
+    ports: !reset []
+    networks: [internal, proxy]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: proxy
+      traefik.http.routers.substation.rule: Host(`${SUBSTATION_DOMAIN:?set SUBSTATION_DOMAIN}`)
+      traefik.http.routers.substation.entrypoints: websecure
+      traefik.http.routers.substation.tls: "true"
+      traefik.http.routers.substation.tls.certresolver: letsencrypt
+      traefik.http.services.substation.loadbalancer.server.port: "8080"
+
+networks:
+  proxy:
+    external: true

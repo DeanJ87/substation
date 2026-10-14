@@ -243,9 +243,18 @@ class Siril:
                 return got
 
     def _stop_if_cancelled(self, command: str) -> None:
-        """A cancelled task stops Siril mid-command; it starts afresh for the next task."""
-        from substation.tasks import Cancelled, cancel_requested
+        """A cancelled task stops Siril mid-command; it starts afresh for the next task. So does a worker that is
+        stopping, but its task goes back in the queue and its work folder is kept to resume from (005-DR-25)."""
+        from substation.tasks import Cancelled, Interrupted, cancel_requested, shutting_down
 
+        if shutting_down.is_set():
+            log.info("Stopping Siril during “%s”: the worker is stopping.", command.split()[0])
+            if self.proc is not None:
+                self.proc.kill()
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    self.proc.wait(5)
+            self.proc = None
+            raise Interrupted(f"The worker stopped during “{command.split()[0]}”; back in the queue.")
         if cancel_requested():
             log.info("Stopping Siril during “%s”: the task was cancelled.", command.split()[0])
             if self.proc is not None:

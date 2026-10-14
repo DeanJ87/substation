@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextvars
 import logging
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -104,6 +105,20 @@ def cancel_requested() -> bool:
 def check_cancelled() -> None:
     if cancel_requested():
         raise Cancelled("Cancelled while running.")
+
+
+class Interrupted(Exception):  # noqa: N818 (control flow)
+    """Raised inside a running task when its worker is stopping (a redeploy, a restart): the task goes back in the
+    queue without counting an attempt, and picks up from its own checkpoints when it runs again (005-DR-25)."""
+
+
+# set when this worker process has been told to stop; long work checks it between and during Siril commands
+shutting_down = threading.Event()
+
+
+def check_interrupted() -> None:
+    if shutting_down.is_set():
+        raise Interrupted("The worker stopped; back in the queue.")
 
 
 class Reschedule(Exception):  # noqa: N818 (control flow, not an error)

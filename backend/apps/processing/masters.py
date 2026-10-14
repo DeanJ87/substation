@@ -18,7 +18,16 @@ from django.utils import timezone
 
 from apps.catalogue.models import Copy, Dataset, Frame, FrameStatus, FrameType
 from substation.events.emit import emit
-from substation.tasks import PRIORITY_BULK, Cancelled, Reschedule, enqueue, report_progress, station_task
+from substation.tasks import (
+    PRIORITY_BULK,
+    Cancelled,
+    Interrupted,
+    Reschedule,
+    check_interrupted,
+    enqueue,
+    report_progress,
+    station_task,
+)
 
 from .config import processing_settings
 from .effective import effective
@@ -502,6 +511,36 @@ def _fit_registered(eng, work: Path, n: int) -> list[str]:  # noqa: ANN001
     )
 
 
+def _checkpoint(work: Path, master_pk: int) -> dict:
+    """What an earlier, interrupted run of this master finished (005-DR-25); nothing when there was none."""
+    import json
+
+    try:
+        ck = json.loads((work / "checkpoint.json").read_text())
+    except (OSError, ValueError):
+        return {"master": master_pk, "done": []}
+    return ck if ck.get("master") == master_pk else {"master": master_pk, "done": []}
+
+
+def _save_checkpoint(work: Path, ck: dict) -> None:
+    import json
+
+    tmp = work / "checkpoint.json.part"
+    tmp.write_text(json.dumps(ck))
+    tmp.replace(work / "checkpoint.json")
+
+
+def _resumed_inputs(work: Path, ck: dict) -> dict[int, MasterMember] | None:
+    """The inputs an interrupted run had linked, if every one is still there; else None (start again)."""
+    order = {}
+    for i, pk in (ck.get("order") or {}).items():
+        mm = MasterMember.objects.select_related("frame__measurement").filter(pk=pk).first()
+        if mm is None or not (work / f"sub_{int(i):05d}.fit").exists():
+            return None
+        order[int(i)] = mm
+    return order or None
+
+
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
 def integrate(master_id: int) -> dict:
     from apps.engine import parse
@@ -514,12 +553,18 @@ def integrate(master_id: int) -> dict:
         return {"result": "cancelled"}
     Master.objects.filter(pk=m.pk).update(state=MasterState.RUNNING, started_at=timezone.now(), error=None)
     work = Path(settings.WORK_DIR) / "integrations" / f"ds{m.dataset_id}_v{m.version}"
-    shutil.rmtree(work, ignore_errors=True)
-    work.mkdir(parents=True)
+    # 005-DR-25: a stack stopped by a redeploy resumes from what it had finished (its inputs, its registration)
+    ck = _checkpoint(work, m.pk)
+    if not ck["done"]:
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir(parents=True)
+    keep = False
     try:
         _step(m, "Select inputs", 0.02)
         members = list(
-            MasterMember.objects.filter(master=m, included=True).select_related("frame__measurement")
+            MasterMember.objects.filter(master=m, included=True)
+            .select_related("frame__measurement")
+            .order_by("pk")
         )
         cached = [
             Path(mm.frame.measurement.calibrated_path)
@@ -530,7 +575,15 @@ def integrate(master_id: int) -> dict:
             with contextlib.suppress(FileNotFoundError):
                 os.utime(p)
         _step(m, "Calibrate", 0.1)  # done on arrival; subs pruned from the cache are calibrated again here
-        order = _inputs(m, members, work)
+        order = _resumed_inputs(work, ck) if "inputs" in ck["done"] else None
+        if order is None:
+            shutil.rmtree(work, ignore_errors=True)
+            work.mkdir(parents=True)
+            ck = {"master": m.pk, "done": []}
+            order = _inputs(m, members, work)
+            ck.update(done=["inputs"], order={str(i): mm.pk for i, mm in order.items()})
+            _save_checkpoint(work, ck)
+        check_interrupted()
         if len(order) < 2:
             raise RuntimeError("Fewer than two calibrated subs.")
         eng = engine()
@@ -540,7 +593,10 @@ def integrate(master_id: int) -> dict:
         _step(m, "Register", 0.2)
         _check_budget(work, len(order))
         mosaic = mosaic_reason([mm.frame for mm in order.values()])
-        if mosaic:
+        if "registered" in ck["done"] and (work / "r_sub_.seq").exists():
+            notes = list(ck.get("notes", []))
+            notes.append("Resumed after a restart: registration was already done.")
+        elif mosaic:
             # register by plate solution onto one canvas that holds every sub (004-DR-23)
             notes = _fit_registered(eng, work, len(order))
             eng.run(
@@ -570,6 +626,10 @@ def integrate(master_id: int) -> dict:
                 timeout=7200,
                 on_line=_Live(m, "Register", 0.4, 0.6, len(order)),
             )
+        if "registered" not in ck["done"]:
+            ck["done"].append("registered")
+            ck["notes"] = notes
+            _save_checkpoint(work, ck)
         eng.run("set32bits")
         registered = {im["filenum"] for im in parse.seq_images(work / "r_sub_.seq")}
         unmatched = []
@@ -686,6 +746,12 @@ def integrate(master_id: int) -> dict:
             if report.get("fwhm_arcsec")
             else f"{m.dataset.display_name}: {included.count()} subs.",
         )
+    except Interrupted:
+        keep = True  # its work folder is where it resumes from
+        Master.objects.filter(pk=m.pk).update(
+            state=MasterState.QUEUED, state_reason="Stopped by a restart; resumes where it left off."
+        )
+        raise
     except Reschedule as r:
         Master.objects.filter(pk=m.pk).update(state=MasterState.QUEUED, state_reason=r.note)
         raise
@@ -703,7 +769,8 @@ def integrate(master_id: int) -> dict:
         emit("master.updated", {"dataset_id": m.dataset_id, "master_id": m.pk, "state": "failed"})
         raise
     finally:
-        shutil.rmtree(work, ignore_errors=True)
+        if not keep:
+            shutil.rmtree(work, ignore_errors=True)
         if "_heavy" in locals():
             _heavy.__exit__(None, None, None)
     emit("master.updated", {"dataset_id": m.dataset_id, "master_id": m.pk, "state": "current"})
@@ -732,14 +799,14 @@ def check_stale(ds: Dataset) -> None:
         }
         then = set(
             MasterMember.objects.filter(master=m)
-            .exclude(reason="could not match stars")
+            .exclude(reason__in=["could not match stars", "could not plate solve"])
             .filter(included=True)
             .values_list("frame_id", flat=True)
         )
         then |= set(
-            MasterMember.objects.filter(master=m, reason="could not match stars").values_list(
-                "frame_id", flat=True
-            )
+            MasterMember.objects.filter(
+                master=m, reason__in=["could not match stars", "could not plate solve"]
+            ).values_list("frame_id", flat=True)
         )
         new, gone = now - then, then - now
         if new or gone:

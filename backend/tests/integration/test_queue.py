@@ -186,3 +186,17 @@ def test_a_running_task_can_be_cancelled():
     WorkerProcess("w-test").run(max_tasks=2)
     row = Task.objects.get(pk=r.id)
     assert row.status == TaskStatus.CANCELLED and row.attempts == 1 and row.return_value is None
+
+
+def test_a_stopping_worker_puts_its_task_back(monkeypatch):
+    """005-DR-25: a redeploy stops the worker; its task goes back in the queue without using an attempt."""
+    from substation.tasks import shutting_down
+
+    r = enqueue(dt.stopped_by_redeploy, "s1")
+    try:
+        WorkerProcess("w-test").run(max_tasks=1)
+    finally:
+        shutting_down.clear()
+    row = Task.objects.get(pk=r.id)
+    assert row.status == TaskStatus.READY and row.attempts == 0 and row.worker_id is None
+    assert "back in the queue" in row.progress_note
