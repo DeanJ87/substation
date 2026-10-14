@@ -26,3 +26,5 @@
 - [X] W19 (owner 2026-10-13) Lock-tolerant claim loop and watcher; `STALE_HEAVY_S = 900`; test (005-DR-20)
 - [X] W20 (owner 2026-10-13) `_object_label` for integrate, post-process, calibrate and solve jobs; stack `why`
   line; test (005-DR-21)
+- [X] W21 (2026-10-14) Batch outputs in the stack's folder; linked outputs copied; `one_row_order` replaces links;
+  prune keeps files touched in the last 3 h; tests (005-DR-22)

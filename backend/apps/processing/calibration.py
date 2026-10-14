@@ -407,6 +407,10 @@ def one_row_order(work: Path, prefix: str) -> int:
             data = np.flip(hdu.data, axis=-2)
             header = hdu.header.copy()
         header["ROWORDER"] = ("TOP-DOWN" if want else "BOTTOM-UP", "flipped by SubStation to match the set")
+        # Siril links a FITS it only converts: replace the link with a new file, never write through it to the
+        # original (an image library must never be changed)
+        if p.is_symlink():
+            p.unlink()
         fits.PrimaryHDU(data=data, header=header).writeto(p, overwrite=True)
         n += 1
     return n

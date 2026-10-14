@@ -30,7 +30,7 @@ def test_framing_shows_the_finished_master_when_its_preview_lines_up(tmp_path):
     Image.new("L", (40, 30)).save(pv)
     Image.new("L", (40, 30)).save(st)
     Image.new("L", (20, 30)).save(small)
-    runs = [{"run": 1, "stages": [{"state": "done", "preview": str(st)}, {"state": "skipped"}]}]
+    runs: list[dict] = [{"run": 1, "stages": [{"state": "done", "preview": str(st)}, {"state": "skipped"}]}]
     m = Master.objects.create(
         dataset=d, version=1, state="current", preview_path=str(pv), report={"post_runs": runs}
     )

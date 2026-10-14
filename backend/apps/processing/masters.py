@@ -291,7 +291,7 @@ class _Live:
 
 def _inputs(m: Master, members: list[MasterMember], work: Path) -> dict[int, MasterMember]:
     """Each member's calibrated sub, linked as work/sub_NNNNN.fit. Subs whose cached calibration was pruned are
-    calibrated again in batches (calibrate_batch) and put back in the cache, so the next stack finds them."""
+    calibrated again in batches (calibrate_batch) into this stack's own folder."""
     from .models import CalibrationMatch, MatchState
     from .tasks import calibrate_batch, calibrate_file, source_path
 
@@ -311,7 +311,9 @@ def _inputs(m: Master, members: list[MasterMember], work: Path) -> dict[int, Mas
                 mm.included, mm.reason = False, "no copy on disk" if src is None else "no longer matched"
                 mm.save(update_fields=["included", "reason"])
                 continue
-            out = cal if cal is not None else redo / f"sub_{i:05d}.fit"  # back into the cache where it was
+            # into this stack's own folder: written back to the shared cache, a recalibrated sub could be pruned by
+            # other workers while this stack still reads it (2026-10-13)
+            out = redo / f"sub_{i:05d}.fit"
             todo.append((mm.frame, cm, src, out))
             links.append((out, dest))
         order[i] = mm

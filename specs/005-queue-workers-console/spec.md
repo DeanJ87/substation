@@ -32,3 +32,7 @@
   dataset's target), then rig and filter ("Soul Nebula · Askar 71F + ATR2600M · SII · v1"). A running stack also
   says who or what started it and with which subs ("queued by admin 13 Oct 08:25 · accepted and down-weighted subs",
   or "started automatically …").
+- **005-DR-22** (2026-10-14): A stack's recalibrated subs live in its own working folder, never the shared cache
+  (the cache's pruning took them mid-stack and seven stacks failed); the cache never prunes a file used in the last
+  3 hours. A FITS Siril only links when converting is copied, never moved as a link, and a linked frame is replaced,
+  never written through, so nothing can change a file in an image library.

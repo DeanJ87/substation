@@ -413,7 +413,12 @@ def calibrate_batch(items: list[tuple[Frame, CalibrationMatch, Path, Path]], tmp
                     left.append(frame)
                     continue
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                os.replace(produced, dest)
+                if (
+                    produced.is_symlink()
+                ):  # Siril links a FITS it only converts: copy the real file, never the link
+                    shutil.copyfile(produced.resolve(), dest)
+                else:
+                    os.replace(produced, dest)
         except Exception:  # noqa: BLE001 (the group is done one at a time instead)
             log.warning(
                 "Batch calibration of %s subs failed; calibrating them one at a time",
@@ -442,9 +447,14 @@ def prune_calibrated(budget_bytes: int | None = None) -> int:
         files.append((st.st_mtime, st.st_size, p))
     total = sum(f[1] for f in files)
     removed = 0
-    for _mt, size, p in sorted(files):
+    # a stack touches its inputs when it starts and may read them for an hour or more: never take a file used in
+    # the last 3 hours, even over budget (a running stack lost its subs to this, 2026-10-13)
+    recent = time.time() - 3 * 3600
+    for mt, size, p in sorted(files):
         if total <= budget:
             break
+        if mt > recent:
+            continue
         p.unlink(missing_ok=True)
         total -= size
         removed += 1
