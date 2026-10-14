@@ -50,3 +50,6 @@
 - [X] D-T4 Stack preview names nights much softer (>30% FWHM) than the sharpest, in plain text (`sharpness_note`)
 - [X] D-T5 (owner 2026-10-13) A stack that mixes exposures weights by noise (inverse variance, Siril
   `-weight=noise`) instead of sharpness, so a 240 s sub counts for about four 60 s ones; noted on the master
+- [X] D-T6 (2026-10-14) `mosaic_reason` (solve spread, else Seestar names); mosaic path in `integrate`
+  (seqplatesolve, seqapplyreg -framing=max, stack -maximize -overlap_norm -feather); tests (004-DR-23)
+- [ ] D-T7 Re-stack IC 4605 · IRCUT as a mosaic and check every solved sub is used

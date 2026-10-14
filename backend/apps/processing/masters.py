@@ -16,7 +16,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from apps.catalogue.models import Dataset, Frame, FrameStatus, FrameType
+from apps.catalogue.models import Copy, Dataset, Frame, FrameStatus, FrameType
 from substation.events.emit import emit
 from substation.tasks import PRIORITY_BULK, Cancelled, Reschedule, enqueue, report_progress, station_task
 
@@ -331,7 +331,45 @@ def _inputs(m: Master, members: list[MasterMember], work: Path) -> dict[int, Mas
     return order
 
 
-def _reject_unregistered(m: Master, shas: list[str]) -> None:
+MOSAIC_SPREAD = 0.5  # subs whose centres stray more than half the field's short side make a mosaic
+
+
+def mosaic_reason(frames: list[Frame]) -> str | None:
+    """Why these subs are a mosaic, or None (004-DR-23). Seestar's mosaic mode moves the field around a grid every
+    few subs (IC 4605: 249 pointings over about 4°), so there are no panels to split: subs far apart share too few
+    stars for one reference, and the stack has to be registered by plate solution onto one canvas instead. Decided
+    from the subs' solves; without enough solves, from Seestar's "_mosaic" file names."""
+    import math
+    import statistics
+
+    from .models import PlateSolve, SolveState
+
+    solves = list(
+        PlateSolve.objects.filter(frame__in=frames, state=SolveState.SOLVED).values_list(
+            "ra_deg", "dec_deg", "fov_w_deg", "fov_h_deg"
+        )
+    )
+    solves = [r for r in solves if None not in r]
+    if len(solves) >= max(3, len(frames) // 2):
+        ra0 = statistics.median(r[0] for r in solves)
+        dec0 = statistics.median(r[1] for r in solves)
+        short = statistics.median(min(r[2], r[3]) for r in solves)
+
+        def sep(ra: float, dec: float) -> float:
+            dra = (ra - ra0 + 180) % 360 - 180
+            return math.hypot(dra * math.cos(math.radians(dec0)), dec - dec0)
+
+        far = max(sep(r[0], r[1]) for r in solves)
+        if short and far > MOSAIC_SPREAD * short:
+            return f"Mosaic: the subs' centres spread {far:.1f}° across a {short:.1f}° field"
+        return None
+    names = [c.rel_path.rsplit("/", 1)[-1].lower() for c in Copy.objects.filter(frame__in=frames)]
+    if names and sum("_mosaic_" in n for n in names) > len(names) / 2:
+        return "Mosaic: Seestar mosaic subs"
+    return None
+
+
+def _reject_unregistered(m: Master, shas: list[str], mosaic: bool = False) -> None:
     """A sub whose stars can't be matched to the reference becomes a Rejected auto grade with the reason (spec
     003 US1/AC4), so Review shows it instead of it silently dropping out of every stack. Human verdicts still win."""
     if not shas:
@@ -343,7 +381,11 @@ def _reject_unregistered(m: Master, shas: list[str]) -> None:
         verdict=GradeVerdict.REJECT,
         weight=0.0,
         near_threshold=False,
-        reason="Couldn't register: too few stars matched the reference.",
+        reason=(
+            "Couldn't register: no plate solution for this sub."
+            if mosaic
+            else "Couldn't register: too few stars matched the reference."
+        ),
     )
     recount_grades(m.dataset)
 
@@ -496,7 +538,22 @@ def integrate(master_id: int) -> dict:
         eng.run(f"cd {work}")
         _step(m, "Register", 0.2)
         _check_budget(work, len(order))
-        if (m.recipe.get("options") or {}).get("reference") == "most_stars":
+        mosaic = mosaic_reason([mm.frame for mm in order.values()])
+        if mosaic:
+            # register by plate solution onto one canvas that holds every sub (004-DR-23)
+            notes = _fit_registered(eng, work, len(order))
+            eng.run(
+                "seqplatesolve sub_ -force -downscale",
+                timeout=7200,
+                on_line=_Live(m, "Plate solve", 0.2, 0.45, len(order)),
+            )
+            eng.run(
+                "seqapplyreg sub_ -framing=max",
+                timeout=7200,
+                on_line=_Live(m, "Register", 0.45, 0.6, len(order)),
+            )
+            notes.append(f"{mosaic}: registered by plate solution and stacked onto one canvas.")
+        elif (m.recipe.get("options") or {}).get("reference") == "most_stars":
             # the sub with the most stars is the reference; one pass keeps that choice (004 FR-004)
             best = max(order, key=lambda i: order[i].frame.measurement.stars or 0)
             notes = _fit_registered(eng, work, len(order))
@@ -517,10 +574,13 @@ def integrate(master_id: int) -> dict:
         unmatched = []
         for i, mm in order.items():
             if i not in registered:
-                mm.included, mm.reason = False, "could not match stars"
+                mm.included, mm.reason = (
+                    False,
+                    ("could not plate solve" if mosaic else "could not match stars"),
+                )
                 mm.save(update_fields=["included", "reason"])
                 unmatched.append(mm.frame_id)
-        _reject_unregistered(m, unmatched)
+        _reject_unregistered(m, unmatched, mosaic=bool(mosaic))
         _step(m, "Integrate", 0.6)
         out_dir = Path(settings.STACKS_DIR) / f"ds{m.dataset_id}"
         try:
@@ -550,8 +610,10 @@ def integrate(master_id: int) -> dict:
                 + "): weighted by noise, so longer subs count for more."
             )
         rej = {"winsorized": "w", "sigma": "s", "linear": "l"}.get(cfg.get("rejection", "winsorized"), "w")
+        # a mosaic: the canvas holds every sub; levels match on the overlaps and edges blend
+        canvas = " -maximize -overlap_norm -feather=100" if mosaic else ""
         stack = eng.run(
-            f"stack r_sub_ rej {rej} {lo:g} {hi:g} -norm=addscale {weight} -out={out} -32b".replace(
+            f"stack r_sub_ rej {rej} {lo:g} {hi:g} -norm=addscale {weight}{canvas} -out={out} -32b".replace(
                 "  ", " "
             ),
             timeout=7200,

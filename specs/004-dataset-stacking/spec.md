@@ -249,3 +249,16 @@ read, and across-the-field quality was a table rather than something drawn on th
   for verdicts and failures.
 - **Fix**: zones had top and bottom swapped (Siril's y runs from the top); stored reports are corrected by
   migration 0013, so earlier tilt notes named the wrong corners.
+
+## Amendment 2026-10-14: mosaics stack onto one canvas
+
+IC 4605 used 77 of 571 subs: 336 couldn't be matched to the reference. It is a Seestar mosaic, and Seestar's mosaic
+mode moves the field around a grid every few subs (249 pointings over about 4°), so there are no fixed panels to
+split it into, and subs far from the reference share too few stars with it.
+
+- **004-DR-23**: A stack whose subs' plate-solved centres spread more than half the field's short side (or, with
+  too few solves, whose files are Seestar "_mosaic" subs) is a mosaic. It is registered by plate solution
+  (`seqplatesolve`), laid onto a canvas holding every sub (`seqapplyreg -framing=max`) and stacked with
+  `-maximize -overlap_norm -feather=100`, so levels match where subs overlap and their edges blend. The master's
+  notes say it was stacked as a mosaic and why. A sub that can't be plate solved is left out with "Couldn't
+  register: no plate solution for this sub." Fixed panels (NINA's "Panel 1") are still datasets of their own.
