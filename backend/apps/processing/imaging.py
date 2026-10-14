@@ -10,6 +10,9 @@ from pathlib import Path
 import numpy as np
 
 FULL_SCALE = 65535.0
+# a dark, bias or dark flat above this share of full scale saw light (a cover off, a flat panel still on): a set of
+# KStars "dark flats" at 29,400 ADU, as bright as the flats, left a flat master of nothing (set 253, 2026-10-14)
+DARK_MAX_LEVEL = 0.2
 
 
 def read_data(path: Path, image_index: int = 0) -> np.ndarray:
@@ -167,6 +170,14 @@ def qa_set(kind: str, stats: dict[str, FrameStats]) -> dict[str, tuple[str, str]
             if s.saturated_frac > 0.01:
                 verdict = "warn"
                 notes.append(f"{s.saturated_frac:.1%} of pixels saturated.")
+        if kind in ("dark", "bias", "dark_flat") and s.median > DARK_MAX_LEVEL * FULL_SCALE:
+            word = {"dark": "dark", "bias": "bias", "dark_flat": "dark flat"}[kind]
+            out[key] = (
+                "reject",
+                f"Far too bright for a {word} ({s.median / FULL_SCALE:.0%} of full scale): light reached the "
+                "sensor, a cover off or a flat panel on. Not used.",
+            )
+            continue
         if kind in ("dark", "bias", "dark_flat"):
             spots = [x.spots for x in stats.values()]
             typical = float(np.median(spots))

@@ -93,3 +93,5 @@
   picker groups them and warns; `automatic: true` resets a session (002-DR-26); tests
 - [X] D-27 (2026-10-14) A hand-picked flat or dark alone no longer marks a session ready: the other comes from
   matching or the session waits; a pinned match missing one goes back to waiting on a rematch (002-DR-26); tests
+- [X] D-28 (2026-10-14) QA rejects darks, bias and dark flats above 20% of full scale; `flat_calibrator` skips
+  built dark-flat masters that bright (002-DR-27); tests

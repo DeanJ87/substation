@@ -126,3 +126,13 @@ def test_a_colour_mosaic_preview_is_in_colour(tmp_path):
     fits.PrimaryHDU(a, header=fits.Header({"BAYERPAT": "GRBG"})).writeto(src)
     render(src, tmp_path / "p.jpg", tmp_path / "p_t.jpg", raw=True)
     assert Image.open(tmp_path / "p.jpg").mode == "RGB"
+
+
+def test_a_dark_as_bright_as_a_flat_is_rejected():
+    """002-DR-27: KStars "dark flats" taken with the panel on came out at 29,400 ADU."""
+    import numpy as np
+
+    lit = np.full((64, 64), 29400.0, dtype=np.float32) + np.random.default_rng(1).normal(0, 50, (64, 64))
+    dark = np.full((64, 64), 500.0, dtype=np.float32) + np.random.default_rng(2).normal(0, 5, (64, 64))
+    v = qa_set("dark_flat", {"lit": frame_stats(lit, dark=True), "ok": frame_stats(dark, dark=True)})
+    assert v["lit"][0] == "reject" and "too bright" in v["lit"][1] and v["ok"][0] != "reject"

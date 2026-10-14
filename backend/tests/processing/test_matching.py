@@ -360,3 +360,44 @@ def test_an_uncooled_camera_uses_bias_when_no_dark_matches():
         "l2", FrameType.LIGHT, date(2026, 9, 28), exptime_s=180.0, ccd_temp_c=-20.0, filter_norm="Hα"
     )
     assert match(cooled).dark is None  # a cooled camera still waits for a real dark
+
+
+def test_a_dark_flat_master_that_saw_light_is_passed_over_for_the_bias():
+    """002-DR-27: set 253's flats were calibrated by "dark flats" as bright as the flats, leaving nothing."""
+    from apps.catalogue.models import CalibrationSet, Copy
+    from apps.libraries.models import Library
+    from apps.processing.calibration import flat_calibrator
+    from apps.processing.models import BuiltMaster
+
+    lib = Library.objects.create(name="l2", mount_path="/x")
+    bright = frame("dfbright", FrameType.MASTER_DARK_FLAT, gain=100, offset=60, exptime_s=0.1577697)
+    bias = frame("b60ok", FrameType.MASTER_BIAS, gain=100, offset=60)
+    for i, f in enumerate((bright, bias)):
+        Copy.objects.create(
+            frame=f,
+            library=lib,
+            rel_path=f"m{i}.fit",
+            st_dev=1,
+            st_ino=10 + i,
+            st_size=1,
+            st_mtime_ns=1,
+            present=True,
+            first_seen_at=T,
+            last_seen_at=T,
+        )
+    cs = CalibrationSet.objects.create(
+        type=FrameType.FLAT,
+        camera="ATR2600M",
+        gain=100,
+        offset=60,
+        filter_norm="L",
+        exptime_s=0.1577697,
+        session_start_utc=T,
+        session_end_utc=T,
+        frame_count=50,
+    )
+    assert flat_calibrator(cs) == bright  # nothing known against it yet
+    BuiltMaster.objects.create(
+        calibration_set=cs, frame=bright, state="done", report={"stats": {"median": 29406.0}}
+    )
+    assert flat_calibrator(cs) == bias

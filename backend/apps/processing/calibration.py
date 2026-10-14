@@ -36,6 +36,8 @@ from substation.events.emit import emit
 from substation.tasks import PRIORITY_BULK, enqueue, report_progress, station_task
 
 from .imaging import (
+    DARK_MAX_LEVEL,
+    FULL_SCALE,
     compare_masters,
     flat_analysis,
     frame_stats,
@@ -172,11 +174,21 @@ def flat_calibrator(cs: CalibrationSet) -> Frame | None:
             else None
         )
 
+    def lit(f: Frame) -> bool:
+        """A master SubStation built that came out far too bright to be dark (002-DR-27)."""
+        bm = BuiltMaster.objects.filter(frame=f, state="done").order_by("-pk").first()
+        med = ((bm.report or {}).get("stats") or {}).get("median") if bm else None
+        return med is not None and med > DARK_MAX_LEVEL * FULL_SCALE
+
     for kind in (FrameType.MASTER_DARK_FLAT, FrameType.MASTER_DARK):
         got = nearest(
-            base.filter(
-                frame_type=kind, exptime_s__gte=cs.exptime_s * 0.999, exptime_s__lte=cs.exptime_s * 1.001
-            )
+            [
+                f
+                for f in base.filter(
+                    frame_type=kind, exptime_s__gte=cs.exptime_s * 0.999, exptime_s__lte=cs.exptime_s * 1.001
+                )
+                if not lit(f)
+            ]
         )
         if got is not None:
             return got

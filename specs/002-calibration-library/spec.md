@@ -345,3 +345,7 @@ exposure (0.00654 / 0.00655 s) and sets required an exact match.
   A session given only a flat (or only a dark) by hand takes the other from matching; with none to be had it waits
   for one instead of being calibrated without it (a flat chosen for M 42 · B calibrated 41 subs with no dark), except
   on rigs calibrated with a flat alone.
+- **002-DR-27 A dark that saw light is not a dark.** A dark, bias or dark flat frame above a fifth of full scale is
+  rejected by QA with the reason (light reached the sensor: a cover off or a flat panel on), and a flat build passes
+  over a built dark-flat master that bright for the next calibrator (a dark at that exposure, else the bias). A set of
+  KStars "dark flats" at 29,400 ADU, as bright as the flats, had calibrated a flat set down to nothing.
