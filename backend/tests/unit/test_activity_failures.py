@@ -47,3 +47,6 @@ def test_guiding_rms_is_read_from_the_file_name():
     assert rms_from_name("Light_TotalRMS_1.1.fit") == 1.1
     assert rms_from_name("M_31_300s_20251021200405.fits") is None
     assert rms_from_name("NGC7000_Hα_FARMS_600s.fits") is None
+    # the NINA pattern SubStation recommends: "_RMS$$RMSARCSEC$$_" is "_RMS_" when nothing was guided
+    assert rms_from_name("2026-10-14_22-10-05_Halpha_-20.00_600.00s_RMS0.62_0001.xisf") == 0.62
+    assert rms_from_name("2026-10-14_22-10-05_Halpha_-20.00_600.00s_RMS_0001.xisf") is None

@@ -337,3 +337,10 @@ paths. `docker/compose.nas.yml` takes them as required stack variables (`SUBSTAT
 `SUBSTATION_CATALOGUES`, `SUBSTATION_LIBRARY`, `SUBSTATION_ARCHIVE`), so a missing one stops the deploy rather than
 starting on an empty folder; `docker/nas-prepare.sh` takes `NAS`, `ROOT` and `CATALOGUES`; the post-processing
 helper needs `--url` or `SUBSTATION_URL`.
+
+## Amendment 2026-10-14: guiding RMS from NINA's file names
+
+NINA doesn't write guiding RMS into the header, so the rig's lights pattern carries it in the name
+(`…_600.00s_RMS$$RMSARCSEC$$_$$FRAMENR$$`). When nothing was guided, NINA writes `_RMS_` and the frame number
+follows; that number must never be read as the RMS. After `_` or a space only a decimal counts (`_RMS0.62_`,
+`guiding_0.8`); after `-`, `=` or nothing, any number does.

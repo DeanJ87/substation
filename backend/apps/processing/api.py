@@ -111,7 +111,10 @@ def _file(f: Frame) -> str:
 
 
 _RMS_IN_NAME = re.compile(
-    r"(?i)(?:^|[_\-\s.])(?:total[_\-\s]?)?(?:rms|guid(?:e|ing)?(?:[_\-\s]?rms)?)[_\-\s=]?(\d+(?:\.\d+)?)"
+    # after "_" or a space only a decimal counts: NINA writes "_RMS_" when nothing was guided, and the frame number
+    # after it ("_RMS_0001") must not be read as the RMS
+    r"(?i)(?:^|[_\-\s.])(?:total[_\-\s]?)?(?:rms|guid(?:e|ing)?(?:[_\-\s]?rms)?)"
+    r"(?:[\-=]?(\d+(?:\.\d+)?)|[_\s](\d+\.\d+))"
 )
 
 
@@ -119,7 +122,7 @@ def rms_from_name(name: str) -> float | None:
     """Guiding RMS written into a file name ("…_RMS0.62_…", "…_guiding-0.8″_…"); owner 2026-10-10: the rig will
     carry it there from now on, as the capture software doesn't put it in the header."""
     m = _RMS_IN_NAME.search(name.rsplit("/", 1)[-1])
-    return float(m.group(1)) if m else None
+    return float(m.group(1) or m.group(2)) if m else None
 
 
 def _condition_sources(kws: list[dict], subs: list) -> dict[str, str]:
