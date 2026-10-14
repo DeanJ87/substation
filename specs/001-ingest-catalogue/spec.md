@@ -350,3 +350,10 @@ follows; that number must never be read as the RMS. After `_` or a space only a 
 Darks shot in daylight were ignored with a file-name rule while Robocopy was still copying them; one queued before
 the rule was saved was still read and catalogued. A queued file is now checked against the folder and file-name
 rules again when it is read, and left out if one matches.
+
+### Amendment 2026-10-14: a stack is not a sub
+
+- **001-DR-12 A light that holds many subs is a master light.** Some capture devices save their own running stack
+  next to the subs with the same light type and sub exposure (a Seestar's Stacked_153_….fit says STACKCNT 153). A
+  light whose header says it combines more than one sub (STACKCNT or NCOMBINE) is catalogued as a master light, with
+  the reason, so it is never graded or stacked with the subs. Frames already catalogued are re-read.

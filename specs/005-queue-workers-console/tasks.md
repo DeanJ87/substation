@@ -93,3 +93,5 @@
 - [X] W34 (2026-10-14) `CONN_MAX_AGE` 0 in the API (env for workers), PostgreSQL `max_connections=200`
 - [X] W35 (2026-10-14) CI: makemigrations check, pip-audit, npm audit, Compose validation, shellcheck of scripts/,
   e2e accessibility job on `compose.ci.yml`, Trivy on published images; `scripts/check.sh` (005-DR-27)
+- [X] W36 (2026-10-14) The image scan action pinned to a released commit; the frontend image moves to Caddy 2.11.4
+  with Alpine's security updates, so it ships with no fixable critical vulnerability

@@ -338,3 +338,5 @@ then T051 → T052 → T055 → T056, then T057 and T058 (UI) in parallel, T059 
 - [X] T123 (2026-10-14) `rms_from_name` ignores the frame number after an empty `_RMS_`; NINA's lights pattern on the
   rig set to carry `RMS$$RMSARCSEC$$`, and its dark, bias and flat patterns to file into `_CalibrationFrames`
 - [X] T124 (2026-10-14) `hash_file` re-checks path rules before reading; test
+- [X] T125 (2026-10-14) A light whose header says it holds several subs (STACKCNT or NCOMBINE above 1) is a master
+  light, not a sub (001-DR-12); migration 0019 re-reads the targets holding one; test

@@ -43,3 +43,15 @@ def test_a_raw_sub_stays_a_light():
     )
     _already_processed(f)
     assert f.frame_type == FrameType.LIGHT
+
+
+def test_a_seestar_running_stack_is_a_master_light_not_a_sub():
+    """IC 4605, 2026-10-14: Stacked_153_….fit (STACKCNT 153) was graded and stacked as a sub."""
+    from apps.ingest.resolve import _already_stacked
+
+    stacked = _light("d", keywords={"IMAGETYP": {"value": "Light"}, "STACKCNT": {"value": 153}})
+    _already_stacked(stacked)
+    assert stacked.frame_type == FrameType.MASTER_LIGHT and "153 subs" in stacked.classification_reason
+    one = _light("e", keywords={"IMAGETYP": {"value": "Light"}, "STACKCNT": {"value": 1}})
+    _already_stacked(one)
+    assert one.frame_type == FrameType.LIGHT

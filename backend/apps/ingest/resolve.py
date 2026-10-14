@@ -328,6 +328,8 @@ def resolve_frame(frame: Frame, has_integration: bool | None = None) -> tuple[Da
             _mislabelled_calibration(frame, copies)
         if frame.frame_type == FrameType.LIGHT and frame.classification_source != ClassificationSource.USER:
             _already_processed(frame)
+        if frame.frame_type == FrameType.LIGHT and frame.classification_source != ClassificationSource.USER:
+            _already_stacked(frame)
         if frame.frame_type == FrameType.DARK and frame.classification_source != ClassificationSource.USER:
             _dark_flat_rules(frame)
 
@@ -386,6 +388,33 @@ def _already_processed(frame: Frame) -> None:
             frame.classification_source = ClassificationSource.RULE
             step = mark.rsplit(":", 1)[-1]
             frame.classification_reason = f"Already processed by other software ({step}): not a raw sub."
+            return
+
+
+def stack_count(keywords: dict) -> int:
+    """How many subs a file says it holds (Seestar's STACKCNT, or NCOMBINE); 1 for a single sub."""
+    for k in ("STACKCNT", "NCOMBINE"):
+        v = keywords.get(k)
+        v = v.get("value") if isinstance(v, dict) else v
+        try:
+            if v is not None and int(float(v)) > 1:
+                return int(float(v))
+        except (TypeError, ValueError):
+            continue
+    return 1
+
+
+def _already_stacked(frame: Frame) -> None:
+    """A light that is already a stack of many subs: a Seestar writes its own running stack (Stacked_153_….fit,
+    STACKCNT 153) beside the subs, with IMAGETYP Light and the subs' exposure. As a sub it was graded with them and
+    put into SubStation's own stacks (IC 4605, 2026-10-14: a 4320×7680 mosaic among 2160×3840 subs crashed Siril's
+    plate solving). It is a master light, not a sub."""
+    for h in frame.headers.all():
+        n = stack_count(h.keywords or {})
+        if n > 1:
+            frame.frame_type = FrameType.MASTER_LIGHT
+            frame.classification_source = ClassificationSource.RULE
+            frame.classification_reason = f"A stack of {n} subs made by the capture software: not a sub."
             return
 
 
