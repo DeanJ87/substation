@@ -90,3 +90,4 @@
 - [X] W27 (2026-10-14) NAS moved to PostgreSQL via the reference stack (Portainer GitOps, stack 50): 629,702 rows
 - [X] W32 (2026-10-14) SQLite removed: settings, health journal mode, entrypoint import and network-disk warning,
   `copy_database`, SQLite-only tests; CI's backend job runs on PostgreSQL; containers require the URL
+- [X] W34 (2026-10-14) `CONN_MAX_AGE` 0 in the API (env for workers), PostgreSQL `max_connections=200`

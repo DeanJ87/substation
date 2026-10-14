@@ -127,7 +127,10 @@ def _database() -> dict:
         "PASSWORD": password,
         "HOST": u.hostname or "localhost",
         "PORT": str(u.port or 5432),
-        "CONN_MAX_AGE": 60,
+        # 0 under ASGI: each request may run on a different thread, and a connection kept per thread is never
+        # reused, so held connections pile up until PostgreSQL refuses more (2026-10-14: "too many clients").
+        # Long-running workers can set SUBSTATION_DB_CONN_MAX_AGE to keep theirs.
+        "CONN_MAX_AGE": int(env("DB_CONN_MAX_AGE", "0") or "0"),
         "CONN_HEALTH_CHECKS": True,
     }
 

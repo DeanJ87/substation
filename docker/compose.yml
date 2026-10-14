@@ -29,6 +29,7 @@ services:
   postgres:
     <<: *base
     image: postgres:17-alpine
+    command: ["postgres", "-c", "max_connections=200"]  # api, watcher and every worker each hold connections
     environment:
       POSTGRES_USER: substation
       POSTGRES_DB: substation
@@ -78,6 +79,7 @@ services:
       SUBSTATION_SKIP_QUEUES: ${SUBSTATION_SKIP_QUEUES:-}  # "finish,finish_ctl" when helpers do post-processing
       SUBSTATION_SIRIL_THREADS: ${SUBSTATION_SIRIL_THREADS:-}  # per Siril outside stacking; empty: every core
       SUBSTATION_SIRIL_MEM_RATIO: ${SUBSTATION_SIRIL_MEM_RATIO:-}
+      SUBSTATION_DB_CONN_MAX_AGE: "60"  # one process, one thread: its connection is reused
       SUBSTATION_STOP_GRACE_S: "60"  # a stop puts running work back in the queue; it resumes (005-DR-25)
     stop_grace_period: 90s
     volumes:
