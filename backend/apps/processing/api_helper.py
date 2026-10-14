@@ -212,17 +212,29 @@ def job_progress(request, task_id: str, host: str, body: HelperProgressIn):
 
 
 @router.post("/tasks/{task_id}/stage/{index}", response={204: None})
-def upload_stage(request, task_id: str, index: int, host: str, step: str):
-    """One stage's linear FITS, streamed to disk beside the master (never held in memory)."""
+def upload_stage(
+    request, task_id: str, index: int, host: str, step: str, offset: int | None = None, last: bool = True
+):
+    """One stage's linear FITS, streamed to disk beside the master (never held in memory).
+
+    A proxy may cut a request off after a minute, so a big stage can come in pieces: each piece says where it
+    starts (`offset`) and the final one says `last`. Sending a piece again overwrites from its offset, so a
+    retried piece is harmless. Without `offset` the body is the whole file."""
     t = _task(task_id, host)
     src, out_dir = _stage_dir(t)
     target = out_dir / f"step{index}_{step}" / f"{src.stem}_{step}.fits"
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_suffix(".part")
-    with tmp.open("wb") as fh:
+    start = offset or 0
+    if start and (not tmp.exists() or tmp.stat().st_size < start):
+        raise ApiError(409, "gap", "A piece of this stage is missing; send it again from the start.")
+    with tmp.open("r+b" if start else "wb") as fh:
+        fh.seek(start)
         while chunk := request.read(8 << 20):
             fh.write(chunk)
-    tmp.replace(target)
+        fh.truncate()
+    if last:
+        tmp.replace(target)
     return 204, None
 
 

@@ -414,3 +414,11 @@ Stages are still drawn with the master's stretch (same strength and range, so ve
 colour channel's black point moves with that stage's own sky level. GraXpert removes a light-pollution glow
 (strongest in green); drawn against the master's old green black point, OSC stages came out purple. Existing
 stages are redrawn; the stage files themselves were right and aren't processed again.
+
+### Big stages upload in pieces (2026-10-14)
+
+A reverse proxy in front of SubStation may end any request after a minute. Over a slow link a large colour stage
+takes longer than that to upload, so it was cut off every time and the job failed. The helper now sends each
+stage in pieces of 16 MB; each piece says where it starts and the final piece says it is the last. A piece sent
+again overwrites from its start, so retrying one piece is safe; a piece that would leave a gap is refused. A body
+sent without a starting point is still taken as the whole file.

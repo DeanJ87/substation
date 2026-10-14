@@ -65,3 +65,5 @@
   remain; test
 - [X] T033 (owner 2026-10-14) `shifted_stretch` + `plane_backgrounds` in stage_views; test; all post-processed
   masters' views redrawn
+- [X] T034 (2026-10-14) Stage uploads in 16 MB pieces (`offset`, `last`) so a proxy's one-minute limit can't cut
+  them off; helper VERSION 4; test

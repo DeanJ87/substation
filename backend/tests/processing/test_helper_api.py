@@ -151,3 +151,23 @@ def test_a_failure_goes_back_in_the_queue_while_attempts_remain(helper, tmp_path
         content_type="application/json",
     )
     assert Task.objects.get(pk=t.pk).status == TaskStatus.FAILED
+
+
+def test_a_big_stage_can_arrive_in_pieces(helper, tmp_path):
+    """A proxy cuts long requests off, so the helper sends a stage in pieces; a resent piece is harmless."""
+    m = _master(tmp_path)
+    enqueue(postprocess_master, m.pk)
+    job = helper.post("/api/v1/helper/claim", {"host": "mac"}, content_type="application/json").json()
+    url = f"/api/v1/helper/tasks/{job['task_id']}/stage/0?host=mac&step=background"
+    blob = bytes(range(256)) * 40
+    for off, last in ((0, False), (4000, False), (4000, False), (8000, True)):
+        r = helper.post(
+            f"{url}&offset={off}&last={str(last).lower()}",
+            data=blob[off : off + 4000 if not last else None],
+            content_type="application/octet-stream",
+        )
+        assert r.status_code == 204
+    out = next(tmp_path.glob("master_v1_post-*/step0_background/master_v1_background.fits"))
+    assert out.read_bytes() == blob
+    gap = helper.post(f"{url}&offset=99999&last=true", data=b"x", content_type="application/octet-stream")
+    assert gap.status_code == 409

@@ -12009,7 +12009,7 @@
   },
   "/helper/tasks/{task_id}/stage/{index}": {
    "post": {
-    "description": "One stage's linear FITS, streamed to disk beside the master (never held in memory).",
+    "description": "One stage's linear FITS, streamed to disk beside the master (never held in memory).\n\nA proxy may cut a request off after a minute, so a big stage can come in pieces: each piece says where it\nstarts (`offset`) and the final one says `last`. Sending a piece again overwrites from its offset, so a\nretried piece is harmless. Without `offset` the body is the whole file.",
     "operationId": "apps_processing_api_helper_upload_stage",
     "parameters": [
      {
@@ -12046,6 +12046,32 @@
       "schema": {
        "title": "Step",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Offset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "last",
+      "required": false,
+      "schema": {
+       "default": true,
+       "title": "Last",
+       "type": "boolean"
       }
      }
     ],

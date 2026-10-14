@@ -30,7 +30,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-VERSION = "3"
+VERSION = "4"
+PIECE = 16 << 20  # bytes per upload request
 GRAXPERT = ["/Applications/GraXpert.app/Contents/MacOS/GraXpert", "GraXpert-linux", "graxpert"]
 RC_ASTRO = ["/Applications/RC-Astro/CLI/rc-astro", "/opt/finish/rc-astro/rc-astro", "rc-astro"]
 LABELS = {
@@ -178,19 +179,30 @@ class Api:
         self._again("download", go)
 
     def upload(self, path: str, src: Path) -> None:
-        def go() -> None:
-            with src.open("rb") as fh:
-                req = self._req(
-                    "POST",
-                    path,
-                    body=fh,
-                    ctype="application/octet-stream",  # type: ignore[arg-type]
-                    headers={"Content-Length": str(src.stat().st_size)},
-                    timeout=900,
-                )
-                req.read()
+        """In pieces small enough to finish well inside a proxy's one-minute limit; each piece is retried alone."""
+        size = src.stat().st_size
+        offset = 0
+        while True:
+            n = min(PIECE, size - offset)
+            last = offset + n >= size
 
-        self._again("upload", go)
+            def go(offset: int = offset, n: int = n, last: bool = last) -> None:
+                with src.open("rb") as fh:
+                    fh.seek(offset)
+                    piece = fh.read(n)
+                with self._req(
+                    "POST",
+                    f"{path}&offset={offset}&last={'true' if last else 'false'}",
+                    body=piece,
+                    ctype="application/octet-stream",
+                    timeout=300,
+                ) as r:
+                    r.read()
+
+            self._again("upload", go)
+            if last:
+                return
+            offset += n
 
 
 def _cpu_seconds(t: str) -> float:
