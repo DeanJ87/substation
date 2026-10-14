@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -94,9 +95,74 @@ def test_a_sub_that_crashes_siril_costs_only_itself(tmp_path, monkeypatch):
             return Result(True)
 
     eng = FakeSiril()
-    order: Any = {1: None, 2: None, 4: None}  # only the sub numbers matter here
+    order: Any = {i: SimpleNamespace(frame_id=f"{i:064x}") for i in (1, 2, 4)}  # none solved on arrival
     solved, unsolved = _solve_each(eng, tmp_path, order, cast(Any, None))
     assert solved == [1] and unsolved == [2, 4]
     assert (
         not (tmp_path / "sub_00001.fit").is_symlink() and (tmp_path / "cache.fit").read_bytes() == b"cached"
     )
+
+
+def test_a_solution_stored_on_arrival_is_written_not_solved_again(tmp_path, monkeypatch):
+    """004-DR-26: a sub solved on arrival keeps its whole solution; the mosaic writes it into its own copy."""
+    import numpy as np
+    from astropy.io import fits
+
+    from apps.processing import masters
+    from apps.processing.masters import _solve_each
+
+    monkeypatch.setattr(masters, "_step", lambda *a, **k: None)
+    (f,) = _frames(tmp_path, [(246.5, -26.0)])
+    wcs = {
+        "NAXIS1": 20,
+        "NAXIS2": 10,
+        "CTYPE1": "RA---TAN",
+        "CTYPE2": "DEC--TAN",
+        "CRVAL1": 246.5,
+        "CRVAL2": -26.0,
+    }
+    PlateSolve.objects.filter(frame=f).update(wcs=wcs)
+    cache = tmp_path / "cache.fit"
+    fits.PrimaryHDU(np.zeros((10, 20), dtype=np.float32)).writeto(cache)
+    (tmp_path / "sub_00001.fit").symlink_to(cache)
+
+    class NoSolving:
+        def run(self, cmd, **kw):
+            raise AssertionError(f"Siril was asked to {cmd}")
+
+    solved, unsolved = _solve_each(
+        NoSolving(), tmp_path, cast(Any, {1: SimpleNamespace(frame_id=f.pk)}), cast(Any, None)
+    )
+    assert solved == [1] and unsolved == []
+    sub = tmp_path / "sub_00001.fit"
+    assert not sub.is_symlink() and fits.getheader(sub)["CRVAL1"] == 246.5
+    assert "CRVAL1" not in fits.getheader(cache)  # the cache is never written to
+
+
+def test_a_failed_stack_keeps_its_folder_and_a_rerun_of_the_same_subs_takes_it(tmp_path, settings):
+    """004-DR-27: a failed or cancelled stack keeps what it finished; a rerun from the same subs carries on."""
+    from apps.processing.masters import _adopt, _mark_kept, _release_kept, _save_checkpoint
+
+    settings.WORK_DIR = str(tmp_path)
+    old = tmp_path / "integrations" / "ds7_v5"
+    old.mkdir(parents=True)
+    (old / "r_sub_.seq").write_text("registered")
+    _save_checkpoint(
+        old, {"master": 64, "done": ["inputs", "registered"], "order": {"1": 1}, "frames": {"1": "a"}}
+    )
+    assert _mark_kept(old, 64)
+    new = tmp_path / "integrations" / "ds7_v6"
+    m = SimpleNamespace(pk=65, dataset_id=7)
+    assert _adopt(new, cast(Any, m), cast(Any, [SimpleNamespace(frame_id="b")])) is None  # different subs
+    ck = _adopt(new, cast(Any, m), cast(Any, [SimpleNamespace(frame_id="a")]))
+    assert ck is not None and ck["master"] == 65 and "registered" in ck["done"]
+    assert (new / "r_sub_.seq").exists() and not old.exists()
+    _save_checkpoint(new, {**ck, "kept": 1.0})  # kept long ago
+    _release_kept(tmp_path / "other", older_than=masters_kept_for())
+    assert not new.exists()
+
+
+def masters_kept_for():
+    from apps.processing.masters import KEPT_FOR
+
+    return KEPT_FOR

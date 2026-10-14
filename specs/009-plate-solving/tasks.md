@@ -74,3 +74,5 @@ the requirement they close.
   WCS; labels are placed through it (`astropy.wcs`), not the centre-rotation-scale summary that drifted a few
   arcminutes towards the edges (NGC 3077 on M81); labels of close neighbours step apart instead of overprinting
 - [X] P20 (owner 2026-10-13) `_master_image` for framing; masters drawn last; test (009-DR-10)
+- [X] P21 (2026-10-14) `PlateSolve.wcs`; `solve_light` stores it for solves from the calibrated file; migration 0014
+  (009-DR-11)

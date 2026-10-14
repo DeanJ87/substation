@@ -235,6 +235,11 @@ class PlateSolve(models.Model):
     scale_arcsec = models.FloatField(null=True, blank=True, help_text="arcsec per pixel")
     fov_w_deg = models.FloatField(null=True, blank=True)
     fov_h_deg = models.FloatField(null=True, blank=True)
+    wcs = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="the full solution's WCS keywords (with SIP), so a mosaic needn't solve again",
+    )
     solver = models.CharField(max_length=40, default="Siril")
     seconds = models.FloatField(null=True, blank=True)
     reason = models.TextField(blank=True, default="", help_text="why it failed, in plain English")

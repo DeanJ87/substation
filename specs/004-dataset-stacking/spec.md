@@ -274,3 +274,10 @@ split it into, and subs far from the reference share too few stars with it.
   and combining can run for hours on a large mosaic (a 411-sub colour mosaic was stopped at 86% after the fixed two
   hours while still reporting progress). These steps now fail only when Siril prints nothing for two hours, and
   still stop after a day in all.
+- **004-DR-26 A mosaic reuses each sub's plate solution.** A sub solved on arrival keeps its whole solution (the WCS,
+  with distortion terms), and a mosaic writes that into its own copy of the sub instead of solving it again; only subs
+  without one are solved during the stack, and their solutions are kept for the next stack. Calibration was already
+  reused: a stack links each sub's cached calibrated file and recalibrates only subs pruned from the cache.
+- **004-DR-27 A failed or cancelled stack keeps what it finished.** Its working folder (its inputs, solves and
+  registration) is kept for three days. A retry carries on from it, and so does a new run of the same dataset made
+  from exactly the same subs. Kept folders give way at once to a stack that needs the room.

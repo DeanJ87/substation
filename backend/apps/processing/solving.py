@@ -127,6 +127,8 @@ def solve_light(sha256: str) -> dict:
                 "seconds": secs,
                 "reason": "",
                 "source": "calibrated" if from_cal else "raw",
+                # kept whole, so a mosaic writes it into its copy of the sub instead of solving it again (004-DR-26)
+                "wcs": _saved_wcs(eng, f.pk) if from_cal else {},
                 **sol,
             },
         )
@@ -373,7 +375,7 @@ WCS_KEYS = re.compile(
 )
 
 
-def _saved_wcs(eng, pk: int) -> dict:  # noqa: ANN001
+def _saved_wcs(eng, pk: int | str) -> dict:  # noqa: ANN001
     """The solved image's WCS keywords (with SIP), from a throwaway save of the image Siril just solved."""
     import tempfile
 

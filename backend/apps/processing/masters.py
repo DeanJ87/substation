@@ -473,6 +473,11 @@ def _check_budget(work: Path, n: int) -> None:
             f"{budget / 1e9:.0f} GB. Stack fewer sessions or raise the budget in Settings → Workers."
         )
     others = sum(_dir_bytes(d) for d in (Path(settings.WORK_DIR) / "integrations").glob("*") if d != work)
+    if need + others > budget and _kept_folders(
+        work
+    ):  # folders kept for a retry give way to a stack that runs
+        _release_kept(work)
+        others = sum(_dir_bytes(d) for d in (Path(settings.WORK_DIR) / "integrations").glob("*") if d != work)
     if need + others > budget:
         raise Reschedule(
             600,
@@ -511,35 +516,115 @@ def _fit_registered(eng, work: Path, n: int) -> list[str]:  # noqa: ANN001
     )
 
 
+def _write_wcs(path: Path, wcs: dict) -> bool:
+    """Write a stored plate solution into the stack's own copy of a sub (replacing the link to the cached
+    calibrated file, so the cache is never written to). Only when the image is the size the solution was made for."""
+    from astropy.io import fits
+
+    try:
+        src = path.resolve()
+        with fits.open(src, memmap=False) as hdul:
+            h = hdul[0].header
+            if (h.get("NAXIS1"), h.get("NAXIS2")) != (wcs.get("NAXIS1"), wcs.get("NAXIS2")):
+                return False
+            data, header = hdul[0].data, h.copy()
+        for k, v in wcs.items():
+            if not k.startswith("NAXIS"):
+                header[k] = v
+        header["PLTSOLVD"] = (True, "plate solved by SubStation on arrival")
+        tmp = path.with_suffix(".part.fit")
+        fits.PrimaryHDU(data=data, header=header).writeto(tmp, overwrite=True)
+        path.unlink(missing_ok=True)
+        tmp.replace(path)
+        return True
+    except (OSError, ValueError, KeyError) as exc:
+        log.warning("Couldn't write the stored solution into %s: %s", path.name, exc)
+        return False
+
+
+def _keep_wcs(path: Path, frame_id: str) -> None:
+    """Keep the solution Siril just made for a sub, so the next stack reuses it (004-DR-26)."""
+    from astropy.io import fits
+
+    from .models import PlateSolve, SolveState
+    from .solving import WCS_KEYS
+
+    try:
+        h = fits.getheader(path)
+    except (OSError, ValueError):
+        return
+    wcs = {k: h[k] for k in h if WCS_KEYS.match(k) and not isinstance(h[k], bool | type(None))}
+    if "CRVAL1" not in wcs:
+        return
+    if not PlateSolve.objects.filter(frame_id=frame_id, state=SolveState.SOLVED).update(wcs=wcs):
+        # it didn't solve on arrival (downscaled, too few stars): it has now, at full resolution
+        PlateSolve.objects.update_or_create(
+            frame_id=frame_id,
+            defaults={
+                "state": SolveState.SOLVED,
+                "ra_deg": float(wcs["CRVAL1"]),
+                "dec_deg": float(wcs["CRVAL2"]),
+                "source": "calibrated",
+                "reason": "",
+                "wcs": wcs,
+            },
+        )
+
+
 def _solve_each(eng, work: Path, order: dict[int, MasterMember], m: Master) -> tuple[list[int], list[int]]:  # noqa: ANN001
-    """Plate solve every sub on its own (004-DR-23), at full resolution (downscaled, a 10 s Seestar sub shows too few
-    stars). Each solved sub is saved in the stack's folder with its solution, replacing the link to the cached
-    calibrated sub so the cache is never written to. A sub Siril can't solve, or that crashes it, is left out; Siril
-    starts again for the next one."""
+    """Plate solve every sub on its own (004-DR-23). A sub solved on arrival already has its whole solution stored,
+    which is written into the stack's own copy instead of solving it again (004-DR-26); the rest are solved here at
+    full resolution (downscaled, a 10 s Seestar sub shows too few stars), and their solutions kept for next time.
+    A sub Siril can't solve, or that crashes it, is left out; Siril starts again for the next one."""
     from apps.engine.siril import EngineError
 
+    from .models import PlateSolve, SolveState
+
+    stored = dict(
+        PlateSolve.objects.filter(
+            frame_id__in=[mm.frame_id for mm in order.values()], state=SolveState.SOLVED
+        )
+        .exclude(wcs={})
+        .values_list("frame_id", "wcs")
+    )
     solved: list[int] = []
     unsolved: list[int] = []
+    reused = 0
     n = len(order)
     for k, i in enumerate(sorted(order), start=1):
         name = f"sub_{i:05d}"
-        try:
-            eng.run(f"cd {work}")
-            eng.run(f"load {name}", timeout=180)
-            if eng.run("platesolve -force", timeout=180, check=False).ok:
-                (work / f"{name}.fit").unlink(
-                    missing_ok=True
-                )  # a link to the cache: write our own copy instead
-                eng.run(f"save {name}", timeout=180)
-                solved.append(i)
-            else:
+        wcs = stored.get(order[i].frame_id)
+        if wcs and _write_wcs(work / f"{name}.fit", wcs):
+            solved.append(i)
+            reused += 1
+        else:
+            try:
+                eng.run(f"cd {work}")
+                eng.run(f"load {name}", timeout=180)
+                if eng.run("platesolve -force", timeout=180, check=False).ok:
+                    # a link to the cache: write our own copy instead
+                    (work / f"{name}.fit").unlink(missing_ok=True)
+                    eng.run(f"save {name}", timeout=180)
+                    solved.append(i)
+                    _keep_wcs(work / f"{name}.fit", order[i].frame_id)
+                else:
+                    unsolved.append(i)
+            except EngineError as exc:  # Siril crashed on this sub: the next command starts it again
+                log.warning("Plate solving %s failed: %s", name, exc)
                 unsolved.append(i)
-        except EngineError as exc:  # Siril crashed on this sub: the next command starts it again
-            log.warning("Plate solving %s failed: %s", name, exc)
-            unsolved.append(i)
         if k % 10 == 0 or k == n:
-            _step(m, f"Plate solve ({k} of {n})", 0.2 + 0.25 * k / n)
+            _step(m, f"Plate solve ({k} of {n}, {reused} already solved)", 0.2 + 0.25 * k / n)
     return solved, unsolved
+
+
+def _mark_kept(work: Path, master_pk: int) -> bool:
+    """A failed or cancelled stack keeps its folder for KEPT_FOR when it got as far as its inputs (004-DR-27)."""
+    ck = _checkpoint(work, master_pk)
+    if "inputs" not in ck["done"]:
+        return False
+    ck["kept"] = time.time()
+    _save_checkpoint(work, ck)
+    return True
 
 
 def _checkpoint(work: Path, master_pk: int) -> dict:
@@ -561,15 +646,65 @@ def _save_checkpoint(work: Path, ck: dict) -> None:
     tmp.replace(work / "checkpoint.json")
 
 
-def _resumed_inputs(work: Path, ck: dict) -> dict[int, MasterMember] | None:
-    """The inputs an interrupted run had linked, if every one is still there; else None (start again)."""
+def _resumed_inputs(work: Path, ck: dict, m: Master | None = None) -> dict[int, MasterMember] | None:
+    """The inputs an interrupted run had linked, if every one is still there; else None (start again). A folder kept
+    from another version of the stack is matched to this one's members by frame."""
     order = {}
+    frames = ck.get("frames") or {}
     for i, pk in (ck.get("order") or {}).items():
-        mm = MasterMember.objects.select_related("frame__measurement").filter(pk=pk).first()
+        q = MasterMember.objects.select_related("frame__measurement")
+        mm = (
+            q.filter(master=m, frame_id=frames[i]).first()
+            if m is not None and i in frames
+            else q.filter(pk=pk).first()
+        )
         if mm is None or not (work / f"sub_{int(i):05d}.fit").exists():
             return None
         order[int(i)] = mm
     return order or None
+
+
+KEPT_FOR = timedelta(days=3)  # a failed or cancelled stack's folder, kept for a retry or rerun (004-DR-27)
+
+
+def _kept_folders(skip: Path) -> list[tuple[Path, dict]]:
+    import json
+
+    out = []
+    for d in (Path(settings.WORK_DIR) / "integrations").glob("ds*_v*"):
+        if d == skip:
+            continue
+        try:
+            ck = json.loads((d / "checkpoint.json").read_text())
+        except (OSError, ValueError):
+            continue
+        if ck.get("kept"):
+            out.append((d, ck))
+    return out
+
+
+def _release_kept(skip: Path, older_than: timedelta | None = None) -> None:
+    """Delete kept folders: all of them when another stack needs the room, or those past KEPT_FOR."""
+    now = time.time()
+    for d, ck in _kept_folders(skip):
+        if older_than is None or now - float(ck["kept"]) > older_than.total_seconds():
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def _adopt(work: Path, m: Master, members: list[MasterMember]) -> dict | None:
+    """A rerun takes over the folder kept from an earlier version of this dataset's stack when it was made from
+    the same subs, and carries on from what that one finished (its solves, its registration)."""
+    want = sorted(mm.frame_id for mm in members)
+    for d, ck in _kept_folders(work):
+        if not d.name.startswith(f"ds{m.dataset_id}_v") or sorted((ck.get("frames") or {}).values()) != want:
+            continue
+        shutil.rmtree(work, ignore_errors=True)
+        d.rename(work)
+        ck.update(master=m.pk, kept=None)
+        ck.setdefault("notes", []).append(f"Carried on from the folder kept from {d.name.split('_')[-1]}.")
+        _save_checkpoint(work, ck)
+        return ck
+    return None
 
 
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
@@ -586,6 +721,9 @@ def integrate(master_id: int) -> dict:
     work = Path(settings.WORK_DIR) / "integrations" / f"ds{m.dataset_id}_v{m.version}"
     # 005-DR-25: a stack stopped by a redeploy resumes from what it had finished (its inputs, its registration)
     ck = _checkpoint(work, m.pk)
+    if ck.get("kept"):  # a retry of a kept folder: it's in use again, so nothing may release it
+        ck["kept"] = None
+        _save_checkpoint(work, ck)
     if not ck["done"]:
         shutil.rmtree(work, ignore_errors=True)
         work.mkdir(parents=True)
@@ -606,13 +744,20 @@ def integrate(master_id: int) -> dict:
             with contextlib.suppress(FileNotFoundError):
                 os.utime(p)
         _step(m, "Calibrate", 0.1)  # done on arrival; subs pruned from the cache are calibrated again here
-        order = _resumed_inputs(work, ck) if "inputs" in ck["done"] else None
+        _release_kept(work, KEPT_FOR)
+        if not ck["done"]:
+            ck = _adopt(work, m, members) or ck
+        order = _resumed_inputs(work, ck, m) if "inputs" in ck["done"] else None
         if order is None:
             shutil.rmtree(work, ignore_errors=True)
             work.mkdir(parents=True)
             ck = {"master": m.pk, "done": []}
             order = _inputs(m, members, work)
-            ck.update(done=["inputs"], order={str(i): mm.pk for i, mm in order.items()})
+            ck.update(
+                done=["inputs"],
+                order={str(i): mm.pk for i, mm in order.items()},
+                frames={str(i): mm.frame_id for i, mm in order.items()},
+            )
             _save_checkpoint(work, ck)
         check_interrupted()
         if len(order) < 2:
@@ -813,6 +958,7 @@ def integrate(master_id: int) -> dict:
         Master.objects.filter(pk=m.pk).update(state=MasterState.QUEUED, state_reason=r.note)
         raise
     except Cancelled:
+        keep = _mark_kept(work, m.pk)
         reason = Master.objects.filter(pk=m.pk).values_list("state_reason", flat=True).first() or "Cancelled."
         Master.objects.filter(pk=m.pk).update(
             state=MasterState.CANCELLED, state_reason=reason, finished_at=timezone.now()
@@ -820,6 +966,7 @@ def integrate(master_id: int) -> dict:
         emit("master.updated", {"dataset_id": m.dataset_id, "master_id": m.pk, "state": "cancelled"})
         raise
     except Exception as exc:
+        keep = _mark_kept(work, m.pk)
         Master.objects.filter(pk=m.pk).update(
             state=MasterState.FAILED, error=str(exc), finished_at=timezone.now()
         )

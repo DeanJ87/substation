@@ -72,3 +72,10 @@ Solves were recorded but not used anywhere an image is shown; labelling what is 
   last post-processing stage that's done (e.g. NoiseXTerminator) when its preview is the master's size, else the
   master's own preview. Stacks are drawn over datasets that only have a single sub's preview, so a noisy sub never
   covers a clean master.
+
+### Amendment 2026-10-14: the whole solution is kept
+
+- **009-DR-11 A solved sub keeps its WCS.** Besides the centre, rotation, scale and field, a light solved from its
+  calibrated file stores its full WCS keywords (with distortion terms), so a mosaic stack can use the solution without
+  solving the sub again (004-DR-26). A sub that only solves at full resolution during a stack gets its solution
+  stored then.

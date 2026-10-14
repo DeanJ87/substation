@@ -58,3 +58,7 @@
 - [ ] D-T7 Re-stack IC 4605 · IRCUT as a mosaic and check every solved sub is used
 - [X] D-T10 (2026-10-14) Long Siril steps time out on silence (two hours without output, a day in all) instead of
   two hours in total (004-DR-25); test
+- [X] D-T11 (2026-10-14) Mosaic stacks write each sub's stored solution into their own copy instead of solving again;
+  solutions made during a stack are stored (004-DR-26); test
+- [X] D-T12 (2026-10-14) Failed and cancelled stacks keep their folder for three days; retries and same-subs reruns
+  carry on from it; kept folders give way to running stacks (004-DR-27); test
