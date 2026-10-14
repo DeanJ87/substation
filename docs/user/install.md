@@ -32,7 +32,6 @@ Pick one with `SUBSTATION_VERSION`. Run all four containers on the same version.
 SUBSTATION_DATA/station      read-write: work files, previews, masters
 SUBSTATION_DATA/postgres     read-write: the database
 SUBSTATION_DATA/catalogues   Siril's star catalogues, for plate solving
-SUBSTATION_DATA/db_password  the database password (one line)
 your libraries               read-only: one folder per library (capture folder, archive, …)
 ```
 
@@ -45,9 +44,9 @@ Put `SUBSTATION_DATA` on fast local storage (an SSD). Libraries can be anywhere,
 ## Docker Compose
 
 1. Copy `docker/compose.yml` and `docker/.env.example` (as `.env`) into a folder.
-2. Fill in `.env`: where `SUBSTATION_DATA` is, your library folder, the admin password, the version.
-3. Create the password file: `openssl rand -hex 24 > $SUBSTATION_DATA/db_password`.
-4. `docker compose up -d`, then open `http://<your machine>:8080` and sign in.
+2. Fill in `.env`: where `SUBSTATION_DATA` is, your library folder, the admin password, a database password
+   (`openssl rand -hex 24`) and the version.
+3. `docker compose up -d`, then open `http://<your machine>:8080` and sign in.
 
 Behind a reverse proxy, add an override: `docker/compose.traefik.yml` is one for Traefik
 (`docker compose -f compose.yml -f compose.traefik.yml up -d`, with `SUBSTATION_DOMAIN` and `SUBSTATION_URL`).
@@ -89,15 +88,12 @@ Without `SUBSTATION_DATABASE_URL`, SubStation keeps its catalogue in SQLite at `
 That suits one machine with the station folder on a local disk; it doesn't work on network storage or across
 several machines.
 
-To move an existing SQLite installation to PostgreSQL:
-
-1. Update to the version you'll move with, and let it start once (so both databases end up at the same
-   migrations).
-2. Stop SubStation. Start PostgreSQL alone and run the API image's migrations against it once:
-   `docker compose run --rm api python manage.py migrate`.
-3. Copy: `docker compose run --rm -v <old station folder>:/old:ro api python manage.py copy_database /old/substation.db`.
-   It copies every row in one go and refuses a database that already has data unless you add `--replace`.
-4. Start everything. Keep the SQLite file until you're happy.
+To move an existing SQLite installation to PostgreSQL, point the reference stack's `SUBSTATION_DATA` at the
+folder that holds `station/substation.db` and set `SUBSTATION_IMPORT_SQLITE=1` for the first start. The API brings
+the SQLite file up to date, copies every row into the new, empty PostgreSQL in one transaction, and renames the file
+to `substation.db.imported-<time>`; the workers start once it's done. If anything fails, nothing is half-copied and
+the file stays where it was. Remove the variable afterwards. (By hand, the same is `manage.py copy_database
+<file>`; it refuses a database that already has data unless you add `--replace`.)
 
 ## Post-processing helpers
 

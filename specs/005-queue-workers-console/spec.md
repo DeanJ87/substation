@@ -240,7 +240,10 @@ and it can't be shared across Kubernetes nodes.
   <substation.db>` moves an installation: with SubStation stopped and both databases at the same migrations, every
   row of every table is copied with its own id in one transaction, booleans converted and times kept as stored,
   then sequences reset. It refuses a PostgreSQL database that already holds users or frames unless `--replace`.
-  `/health` reports `postgresql` where SQLite reports its journal mode.
+  `/health` reports `postgresql` where SQLite reports its journal mode. With `SUBSTATION_IMPORT_SQLITE=1` the API
+  does the move itself on start: it migrates the SQLite file, copies it into the empty PostgreSQL, then renames the
+  file `substation.db.imported-<time>`; workers start only after (they wait for the API). The database password
+  can come from a stack variable as a Compose secret, so nothing has to be written on the host.
 
 ## Amendment 2026-10-14: stopping is cheap; releases and the reference stack
 

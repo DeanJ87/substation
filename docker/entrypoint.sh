@@ -41,6 +41,15 @@ case "$ROLE" in
       fi
       sleep 2
     done
+    # 005-DR-24: an existing SQLite catalogue moves into an empty PostgreSQL once, then is set aside
+    if [ -n "${SUBSTATION_DATABASE_URL:-}" ] && [ "${SUBSTATION_IMPORT_SQLITE:-}" = 1 ] && [ -f "$ROOT/substation.db" ]; then
+      echo "SubStation api: importing $ROOT/substation.db into PostgreSQL."
+      env -u SUBSTATION_DATABASE_URL SUBSTATION_DB_PATH="$ROOT/substation.db" python manage.py migrate --noinput
+      python manage.py copy_database "$ROOT/substation.db"
+      mv "$ROOT/substation.db" "$ROOT/substation.db.imported-$(date -u +%Y%m%d%H%M)"
+      rm -f "$ROOT/substation.db-wal" "$ROOT/substation.db-shm"
+      echo "SubStation api: import done; the SQLite file is kept beside it, renamed."
+    fi
     python manage.py bootstrap_admin
     exec python -m uvicorn substation.asgi:application --host 0.0.0.0 --port 8000 --proxy-headers \
          --forwarded-allow-ips='*'
