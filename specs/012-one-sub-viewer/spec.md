@@ -2,7 +2,7 @@
 
 **Feature Branch**: `poc-substation`
 **Created**: 2026-10-14
-**Status**: Proposed: for the owner to agree before any build
+**Status**: Proposed: for the owner to agree before any build (the map, section 5, is built)
 **Input**: Owner request, 2026-10-14: Review (`/review?dataset=10`), the dataset page (`/datasets/10`), the sub page
 (`/subs/<sha>`) and the night page (`/nights/2026-09-25`) all solve a similar problem and together make a convoluted
 experience; propose something better. Also asked for: a map on the sub page.
@@ -78,6 +78,13 @@ experience; propose something better. Also asked for: a map on the sub page.
   picture, splitting as you zoom); choosing a place lists its nights, choosing a night opens the night page.
 - The sub viewer's details show a small map with the site marked.
 - Map tiles load from OpenStreetMap; SubStation isn't meant to work offline.
+- **Built 2026-10-14.** `GET /map` groups lights by site (within about a kilometre of the busiest spot), with subs,
+  nights (newest first), the most-shot collections and a picture: the longest master shot there, finished look when
+  post-processed, else a sub. The Map page clusters places with Leaflet's marker clustering, each cluster showing
+  its biggest place's picture and the total count; a place opens a panel with its name, coordinates, collections and
+  nights, each linking to the night page. Place names come from OpenStreetMap's Nominatim, looked up only when a
+  place is shown. The sub page has a "Where" section with a small map and the place name. Tiles are OpenStreetMap's
+  standard tiles, darkened by CSS for the dark and night-vision themes (CARTO's dark tiles now need a key).
 
 ## Out of scope
 

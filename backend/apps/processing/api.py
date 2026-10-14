@@ -532,6 +532,8 @@ class ProcessingOut(Schema):
     collection_id: int | None = None
     dataset_label: str | None = None
     raw_header: dict[str, str] = {}
+    site_lat: float | None = None  # where it was shot, for the sub page's map (spec 012)
+    site_lon: float | None = None
 
 
 @router.get("/frames/{sha256:sha256}/processing", response=ProcessingOut)
@@ -794,6 +796,8 @@ def frame_processing(request, sha256: str):
         collection_id=ds.collection_id if ds else None,
         dataset_label=label(ds) if ds else None,
         raw_header=raw,
+        site_lat=f.site_lat if f.site_lat or f.site_lon else None,
+        site_lon=f.site_lon if f.site_lat or f.site_lon else None,
     )
 
 

@@ -136,6 +136,8 @@ class FrameOut(FrameSummaryOut):
     history: list[HistoryOut]
     verdicts: list[VerdictOut]
     headers: list[HeaderOut]
+    site_lat: float | None = None  # where it was shot, for the map (spec 012)
+    site_lon: float | None = None
 
 
 # ---- helpers ----------------------------------------------------------------------------------------------
@@ -316,6 +318,8 @@ def get_frame(request, sha256: str):
         format=f.format,
         image_count=f.image_count,
         integration_index=f.integration_index,
+        site_lat=f.site_lat,
+        site_lon=f.site_lon,
         metadata=meta,
         conflicts=[ConflictOut(field=c.field, values=c.values) for c in f.conflicts.all()],
         copy_list=[

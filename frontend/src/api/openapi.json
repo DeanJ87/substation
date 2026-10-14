@@ -2102,6 +2102,28 @@
       "title": "Sha256",
       "type": "string"
      },
+     "site_lat": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Lat"
+     },
+     "site_lon": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Lon"
+     },
      "size_bytes": {
       "title": "Size Bytes",
       "type": "integer"
@@ -3668,6 +3690,123 @@
      "ready"
     ],
     "title": "LookOut",
+    "type": "object"
+   },
+   "MapNight": {
+    "properties": {
+     "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "date",
+     "subs"
+    ],
+    "title": "MapNight",
+    "type": "object"
+   },
+   "MapOut": {
+    "properties": {
+     "places": {
+      "items": {
+       "$ref": "#/components/schemas/MapPlace"
+      },
+      "title": "Places",
+      "type": "array"
+     }
+    },
+    "required": [
+     "places"
+    ],
+    "title": "MapOut",
+    "type": "object"
+   },
+   "MapPlace": {
+    "properties": {
+     "first": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First"
+     },
+     "image": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image"
+     },
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "last": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last"
+     },
+     "lat": {
+      "title": "Lat",
+      "type": "number"
+     },
+     "lon": {
+      "title": "Lon",
+      "type": "number"
+     },
+     "nights": {
+      "items": {
+       "$ref": "#/components/schemas/MapNight"
+      },
+      "title": "Nights",
+      "type": "array"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     },
+     "targets": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Targets",
+      "type": "array"
+     }
+    },
+    "required": [
+     "key",
+     "lat",
+     "lon",
+     "subs",
+     "first",
+     "last",
+     "nights",
+     "targets",
+     "image"
+    ],
+    "title": "MapPlace",
     "type": "object"
    },
    "MasterChoice": {
@@ -5272,6 +5411,28 @@
       "additionalProperties": true,
       "title": "Session Medians",
       "type": "object"
+     },
+     "site_lat": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Lat"
+     },
+     "site_lon": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Lon"
      },
      "sub": {
       "$ref": "#/components/schemas/SubOut"
@@ -12781,6 +12942,33 @@
      }
     ],
     "summary": "Library Stats",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/map": {
+   "get": {
+    "operationId": "apps_catalogue_api_map_map_places",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MapOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Map Places",
     "tags": [
      "catalogue"
     ]

@@ -1382,6 +1382,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Map Places */
+        get: operations["apps_catalogue_api_map_map_places"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/masters": {
         parameters: {
             query?: never;
@@ -3193,6 +3210,10 @@ export interface components {
             primary_path: string;
             /** Sha256 */
             sha256: string;
+            /** Site Lat */
+            site_lat?: number | null;
+            /** Site Lon */
+            site_lon?: number | null;
             /** Size Bytes */
             size_bytes: number;
             /** Status */
@@ -3744,6 +3765,42 @@ export interface components {
             note: string;
             /** Ready */
             ready: boolean;
+        };
+        /** MapNight */
+        MapNight: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Subs */
+            subs: number;
+        };
+        /** MapOut */
+        MapOut: {
+            /** Places */
+            places: components["schemas"]["MapPlace"][];
+        };
+        /** MapPlace */
+        MapPlace: {
+            /** First */
+            first: string | null;
+            /** Image */
+            image: string | null;
+            /** Key */
+            key: string;
+            /** Last */
+            last: string | null;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Nights */
+            nights: components["schemas"]["MapNight"][];
+            /** Subs */
+            subs: number;
+            /** Targets */
+            targets: string[];
         };
         /** MasterChoice */
         MasterChoice: {
@@ -4313,6 +4370,10 @@ export interface components {
             session_medians: {
                 [key: string]: unknown;
             };
+            /** Site Lat */
+            site_lat?: number | null;
+            /** Site Lon */
+            site_lon?: number | null;
             sub: components["schemas"]["SubOut"];
         };
         /** ProjectIn */
@@ -7485,6 +7546,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LibraryStatsOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_map_map_places: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapOut"];
                 };
             };
         };

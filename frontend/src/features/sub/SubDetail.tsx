@@ -14,6 +14,7 @@ import s from './sub.module.css'
 import { CloseLook, type LookMode, Zoomable } from '../../components/CloseLook'
 import { AnnotateToggle, AnnotationOverlay, useAnnotateSwitch } from '../../components/Annotations'
 import { Collapsible } from '../../components/Collapsible'
+import { SiteMap } from '../map/SiteMap'
 import tb from '../library/tables.module.css'
 
 const route = getRouteApi('/app/subs/$sha')
@@ -366,6 +367,13 @@ export function SubDetail() {
               </Collapsible>
             </section>
           ))}
+          {d.site_lat != null && d.site_lon != null && (
+            <section className={`${v.card} ${v.cardPad}`}>
+              <Collapsible id="sub-where" title="Where" meta="header">
+                <SiteMap lat={d.site_lat} lon={d.site_lon} />
+              </Collapsible>
+            </section>
+          )}
         </div>
       </div>
     </div>
