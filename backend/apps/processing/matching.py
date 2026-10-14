@@ -10,7 +10,7 @@ is not used; if that leaves nothing, the light waits, and the reason names what'
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 from apps.catalogue.models import Frame, FrameStatus, FrameType
 
@@ -43,9 +43,29 @@ def _same(a: object, b: object) -> bool:
 
 
 def _night(f: Frame) -> date | None:
+    """The night a frame belongs to. Without a recorded night (no site in its header), the evening's date as NINA's
+    $$DATEMINUS12$$ gives it: local solar time (UTC + longitude / 15 h, from the frame, else the installation's site,
+    else Greenwich) minus 12 hours. A flat at 06:25 UTC on 14 Feb belongs to the night of the 13th (2026-10-14)."""
     if f.night is not None:
         return f.night.date
-    return f.date_obs_utc.date() if f.date_obs_utc else None
+    if f.date_obs_utc is None:
+        return None
+    lon = f.site_lon if f.site_lon is not None else _site_lon()
+    return (f.date_obs_utc + timedelta(hours=(lon or 0.0) / 15.0 - 12)).date()
+
+
+_SITE_LON: tuple[float, float | None] = (0.0, None)  # (when read, longitude): read at most once a minute
+
+
+def _site_lon() -> float | None:
+    import time
+
+    from apps.libraries.models import InstallationSettings
+
+    global _SITE_LON
+    if time.monotonic() - _SITE_LON[0] > 60:
+        _SITE_LON = (time.monotonic(), InstallationSettings.load().site_lon)
+    return _SITE_LON[1]
 
 
 def _fmt_t(t: float) -> str:

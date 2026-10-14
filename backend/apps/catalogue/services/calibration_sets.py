@@ -28,10 +28,23 @@ def _key(frame: Frame) -> dict:
     }
 
 
+FLAT_EXPOSURE_TOLERANCE = (
+    0.05  # NINA's flat wizard varies a flat's exposure a little run to run (0.00654 / 0.00655 s)
+)
+
+
 def _matching(key: dict):  # noqa: ANN202
     qs = CalibrationSet.objects.all()
     for k, v in key.items():
-        qs = qs.filter(**{f"{k}__isnull": True}) if v is None else qs.filter(**{k: v})
+        if k == "exptime_s" and v and key.get("type") == FrameType.FLAT:
+            # flats of one filter and session are one set when their exposures are within 5% (002-DR-24); darks and
+            # bias stay exact, since a dark must match its light's exposure
+            qs = qs.filter(
+                exptime_s__gte=v * (1 - FLAT_EXPOSURE_TOLERANCE),
+                exptime_s__lte=v * (1 + FLAT_EXPOSURE_TOLERANCE),
+            )
+        else:
+            qs = qs.filter(**{f"{k}__isnull": True}) if v is None else qs.filter(**{k: v})
     return qs
 
 

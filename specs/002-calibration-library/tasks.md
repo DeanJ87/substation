@@ -85,3 +85,5 @@
 - [X] C33 (2026-10-14) `auto_builds` (settled sets, grown sets, blocked flats retried after a helper master) in the
   supervisor under a lease; `RAW_TYPES`/`BUILD_PRIORITY` moved to `calibration.py`; tests (002-DR-23). The two
   new bias sets and the 15 blocked flat sets were built by hand the same day
+- [X] C34 (2026-10-14) `_night` evening fallback; flat sets tolerate 5% exposure jitter; migration 0018 merges split
+  flat sets; tests (002-DR-24)

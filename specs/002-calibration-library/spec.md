@@ -317,3 +317,15 @@ masters were built only from the Build buttons.
   and offset has been built. A set with a build queued or running waits; a failed build is not retried by itself.
   Checked every five minutes by one worker container at a time; Settings → Calibration can switch it off
   (`calibration.auto_build`). A finished master re-matches waiting lights, which queues their calibration.
+
+## Amendment 2026-10-14: frames with no night; jittered flats
+
+M 81 L (13 Feb) waited for a flat although a 14 Feb 06:22 L flat existed and the flat picker called it "same night".
+The flat, from KStars/INDI, recorded no site, so it had no night, and matching fell back to its UTC date (the 14th),
+"after" the lights. The 17 Feb L flats were four sets because NINA's flat wizard gives each run a slightly different
+exposure (0.00654 / 0.00655 s) and sets required an exact match.
+
+- **002-DR-24**: A frame with no recorded night is dated by its evening, as NINA's `$$DATEMINUS12$$`: local solar time
+  (UTC + longitude / 15 h, from the frame, else the installation's site, else Greenwich) minus 12 hours. Flats of one
+  camera, filter, gain, offset and binning in one session form one set when their exposures are within 5%; darks and
+  bias still match exactly. Existing split flat sets were merged by a migration, their built masters moving with them.
