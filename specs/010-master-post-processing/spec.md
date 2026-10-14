@@ -407,3 +407,10 @@ job in SubStation stops the running tool within about 10 s instead of after it f
 A helper retries a request whose connection drops (up to four tries, waiting longer each time); a refusal from
 SubStation is final. A job a helper reports as failed goes back in the queue while it has attempts left, with the
 reason kept, and only fails once they are used up.
+
+### Colour stages keep a neutral sky (2026-10-14)
+
+Stages are still drawn with the master's stretch (same strength and range, so versions compare fairly), but each
+colour channel's black point moves with that stage's own sky level. GraXpert removes a light-pollution glow
+(strongest in green); drawn against the master's old green black point, OSC stages came out purple. Existing
+stages are redrawn; the stage files themselves were right and aren't processed again.

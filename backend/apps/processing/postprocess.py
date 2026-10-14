@@ -344,12 +344,13 @@ def image_stats(path: Path) -> dict:
 def stage_views(master_path: Path, stages: list[dict], run: dict | None = None) -> None:
     """Each finished stage's preview and 100% view, drawn with the master's own stretch so versions compare like
     for like when tabbing through them at 100% (owner 2026-10-12)."""
-    from .previews import full_and_inspector, master_stretch, render
+    from .previews import full_and_inspector, master_stretch, plane_backgrounds, render, shifted_stretch
 
     try:
         params = master_stretch(master_path)
+        master_bg = plane_backgrounds(master_path)
     except Exception:  # noqa: BLE001 — fall back to each stage's own stretch
-        params = None
+        params, master_bg = None, []
     if run is not None:
         try:
             run["original_stats"] = image_stats(master_path)
@@ -360,10 +361,11 @@ def stage_views(master_path: Path, stages: list[dict], run: dict | None = None) 
             p = Path(st["path"])
             try:
                 st["stats"] = image_stats(p)
-                render(p, p.with_suffix(".jpg"), p.with_name(p.stem + "_t.jpg"), params=params)
+                own = shifted_stretch(params, master_bg, plane_backgrounds(p)) if params else None
+                render(p, p.with_suffix(".jpg"), p.with_name(p.stem + "_t.jpg"), params=own)
                 st["preview"] = str(p.with_suffix(".jpg"))
                 full = p.with_name(p.stem + "_full.jpg")
-                full_and_inspector(p, full, p.with_name(p.stem + "_inspect.jpg"), params=params)
+                full_and_inspector(p, full, p.with_name(p.stem + "_inspect.jpg"), params=own)
                 st["full"] = str(full)
             except Exception as exc:  # noqa: BLE001
                 st["preview_error"] = str(exc)[:200]

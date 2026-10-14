@@ -245,6 +245,26 @@ def master_stretch(fits_path: Path) -> list[tuple[float, float, float]]:
     return [stretch_params(pl) for pl in planes]
 
 
+def plane_backgrounds(fits_path: Path) -> list[float]:
+    """Each plane's sky level (median of the screen-size image)."""
+    planes, _mode, _flip = screen_planes(fits_path, False)
+    return [float(np.median(pl)) for pl in planes]
+
+
+def shifted_stretch(
+    params: list[tuple[float, float, float]], master_bg: list[float], stage_bg: list[float]
+) -> list[tuple[float, float, float]]:
+    """The master's stretch for a processed stage, each plane's black point moved by how much that plane's sky
+    changed. Strength and range stay the master's, so versions still compare like for like; but a stage whose
+    gradient was removed (GraXpert) isn't drawn against the master's old per-channel black points, which crushed
+    the channel that had the most light pollution (green) and turned OSC stages purple (owner 2026-10-14)."""
+    if len(master_bg) != len(params) or len(stage_bg) != len(params):
+        return params
+    return [
+        (lo + (sb - mb), m, span) for (lo, m, span), mb, sb in zip(params, master_bg, stage_bg, strict=True)
+    ]
+
+
 def glance(src: Path, out: Path, width: int = 480) -> None:
     """A small stretched JPEG of any frame, for hover previews (owner 2026-10-11).
     Binned straight down to about `width` pixels, so a 24 MP file takes well under a second."""

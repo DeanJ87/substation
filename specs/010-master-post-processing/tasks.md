@@ -63,3 +63,5 @@
   machine and the engine by tool; cancel stops the tool at once; image gains `procps`; test
 - [X] T032 (owner 2026-10-13) Helper `_again` retry for post/download/upload; `/fail` requeues while attempts
   remain; test
+- [X] T033 (owner 2026-10-14) `shifted_stretch` + `plane_backgrounds` in stage_views; test; all post-processed
+  masters' views redrawn
