@@ -48,7 +48,7 @@
   border: 1px solid var(--sst-line);
   border-radius: 0.6rem;
   background: var(--sst-panel);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+  box-shadow: var(--sst-shadow);
   z-index: 30;
   white-space: normal;
 }
