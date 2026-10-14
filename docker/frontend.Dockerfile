@@ -1,6 +1,6 @@
 # SubStation web UI: the built React app served by Caddy, which also proxies /api and /_allauth to the API.
 #   docker build -f docker/frontend.Dockerfile -t substation-frontend:dev .
-FROM node:22-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
