@@ -6,6 +6,7 @@ import { api, unwrap } from '../api/client'
 import { BusyBar } from '../components/Busy'
 import { Toasts } from '../components/Toasts'
 import { KeyHelp } from '../components/KeyHelp'
+import { Search } from '../components/Search'
 import { Lockup } from '../components/Logo'
 import { WorkFlyout } from '../components/WorkFlyout'
 import { ThemeProvider } from '../design/ThemeContext'
@@ -95,6 +96,7 @@ function Frame({ user }: { user: SessionUser }) {
           ))}
         </nav>
         <div className={s.headerRight}>
+          <Search />
           <WorkFlyout />
           <Link
             to="/settings"

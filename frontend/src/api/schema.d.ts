@@ -1222,6 +1222,10 @@ export interface paths {
         /**
          * Upload Stage
          * @description One stage's linear FITS, streamed to disk beside the master (never held in memory).
+         *
+         *     A proxy may cut a request off after a minute, so a big stage can come in pieces: each piece says where it
+         *     starts (`offset`) and the final one says `last`. Sending a piece again overwrites from its offset, so a
+         *     retried piece is harmless. Without `offset` the body is the whole file.
          */
         post: operations["apps_processing_api_helper_upload_stage"];
         delete?: never;
@@ -1782,6 +1786,23 @@ export interface paths {
          * @description Treat this rig's header names as the other rig's from now on, and regroup its subs (no file is touched).
          */
         post: operations["apps_catalogue_api_library_merge_rig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search */
+        get: operations["apps_catalogue_api_search_search"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4585,6 +4606,60 @@ export interface components {
             /** Why */
             why: string;
         };
+        /** SearchCollection */
+        SearchCollection: {
+            /** Datasets */
+            datasets: number;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Objects */
+            objects: string;
+        };
+        /** SearchDataset */
+        SearchDataset: {
+            /** Collection */
+            collection: string | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Subs */
+            subs: number;
+        };
+        /** SearchFile */
+        SearchFile: {
+            /** Folder */
+            folder: string;
+            /** Name */
+            name: string;
+            /** Sha256 */
+            sha256: string;
+            /** Target */
+            target: string | null;
+        };
+        /** SearchNight */
+        SearchNight: {
+            /** Datasets */
+            datasets: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+        };
+        /** SearchOut */
+        SearchOut: {
+            /** Collections */
+            collections: components["schemas"]["SearchCollection"][];
+            /** Datasets */
+            datasets: components["schemas"]["SearchDataset"][];
+            /** Files */
+            files: components["schemas"]["SearchFile"][];
+            /** Nights */
+            nights: components["schemas"]["SearchNight"][];
+        };
         /** Section */
         Section: {
             /** Fields */
@@ -7079,6 +7154,8 @@ export interface operations {
             query: {
                 host: string;
                 step: string;
+                offset?: number | null;
+                last?: boolean;
             };
             header?: never;
             path: {
@@ -7890,6 +7967,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RigOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_search_search: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchOut"];
                 };
             };
         };

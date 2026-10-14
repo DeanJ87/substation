@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import s from './KeyHelp.module.css'
 
 const EVERYWHERE: [string, string][] = [
+  ['/', 'Search'],
   ['N', 'Night vision'],
   ['?', 'This list'],
 ]

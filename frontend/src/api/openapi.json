@@ -6401,6 +6401,163 @@
     "title": "RigSuggestion",
     "type": "object"
    },
+   "SearchCollection": {
+    "properties": {
+     "datasets": {
+      "title": "Datasets",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "objects": {
+      "title": "Objects",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "objects",
+     "datasets"
+    ],
+    "title": "SearchCollection",
+    "type": "object"
+   },
+   "SearchDataset": {
+    "properties": {
+     "collection": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Collection"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "subs",
+     "collection"
+    ],
+    "title": "SearchDataset",
+    "type": "object"
+   },
+   "SearchFile": {
+    "properties": {
+     "folder": {
+      "title": "Folder",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "sha256": {
+      "title": "Sha256",
+      "type": "string"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     }
+    },
+    "required": [
+     "sha256",
+     "name",
+     "folder",
+     "target"
+    ],
+    "title": "SearchFile",
+    "type": "object"
+   },
+   "SearchNight": {
+    "properties": {
+     "datasets": {
+      "title": "Datasets",
+      "type": "integer"
+     },
+     "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+     }
+    },
+    "required": [
+     "date",
+     "datasets"
+    ],
+    "title": "SearchNight",
+    "type": "object"
+   },
+   "SearchOut": {
+    "properties": {
+     "collections": {
+      "items": {
+       "$ref": "#/components/schemas/SearchCollection"
+      },
+      "title": "Collections",
+      "type": "array"
+     },
+     "datasets": {
+      "items": {
+       "$ref": "#/components/schemas/SearchDataset"
+      },
+      "title": "Datasets",
+      "type": "array"
+     },
+     "files": {
+      "items": {
+       "$ref": "#/components/schemas/SearchFile"
+      },
+      "title": "Files",
+      "type": "array"
+     },
+     "nights": {
+      "items": {
+       "$ref": "#/components/schemas/SearchNight"
+      },
+      "title": "Nights",
+      "type": "array"
+     }
+    },
+    "required": [
+     "collections",
+     "datasets",
+     "nights",
+     "files"
+    ],
+    "title": "SearchOut",
+    "type": "object"
+   },
    "Section": {
     "properties": {
      "fields": {
@@ -13487,6 +13644,53 @@
      }
     ],
     "summary": "Merge Rig",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/search": {
+   "get": {
+    "operationId": "apps_catalogue_api_search_search",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "q",
+      "required": true,
+      "schema": {
+       "title": "Q",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 8,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SearchOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Search",
     "tags": [
      "catalogue"
     ]
