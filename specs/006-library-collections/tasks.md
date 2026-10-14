@@ -97,3 +97,4 @@ requirement they close.
 - [X] L57 (owner 2026-10-13) Home readouts replaced (`_home_readouts`, Library.tsx); test (006-DR-32)
 - [X] L58 (2026-10-13) Readout numbers formatted; missing-calibration reasons name the rig and leave out an offset
   the camera never records ("no 180 s dark at gain 1600", not "… and offset None")
+- [X] L59 (2026-10-14) `keep_collections` after `reresolve_targets` and `reresolve_library` (006-DR-33); test

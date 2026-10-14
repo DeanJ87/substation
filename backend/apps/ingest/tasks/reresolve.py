@@ -13,6 +13,21 @@ BIN = [FrameStatus.BINNED, FrameStatus.DELETED]  # in the bin, or gone (spec 011
 BATCH = 500
 
 
+def keep_collections(moves: list[tuple[Dataset | None, Dataset | None]]) -> None:
+    """A dataset made by a regroup (a merged name or rig) belongs to the collection its subs came from: merging
+    names in a collection left every regrouped dataset outside it, and the collection looked emptied (2026-10-14)."""
+    from collections import Counter
+
+    came: dict[int, Counter] = {}
+    for old, new in moves:
+        if old is not None and new is not None and old.pk != new.pk and old.collection_id:
+            came.setdefault(new.pk, Counter())[old.collection_id] += 1
+    for pk, counts in came.items():
+        Dataset.objects.filter(pk=pk, collection__isnull=True).update(
+            collection_id=counts.most_common(1)[0][0]
+        )
+
+
 def settle(touched: dict[int, Dataset], before: dict[int, int]) -> None:
     """After subs regroup (a rig or name merge, a pattern change): recount every dataset touched. One left empty
     hands its stacks to the dataset that now holds most of their subs, marked stale with the reason, and goes; one
@@ -71,14 +86,17 @@ def reresolve_library(library_id: int | None) -> dict:
     )
     touched: dict[int, Dataset] = {}
     before: dict[int, int] = {}
+    moves: list = []
     for i in range(0, len(shas), BATCH):
         for frame in Frame.objects.filter(pk__in=shas[i : i + BATCH]):
             old, new = resolve_frame(frame)
+            moves.append((old, new))
             for d in (old, new):
                 if d is not None:
                     touched[d.pk] = d
                     before.setdefault(d.pk, d.sub_count)
         report_progress(min(1.0, (i + BATCH) / max(1, len(shas))), f"re-reading {len(shas)} frames' values")
+    keep_collections(moves)
     settle(touched, before)
     return {"frames": len(shas), "datasets": len(touched)}
 
@@ -88,14 +106,17 @@ def reresolve_targets(names: list[str]) -> dict:
     """After target names are merged: regroup the frames that carry them, then settle the datasets touched."""
     touched: dict[int, Dataset] = {}
     before: dict[int, int] = {}
+    moves: list = []
     for frame in Frame.objects.filter(target__in=names).exclude(
         status__in=[FrameStatus.PENDING, FrameStatus.ERROR, FrameStatus.IGNORED, *BIN]
     ):
         old, new = resolve_frame(frame)
+        moves.append((old, new))
         for d in (old, new):
             if d is not None:
                 touched[d.pk] = d
                 before.setdefault(d.pk, d.sub_count)
+    keep_collections(moves)
     settle(touched, before)
     return {"datasets": len(touched)}
 

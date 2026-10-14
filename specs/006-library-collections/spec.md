@@ -162,3 +162,10 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   waiting and the commonest reasons; links to Calibration), **Ready to stack** (datasets with 3+ usable subs beyond
   their latest stack, the biggest first, linked) and **This month** (hours and nights captured, against last month).
   Machine status (workers, disk) lives in the header and Activity.
+
+### Amendment 2026-10-14: a regroup keeps the collection
+
+- **006-DR-33 Datasets made by a regroup stay in their collection.** Merging names or rigs regroups subs; where no
+  dataset already holds the new combination, a new one is made, and it now joins the collection its subs came from
+  (the one most of them came from). Merging M 42 and orion had left every regrouped M 42 dataset outside the
+  collection, which then showed only the few subs that hadn't moved.

@@ -122,3 +122,31 @@ def test_a_merged_away_datasets_stack_moves_with_its_subs(admin_client, monkeypa
     m.refresh_from_db()
     assert m.dataset_id == a.dataset_id and m.state == "stale" and "IC 1848" in m.state_reason
     assert not Dataset.objects.filter(pk=gone.pk).exists()
+
+
+def test_a_dataset_made_by_a_merge_stays_in_the_collection(admin_client, monkeypatch):
+    """006, 2026-10-14: merging M 42 and orion moved every regrouped dataset out of the collection."""
+    from apps.ingest.tasks.reresolve import reresolve_targets
+
+    def keep_values(frame, has_integration=None):
+        from apps.processing.config import processing_settings
+
+        frame.target = processing_settings()["equipment"].get("target", {}).get(frame.object, frame.object)
+        old, new = assign_dataset(frame)
+        frame.save()
+        return old, new
+
+    monkeypatch.setattr("apps.ingest.tasks.reresolve.resolve_frame", keep_values)
+    col = Collection.objects.create(name="M 42 - Orion Nebula")
+    light(20, "M 42", "Hα")
+    light(21, "orion", "B")  # only under the other name: the merge makes a new M 42 · B
+    Dataset.objects.update(collection=col)
+    admin_client.post(
+        f"/api/v1/collections/{col.pk}/merge-names",
+        {"names": ["orion"], "into": "M 42"},
+        content_type="application/json",
+    )
+    reresolve_targets.call(["orion"])
+    made = Dataset.objects.get(target="M 42", filter_norm="B")
+    assert made.collection_id == col.pk
+    assert set(Dataset.objects.values_list("collection_id", flat=True)) == {col.pk}
