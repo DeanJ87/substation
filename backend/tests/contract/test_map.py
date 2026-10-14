@@ -42,3 +42,5 @@ def test_places_group_nearby_lights(admin_client):
     assert home["first"] == "2026-09-25" and home["last"] == "2026-09-26"
     assert [n["date"] for n in home["nights"]] == ["2026-09-26", "2026-09-25"]
     assert home["targets"] == ["M 31"] and home["image"].endswith("/glance")
+    assert home["collections"] == [{"id": None, "name": "M 31", "subs": 2}]
+    assert home["nights"][0]["site_key"] == "55.0,-1.7"

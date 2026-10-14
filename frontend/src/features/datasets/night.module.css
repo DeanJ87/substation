@@ -1,0 +1,105 @@
+/* The night page (spec 012), on the v2 layout: dataset cards with a strip of sub thumbnails, and a timeline. */
+.dsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 18px 10px;
+}
+.dsName {
+  font-weight: 600;
+  font-size: 16px;
+  color: inherit;
+}
+.dsFigures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.strip {
+  list-style: none;
+  margin: 0;
+  padding: 0 18px 16px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+.thumb {
+  display: block;
+  width: 120px;
+  aspect-ratio: 3 / 2;
+  padding: 0;
+  border: 2px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-thumb);
+  overflow: hidden;
+  cursor: pointer;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.thumb:hover {
+  border-color: var(--sst-accent);
+}
+.thumb:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 2px;
+}
+.accept {
+  border-color: color-mix(in srgb, var(--sst-ok) 55%, transparent);
+}
+.down {
+  border-color: color-mix(in srgb, var(--sst-warn) 70%, transparent);
+}
+.reject {
+  border-color: var(--sst-bad);
+  opacity: 0.7;
+}
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+.lane {
+  display: grid;
+  grid-template-columns: minmax(80px, 34%) 1fr;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.laneName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.track {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--sst-panel-3);
+}
+.bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 6px;
+  background: var(--sst-accent);
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-left: calc(34% + 10px);
+  font-size: 12px;
+  color: var(--sst-muted);
+  font-family: var(--sst-mono, ui-monospace, monospace);
+}
+.tableTitle {
+  padding: 16px 18px 0;
+  margin-bottom: 10px;
+}

@@ -17,6 +17,13 @@ NEAR_DEG = 0.01  # lights within about a kilometre of a place are that place
 class MapNight(Schema):
     date: date
     subs: int
+    site_key: str | None = None  # opens that night's page at this place
+
+
+class MapCollection(Schema):
+    id: int | None  # None: a dataset not in a collection
+    name: str
+    subs: int
 
 
 class MapPlace(Schema):
@@ -28,6 +35,7 @@ class MapPlace(Schema):
     last: date | None
     nights: list[MapNight]
     targets: list[str]  # the most-shot collections (or targets) there, most first
+    collections: list[MapCollection] = []  # the same, with their ids, for links
     image: str | None  # the best master shot there, else a sub
 
 
@@ -61,7 +69,7 @@ def map_places(request):
         Frame.objects.filter(frame_type=FrameType.LIGHT, site_lat__isnull=False, site_lon__isnull=False)
         .exclude(status__in=[FrameStatus.BINNED, FrameStatus.DELETED, FrameStatus.IGNORED])
         .exclude(site_lat=0, site_lon=0)
-        .values("site_lat", "site_lon", "night__date", "dataset_id")
+        .values("site_lat", "site_lon", "night__date", "night__site_key", "dataset_id")
         .annotate(n=Count("pk"))
     )
     places: dict[str, dict] = {}
@@ -79,6 +87,7 @@ def map_places(request):
                 "lon": [],
                 "subs": 0,
                 "nights": defaultdict(int),
+                "sites": defaultdict(lambda: defaultdict(int)),
                 "datasets": defaultdict(int),
             }
         p["lat"].append((r["site_lat"], r["n"]))
@@ -86,20 +95,25 @@ def map_places(request):
         p["subs"] += r["n"]
         if r["night__date"]:
             p["nights"][r["night__date"]] += r["n"]
+            p["sites"][r["night__date"]][r["night__site_key"]] += r["n"]
         if r["dataset_id"]:
             p["datasets"][r["dataset_id"]] += r["n"]
-    names = {
-        d.pk: (d.collection.name if d.collection else d.target)
+    owners = {
+        d.pk: (d.collection_id, d.collection.name if d.collection else d.target)
         for d in Dataset.objects.filter(
             pk__in={i for p in places.values() for i in p["datasets"]}
         ).select_related("collection")
     }
+    names = {k: v[1] for k, v in owners.items()}
     out = []
     for key, p in places.items():
         mean = lambda xs: sum(v * n for v, n in xs) / sum(n for _, n in xs)  # noqa: E731
         by_target: dict[str, int] = defaultdict(int)
+        by_owner: dict[tuple, int] = defaultdict(int)
         for ds, n in p["datasets"].items():
             by_target[names.get(ds, "")] += n
+            if ds in owners:
+                by_owner[owners[ds]] += n
         nights = sorted(p["nights"].items())
         top = sorted(p["datasets"], key=lambda d: -p["datasets"][d])
         out.append(
@@ -110,7 +124,15 @@ def map_places(request):
                 subs=p["subs"],
                 first=nights[0][0] if nights else None,
                 last=nights[-1][0] if nights else None,
-                nights=[MapNight(date=d, subs=n) for d, n in reversed(nights)],
+                nights=[
+                    MapNight(date=d, subs=n, site_key=max(p["sites"][d].items(), key=lambda kv: kv[1])[0])
+                    for d, n in reversed(nights)
+                ],
+                collections=[
+                    MapCollection(id=cid, name=name, subs=n)
+                    for (cid, name), n in sorted(by_owner.items(), key=lambda kv: -kv[1])
+                    if name
+                ][:8],
                 targets=[t for t, _ in sorted(by_target.items(), key=lambda kv: -kv[1]) if t][:5],
                 image=_picture(top),
             )

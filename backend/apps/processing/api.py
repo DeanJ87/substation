@@ -112,6 +112,7 @@ class SubOut(Schema):
     decided_by: str | None = None
     decided_at: datetime | None = None
     guiding: float | None = None
+    dataset_id: int | None = None
 
 
 def _file(f: Frame) -> str:
@@ -203,6 +204,7 @@ def sub_out(f: Frame) -> SubOut:
     if e.source == "nina":
         reason = "Rejected by you in NINA." + (f" Auto grade: {g.reason}" if g else "")
     return SubOut(
+        dataset_id=f.dataset_id,
         sha256=f.sha256,
         file=_file(f),
         night=f.night.date if f.night else None,
@@ -267,6 +269,12 @@ def dataset_subs(request, id: int, night: date | None = None):  # noqa: A002
     if night:
         qs = qs.filter(night__date=night)
     return [sub_out(f) for f in qs]
+
+
+@router.get("/nights/{date}/subs", response=list[SubOut])
+def night_subs(request, date: date, site: str):  # noqa: A002
+    """Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer."""
+    return [sub_out(f) for f in _lights(night__date=date, night__site_key=site, dataset__isnull=False)]
 
 
 class Spread(Schema):

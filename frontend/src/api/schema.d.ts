@@ -1453,6 +1453,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/nights/{date}/subs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Night Subs
+         * @description Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer.
+         */
+        get: operations["apps_processing_api_night_subs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/path-patterns": {
         parameters: {
             query?: never;
@@ -3709,6 +3729,15 @@ export interface components {
             /** Ready */
             ready: boolean;
         };
+        /** MapCollection */
+        MapCollection: {
+            /** Id */
+            id: number | null;
+            /** Name */
+            name: string;
+            /** Subs */
+            subs: number;
+        };
         /** MapNight */
         MapNight: {
             /**
@@ -3716,6 +3745,8 @@ export interface components {
              * Format: date
              */
             date: string;
+            /** Site Key */
+            site_key?: string | null;
             /** Subs */
             subs: number;
         };
@@ -3726,6 +3757,11 @@ export interface components {
         };
         /** MapPlace */
         MapPlace: {
+            /**
+             * Collections
+             * @default []
+             */
+            collections: components["schemas"]["MapCollection"][];
             /** First */
             first: string | null;
             /** Image */
@@ -3911,6 +3947,15 @@ export interface components {
             /** Value */
             value: string | number | null;
         };
+        /** MoonOut */
+        MoonOut: {
+            /** Altitude Deg */
+            altitude_deg: number | null;
+            /** Illumination */
+            illumination: number;
+            /** Up During Lights */
+            up_during_lights: boolean | null;
+        };
         /** MoveIn */
         MoveIn: {
             /** After */
@@ -3948,6 +3993,15 @@ export interface components {
              * Format: date
              */
             date: string;
+            /** First Utc */
+            first_utc?: string | null;
+            /** Last Utc */
+            last_utc?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            moon?: components["schemas"]["MoonOut"] | null;
             /** Next */
             next: string | null;
             /** Other Frames */
@@ -5186,6 +5240,8 @@ export interface components {
             background: number | null;
             /** Cloud */
             cloud: number | null;
+            /** Dataset Id */
+            dataset_id?: number | null;
             /** Decided At */
             decided_at?: string | null;
             /** Decided By */
@@ -7525,6 +7581,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NightOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_night_subs: {
+        parameters: {
+            query: {
+                site: string;
+            };
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubOut"][];
                 };
             };
         };

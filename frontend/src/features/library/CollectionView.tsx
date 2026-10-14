@@ -24,6 +24,7 @@ import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import tb from './tables.module.css'
+import { usePlaceName } from '../map/place'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -38,13 +39,18 @@ export function CollectionView() {
   const [project, setProject] = useState<number | null>(null)
   const [managing, setManaging] = useState(false)
   const projects = useProjects(Number(id))
-  const tab = route.useSearch().tab ?? 'overview'
+  const search = route.useSearch()
+  const tab = search.tab ?? 'overview'
   const setTab = (t: string) =>
     void navigate({
       to: '.',
-      search: { tab: t === 'overview' ? undefined : (t as 'datasets') },
+      search: { ...search, tab: t === 'overview' ? undefined : (t as 'datasets') },
       replace: true,
     })
+  // from the map: only the nights shot at one place (spec 012)
+  const only = useMemo(() => (search.nights ? new Set(search.nights.split(',')) : null), [search.nights])
+  const [atLat, atLon] = (search.at ?? '').split(',').map(Number)
+  const atName = usePlaceName(search.at ? atLat : null, search.at ? atLon : null)
   const qc = useQueryClient()
   type Card = { id: number; name: string }
   const renameCol = useMutation({
@@ -318,7 +324,18 @@ export function CollectionView() {
             </Collapsible>
           </section>
 
-          <SessionList sessions={d.sessions} />
+          {only && (
+            <div className={`${v.card} ${v.cardPad} ${v.actions}`} role="status">
+              <span>
+                Showing the {only.size} night{only.size === 1 ? '' : 's'} shot
+                {search.at ? ` at ${atName.data ?? 'this place'}` : ' at one place'}.
+              </span>
+              <Link to="." search={{ tab: 'sessions' }} className={v.pill}>
+                Show every session
+              </Link>
+            </div>
+          )}
+          <SessionList sessions={only ? d.sessions.filter((x) => only.has(x.night)) : d.sessions} />
         </>
       )}
       {tab === 'masters' && (

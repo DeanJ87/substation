@@ -52,10 +52,16 @@ const collection = createRoute({
   component: CollectionView,
   validateSearch: (
     q: Record<string, unknown>,
-  ): { tab?: 'overview' | 'datasets' | 'sessions' | 'masters' } => ({
+  ): {
+    tab?: 'overview' | 'datasets' | 'sessions' | 'masters'
+    nights?: string // only these nights (comma-separated): the sessions shot at one place, from the map (spec 012)
+    at?: string // "lat,lon" of that place, to name it
+  } => ({
     tab: ['overview', 'datasets', 'sessions', 'masters'].includes(String(q.tab))
       ? (q.tab as 'overview')
       : undefined,
+    nights: typeof q.nights === 'string' && /^[\d,-]+$/.test(q.nights) ? q.nights : undefined,
+    at: typeof q.at === 'string' && /^-?[\d.]+,-?[\d.]+$/.test(q.at) ? q.at : undefined,
   }),
 })
 const binRoute = createRoute({ getParentRoute: () => app, path: '/bin', component: BinPage })
@@ -82,7 +88,15 @@ const dataset = createRoute({
     show: q.show === 'flagged' ? 'flagged' : undefined,
   }),
 })
-const nightRoute = createRoute({ getParentRoute: () => app, path: '/nights/$date', component: NightView })
+const nightRoute = createRoute({
+  getParentRoute: () => app,
+  path: '/nights/$date',
+  component: NightView,
+  validateSearch: (q: Record<string, unknown>): { site?: string; sub?: string } => ({
+    site: typeof q.site === 'string' && q.site ? q.site : undefined, // which place, when several shot that night
+    sub: typeof q.sub === 'string' && /^[0-9a-f]{64}$/.test(q.sub) ? q.sub : undefined, // the viewer (spec 012)
+  }),
+})
 const review = createRoute({
   getParentRoute: () => app,
   path: '/review',

@@ -8,6 +8,11 @@
   its dataset with `?sub=`; dataset route `sub` and `show=flagged`; Flagged chip and "Review N flagged"; Review
   out of the menu, `/review` redirects; key help; nights in order in the dataset subtitle
 - [ ] V3 Blink with best (Space) in the viewer
-- [ ] V4 Night page: place, Moon, conditions, a strip per dataset; the viewer steps through the night's subs
+- [X] V4 (2026-10-14) Night page on the v2 layout: place name and small map, Moon (phase, and whether it was up
+  during the lights, from astropy's built-in ephemeris), a timeline bar per dataset, a strip of sub thumbnails per
+  dataset; a thumbnail opens the viewer stepping through every sub that night in time order (`?sub=`); `?site=`
+  picks the place when several shot that night; calibration sets link to their set; `GET /nights/{date}/subs`
+- [X] M4 (2026-10-14) Map place panel links: each collection shot there opens its sessions showing only the nights
+  shot at that place (`?nights=&at=`, with "Show every session"); each night opens that place's night page
 - [ ] V5 One dataset label (collection · rig · filter) on every page, search and Activity
 - [ ] V6 Hide "Not recorded" rows; a section with nothing recorded says so once

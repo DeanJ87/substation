@@ -3687,12 +3687,53 @@
     "title": "LookOut",
     "type": "object"
    },
+   "MapCollection": {
+    "properties": {
+     "id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "subs"
+    ],
+    "title": "MapCollection",
+    "type": "object"
+   },
    "MapNight": {
     "properties": {
      "date": {
       "format": "date",
       "title": "Date",
       "type": "string"
+     },
+     "site_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Key"
      },
      "subs": {
       "title": "Subs",
@@ -3724,6 +3765,14 @@
    },
    "MapPlace": {
     "properties": {
+     "collections": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/MapCollection"
+      },
+      "title": "Collections",
+      "type": "array"
+     },
      "first": {
       "anyOf": [
        {
@@ -4406,6 +4455,43 @@
     "title": "MetadataIn",
     "type": "object"
    },
+   "MoonOut": {
+    "properties": {
+     "altitude_deg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Altitude Deg"
+     },
+     "illumination": {
+      "title": "Illumination",
+      "type": "number"
+     },
+     "up_during_lights": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Up During Lights"
+     }
+    },
+    "required": [
+     "illumination",
+     "altitude_deg",
+     "up_during_lights"
+    ],
+    "title": "MoonOut",
+    "type": "object"
+   },
    "MoveIn": {
     "properties": {
      "after": {
@@ -4513,6 +4599,62 @@
       "format": "date",
       "title": "Date",
       "type": "string"
+     },
+     "first_utc": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Utc"
+     },
+     "last_utc": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Utc"
+     },
+     "lat": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lat"
+     },
+     "lon": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lon"
+     },
+     "moon": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MoonOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "next": {
       "anyOf": [
@@ -8246,6 +8388,17 @@
        }
       ],
       "title": "Cloud"
+     },
+     "dataset_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dataset Id"
      },
      "decided_at": {
       "anyOf": [
@@ -12969,6 +13122,58 @@
      }
     ],
     "summary": "Night",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/nights/{date}/subs": {
+   "get": {
+    "description": "Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer.",
+    "operationId": "apps_processing_api_night_subs",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "date",
+      "required": true,
+      "schema": {
+       "format": "date",
+       "title": "Date",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "site",
+      "required": true,
+      "schema": {
+       "title": "Site",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SubOut"
+         },
+         "title": "Response",
+         "type": "array"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Night Subs",
     "tags": [
      "catalogue"
     ]

@@ -117,3 +117,17 @@ experience; propose something better. Also asked for: a map on the sub page.
 - The dataset subtitle gives nights in order (a sub after midnight belongs to the night before).
 - Still to do: Blink with best (Space) in the viewer; the night page (section 4); one dataset label everywhere
   (section 2); hiding "Not recorded" rows.
+
+### Amendment 2026-10-14: map links and the night page
+
+- **012-DR-01 Map links carry their context.** In a place's panel, every collection shot there is a link to that
+  collection's sessions, filtered to the nights shot at that place and naming the place, with a way back to every
+  session. Every night is a link to that night's page at that place. The map's data gives each collection its id and
+  each night its site.
+- **012-DR-02 The night page is a night.** It uses the same layout as the other screens (header, readouts, cards):
+  where it was shot (name and small map), the Moon's phase and whether it was above the horizon while the lights
+  were taken, a timeline with a bar per dataset, and per dataset a strip of its subs that night. A sub opens the
+  viewer modal, which steps through every sub of the night in time order. When subs were shot in more than one place
+  that night, the page offers each place. The Moon is worked out locally, with no network access; a night with no
+  recorded place shows the phase only.
+

@@ -112,12 +112,35 @@ export function MapView() {
               ` · ${day(chosen.first)}${chosen.last !== chosen.first ? ` to ${day(chosen.last)}` : ''}`}
           </p>
           <PlaceName lat={chosen.lat} lon={chosen.lon} />
-          {chosen.targets.length > 2 && <p className="muted">Also {chosen.targets.slice(2).join(', ')}</p>}
+          <h3 className="label">Shot here</h3>
+          <ul className={s.nights}>
+            {(chosen.collections ?? []).map((c) => (
+              <li key={`${c.id}-${c.name}`}>
+                {c.id != null ? (
+                  // the collection's sessions, only the nights shot here
+                  <Link
+                    to="/collections/$id"
+                    params={{ id: String(c.id) }}
+                    search={{
+                      tab: 'sessions',
+                      nights: chosen.nights.map((n) => n.date).join(','),
+                      at: `${chosen.lat.toFixed(4)},${chosen.lon.toFixed(4)}`,
+                    }}
+                  >
+                    {c.name}
+                  </Link>
+                ) : (
+                  <span>{c.name}</span>
+                )}
+                <span className="muted">{c.subs.toLocaleString('en-GB')} subs</span>
+              </li>
+            ))}
+          </ul>
           <h3 className="label">Nights</h3>
           <ul className={s.nights}>
             {chosen.nights.map((n) => (
               <li key={n.date}>
-                <Link to="/nights/$date" params={{ date: n.date }}>
+                <Link to="/nights/$date" params={{ date: n.date }} search={{ site: n.site_key ?? undefined }}>
                   {day(n.date)}
                 </Link>
                 <span className="muted">{n.subs.toLocaleString('en-GB')} subs</span>

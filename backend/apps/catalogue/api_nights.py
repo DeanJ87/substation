@@ -4,7 +4,7 @@ observing night. No `from __future__ import annotations` here: see substation.ap
 import datetime as dt
 from datetime import date, datetime
 
-from django.db.models import Count
+from django.db.models import Avg, Count, Max, Min
 from django.shortcuts import get_object_or_404
 
 from substation.api import ApiError, Schema
@@ -27,6 +27,12 @@ class NightDatasetOut(DatasetNightOut):
     dataset: DatasetOut
 
 
+class MoonOut(Schema):
+    illumination: float  # 0 new to 1 full
+    altitude_deg: float | None  # at the middle of the night's lights, where the place is known
+    up_during_lights: bool | None
+
+
 class NightOut(Schema):
     date: dt.date
     site_key: str
@@ -36,6 +42,37 @@ class NightOut(Schema):
     other_frames: dict[str, int]
     previous: dt.date | None
     next: dt.date | None
+    lat: float | None = None  # where the night's subs were shot (spec 012), for the map and the Moon
+    lon: float | None = None
+    first_utc: datetime | None = None
+    last_utc: datetime | None = None
+    moon: MoonOut | None = None
+
+
+def moon_at(when: datetime, lat: float | None, lon: float | None, until: datetime | None = None) -> MoonOut:
+    """The Moon's phase, and its altitude at `when` (and whether it rose above the horizon before `until`), from
+    astropy's built-in ephemeris: no network needed."""
+    import numpy as np
+    from astropy import units as u
+    from astropy.coordinates import AltAz, EarthLocation, get_body, get_sun
+    from astropy.time import Time
+    from astropy.utils import iers
+
+    # the workers may have no internet; the bundled table is accurate enough here
+    iers.conf.auto_download = False
+    t = Time(when)
+    moon, sun = get_body("moon", t), get_sun(t)
+    lit = float((1 - np.cos(sun.separation(moon).rad)) / 2)
+    if lat is None or lon is None:
+        return MoonOut(illumination=round(lit, 3), altitude_deg=None, up_during_lights=None)
+    loc = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    times = Time(when) if until is None else Time(np.linspace(Time(when).jd, Time(until).jd, 12), format="jd")
+    alts = get_body("moon", times, loc).transform_to(AltAz(obstime=times, location=loc)).alt.deg
+    alts = np.atleast_1d(alts)
+    mid = float(alts[len(alts) // 2])
+    return MoonOut(
+        illumination=round(lit, 3), altitude_deg=round(mid, 1), up_during_lights=bool((alts > 0).any())
+    )
 
 
 def _dn(dn: DatasetNight) -> dict:
@@ -72,6 +109,17 @@ def night(request, date: date, site: str | None = None):  # noqa: A002
         .values_list("frame_type")
         .annotate(c=Count("sha256"))
     )
+    lights = Frame.objects.filter(night=n, frame_type="light", status=FrameStatus.CATALOGUED).aggregate(
+        lat=Avg("site_lat"), lon=Avg("site_lon"), first=Min("date_obs_utc"), last=Max("date_obs_utc")
+    )
+    moon = None
+    if lights["first"]:
+        mid = lights["first"] + (lights["last"] - lights["first"]) / 2
+        try:
+            moon = moon_at(mid, lights["lat"], lights["lon"]) if lights["first"] == lights["last"] else None
+            moon = moon or moon_at(lights["first"], lights["lat"], lights["lon"], until=lights["last"])
+        except Exception:  # noqa: BLE001 - the Moon is a nicety; a night page never fails for it
+            moon = None
     all_dates = Night.objects.filter(site_key=site).order_by("date").values_list("date", flat=True)
     prev = all_dates.filter(date__lt=date).last()
     nxt = all_dates.filter(date__gt=date).first()
@@ -84,4 +132,9 @@ def night(request, date: date, site: str | None = None):  # noqa: A002
         other_frames=other,
         previous=prev,
         next=nxt,
+        lat=lights["lat"],
+        lon=lights["lon"],
+        first_utc=lights["first"],
+        last_utc=lights["last"],
+        moon=moon,
     )

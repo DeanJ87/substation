@@ -62,7 +62,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.svc }}
       # 005-DR-27: a published image has no critical vulnerability that already has a fix
       - name: Scan the image (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
