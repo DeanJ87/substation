@@ -80,6 +80,11 @@ class SubStationTaskBackend(BaseTaskBackend):
             existing = Task.objects.filter(
                 dedupe_key=dedupe_key, status__in=[TaskStatus.READY, TaskStatus.RUNNING]
             ).first()
+            if existing and existing.status == TaskStatus.RUNNING and pending_enqueue_options().get("fresh"):
+                # it may have read the state before this change: it keeps running, without the key, and a new
+                # run waits behind it
+                Task.objects.filter(pk=existing.pk).update(dedupe_key=None)
+                existing = None
             if existing:
                 return to_result(existing, task)
             # A finished task with the same key frees the key for a new run.

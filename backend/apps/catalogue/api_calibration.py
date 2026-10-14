@@ -211,7 +211,7 @@ def set_window(request, sha256: str, body: WindowIn):
             frame=f,
             defaults={"valid_from": body.valid_from, "valid_to": body.valid_to, "set_by": request.user},
         )
-    enqueue(rematch_lights, dedupe_key="rematch")
+    enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)
     return MasterWindowOut(sha256=f.pk, valid_from=body.valid_from, valid_to=body.valid_to)
 
 

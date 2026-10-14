@@ -357,7 +357,7 @@ def patch_settings(request, body: SettingsIn):  # type: ignore[no-untyped-def]
     if "calibration" in change:  # tolerance or fallback changed: every light's match is checked again
         from apps.processing.tasks import rematch_lights
 
-        enqueue(rematch_lights, dedupe_key="rematch")
+        enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)
     return _out(s)
 
 

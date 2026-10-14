@@ -253,5 +253,5 @@ def set_flat_filter(request, id: int, body: SetFilterIn):  # noqa: A002
     except CorrectionError as e:
         raise ApiError(422, "invalid_value", str(e)) from None
     now = Frame.objects.filter(pk__in=shas).values_list("calibration_set_id", flat=True).first()
-    enqueue(rematch_lights, dedupe_key="rematch")  # lights of that filter can use them now
+    enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)  # lights of that filter can use them now
     return SetFilterOut(updated=n, set_id=now)

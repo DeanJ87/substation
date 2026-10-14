@@ -329,3 +329,11 @@ exposure (0.00654 / 0.00655 s) and sets required an exact match.
   (UTC + longitude / 15 h, from the frame, else the installation's site, else Greenwich) minus 12 hours. Flats of one
   camera, filter, gain, offset and binning in one session form one set when their exposures are within 5%; darks and
   bias still match exactly. Existing split flat sets were merged by a migration, their built masters moving with them.
+
+### Amendment 2026-10-14: a master built mid re-match is not missed
+
+- **002-DR-25 Every new master gets a re-match that sees it.** Re-matching every light reads the masters there are
+  when it starts. A request made while one is waiting joins it; a request made while one is already running queues
+  one more run after it, since the running one may have read the masters before the new one existed (three dark
+  masters built a few minutes apart: the 60 s one finished during the re-match the 2 s one started, and its lights
+  stayed blocked). All the places that ask for a re-match share one key, so at most one runs and one waits.

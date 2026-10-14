@@ -56,7 +56,7 @@ def after_resolve(frame: Frame) -> None:
     if not getattr(settings, "PROCESSING_ENABLED", True):
         return
     if frame.frame_type in MASTER_TYPES:
-        enqueue(rematch_lights, dedupe_key="rematch-lights", priority=PRIORITY_LIVE - 1)
+        enqueue(rematch_lights, dedupe_key="rematch-lights", priority=PRIORITY_LIVE - 1, fresh=True)
         return
     if frame.frame_type == FrameType.LIGHT:
         cm = update_match(frame)

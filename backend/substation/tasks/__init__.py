@@ -63,11 +63,16 @@ def enqueue(
     dedupe_key: str | None = None,
     priority: int | None = None,
     run_after: datetime | None = None,
+    fresh: bool = False,
     **kwargs: Any,
 ):  # -> TaskResult
-    """Enqueue `task`. If `dedupe_key` matches a queued or running task, that task's result is returned."""
+    """Enqueue `task`. If `dedupe_key` matches a queued or running task, that task's result is returned.
+
+    `fresh`: the task reads the state at the moment it starts (re-matching every light to the masters there are),
+    so it only joins a run still waiting; when one is already running, which may have read the old state, another
+    run is queued after it (002-DR-25)."""
     t = task.using(priority=priority, run_after=run_after) if (priority is not None or run_after) else task
-    token = _enqueue_opts.set({"dedupe_key": dedupe_key})
+    token = _enqueue_opts.set({"dedupe_key": dedupe_key, "fresh": fresh})
     try:
         return t.enqueue(*args, **kwargs)
     finally:

@@ -87,3 +87,5 @@
   new bias sets and the 15 blocked flat sets were built by hand the same day
 - [X] C34 (2026-10-14) `_night` evening fallback; flat sets tolerate 5% exposure jitter; migration 0018 merges split
   flat sets; tests (002-DR-24)
+- [X] D-25 (2026-10-14) `enqueue(..., fresh=True)`: joins a waiting run, queues after a running one; every re-match
+  request uses it with one shared key (002-DR-25); test

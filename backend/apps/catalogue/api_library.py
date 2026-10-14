@@ -819,7 +819,9 @@ def rename_rig(request, id: int, body: RigPatch):  # noqa: A002
 
         r.calibration = body.calibration
         r.save(update_fields=["calibration"])
-        enqueue(rematch_lights, dedupe_key="rematch")  # its lights wait for, or are freed from, other masters
+        enqueue(
+            rematch_lights, dedupe_key="rematch-lights", fresh=True
+        )  # its lights wait for, or are freed from, other masters
     return _rig_out(r)
 
 

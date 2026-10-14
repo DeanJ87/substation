@@ -105,7 +105,7 @@ def create_ignore_rule(request, body: IgnoreRuleIn):
         # a retired master (002 C13): lights that used it find another, or wait with the reason
         from apps.processing.tasks import rematch_lights
 
-        enqueue(rematch_lights, dedupe_key="rematch")
+        enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)
     return Status(201, _out(rule))
 
 
@@ -122,5 +122,5 @@ def delete_ignore_rule(request, id: int):  # noqa: A002
     ):  # an un-retired master is matched again
         from apps.processing.tasks import rematch_lights
 
-        enqueue(rematch_lights, dedupe_key="rematch", run_after=None)
+        enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)
     return Status(204, None)
