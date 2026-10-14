@@ -72,3 +72,8 @@
   line; test (005-DR-21)
 - [X] W21 (2026-10-14) Batch outputs in the stack's folder; linked outputs copied; `one_row_order` replaces links;
   prune keeps files touched in the last 3 h; tests (005-DR-22)
+- [X] W21 (2026-10-14) `substation/updates.py` (check GitHub, drain, Portainer webhook, confirm, resume),
+  `InstallationSettings.updates`, `/settings/updates` (get, patch auto, now, cancel), Settings → Updates; compose
+  variables; tests (005-DR-23)
+- [ ] W22 Portainer: give stack 47 a webhook, set `SUBSTATION_UPDATE_WEBHOOK`, `SUBSTATION_UPDATE_REPO`, and
+  `SUBSTATION_TAG=poc-substation`; retire the Mac deploy scripts once one update has run end to end

@@ -11,6 +11,8 @@
 #   SUBSTATION_LIBRARY_MODE  "ro" (default) or "rw": rw lets the bin (spec 011) move files to quarantine and delete
 #                          them, in libraries also switched to "SubStation may delete files here" in Settings
 #   SUBSTATION_ADMIN_USERNAME / SUBSTATION_ADMIN_PASSWORD, SUBSTATION_HELPER_TOKEN
+#   SUBSTATION_UPDATE_WEBHOOK / SUBSTATION_UPDATE_REPO  Portainer's stack webhook and owner/name on GitHub: with both
+#     set, SubStation redeploys itself when a newer build exists and no stack is running (Settings → Updates)
 # Sized for this hardware, with defaults (005-DR-18):
 #   SUBSTATION_WORKER_REPLICAS  worker containers (2)      SUBSTATION_WORKERS_EACH  workers in each (2)
 #   SUBSTATION_WORKER_CPUS      CPUs each may use (3)     SUBSTATION_WORKER_MEMORY memory cap each (7g)
@@ -51,6 +53,8 @@ services:
       SUBSTATION_CSRF_TRUSTED_ORIGINS: https://${SUBSTATION_DOMAIN:?set SUBSTATION_DOMAIN}  # sign-in only from here
       # post-processing runs on helpers on faster machines, not here (spec 010)
       SUBSTATION_HELPER_TOKEN: ${SUBSTATION_HELPER_TOKEN:-}
+      SUBSTATION_UPDATE_WEBHOOK: ${SUBSTATION_UPDATE_WEBHOOK:-}  # Portainer's redeploy webhook: updates itself when idle
+      SUBSTATION_UPDATE_REPO: ${SUBSTATION_UPDATE_REPO:-}  # owner/name of the repository that builds the images
       SUBSTATION_ADMIN_USERNAME: ${SUBSTATION_ADMIN_USERNAME}
       SUBSTATION_ADMIN_PASSWORD: ${SUBSTATION_ADMIN_PASSWORD}
     volumes:

@@ -186,6 +186,13 @@ class Command(BaseCommand):
                         discover_libraries()
                 except Exception:  # noqa: BLE001
                     log.exception("Housekeeping failed")
+                if not options["no_web"]:  # the API container decides when to update (005-DR-23)
+                    try:
+                        from substation.updates import tick
+
+                        tick()
+                    except Exception:  # noqa: BLE001
+                        log.exception("The update check failed")
                 last_housekeeping = time.monotonic()
             if time.monotonic() - last_measure > 300:
                 try:

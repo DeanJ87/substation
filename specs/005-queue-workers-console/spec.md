@@ -216,3 +216,17 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   (the cache's pruning took them mid-stack and seven stacks failed); the cache never prunes a file used in the last
   3 hours. A FITS Siril only links when converting is copied, never moved as a link, and a linked frame is replaced,
   never written through, so nothing can change a file in an image library.
+
+## Amendment 2026-10-14: updates without scripts
+
+Deploys used scripts on the owner's Mac that logged in to the NAS over SSH to pause the queue, wait for stacks and
+restart containers. One hung for eight hours on an SSH call. SubStation now updates itself.
+
+- **005-DR-23**: Every 10 minutes the API container asks GitHub for the newest successful image build of the branch
+  it runs (`SUBSTATION_UPDATE_REPO`). When that build is newer than the running one and automatic updates are on
+  (Settings → Workers → Updates; on by default), it pauses the queue, waits until no stack or master build is
+  running, then calls the stack's Portainer webhook (`SUBSTATION_UPDATE_WEBHOOK`) naming the build
+  (`SUBSTATION_TAG=<short commit>`). When the new version starts, the queue resumes, unless it had been paused by
+  hand. If the new version isn't running 20 minutes later the update is marked failed with the reason, the queue
+  resumes, and that build isn't tried again by itself. "Update now" and "Don't update now" do the same by hand.
+  Without both variables updates are off and say so. Nothing logs in to the NAS.
