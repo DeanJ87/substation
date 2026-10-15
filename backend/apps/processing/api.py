@@ -938,8 +938,16 @@ def _why(old: Frame | None, new: Frame | None, kind: str, night: date | None) ->
         return None
     if old.status != FrameStatus.CATALOGUED:
         return f"the {kind} it used is no longer in the library"
-    if old.calibration_set_id and old.calibration_set_id == new.calibration_set_id:
-        return f"the {kind} was rebuilt from the same frames"
+    from .models import BuiltMaster
+
+    ob = BuiltMaster.objects.filter(frame=old).order_by("-pk").first()
+    nb = BuiltMaster.objects.filter(frame=new).order_by("-pk").first()
+    if ob and nb and ob.calibration_set_id and ob.calibration_set_id == nb.calibration_set_id:
+        if (nb.frames_used or 0) > (ob.frames_used or 0):
+            return f"the {kind} was rebuilt with more frames ({ob.frames_used} → {nb.frames_used})"
+        return f"the {kind} was rebuilt from the same frames: little or no difference"
+    if ob and nb and ob.frames_used and nb.frames_used and nb.frames_used != ob.frames_used:
+        return f"a {kind} from {nb.frames_used} frames instead of {ob.frames_used}"
     if kind == "dark":
         ot, nt = _temp(old), _temp(new)
         if ot is not None and nt is not None and ot != nt:
