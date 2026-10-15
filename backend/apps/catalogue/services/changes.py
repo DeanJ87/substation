@@ -63,13 +63,25 @@ def _plural(n: int, word: str) -> str:
 
 def _undo_move(change: Change) -> str:
     """Put each dataset back in the collection (and project) it came from, unless it has moved again since."""
-    from apps.catalogue.models import Collection
+    from apps.catalogue.models import Collection, Project
     from apps.catalogue.services.library import refresh_objects
 
     to = change.data.get("to")
     back = 0
     touched = {to} if to else set()
-    for ds_id, (col, project, position) in change.data.get("previous", {}).items():
+    previous = change.data.get("previous", {})
+    # a collection or project deleted since can't be returned to: those datasets go back to no collection or project
+    cols = set(
+        Collection.objects.filter(pk__in={c for c, _, _ in previous.values() if c}).values_list(
+            "pk", flat=True
+        )
+    )
+    projects = set(
+        Project.objects.filter(pk__in={p for _, p, _ in previous.values() if p}).values_list("pk", flat=True)
+    )
+    for ds_id, (col, project, position) in previous.items():
+        col = col if col in cols else None
+        project, position = (project, position) if project in projects and col else (None, None)
         n = Dataset.objects.filter(pk=int(ds_id), collection_id=to).update(
             collection_id=col, project_id=project, project_position=position
         )

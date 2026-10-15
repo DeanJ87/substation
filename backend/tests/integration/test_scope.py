@@ -215,3 +215,17 @@ def test_a_nights_subs_take_the_rest_of_the_scope(world, admin_client):
     assert len(admin_client.get(url).json()) == 2
     assert len(admin_client.get(f"{url}&rig={world['sony'].pk}").json()) == 1
     assert len(admin_client.get(f"{url}&target=m 81").json()) == 1
+
+
+def test_a_card_scoped_to_some_nights_counts_only_their_hours(world, admin_client):
+    """Review 2026-10-15: with a date range, a collection card's hours are those nights', not the whole history."""
+    from apps.catalogue.models import Dataset
+
+    d0 = world["ds"][0][0]
+    Dataset.objects.update(sub_count=1)
+    Dataset.objects.filter(pk=d0.pk).update(integration_s=99_999, accepted_integration_s=99_999)
+    MachineGrade.objects.filter(frame__dataset=d0).update(verdict="accept")
+    cards = admin_client.get("/api/v1/library?date_from=2026-10-01").json()["collections"]
+    m81 = next(c for c in cards if c["id"] == world["m81"].pk)
+    assert m81["filter_time"]["L"]["total_s"] == 60  # the one sub on 11 Oct, not the dataset's 99,999 s
+    assert m81["accepted_integration_s"] == 60

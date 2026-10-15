@@ -164,6 +164,47 @@ def clean_goals(current: dict, change: dict[str, float | None]) -> dict:
     return goals
 
 
+def _narrows_nights(scope: Scope | None) -> bool:
+    """Whether a scope picks some nights or a place, so a dataset's whole-history totals would overstate."""
+    if scope is None:
+        return False
+    from apps.catalogue.api_search import night_filter
+
+    return bool(
+        scope.date
+        or scope.date_from
+        or scope.date_to
+        or scope.site
+        or (scope.lat is not None and scope.lon is not None)
+        or (scope.q and night_filter(scope.q) is not None)
+    )
+
+
+def _split_by_frames(ds: list[Dataset], scope: Scope | None) -> dict[str, list[float]]:
+    """Per filter: [captured, usable, rejected] seconds, from the scoped subs themselves."""
+    from apps.processing.effective import effective
+    from apps.processing.models import MachineGrade
+
+    from .models import Frame, FrameStatus, FrameType
+
+    split: dict[str, list[float]] = defaultdict(lambda: [0.0, 0.0, 0.0])
+    lights = Frame.objects.filter(dataset__in=ds, frame_type=FrameType.LIGHT, status=FrameStatus.CATALOGUED)
+    for f in apply(lights, scope, "frame").select_related("dataset", "grade").prefetch_related("verdicts"):
+        t = split[f.dataset.filter_norm or "?"]  # type: ignore[union-attr]
+        secs = f.exptime_s or 0
+        t[0] += secs
+        try:
+            grade = f.grade
+        except MachineGrade.DoesNotExist:  # not graded yet
+            grade = None
+        v = effective(f, list(f.verdicts.all()), grade).verdict
+        if v in ("accept", "down"):
+            t[1] += secs
+        elif v == "reject":
+            t[2] += secs
+    return split
+
+
 def _card(col: Collection, scope: Scope | None = None) -> CollectionCard:
     """A collection's card; with a scope, its totals are for what the scope covers (spec 018 FR-006): the datasets
     it matches, and their sessions on the nights and at the place it names."""
@@ -172,12 +213,18 @@ def _card(col: Collection, scope: Scope | None = None) -> CollectionCard:
         ensure_rig(d)
     filters: dict[str, float] = defaultdict(float)
     split: dict[str, list[float]] = defaultdict(lambda: [0.0, 0.0, 0.0])
-    for d in ds:
-        f = d.filter_norm or "?"
-        filters[f] += d.accepted_integration_s or 0
-        split[f][0] += d.integration_s or 0
-        split[f][1] += d.accepted_integration_s or 0
-        split[f][2] += d.rejected_integration_s or 0
+    if _narrows_nights(scope):
+        # the hours too are only those nights' and that place's (review 2026-10-15), counted sub by sub
+        split = _split_by_frames(ds, scope)
+        for f, (_t, a, _r) in split.items():
+            filters[f] = a
+    else:
+        for d in ds:
+            f = d.filter_norm or "?"
+            filters[f] += d.accepted_integration_s or 0
+            split[f][0] += d.integration_s or 0
+            split[f][1] += d.accepted_integration_s or 0
+            split[f][2] += d.rejected_integration_s or 0
     nights = DatasetNight.objects.filter(dataset__in=ds)
     if scope is not None:
         nights = nights.filter(nights_q(scope, "night__", "night__site_key"))
@@ -203,7 +250,7 @@ def _card(col: Collection, scope: Scope | None = None) -> CollectionCard:
         first_night=span["first"],
         last_night=span["last"],
         sessions=nights.values("night").distinct().count(),
-        accepted_integration_s=sum(d.accepted_integration_s or 0 for d in ds),
+        accepted_integration_s=sum(a for _t, a, _r in split.values()),
         states=_states(ds),
         preview_master=m.pk if m else None,
         constellation=col.constellation,
@@ -935,10 +982,24 @@ def library_stats(request, scope: Query[StatsScope]):
 
     from .models import Frame, FrameStatus, FrameType
 
-    shared = Scope(**{**scope.dict(), "rig": rig_id(scope.rig)})
+    # a rig by name, the older way, means every rig with that name (several can share a telescope's name)
+    named = (
+        scope.rig
+        if isinstance(scope.rig, str) and not str(scope.rig).isdigit() and scope.rig.strip()
+        else None
+    )
+    shared = Scope(**{**scope.dict(), "rig": None if named else rig_id(scope.rig)})
+    from .models import Rig
+
+    named_ids = (
+        list(Rig.objects.filter(name__iexact=named.strip()).values_list("pk", flat=True)) if named else []
+    )
 
     def scoped(qs, kind: str, ds: str):  # noqa: ANN001, ANN202
-        return apply(qs, shared, kind).select_related(f"{ds}__rig", "night").prefetch_related("verdicts")
+        qs = apply(qs, shared, kind)
+        if named:
+            qs = qs.filter(**{f"{ds}__rig_id__in": named_ids})
+        return qs.select_related(f"{ds}__rig", "night").prefetch_related("verdicts")
 
     lights = Frame.objects.filter(frame_type=FrameType.LIGHT)
     live = scoped(lights.filter(status=FrameStatus.CATALOGUED, dataset__isnull=False), "frame", "dataset")

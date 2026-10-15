@@ -19,3 +19,4 @@
     tab and Activity → Recent failures; Undo through the toast, Ctrl/Cmd+Z and Your changes
   - [X] U6f Backend tests for every endpoint and undo (read-only refused, limits); frontend tests for each bar;
     screenshots (desktop and phone)
+- [X] U7 (2026-10-15) Undoing a move after its collection or project was removed (016-DR-01); test

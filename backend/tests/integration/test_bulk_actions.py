@@ -224,3 +224,39 @@ def test_read_only_accounts_and_empty_or_huge_choices_are_refused(viewer_client,
         assert post(viewer_client, url, body).status_code == 403, url
     assert post(admin_client, "/bulk/datasets/regrade", {"dataset_ids": []}).status_code == 422
     assert post(admin_client, "/bulk/datasets/stack", {"dataset_ids": list(range(501))}).status_code == 422
+
+
+def test_undoing_a_move_after_the_old_collection_was_removed_leaves_them_unfiled(admin_client):
+    """Review 2026-10-15: the collection a move came from may be gone by the time it's undone."""
+    soul, heart = Collection.objects.create(name="Soul"), Collection.objects.create(name="Heart")
+    mosaic = Project.objects.create(collection=soul, name="Mosaic 2026")
+    a = _ds("IC 1848", soul, mosaic)
+    r = post(admin_client, "/bulk/datasets/move", {"dataset_ids": [a.pk], "collection_id": heart.pk})
+    soul.delete()  # its project goes with it
+    assert undo(admin_client, r.json()["change_id"]) == "Put 1 dataset back where it was."
+    a.refresh_from_db()
+    assert (a.collection_id, a.project_id) == (None, None)
+
+
+def test_stats_for_a_rig_name_shared_by_two_rigs_count_both(admin_client):
+    """Review 2026-10-15: a rig named the older way may name several rigs (same telescope, two cameras)."""
+    from apps.catalogue.models import Rig
+
+    r1 = Rig.objects.create(key="redcat|a", name="Redcat 51", camera="A")
+    r2 = Rig.objects.create(key="redcat|b", name="Redcat 51", camera="B")
+    for i, rig in enumerate((r1, r2)):
+        d = Dataset.objects.create(
+            group_key=f"g{i}", target="M 31", filter_norm="L", display_name=f"d{i}", rig=rig
+        )
+        Frame.objects.create(
+            sha256=f"{i:064x}",
+            size_bytes=1,
+            format="fits",
+            first_seen_at=timezone.now(),
+            status="catalogued",
+            frame_type="light",
+            dataset=d,
+            exptime_s=3600,
+        )
+    stats = admin_client.get("/api/v1/library/stats?rig=Redcat%2051").json()
+    assert stats["by_rig"] == {"Redcat 51": 2.0} or sum(stats["by_rig"].values()) == 2.0

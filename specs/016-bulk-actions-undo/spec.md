@@ -75,3 +75,8 @@ Built for calibration sets and frames, datasets and failed jobs. Archiving colle
   `change_id`. Up to 500 at a time; read-only accounts are refused every one of them.
 - **FR-011** Every bar is a toolbar named for what is chosen, states the count, has buttons with text reachable
   by keyboard and a Clear; Escape inside it clears the choice. Choose boxes are labelled with what they choose.
+
+### Amendment 2026-10-15: after review
+
+- **016-DR-01** Undoing a move whose original collection (or project) has since been removed puts those datasets in
+  no collection (or no project) instead of failing.

@@ -117,3 +117,11 @@ and one place in the backend that turns it into a query for each kind of record.
 - **018-DR-12** A selection bar (spec 016 U6) on a list the scope narrows (the Library's Not in a collection, the
   Calibration page's raw sets) acts only on chosen rows still shown: narrowing the list drops hidden rows from the
   choice, so an action never reaches what the page doesn't show.
+
+### Amendment 2026-10-15: after review
+
+- **018-DR-13** With nights or a place in the scope, a collection card's hours are counted from those nights' subs,
+  so they agree with its sessions and with Library stats (they had summed each dataset's whole history).
+- **018-DR-14** A rig by name on Library stats (the older parameter) means every rig of that name.
+- **018-DR-15** The Library tells "nothing matches these filters" from an empty library by the unfiltered count; the
+  collection picker on a dataset and the filter list always offer everything, whatever is filtered now.

@@ -50,15 +50,19 @@ export function Library() {
   const [scope, setScope] = useScope()
   const q = useLibrary(scope)
   const d = q.data
+  // the whole library (the same request when nothing is filtered): whether it's empty, every collection a dataset
+  // can join, and every filter to choose from, whatever is filtered now (review 2026-10-15)
+  const whole = useLibrary({}).data
+  const base = whole ?? d
   const filters = useMemo(
     () =>
       [
         ...new Set([
-          ...(d?.collections ?? []).flatMap((c) => Object.keys(c.filters)),
-          ...(d?.ungrouped ?? []).map((u) => u.dataset.filter ?? ''),
+          ...(base?.collections ?? []).flatMap((c) => Object.keys(c.filters)),
+          ...(base?.ungrouped ?? []).map((u) => u.dataset.filter ?? ''),
         ]),
       ].filter((f) => f && f !== '?'),
-    [d],
+    [base],
   )
   if (q.isError)
     return (
@@ -84,7 +88,7 @@ export function Library() {
   const missing = r.missing_calibration ?? { subs: 0, top: [] }
   const ready = r.ready_to_stack ?? { datasets: 0, top: [] }
   const month = r.this_month ?? { hours: 0, nights: 0, last: { hours: 0, nights: 0 } }
-  const empty = d.counts.datasets === 0
+  const empty = (whole ?? d).counts.datasets === 0
 
   return (
     <div className={v.page}>
@@ -186,7 +190,7 @@ export function Library() {
 
       {/* the slices start again from the top when the filters change */}
       <CollectionCards cards={cards} scope={scope} resetKey={resetKey} />
-      <UngroupedList rows={ungrouped} collections={d.collections} resetKey={resetKey} />
+      <UngroupedList rows={ungrouped} collections={(whole ?? d).collections} resetKey={resetKey} />
     </div>
   )
 }

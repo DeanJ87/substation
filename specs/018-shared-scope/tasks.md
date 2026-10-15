@@ -20,3 +20,5 @@
 - [ ] SC6 Drop the old parameter names once nothing sends them
 - [X] SC7 (2026-10-15) The across-nights sky takes the scope (its `site` picks the view); the collection's On the sky
   passes the scope's nights; selection bars on scoped lists keep only rows still shown (018-DR-11, 018-DR-12); tests
+- [X] SC8 (2026-10-15) Review fixes: scoped card hours from the subs, rig names shared by several rigs, empty state and
+  picker from the whole library (018-DR-13..15); tests
