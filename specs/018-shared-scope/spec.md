@@ -2,7 +2,7 @@
 
 **Feature Branch**: `poc-substation`
 **Created**: 2026-10-15
-**Status**: In progress 2026-10-15: the scope and its first endpoints built
+**Status**: In progress 2026-10-15: the scope, every list endpoint and the Library, Calibration and map built; cameras as records open
 **Input**: Owner suggestion, 2026-10-15: the endpoints could share the same inputs (place, date, date range,
 camera, rig, project and so on), so the interfaces and the architecture stay consistent.
 
@@ -79,3 +79,31 @@ and one place in the backend that turns it into a query for each kind of record.
   (and its NINA and CSV downloads), Waiting for calibration, Review and the map take it. What to shoot has the
   shared filter bar, in its address.
 
+
+### Amendment 2026-10-15: the Library, the older endpoints and links that carry the scope
+
+- **018-DR-04** The Library (`/library`) takes the scope: a collection is listed when any of its datasets is in
+  scope, and its card counts only those datasets and their sessions on the scope's nights and place; the ungrouped
+  list and the counts are the datasets in scope. The readouts (what needs you, missing calibration, this month)
+  stay whole. `/library/stats` takes the scope too; its `rig` may still be a rig's name (FR-005), and an unknown
+  name matches nothing rather than everything. Binned and deleted lights count through the dataset they were in.
+- **018-DR-05** Free text (`q`) also matches a rig's name and a filter, as Library stats' search did; on calibration
+  sets and masters it matches the type, filter, camera and telescope. On `/frames` it still finds a frame by its
+  OBJECT header or its file's path.
+- **018-DR-06** Older names kept (FR-005): `night` on `/frames` and `/calibration-sets` (for `date`), a rig by name on
+  `/library/stats`, `since`/`until` on `/map`, `from`/`to` in the map's address. On `/datasets`, `target` keeps its
+  older meaning, part of the name, because every exact match is also a partial one. Paging (FR-003) stays where it
+  was: frames and datasets page by `cursor`/`limit`/`next_cursor`; calibration sets and masters are whole lists
+  (hundreds, grouped by night on one page), so paging them would only add round trips.
+- **018-DR-07** Calibration has no rig of its own: a `rig` narrows calibration sets and masters to the rig's camera.
+  A master built here takes the night its frames were shot, so a master's nights are compared with the night shown.
+- **018-DR-08** A night's subs (`/nights/{date}/subs`) take the rest of the scope; the date and place are already in
+  the address. Newer calibration (`/calibration/recalibration`) takes the scope through each sub's light.
+- **018-DR-09** The frontend has `useScope()` (the scope in the current page's address, changed in place) and one
+  filter bar: free text (settling before it asks), rig, filter and nights, plus a removable chip for anything a link
+  brought that the bar has no control for (a night, a place, a collection…). The Library and Calibration use it and
+  no longer filter in the browser. Links carry the scope: Library → collection (which narrows its sessions to the
+  scope's nights) → its map (with the collection) → a night → What to shoot (that night and place instead of the
+  range) and back. The map says when a link narrowed it beyond its nights, with a way to show everything.
+- **018-DR-10** Cameras as records (SC5) stay open: cameras are free text on frames, datasets, rigs and calibration
+  sets, so a record needs a model, a backfill from all four, and the rig editor to pick one.

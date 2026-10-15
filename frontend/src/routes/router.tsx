@@ -48,18 +48,24 @@ const app = createRoute({
   },
 })
 
-const datasets = createRoute({ getParentRoute: () => app, path: '/', component: Library })
+const datasets = createRoute({
+  getParentRoute: () => app,
+  path: '/',
+  component: Library,
+  validateSearch: (q: Record<string, unknown>): Scope => readScope(q), // spec 018
+})
 const collection = createRoute({
   getParentRoute: () => app,
   path: '/collections/$id',
   component: CollectionView,
   validateSearch: (
     q: Record<string, unknown>,
-  ): {
+  ): Scope & {
     tab?: 'overview' | 'datasets' | 'sessions' | 'masters'
     nights?: string // only these nights (comma-separated): the sessions shot at one place, from the map (spec 012)
     at?: string // "lat,lon" of that place, to name it
   } => ({
+    ...readScope(q), // carried from the Library or the map (spec 018)
     tab: ['overview', 'datasets', 'sessions', 'masters'].includes(String(q.tab))
       ? (q.tab as 'overview')
       : undefined,
@@ -100,7 +106,8 @@ const nightRoute = createRoute({
   getParentRoute: () => app,
   path: '/nights/$date',
   component: NightView,
-  validateSearch: (q: Record<string, unknown>): { site?: string; sub?: string } => ({
+  validateSearch: (q: Record<string, unknown>): Scope & { site?: string; sub?: string } => ({
+    ...readScope(q), // carried from the map or a collection (spec 018)
     site: typeof q.site === 'string' && q.site ? q.site : undefined, // which place, when several shot that night
     sub: typeof q.sub === 'string' && /^[0-9a-f]{64}$/.test(q.sub) ? q.sub : undefined, // the viewer (spec 012)
   }),
@@ -117,6 +124,7 @@ const calibration = createRoute({
   getParentRoute: () => app,
   path: '/calibration',
   component: CalibrationLibrary,
+  validateSearch: (q: Record<string, unknown>): Scope => readScope(q), // spec 018
 })
 const calibrationToShoot = createRoute({
   getParentRoute: () => app,

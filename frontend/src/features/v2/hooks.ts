@@ -5,6 +5,7 @@ import { toast } from '../../components/Toasts'
 import { offerUndo } from '../changes/changes'
 import { useRef } from 'react'
 import { api, unwrap } from '../../api/client'
+import { scopeQuery, type Scope } from '../scope/scope'
 import { useLiveEvents } from '../../api/events'
 import type { components } from '../../api/schema'
 
@@ -57,8 +58,15 @@ export function useLiveRefresh(extra: string[] = []) {
   })
 }
 
-export function useLibrary() {
-  return useQuery({ queryKey: ['library'], queryFn: fetchLibrary })
+/** The Library, narrowed on the server by the shared scope (spec 018); the last answer stays up while the next
+ * one comes, so changing a filter doesn't blank the page. */
+export function useLibrary(scope: Scope = {}) {
+  const query = scopeQuery(scope)
+  return useQuery({
+    queryKey: ['library', query],
+    queryFn: () => fetchLibrary(query),
+    placeholderData: (prev) => prev,
+  })
 }
 export function useCollection(id: number) {
   return useQuery({
@@ -256,7 +264,8 @@ export function useStackAction() {
   })
 }
 type LibraryHome = Awaited<ReturnType<typeof fetchLibrary>>
-const fetchLibrary = async () => unwrap(await api.GET('/library'))
+const fetchLibrary = async (query: Record<string, string | number> = {}) =>
+  unwrap(await api.GET('/library', { params: { query } }))
 
 export function useCollectionActions() {
   const qc = useQueryClient()
@@ -264,8 +273,8 @@ export function useCollectionActions() {
   // the row leaves the ungrouped list at once; the library catches up in the background
   const hide = ({ dataset_ids }: { dataset_ids: number[] }) => {
     void qc.cancelQueries({ queryKey: ['library'] })
-    qc.setQueryData<LibraryHome>(
-      ['library'],
+    qc.setQueriesData<LibraryHome>(
+      { queryKey: ['library'] },
       (d) => d && { ...d, ungrouped: d.ungrouped.filter((u) => !dataset_ids.includes(u.dataset.id)) },
     )
   }
@@ -292,8 +301,8 @@ export function useCollectionActions() {
       // suggested rows leave at once
       onMutate: () => {
         void qc.cancelQueries({ queryKey: ['library'] })
-        qc.setQueryData<LibraryHome>(
-          ['library'],
+        qc.setQueriesData<LibraryHome>(
+          { queryKey: ['library'] },
           (d) =>
             d && { ...d, ungrouped: d.ungrouped.filter((u) => !(u as { suggestion?: unknown }).suggestion) },
         )

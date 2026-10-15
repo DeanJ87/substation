@@ -172,7 +172,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Calibration Sets */
+        /**
+         * List Calibration Sets
+         * @description Raw calibration sets in the shared scope (spec 018): nights, place, camera, filter, a rig (its camera) and
+         *     free text (type, filter, camera, or a date as search reads it). `night` is the older name for `date`. Not paged:
+         *     the Calibration page groups every set by night, and there are hundreds, not thousands.
+         */
         get: operations["apps_catalogue_api_calibration_list_calibration_sets"];
         put?: never;
         post?: never;
@@ -306,7 +311,8 @@ export interface paths {
         /**
          * Pending Recalibration
          * @description Datasets whose calibrated subs now match different masters (002 C11): listed on the Calibration screen,
-         *     re-calibrated only when you say so on the dataset's Calibration tab.
+         *     re-calibrated only when you say so on the dataset's Calibration tab. Narrowed by the shared scope (spec 018):
+         *     a measurement is about its light, as a calibration match is, so it takes the match's paths.
          */
         get: operations["apps_processing_api_pending_recalibration"];
         put?: never;
@@ -756,7 +762,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Datasets */
+        /**
+         * List Datasets
+         * @description Datasets in the shared scope (spec 018). `target` here keeps its older meaning, part of the name (FR-005):
+         *     every exact match is also a partial one, so a scope carried from another page still finds its target.
+         */
         get: operations["apps_catalogue_api_list_datasets"];
         put?: never;
         post?: never;
@@ -1007,7 +1017,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Frames */
+        /**
+         * List Frames
+         * @description Frames in the shared scope (spec 018); `night` is the older name for `date` (FR-005). Free text also finds
+         *     a frame by its OBJECT header or its file's path.
+         */
         get: operations["apps_catalogue_api_list_frames"];
         put?: never;
         post?: never;
@@ -1518,7 +1532,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Library */
+        /**
+         * Library
+         * @description Collections and ungrouped datasets, narrowed by the shared scope (spec 018) on the server: a collection is
+         *     listed when any of its datasets is in scope, and its card counts only those. The readouts stay whole.
+         */
         get: operations["apps_catalogue_api_library_library"];
         put?: never;
         post?: never;
@@ -1538,7 +1556,8 @@ export interface paths {
         /**
          * Library Stats
          * @description Totals for what the Library's filters show (006, owner 2026-10-10): lights taken, hours per filter and
-         *     rig, how many were kept or rejected, and the average SQM where the capture recorded it.
+         *     rig, how many were kept or rejected, and the average SQM where the capture recorded it. The filters are the
+         *     shared scope (spec 018); `rig` may still be a rig's name (FR-005).
          */
         get: operations["apps_catalogue_api_library_library_stats"];
         put?: never;
@@ -1577,7 +1596,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Masters */
+        /**
+         * List Masters
+         * @description Masters in the shared scope (spec 018). A master built here has no night of its own but the night its frames
+         *     were shot, so the nights are compared with the night shown, after the rest of the scope narrows the query.
+         */
         get: operations["apps_catalogue_api_calibration_list_masters"];
         put?: never;
         post?: never;
@@ -1650,7 +1673,8 @@ export interface paths {
         };
         /**
          * Night Subs
-         * @description Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer.
+         * @description Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer,
+         *     narrowed by the rest of the shared scope (spec 018).
          */
         get: operations["apps_processing_api_night_subs"];
         put?: never;
@@ -4362,6 +4386,28 @@ export interface components {
             /** Sites */
             sites: string[];
         };
+        /**
+         * NightScope
+         * @description The shared scope (spec 018) less what a night's address already says (its date and place).
+         */
+        NightScope: {
+            /** Camera */
+            camera?: string | null;
+            /** Collection */
+            collection?: number | null;
+            /** Dataset */
+            dataset?: number | null;
+            /** Filter */
+            filter?: string | null;
+            /** Project */
+            project?: number | null;
+            /** Rig */
+            rig?: number | null;
+            /** Target */
+            target?: string | null;
+            /** Telescope */
+            telescope?: string | null;
+        };
         /** NotifyTestOut */
         NotifyTestOut: {
             /** Failed */
@@ -5842,6 +5888,41 @@ export interface components {
             /** Subs */
             subs: number;
         };
+        /** StatsScope */
+        StatsScope: {
+            /** Camera */
+            camera?: string | null;
+            /** Collection */
+            collection?: number | null;
+            /** Dataset */
+            dataset?: number | null;
+            /** Date */
+            date?: string | null;
+            /** Date From */
+            date_from?: string | null;
+            /** Date To */
+            date_to?: string | null;
+            /** Filter */
+            filter?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Project */
+            project?: number | null;
+            /** Q */
+            q?: string | null;
+            /** Rig */
+            rig?: number | string | null;
+            /** Site */
+            site?: string | null;
+            /** Target */
+            target?: string | null;
+            /** Telescope */
+            telescope?: string | null;
+            /** Within Km */
+            within_km?: number | null;
+        };
         /** SubOut */
         SubOut: {
             /** Altitude */
@@ -6335,6 +6416,22 @@ export interface operations {
     apps_catalogue_api_calibration_list_calibration_sets: {
         parameters: {
             query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
                 type?: string | null;
                 night?: string | null;
             };
@@ -6510,7 +6607,24 @@ export interface operations {
     };
     apps_processing_api_pending_recalibration: {
         parameters: {
-            query?: never;
+            query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7274,9 +7388,23 @@ export interface operations {
     apps_catalogue_api_list_datasets: {
         parameters: {
             query?: {
-                state?: string | null;
-                target?: string | null;
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
                 filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
+                state?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -7655,11 +7783,25 @@ export interface operations {
     apps_catalogue_api_list_frames: {
         parameters: {
             query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
                 dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
                 night?: string | null;
                 type?: string | null;
                 status?: string | null;
-                q?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -8360,7 +8502,24 @@ export interface operations {
     };
     apps_catalogue_api_library_library: {
         parameters: {
-            query?: never;
+            query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8381,9 +8540,21 @@ export interface operations {
     apps_catalogue_api_library_library_stats: {
         parameters: {
             query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
                 date_from?: string | null;
                 date_to?: string | null;
-                rig?: string | null;
+                camera?: string | null;
+                rig?: number | string | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
                 q?: string | null;
             };
             header?: never;
@@ -8444,7 +8615,24 @@ export interface operations {
     };
     apps_catalogue_api_calibration_list_masters: {
         parameters: {
-            query?: never;
+            query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8540,6 +8728,14 @@ export interface operations {
         parameters: {
             query: {
                 site: string;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
             };
             header?: never;
             path: {

@@ -69,7 +69,10 @@ export function ToShoot() {
   return (
     <div className={s.page}>
       <p className={s.crumbs}>
-        <Link to="/calibration">Calibration</Link> / What to shoot
+        <Link to="/calibration" search={scopeQuery(scope)}>
+          Calibration
+        </Link>{' '}
+        / What to shoot
       </p>
       <header className={s.head}>
         <div>

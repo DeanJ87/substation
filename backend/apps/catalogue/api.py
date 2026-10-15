@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from substation.api import Query, Router, Schema, decode_cursor, encode_cursor
 
 from .models import Copy, Dataset, Frame, FrameType, Verdict
+from .scope import Scope, apply, text_q, without
 from .services.library import label
 
 router = Router(tags=["catalogue"])
@@ -217,19 +218,18 @@ def frame_summary(f: Frame) -> FrameSummaryOut:
 @router.get("/datasets", response=DatasetPage)
 def list_datasets(
     request,
+    scope: Query[Scope],
     state: str | None = None,
-    target: str | None = None,
-    filter: str | None = None,  # noqa: A002 (contract parameter name)
     cursor: str | None = None,
     limit: int = Query(100, le=1000, ge=1),
 ):
-    qs = Dataset.objects.filter(sub_count__gt=0)
+    """Datasets in the shared scope (spec 018). `target` here keeps its older meaning, part of the name (FR-005):
+    every exact match is also a partial one, so a scope carried from another page still finds its target."""
+    qs = apply(Dataset.objects.filter(sub_count__gt=0), without(scope, "target"), "dataset")
     if state:
         qs = qs.filter(state=state)
-    if target:
-        qs = qs.filter(target__icontains=target)
-    if filter:
-        qs = qs.filter(filter_norm__iexact=filter)
+    if scope.target:
+        qs = qs.filter(target__icontains=scope.target.strip())
     qs = qs.order_by("-last_utc", "-id")
     c = decode_cursor(cursor)
     if c:
@@ -252,26 +252,25 @@ def get_dataset(request, id: int):  # noqa: A002 (contract path parameter name)
 @router.get("/frames", response=FramePage)
 def list_frames(
     request,
-    dataset: int | None = None,
+    scope: Query[Scope],
     night: date | None = None,
     type: str | None = None,  # noqa: A002
     status: str | None = None,
-    q: str | None = None,
     cursor: str | None = None,
     limit: int = Query(100, le=1000, ge=1),
 ):
-    qs = Frame.objects.all()
-    if dataset is not None:
-        qs = qs.filter(dataset_id=dataset)
+    """Frames in the shared scope (spec 018); `night` is the older name for `date` (FR-005). Free text also finds
+    a frame by its OBJECT header or its file's path."""
+    qs = apply(Frame.objects.all(), without(scope, "q"), "frame")
     if night is not None:
         qs = qs.filter(night__date=night)
     if type:
         qs = qs.filter(frame_type=type)
     if status:
         qs = qs.filter(status=status)
-    if q:
+    if q := (scope.q or "").strip():
         qs = qs.filter(
-            Q(target__icontains=q) | Q(object__icontains=q) | Q(copies__rel_path__icontains=q)
+            text_q(q, "frame") | Q(object__icontains=q) | Q(copies__rel_path__icontains=q)
         ).distinct()
     qs = qs.order_by("date_obs_utc", "sha256")
     c = decode_cursor(cursor)

@@ -26,6 +26,7 @@ import { useProgressive } from '../../components/useProgressive'
 import tb from './tables.module.css'
 import { usePlaceName } from '../map/place'
 import { ProjectCards } from './ProjectCards'
+import { inNights, omit, readScope, scopeQuery } from '../scope/scope'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -49,6 +50,11 @@ export function CollectionView() {
     })
   // from the map: only the nights shot at one place (spec 012)
   const only = useMemo(() => (search.nights ? new Set(search.nights.split(',')) : null), [search.nights])
+  // the Library's or the map's filters (spec 018): this page narrows its sessions to their nights, and its
+  // links (the Library, the map, a night) carry them on
+  const scope = readScope(search)
+  const carry = scopeQuery(omit(scope, 'collection'))
+  const nightsScoped = !!(scope.date || scope.date_from || scope.date_to)
   const [atLat, atLon] = (search.at ?? '').split(',').map(Number)
   const atName = usePlaceName(search.at ? atLat : null, search.at ? atLon : null)
   const qc = useQueryClient()
@@ -137,7 +143,10 @@ export function CollectionView() {
       <header className={v.head}>
         <div>
           <div className={v.crumbs}>
-            <Link to="/">Library</Link> / Collections
+            <Link to="/" search={carry}>
+              Library
+            </Link>{' '}
+            / Collections
           </div>
           {renaming === null ? (
             <h1>
@@ -169,6 +178,9 @@ export function CollectionView() {
           </div>
         </div>
         <div className={v.actions}>
+          <Link to="/map" search={{ ...carry, collection: card.id }} className={v.pill}>
+            Map
+          </Link>
           <Button variant="primary" onClick={() => setAdding(true)}>
             Add datasets
           </Button>
@@ -331,12 +343,27 @@ export function CollectionView() {
                 Showing the {only.size} night{only.size === 1 ? '' : 's'} shot
                 {search.at ? ` at ${atName.data ?? 'this place'}` : ' at one place'}.
               </span>
-              <Link to="." search={{ tab: 'sessions' }} className={v.pill}>
+              <Link to="." search={{ ...carry, tab: 'sessions' }} className={v.pill}>
                 Show every session
               </Link>
             </div>
           )}
-          <SessionList sessions={only ? d.sessions.filter((x) => only.has(x.night)) : d.sessions} />
+          {!only && nightsScoped && (
+            <div className={`${v.card} ${v.cardPad} ${v.actions}`} role="status">
+              <span>Showing the sessions in the nights the Library was filtered to.</span>
+              <Link
+                to="."
+                search={{ ...scopeQuery(omit(scope, 'date', 'date_from', 'date_to')), tab: 'sessions' }}
+                className={v.pill}
+              >
+                Show every session
+              </Link>
+            </div>
+          )}
+          <SessionList
+            sessions={d.sessions.filter((x) => (only ? only.has(x.night) : inNights(scope, x.night)))}
+            carry={carry}
+          />
         </>
       )}
       {tab === 'masters' && (
@@ -482,7 +509,13 @@ function DatasetState({ x }: { x: ColDataset }) {
   return <span className={v.muted}>No master yet</span>
 }
 
-function SessionList({ sessions }: { sessions: ColSession[] }) {
+function SessionList({
+  sessions,
+  carry,
+}: {
+  sessions: ColSession[]
+  carry: Record<string, string | number>
+}) {
   const newest = useMemo(() => [...sessions].reverse(), [sessions])
   const { visible, hasMore, more } = useProgressive(newest, 60)
   return (
@@ -507,7 +540,7 @@ function SessionList({ sessions }: { sessions: ColSession[] }) {
               {visible.map((x) => (
                 <tr key={`${x.night}-${x.rig}`}>
                   <td className={tb.nowrap}>
-                    <Link to="/nights/$date" params={{ date: x.night }}>
+                    <Link to="/nights/$date" params={{ date: x.night }} search={carry}>
                       {nightText(x.night)}
                     </Link>
                   </td>
