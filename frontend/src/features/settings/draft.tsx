@@ -41,6 +41,7 @@ export type Processing = {
   queue: { priority_mode: string }
   paths: { map: { from: string; to: string }[] }
   bin: { auto_bin_rejected_days: number; purge_after_days: number }
+  backup: { enabled: boolean; time: string; keep: number; folder: string }
   post: {
     enabled: boolean
     steps: PostStep[]

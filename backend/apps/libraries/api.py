@@ -158,7 +158,7 @@ class RegradePreviewOut(Schema):
     by_change: dict[str, int]
 
 
-EDITABLE = {"calibration", "grading", "stacking", "notifications", "queue", "post", "paths", "bin"}
+EDITABLE = {"calibration", "grading", "stacking", "notifications", "queue", "post", "paths", "bin", "backup"}
 CHOICES = {
     ("stacking", "rejection"): {"winsorized", "sigma", "linear"},
     ("stacking", "weighting"): {"grade", "snr", "equal"},
@@ -197,6 +197,22 @@ def _clean_processing(data: dict) -> dict:
                     raise ApiError(
                         422, "invalid", f"The {label} is 30 letters and digits, as Pushover shows it."
                     )
+        if section == "backup":  # spec 014
+            import re
+
+            for k, v in values.items():
+                if k == "enabled" and not isinstance(v, bool):
+                    raise ApiError(422, "invalid", "Backups are on or off.")
+                if k == "time" and not (isinstance(v, str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", v)):
+                    raise ApiError(422, "invalid", "The time is HH:MM, 24-hour.")
+                if k == "keep" and not (isinstance(v, int) and 1 <= v <= 365):
+                    raise ApiError(422, "invalid", "Keep between 1 and 365 backups.")
+                if k == "folder" and not (isinstance(v, str) and (v == "" or v.startswith("/"))):
+                    raise ApiError(
+                        422, "invalid", "The folder is a path inside the containers, starting with /."
+                    )
+                if k not in ("enabled", "time", "keep", "folder"):
+                    raise ApiError(422, "invalid", f"Unknown backup setting {k}.")
         if section == "bin":
             for k, v in values.items():
                 if k not in ("auto_bin_rejected_days", "purge_after_days") or not isinstance(v, int) or v < 0:

@@ -217,6 +217,15 @@ class Command(BaseCommand):
                         _enqueue(tidy_bin, dedupe_key="tidy-bin")
                 except Exception:  # noqa: BLE001
                     log.exception("Queueing the bin's tidy failed")
+                try:  # spec 014: the daily database backup, at the set time
+                    from substation.backup import backup_due
+                    from substation.backup_api import backup_database
+                    from substation.tasks import enqueue as _enqueue
+
+                    if not os.environ.get("SUBSTATION_ONLY_QUEUES") and backup_due():
+                        _enqueue(backup_database, dedupe_key="backup-database")
+                except Exception:  # noqa: BLE001
+                    log.exception("Queueing the database backup failed")
                 last_measure = time.monotonic()
             close_old_connections()
             time.sleep(1)

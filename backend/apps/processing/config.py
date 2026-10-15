@@ -43,6 +43,8 @@ DEFAULTS: dict = {
     "queue": {"priority_mode": "new_first"},
     # the bin (spec 011): rejected subs binned after this many days (0: never), binned files deleted after this
     "bin": {"auto_bin_rejected_days": 30, "purge_after_days": 30},
+    # spec 014: a daily database backup into a folder the containers can see; empty folder = the station's backups
+    "backup": {"enabled": True, "time": "03:30", "keep": 14, "folder": ""},
     # owner 2026-10-12: show files where people can open them, not as downloads. Each entry maps a server path
     # prefix to how it looks from a viewer's machine (e.g. /data/library/organised -> Z:\\Photography\\Deep Sky\\Organised);
     # a browser can override these for itself.

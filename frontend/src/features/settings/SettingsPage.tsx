@@ -4,6 +4,7 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, type ReactNode } from 'react'
 import { Appearance } from './Appearance'
+import { Backups } from './Backups'
 import { Bin } from './Bin'
 import { DraftProvider, useSettings } from './draft'
 import { IgnoreRules } from './IgnoreRules'
@@ -58,6 +59,7 @@ const TABS: Tab[] = [
     ),
   },
   { id: 'workers', label: 'Workers', sections: ['workers'], body: <Workers /> },
+  { id: 'backups', label: 'Backups', sections: ['backups'], body: <Backups /> },
   { id: 'notifications', label: 'Notifications', sections: ['notifications'], body: <Notifications /> },
   { id: 'users', label: 'Users', sections: ['users'], body: <Users /> },
   { id: 'appearance', label: 'Appearance', sections: ['appearance'], body: <Appearance /> },

@@ -17,6 +17,10 @@ from apps.libraries.api import settings_router  # noqa: E402
 
 register_router("/settings", settings_router)
 
+from substation.backup_api import router as backups_router  # noqa: E402
+
+register_router("/backups", backups_router)
+
 from apps.accounts.api import router as users_router  # noqa: E402
 
 register_router("/users", users_router)

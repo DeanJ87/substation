@@ -23,6 +23,8 @@ STATION_ROOT = DATA_DIR / "substation"  # SubStation's writable area (local disk
 WORK_DIR = STATION_ROOT / "work"
 PREVIEWS_DIR = STATION_ROOT / "previews"
 STACKS_DIR = STATION_ROOT / "stacks"
+# spec 014: where database backups go unless Settings → Backups names another folder
+BACKUP_DIR = Path(env("BACKUP_DIR", "") or STATION_ROOT / "backups")
 MASTERS_DIR = STATION_ROOT / "masters"  # calibration masters SubStation builds
 CONFIG_DIR = STATION_ROOT / "config"
 

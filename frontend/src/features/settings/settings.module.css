@@ -443,3 +443,67 @@
   z-index: 1;
   background: var(--sst-bg);
 }
+/* Backups (spec 014): one line per setting, wrapping on a phone */
+.backupRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-block: 6px;
+  font-size: 14px;
+}
+.backupRow input:not(.num):not([type='checkbox']) {
+  padding: 5px 8px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}
+.backupFolder {
+  width: min(28rem, 100%);
+}
+.backupList {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.backupItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+}
+.backupItem > div:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.backupItem .backupRow {
+  margin-block: 0;
+}
+.backupConfirm {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--sst-line);
+}
+.backupConfirm span {
+  flex-basis: 100%;
+}
+.backupConfirm input {
+  padding: 5px 8px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}

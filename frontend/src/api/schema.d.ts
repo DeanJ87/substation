@@ -4,6 +4,58 @@
  */
 
 export interface paths {
+    "/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backups */
+        get: operations["substation_backup_api_backups"];
+        put?: never;
+        /** Back Up Now */
+        post: operations["substation_backup_api_back_up_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backups/{name}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download */
+        get: operations["substation_backup_api_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backups/{name}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Now */
+        post: operations["substation_backup_api_restore_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bin": {
         parameters: {
             query?: never;
@@ -2549,6 +2601,42 @@ export interface components {
             /** Solved */
             solved: boolean;
         };
+        /** BackupOut */
+        BackupOut: {
+            /**
+             * Made At
+             * Format: date-time
+             */
+            made_at: string;
+            /** Name */
+            name: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** BackupQueuedOut */
+        BackupQueuedOut: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Queued */
+            queued: boolean;
+        };
+        /** BackupsOut */
+        BackupsOut: {
+            /** Backups */
+            backups: components["schemas"]["BackupOut"][];
+            /** Folder */
+            folder: string;
+            /**
+             * Running
+             * @default false
+             */
+            running: boolean;
+            /** Writable */
+            writable: boolean;
+        };
         /** BinIn */
         BinIn: {
             /**
@@ -4683,6 +4771,14 @@ export interface components {
             /** Resolved */
             resolved: number;
         };
+        /** RestoreIn */
+        RestoreIn: {
+            /**
+             * Confirm
+             * @default
+             */
+            confirm: string;
+        };
         /** ReviewGroup */
         ReviewGroup: {
             /** Dataset */
@@ -5506,6 +5602,99 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    substation_backup_api_backups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupsOut"];
+                };
+            };
+        };
+    };
+    substation_backup_api_back_up_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupQueuedOut"];
+                };
+            };
+        };
+    };
+    substation_backup_api_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    substation_backup_api_restore_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupQueuedOut"];
+                };
+            };
+        };
+    };
     apps_catalogue_api_bin_list_bin: {
         parameters: {
             query?: {

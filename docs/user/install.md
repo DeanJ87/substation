@@ -68,6 +68,25 @@ An update stops the workers. Whatever they were doing goes back in the queue, an
 had finished (its calibrated and registered subs) rather than starting again, so updating while a long stack runs
 costs minutes, not the whole stack.
 
+## Backups
+
+SubStation backs up its database every night (Settings → Backups: on or off, the time, how many to keep) as one
+`.tar.gz` holding every table and a manifest. Your image files are not in it, only what SubStation knows about
+them. Backups go to `station/backups` in your data folder by default. To keep them somewhere else, mount a folder
+into the `api` and `worker` services (owned by user 1000) in an override file and name it in Settings → Backups:
+
+```yaml
+services:
+  api:
+    volumes: ["/mnt/pool/backups/substation:/backups"]
+  worker:
+    volumes: ["/mnt/pool/backups/substation:/backups"]
+```
+
+Settings → Backups also backs up on demand, downloads a backup, and restores one: new work pauses, running jobs
+finish, and the whole database is replaced in one go. A backup restores into the same SubStation version that made
+it.
+
 ## Kubernetes (k3s and others)
 
 Run PostgreSQL (a managed one, or an operator such as CloudNativePG) and the three SubStation images as
