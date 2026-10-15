@@ -5039,6 +5039,101 @@
     "title": "NightOut",
     "type": "object"
    },
+   "NightScope": {
+    "description": "The shared scope (spec 018) less what a night's address already says (its date and place).",
+    "properties": {
+     "camera": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Camera"
+     },
+     "collection": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Collection"
+     },
+     "dataset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dataset"
+     },
+     "filter": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filter"
+     },
+     "project": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project"
+     },
+     "rig": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rig"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "telescope": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Telescope"
+     }
+    },
+    "title": "NightScope",
+    "type": "object"
+   },
    "NotifyTestOut": {
     "properties": {
      "failed": {
@@ -9533,6 +9628,194 @@
     "title": "StackPreviewOut",
     "type": "object"
    },
+   "StatsScope": {
+    "properties": {
+     "camera": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Camera"
+     },
+     "collection": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Collection"
+     },
+     "dataset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dataset"
+     },
+     "date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Date"
+     },
+     "date_from": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Date From"
+     },
+     "date_to": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Date To"
+     },
+     "filter": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filter"
+     },
+     "lat": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lat"
+     },
+     "lon": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lon"
+     },
+     "project": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project"
+     },
+     "q": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Q"
+     },
+     "rig": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rig"
+     },
+     "site": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "telescope": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Telescope"
+     },
+     "within_km": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Within Km"
+     }
+    },
+    "title": "StatsScope",
+    "type": "object"
+   },
    "SubOut": {
     "properties": {
      "altitude": {
@@ -10713,8 +10996,268 @@
   },
   "/calibration-sets": {
    "get": {
+    "description": "Raw calibration sets in the shared scope (spec 018): nights, place, camera, filter, a rig (its camera) and\nfree text (type, filter, camera, or a date as search reads it). `night` is the older name for `date`. Not paged:\nthe Calibration page groups every set by night, and there are hundreds, not thousands.",
     "operationId": "apps_catalogue_api_calibration_list_calibration_sets",
     "parameters": [
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lat"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lon",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lon"
+      }
+     },
+     {
+      "in": "query",
+      "name": "within_km",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Within Km"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_from",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date From"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_to",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date To"
+      }
+     },
+     {
+      "in": "query",
+      "name": "camera",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "dataset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dataset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "target",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Target"
+      }
+     },
+     {
+      "in": "query",
+      "name": "q",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     },
      {
       "in": "query",
       "name": "type",
@@ -11267,9 +11810,269 @@
   },
   "/calibration/recalibration": {
    "get": {
-    "description": "Datasets whose calibrated subs now match different masters (002 C11): listed on the Calibration screen,\nre-calibrated only when you say so on the dataset's Calibration tab.",
+    "description": "Datasets whose calibrated subs now match different masters (002 C11): listed on the Calibration screen,\nre-calibrated only when you say so on the dataset's Calibration tab. Narrowed by the shared scope (spec 018):\na measurement is about its light, as a calibration match is, so it takes the match's paths.",
     "operationId": "apps_processing_api_pending_recalibration",
-    "parameters": [],
+    "parameters": [
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lat"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lon",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lon"
+      }
+     },
+     {
+      "in": "query",
+      "name": "within_km",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Within Km"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_from",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date From"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_to",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date To"
+      }
+     },
+     {
+      "in": "query",
+      "name": "camera",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "dataset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dataset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "target",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Target"
+      }
+     },
+     {
+      "in": "query",
+      "name": "q",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "content": {
@@ -13382,11 +14185,12 @@
   },
   "/datasets": {
    "get": {
+    "description": "Datasets in the shared scope (spec 018). `target` here keeps its older meaning, part of the name (FR-005):\nevery exact match is also a partial one, so a scope carried from another page still finds its target.",
     "operationId": "apps_catalogue_api_list_datasets",
     "parameters": [
      {
       "in": "query",
-      "name": "state",
+      "name": "site",
       "required": false,
       "schema": {
        "anyOf": [
@@ -13397,7 +14201,218 @@
          "type": "null"
         }
        ],
-       "title": "State"
+       "title": "Site"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lat"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lon",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lon"
+      }
+     },
+     {
+      "in": "query",
+      "name": "within_km",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Within Km"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_from",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date From"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_to",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date To"
+      }
+     },
+     {
+      "in": "query",
+      "name": "camera",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "dataset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dataset"
       }
      },
      {
@@ -13418,7 +14433,7 @@
      },
      {
       "in": "query",
-      "name": "filter",
+      "name": "q",
       "required": false,
       "schema": {
        "anyOf": [
@@ -13429,7 +14444,23 @@
          "type": "null"
         }
        ],
-       "title": "Filter"
+       "title": "Q"
+      }
+     },
+     {
+      "in": "query",
+      "name": "state",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "State"
       }
      },
      {
@@ -14159,8 +15190,220 @@
   },
   "/frames": {
    "get": {
+    "description": "Frames in the shared scope (spec 018); `night` is the older name for `date` (FR-005). Free text also finds\na frame by its OBJECT header or its file's path.",
     "operationId": "apps_catalogue_api_list_frames",
     "parameters": [
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lat"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lon",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lon"
+      }
+     },
+     {
+      "in": "query",
+      "name": "within_km",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Within Km"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_from",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date From"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_to",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date To"
+      }
+     },
+     {
+      "in": "query",
+      "name": "camera",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
      {
       "in": "query",
       "name": "dataset",
@@ -14175,6 +15418,38 @@
         }
        ],
        "title": "Dataset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "target",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Target"
+      }
+     },
+     {
+      "in": "query",
+      "name": "q",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
       }
      },
      {
@@ -14224,22 +15499,6 @@
         }
        ],
        "title": "Status"
-      }
-     },
-     {
-      "in": "query",
-      "name": "q",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Q"
       }
      },
      {
@@ -15454,36 +16713,90 @@
   },
   "/library": {
    "get": {
+    "description": "Collections and ungrouped datasets, narrowed by the shared scope (spec 018) on the server: a collection is\nlisted when any of its datasets is in scope, and its card counts only those. The readouts stay whole.",
     "operationId": "apps_catalogue_api_library_library",
-    "parameters": [],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/LibraryHomeOut"
-        }
-       }
-      },
-      "description": "OK"
-     }
-    },
-    "security": [
-     {
-      "SessionAuth": []
-     }
-    ],
-    "summary": "Library",
-    "tags": [
-     "catalogue"
-    ]
-   }
-  },
-  "/library/stats": {
-   "get": {
-    "description": "Totals for what the Library's filters show (006, owner 2026-10-10): lights taken, hours per filter and\nrig, how many were kept or rejected, and the average SQM where the capture recorded it.",
-    "operationId": "apps_catalogue_api_library_library_stats",
     "parameters": [
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lat"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lon",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lon"
+      }
+     },
+     {
+      "in": "query",
+      "name": "within_km",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Within Km"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date"
+      }
+     },
      {
       "in": "query",
       "name": "date_from",
@@ -15520,7 +16833,7 @@
      },
      {
       "in": "query",
-      "name": "rig",
+      "name": "camera",
       "required": false,
       "schema": {
        "anyOf": [
@@ -15531,7 +16844,410 @@
          "type": "null"
         }
        ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
        "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "dataset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dataset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "target",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Target"
+      }
+     },
+     {
+      "in": "query",
+      "name": "q",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LibraryHomeOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Library",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/library/stats": {
+   "get": {
+    "description": "Totals for what the Library's filters show (006, owner 2026-10-10): lights taken, hours per filter and\nrig, how many were kept or rejected, and the average SQM where the capture recorded it. The filters are the\nshared scope (spec 018); `rig` may still be a rig's name (FR-005).",
+    "operationId": "apps_catalogue_api_library_library_stats",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lat"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lon",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lon"
+      }
+     },
+     {
+      "in": "query",
+      "name": "within_km",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Within Km"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_from",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date From"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_to",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date To"
+      }
+     },
+     {
+      "in": "query",
+      "name": "camera",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "dataset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dataset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "target",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Target"
       }
      },
      {
@@ -15898,8 +17614,269 @@
   },
   "/masters": {
    "get": {
+    "description": "Masters in the shared scope (spec 018). A master built here has no night of its own but the night its frames\nwere shot, so the nights are compared with the night shown, after the rest of the scope narrows the query.",
     "operationId": "apps_catalogue_api_calibration_list_masters",
-    "parameters": [],
+    "parameters": [
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lat"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lon",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lon"
+      }
+     },
+     {
+      "in": "query",
+      "name": "within_km",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Within Km"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_from",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date From"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_to",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date To"
+      }
+     },
+     {
+      "in": "query",
+      "name": "camera",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "dataset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dataset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "target",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Target"
+      }
+     },
+     {
+      "in": "query",
+      "name": "q",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "content": {
@@ -16078,7 +18055,7 @@
   },
   "/nights/{date}/subs": {
    "get": {
-    "description": "Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer.",
+    "description": "Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer,\nnarrowed by the rest of the shared scope (spec 018).",
     "operationId": "apps_processing_api_night_subs",
     "parameters": [
      {
@@ -16098,6 +18075,134 @@
       "schema": {
        "title": "Site",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "camera",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Camera"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rig",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Rig"
+      }
+     },
+     {
+      "in": "query",
+      "name": "telescope",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Telescope"
+      }
+     },
+     {
+      "in": "query",
+      "name": "filter",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Filter"
+      }
+     },
+     {
+      "in": "query",
+      "name": "collection",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Collection"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "dataset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dataset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "target",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Target"
       }
      }
     ],

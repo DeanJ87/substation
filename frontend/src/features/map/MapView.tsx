@@ -12,7 +12,8 @@ import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import { useAppTheme } from '../../design/ThemeContext'
 import { coords, usePlaceName } from './place'
-import { type MapSearch, nearest, period, periodText, presets } from './search'
+import { omit, readScope, scopeQuery, type Scope } from '../scope/scope'
+import { besidesNights, type MapSearch, mapQuery, nearest, periodText, presets } from './search'
 import { baseLayer } from './tiles'
 import s from './map.module.css'
 
@@ -49,23 +50,22 @@ export function MapView() {
   const map = useRef<L.Map | null>(null)
   const search = route.useSearch()
   const navigate = useNavigate()
-  const when = period(search)
+  const query = mapQuery(search)
+  // what the links on the panel carry on (spec 018): the scope, not where the map is looking
+  const carry = scopeQuery(omit(readScope(search), 'site'))
   // the place picked on the map; until one is, the place the address points at
   const [picked, setPicked] = useState<string | null>(null)
   const places = useQuery({
-    queryKey: ['map', when.since ?? '', when.until ?? ''],
-    queryFn: async () => unwrap(await api.GET('/map', { params: { query: when } })),
+    queryKey: ['map', query],
+    queryFn: async () => unwrap(await api.GET('/map', { params: { query } })),
   })
   const list = places.data?.places ?? []
   const pointed = search.lat != null && search.lon != null ? nearest(list, search.lat, search.lon) : null
   const chosen = picked === '' ? null : (list.find((p) => p.key === picked) ?? pointed)
   const setChosen = (p: Place | null) => setPicked(p ? p.key : '')
-  const setPeriod = (next: MapSearch) =>
-    void navigate({
-      to: '/map',
-      search: { lat: search.lat, lon: search.lon, zoom: search.zoom, ...next },
-      replace: true,
-    })
+  // the nights change; the view and the rest of the scope stay
+  const setSearch = (next: MapSearch) => void navigate({ to: '/map', search: next, replace: true })
+  const setPeriod = (next: Scope) => setSearch({ ...omit(search, 'date', 'date_from', 'date_to'), ...next })
 
   useEffect(() => {
     if (!box.current || map.current) return
@@ -130,7 +130,13 @@ export function MapView() {
         role="region"
         aria-label="Map of where subs were shot"
       />
-      <DateFilter search={search} onChange={setPeriod} />
+      <DateFilter
+        search={search}
+        onChange={setPeriod}
+        onWiden={() =>
+          setSearch({ lat: search.lat, lon: search.lon, zoom: search.zoom, ...omit(search, ...NARROWING) })
+        }
+      />
       {places.isSuccess && !places.data.places.length && (
         <p className={s.empty}>
           {periodText(search)
@@ -162,6 +168,7 @@ export function MapView() {
                     to="/collections/$id"
                     params={{ id: String(c.id) }}
                     search={{
+                      ...carry,
                       tab: 'sessions',
                       nights: chosen.nights.map((n) => n.date).join(','),
                       at: `${chosen.lat.toFixed(4)},${chosen.lon.toFixed(4)}`,
@@ -180,7 +187,11 @@ export function MapView() {
           <ul className={s.nights}>
             {chosen.nights.map((n) => (
               <li key={n.date}>
-                <Link to="/nights/$date" params={{ date: n.date }} search={{ site: n.site_key ?? undefined }}>
+                <Link
+                  to="/nights/$date"
+                  params={{ date: n.date }}
+                  search={{ ...carry, site: n.site_key ?? undefined }}
+                >
                   {day(n.date)}
                 </Link>
                 <span className="muted">{n.subs.toLocaleString('en-GB')} subs</span>
@@ -193,10 +204,33 @@ export function MapView() {
   )
 }
 
-function DateFilter({ search, onChange }: { search: MapSearch; onChange: (s: MapSearch) => void }) {
+// what else a link can narrow the map to, besides its nights
+const NARROWING: (keyof Scope)[] = [
+  'site',
+  'camera',
+  'rig',
+  'telescope',
+  'filter',
+  'collection',
+  'project',
+  'dataset',
+  'target',
+  'q',
+]
+
+function DateFilter({
+  search,
+  onChange,
+  onWiden,
+}: {
+  search: MapSearch
+  onChange: (s: Scope) => void
+  onWiden: () => void
+}) {
   const [today] = useState(() => new Date())
   const text = periodText(search)
-  const one = search.date ?? (search.from && search.from === search.to ? search.from : '')
+  const narrowed = Object.keys(scopeQuery(besidesNights(search))).length
+  const one = search.date ?? (search.date_from && search.date_from === search.date_to ? search.date_from : '')
   return (
     <div className={s.when} role="group" aria-label="Nights shown">
       <label className={s.whenDay}>
@@ -219,6 +253,15 @@ function DateFilter({ search, onChange }: { search: MapSearch; onChange: (s: Map
         <button type="button" className={s.whenPreset} onClick={() => onChange({})}>
           Every night
         </button>
+      )}
+      {narrowed > 0 && (
+        // carried from another page (a collection, the Library's filters): say so, and offer everything
+        <span className={s.whenText}>
+          Narrowed by {narrowed} filter{narrowed === 1 ? '' : 's'} from the page you came from{' '}
+          <button type="button" className={s.whenPreset} onClick={onWiden}>
+            Show everything
+          </button>
+        </span>
       )}
     </div>
   )

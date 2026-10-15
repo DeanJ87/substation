@@ -17,6 +17,7 @@ import { SubView } from '../sub/SubDetail'
 import v from '../v2/v2.module.css'
 import tb from '../library/tables.module.css'
 import s from './night.module.css'
+import { forNight, omit, readScope, scopeQuery } from '../scope/scope'
 
 const route = getRouteApi('/app/nights/$date')
 type Sub = components['schemas']['SubOut']
@@ -46,6 +47,8 @@ export function NightView() {
     retry: false,
   })
   const site = q.data?.site_key
+  // the scope a link brought (spec 018), carried on to the map, the nights either side and What to shoot
+  const carry = scopeQuery(omit(readScope(search), 'site'))
   const subsQ = useQuery({
     queryKey: ['night-subs', date, site],
     enabled: !!site,
@@ -85,7 +88,10 @@ export function NightView() {
       <header className={v.head}>
         <div>
           <div className={v.crumbs}>
-            <Link to="/map">Map</Link> / Night
+            <Link to="/map" search={carry}>
+              Map
+            </Link>{' '}
+            / Night
           </div>
           <h1>{nightText(n.date)}</h1>
           <div className={v.sub}>
@@ -93,17 +99,30 @@ export function NightView() {
             {n.first_utc && n.last_utc ? ` · ${timeText(n.first_utc)} to ${timeText(n.last_utc)}` : ''}
           </div>
         </div>
-        <nav className={v.actions} aria-label="Other nights">
+        <nav className={v.actions} aria-label="Other nights, and what to shoot">
           {n.previous && (
-            <Link to="/nights/$date" params={{ date: n.previous }} search={{ site }} className={v.pill}>
+            <Link
+              to="/nights/$date"
+              params={{ date: n.previous }}
+              search={{ ...carry, site }}
+              className={v.pill}
+            >
               ← {nightText(n.previous)}
             </Link>
           )}
           {n.next && (
-            <Link to="/nights/$date" params={{ date: n.next }} search={{ site }} className={v.pill}>
+            <Link to="/nights/$date" params={{ date: n.next }} search={{ ...carry, site }} className={v.pill}>
               {nightText(n.next)} →
             </Link>
           )}
+          <Link
+            to="/calibration/to-shoot"
+            search={forNight(readScope(search), n.date, site)}
+            className={v.pill}
+            title="The calibration frames that would release this night's waiting subs"
+          >
+            What to shoot
+          </Link>
         </nav>
       </header>
 
@@ -115,7 +134,7 @@ export function NightView() {
               key={k}
               to="/nights/$date"
               params={{ date }}
-              search={{ site: k }}
+              search={{ ...carry, site: k }}
               className={v.pill}
               aria-current={k === site ? 'page' : undefined}
             >

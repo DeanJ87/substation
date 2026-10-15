@@ -9,7 +9,7 @@ from ninja import Query
 from substation.api import ApiError, Schema
 
 from .api import FrameSummaryOut, frame_summary, router
-from .scope import Scope
+from .scope import Scope, apply, without
 from .services.calibration_queries import calibration_sets, masters, value_sources
 
 
@@ -101,7 +101,15 @@ def _built(cs) -> dict:  # noqa: ANN001
 
 
 @router.get("/calibration-sets", response=list[CalibrationSetOut])
-def list_calibration_sets(request, type: str | None = None, night: date | None = None):  # noqa: A002
+def list_calibration_sets(
+    request,
+    scope: Query[Scope],
+    type: str | None = None,  # noqa: A002
+    night: date | None = None,
+):
+    """Raw calibration sets in the shared scope (spec 018): nights, place, camera, filter, a rig (its camera) and
+    free text (type, filter, camera, or a date as search reads it). `night` is the older name for `date`. Not paged:
+    the Calibration page groups every set by night, and there are hundreds, not thousands."""
     return [
         CalibrationSetOut(
             id=cs.pk,
@@ -120,12 +128,14 @@ def list_calibration_sets(request, type: str | None = None, night: date | None =
             filter_blocks=cs.filter_blocks or {},
             **_built(cs),
         )
-        for cs in calibration_sets(type, night)
+        for cs in apply(calibration_sets(type, night), scope, "set")
     ]
 
 
 @router.get("/masters", response=list[MasterOut])
-def list_masters(request):
+def list_masters(request, scope: Query[Scope]):
+    """Masters in the shared scope (spec 018). A master built here has no night of its own but the night its frames
+    were shot, so the nights are compared with the night shown, after the rest of the scope narrows the query."""
     from apps.processing.models import BuiltMaster, MasterWindow
 
     use = _usage()
@@ -144,7 +154,7 @@ def list_masters(request):
         if f.date_obs_utc and (k not in newest or f.date_obs_utc > newest[k]):
             newest[k] = f.date_obs_utc
     out = []
-    for f in rows:
+    for f in apply(masters(), without(scope, "date", "date_from", "date_to"), "master"):
         sources = value_sources(f, ("gain", "offset", "set_temp", "ccd_temp", "exptime", "filter"))
         temp_missing = sources["set_temp"] is None and sources["ccd_temp"] is None
         missing = [k for k in ("gain", "offset") if sources[k] is None] + (
@@ -186,7 +196,17 @@ def list_masters(request):
                 ),
             )
         )
-    return out
+    return [m for m in out if _in_nights(m.night, scope)]
+
+
+def _in_nights(night: date | None, scope: Scope) -> bool:
+    if not (scope.date or scope.date_from or scope.date_to):
+        return True
+    if night is None:
+        return False
+    if scope.date and night != scope.date:
+        return False
+    return not (scope.date_from and night < scope.date_from) and not (scope.date_to and night > scope.date_to)
 
 
 class WindowIn(Schema):

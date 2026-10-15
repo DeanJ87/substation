@@ -2,11 +2,19 @@
 
 - [X] SC1 (2026-10-15) `Scope` schema (FR-001) and `scope.apply_frames / datasets / nights / masters / sets / collections`
   (FR-002); tests: every input on every type
-- [~] SC2 (2026-10-15, partly) Map, review, calibration blocking and what to shoot take the scope; library and
-  server-side totals to come (FR-006)
-- [ ] SC3 Frames, datasets, library stats, calibration sets, nights move to the shared names; old names still
-  accepted (FR-005); shared paging (FR-003)
-- [~] SC4 (2026-10-15, started) `readScope`/`scopeQuery` and the shared filter bar, on What to shoot; links carry the scope; browser-side filtering removed
-  (FR-004)
-- [ ] SC5 Cameras as records; `camera` by id
+- [X] SC2 (2026-10-15) Map, review, calibration blocking and what to shoot take the scope; the Library (`/library`)
+  and its totals (`/library/stats`) take it too, worked out on the server (FR-006); a collection's card counts only
+  what the scope covers; Newer calibration (`/calibration/recalibration`) takes it as well
+- [X] SC3 (2026-10-15) Frames, datasets, library stats, calibration sets, masters and a night's subs move to the shared
+  names; old names still accepted (FR-005): `night` on frames and calibration sets, a rig by name on library stats,
+  `target` as part of the name on datasets, `since`/`until` on the map. Shared paging (FR-003) where the list was
+  already paged (frames, datasets); calibration sets and masters stay whole lists (see 018-DR-06)
+- [X] SC4 (2026-10-15) `readScope`/`scopeQuery`, `useScope()` and the shared filter bar (with a search box and chips for
+  what a link brought) on the Library, Calibration and What to shoot; the map reads the same scope from its
+  address; links carry it: Library → collection → map → night → What to shoot, and back; browser-side filtering
+  removed from the Library and Calibration (FR-004); tests: `readScope`, `replaceScope`, `forNight`, `inNights`,
+  the map's address, and every endpoint above
+- [ ] SC5 Cameras as records; `camera` by id. Open (2026-10-15): cameras are free text on frames, datasets, rigs and
+  calibration sets, so a camera record needs a model, a migration that backfills it from all four, and the rig
+  editor to choose one; not done with the scope work. `camera` stays a name, matched whatever the case (018-DR-01)
 - [ ] SC6 Drop the old parameter names once nothing sends them

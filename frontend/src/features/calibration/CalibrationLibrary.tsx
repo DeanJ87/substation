@@ -20,6 +20,9 @@ import { useSort } from '../../components/sortable'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
+import { ScopeBar } from '../scope/ScopeBar'
+import { scopeParams, scopeQuery, type Scope } from '../scope/scope'
+import { useScope } from '../scope/useScope'
 
 type CalSet = components['schemas']['CalibrationSetOut']
 type Master = components['schemas']['MasterOut']
@@ -52,58 +55,31 @@ const hhmm = (iso: string) =>
 
 export function CalibrationLibrary() {
   useCatalogueLiveUpdates()
+  // the same filters as the Library, by the same names, in the address (spec 018); the server narrows the lists
+  const [scope, setScope] = useScope()
+  const query = scopeQuery(scope)
   const sets = useQuery({
-    queryKey: ['calibration-sets'],
-    queryFn: async () => unwrap(await api.GET('/calibration-sets')),
+    queryKey: ['calibration-sets', query],
+    queryFn: async () => unwrap(await api.GET('/calibration-sets', { params: { query } })),
+    placeholderData: (prev) => prev,
   })
-  const masters = useQuery({ queryKey: ['masters'], queryFn: async () => unwrap(await api.GET('/masters')) })
+  const masters = useQuery({
+    queryKey: ['masters', query],
+    queryFn: async () => unwrap(await api.GET('/masters', { params: { query } })),
+    placeholderData: (prev) => prev,
+  })
   const [selected, setSelected] = useState<string | null>(null)
-  const [rig, setRig] = useState('')
-  // the same search and filters as the Library (owner 2026-10-11)
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
   const filters = useMemo(
-    () => [...new Set((masters.data ?? []).map((m) => m.filter).filter((x): x is string => !!x))].sort(),
-    [masters.data],
+    () =>
+      [
+        ...new Set(
+          [...(masters.data ?? []), ...(sets.data ?? [])]
+            .map((m) => m.filter)
+            .filter((x): x is string => !!x),
+        ),
+      ].sort(),
+    [masters.data, sets.data],
   )
-  const term = search.trim().toLowerCase()
-  const inRange = (night: string | null | undefined) =>
-    (!from && !to) || (!!night && (!from || night >= from) && (!to || night <= to))
-  const matchesMaster = (m: Master) =>
-    (!rig || rigOf(m) === rig) &&
-    (!filter || m.filter === filter) &&
-    inRange(m.night) &&
-    (!term ||
-      [
-        TYPE[m.frame_type],
-        m.filter,
-        m.camera,
-        m.telescope,
-        m.exptime_s && `${m.exptime_s} s`,
-        m.gain != null && `gain ${m.gain}`,
-        m.primary_path,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(term))
-  const matchesSet = (cs: CalSet) =>
-    (!filter || cs.filter === filter) &&
-    inRange(cs.night) &&
-    (!term ||
-      [
-        TYPE[cs.type],
-        cs.filter,
-        cs.camera,
-        cs.exptime_s && `${cs.exptime_s} s`,
-        cs.gain != null && `gain ${cs.gain}`,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(term))
   const rigs = useMemo(() => [...new Set((masters.data ?? []).map(rigOf))].sort(), [masters.data])
   const act = useCalibrationActions()
   const navigate = useNavigate()
@@ -129,15 +105,14 @@ export function CalibrationLibrary() {
   })
   const byNight = useMemo(() => {
     const m = new Map<string, CalSet[]>()
-    for (const cs of (sets.data ?? []).filter(matchesSet)) {
+    for (const cs of sets.data ?? []) {
       const k = cs.night ?? 'unknown'
       m.set(k, [...(m.get(k) ?? []), cs])
     }
     return [...m.entries()]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets.data, term, filter, from, to])
+  }, [sets.data])
   // a new search or filter starts each long list again from the top
-  const filterKey = [term, filter, from, to, rig].join('|')
+  const filterKey = scopeParams(scope)
   const nights = useProgressive(byNight, 8, filterKey)
   const setCount = byNight.reduce((n, [, l]) => n + l.length, 0)
 
@@ -163,7 +138,7 @@ export function CalibrationLibrary() {
           </p>
         </div>
         <div className={s.headButtons}>
-          <Link to="/calibration/to-shoot" className={v.pill}>
+          <Link to="/calibration/to-shoot" search={query} className={v.pill}>
             What to shoot
           </Link>
           <Button onClick={() => rescan.mutate()} disabled={rescan.isPending || !folders.length}>
@@ -178,37 +153,12 @@ export function CalibrationLibrary() {
           </Button>
         </div>
       </header>
-      <div className={s.headActions}>
-        <input
-          type="search"
-          placeholder="Search type, filter, camera, gain"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search"
-        />
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter">
-          <option value="">Filter: All</option>
-          {filters.map((f) => (
-            <option key={f}>{f}</option>
-          ))}
-        </select>
-        <label className={s.dateField}>
-          From
-          <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label className={s.dateField}>
-          To
-          <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
-        </label>
-        <select value={rig} onChange={(e) => setRig(e.target.value)} aria-label="Rig">
-          <option value="">Rig: All</option>
-          {rigs.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ScopeBar
+        scope={scope}
+        onChange={setScope}
+        filters={filters}
+        search="Search type, filter, camera, month"
+      />
       {act.buildMissing.data && (
         <p className="muted">
           {act.buildMissing.data.queued
@@ -217,11 +167,11 @@ export function CalibrationLibrary() {
         </p>
       )}
 
-      <Blocking />
-      <NewerCalibration />
+      <Blocking scope={scope} />
+      <NewerCalibration scope={scope} />
 
       <MastersTable
-        masters={(masters.data ?? []).filter(matchesMaster)}
+        masters={masters.data ?? []}
         filterKey={filterKey}
         loading={masters.isPending}
         onOpen={setSelected}
@@ -337,11 +287,12 @@ function NightSets({
   )
 }
 
-/** What is stopping grading (002-DR-02), above everything else. */
-function Blocking() {
+/** What is stopping grading (002-DR-02), above everything else; within the page's scope (spec 018). */
+function Blocking({ scope }: { scope: Scope }) {
+  const query = scopeQuery(scope)
   const q = useQuery({
-    queryKey: ['calibration-blocking'],
-    queryFn: async () => unwrap(await api.GET('/calibration/blocking')),
+    queryKey: ['calibration-blocking', query],
+    queryFn: async () => unwrap(await api.GET('/calibration/blocking', { params: { query } })),
   })
   const rows: Blocked[] = q.data ?? []
   const { visible, hasMore, more } = useProgressive(rows, 30)
@@ -356,7 +307,11 @@ function Blocking() {
     >
       <p className="muted">
         {subs.toLocaleString('en-GB')} subs waiting. Add the frames below or change the rig in Settings →
-        Rigs. <Link to="/calibration/to-shoot">What to shoot</Link> groups them into the frames to take.
+        Rigs.{' '}
+        <Link to="/calibration/to-shoot" search={query}>
+          What to shoot
+        </Link>{' '}
+        groups them into the frames to take.
       </p>
       <div className={s.pane}>
         <ul className={s.blockList}>
@@ -383,10 +338,11 @@ function Blocking() {
 }
 
 /** 002 C11: calibrated subs whose match now names different masters; re-calibrated only when you say so. */
-function NewerCalibration() {
+function NewerCalibration({ scope }: { scope: Scope }) {
+  const query = scopeQuery(scope)
   const q = useQuery({
-    queryKey: ['calibration-recalibration'],
-    queryFn: async () => unwrap(await api.GET('/calibration/recalibration')),
+    queryKey: ['calibration-recalibration', query],
+    queryFn: async () => unwrap(await api.GET('/calibration/recalibration', { params: { query } })),
   })
   const rows = q.data ?? []
   const { visible, hasMore, more } = useProgressive(rows, 30)

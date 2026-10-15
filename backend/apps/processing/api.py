@@ -274,10 +274,27 @@ def dataset_subs(request, id: int, night: date | None = None):  # noqa: A002
     return [sub_out(f) for f in qs]
 
 
+class NightScope(Schema):
+    """The shared scope (spec 018) less what a night's address already says (its date and place)."""
+
+    camera: str | None = None
+    rig: int | None = None
+    telescope: str | None = None
+    filter: str | None = None
+    collection: int | None = None
+    project: int | None = None
+    dataset: int | None = None
+    target: str | None = None
+
+
 @router.get("/nights/{date}/subs", response=list[SubOut])
-def night_subs(request, date: date, site: str):  # noqa: A002
-    """Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer."""
-    return [sub_out(f) for f in _lights(night__date=date, night__site_key=site, dataset__isnull=False)]
+def night_subs(request, date: date, site: str, scope: Query[NightScope]):  # noqa: A002
+    """Every light in a dataset on one night at one place, in time order (spec 012): the night page's viewer,
+    narrowed by the rest of the shared scope (spec 018)."""
+    from apps.catalogue.scope import apply
+
+    qs = _lights(night__date=date, night__site_key=site, dataset__isnull=False)
+    return [sub_out(f) for f in apply(qs, Scope(**scope.dict()), "frame")]
 
 
 class Spread(Schema):
@@ -1101,14 +1118,17 @@ class PendingRecalOut(Schema):
 
 
 @router.get("/calibration/recalibration", response=list[PendingRecalOut])
-def pending_recalibration(request):
+def pending_recalibration(request, scope: Query[Scope]):
     """Datasets whose calibrated subs now match different masters (002 C11): listed on the Calibration screen,
-    re-calibrated only when you say so on the dataset's Calibration tab."""
+    re-calibrated only when you say so on the dataset's Calibration tab. Narrowed by the shared scope (spec 018):
+    a measurement is about its light, as a calibration match is, so it takes the match's paths."""
     from apps.catalogue.api_library import label
+    from apps.catalogue.scope import apply
 
-    rows = SubMeasurement.objects.filter(
+    measured = SubMeasurement.objects.filter(
         state=MeasureState.DONE, frame__calibration__state=MatchState.MATCHED
-    ).values_list(
+    )
+    rows = apply(measured, scope, "match").values_list(
         "frame__dataset_id",
         "frame__night_id",
         "dark_id",

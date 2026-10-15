@@ -12,6 +12,7 @@ from substation.api import ApiError, Schema
 from .api import DatasetOut, dataset_out, router
 from .api_calibration import CalibrationSetOut, list_calibration_sets
 from .models import Dataset, DatasetNight, Frame, FrameStatus, Night
+from .scope import Scope
 
 
 class DatasetNightOut(Schema):
@@ -102,7 +103,7 @@ def night(request, date: date, site: str | None = None):  # noqa: A002
         site = max(sites, key=lambda k: Frame.objects.filter(night__date=date, night__site_key=k).count())
     n = get_object_or_404(Night, date=date, site_key=site)
     dns = DatasetNight.objects.filter(night=n).select_related("night", "dataset").order_by("first_utc")
-    sets = [cs for cs in list_calibration_sets(request, night=date)]
+    sets = list_calibration_sets(request, Scope(), night=date)
     other = dict(
         Frame.objects.filter(night=n, dataset__isnull=True, calibration_set__isnull=True)
         .exclude(status=FrameStatus.IGNORED)

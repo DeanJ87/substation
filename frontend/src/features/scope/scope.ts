@@ -53,3 +53,29 @@ export function scopeParams(s: Scope): string {
 export function isEmpty(s: Scope) {
   return Object.keys(scopeQuery(s)).length === 0
 }
+
+const KEYS: readonly string[] = [...TEXT, ...IDS]
+
+/** A page's search with its scope swapped for `next`: the page's own keys (tab, sub, zoom…) kept. */
+export function replaceScope<T extends object>(search: T, next: Scope): T & Scope {
+  const own = Object.fromEntries(Object.entries(search).filter(([k]) => !KEYS.includes(k))) as T
+  return { ...own, ...scopeQuery(next) }
+}
+
+/** The scope less some of its inputs (a page that shows one collection needn't carry it on to the Library). */
+export function omit(s: Scope, ...keys: (keyof Scope)[]): Scope {
+  return Object.fromEntries(Object.entries(scopeQuery(s)).filter(([k]) => !keys.includes(k as keyof Scope)))
+}
+
+/** The scope carried to one night's pages (What to shoot from a night): that night and place, not a range. */
+export function forNight(s: Scope, date: string, site?: string): Scope {
+  return { ...omit(s, 'date', 'date_from', 'date_to', 'site', 'q'), date, ...(site ? { site } : {}) }
+}
+
+/** Is `night` (YYYY-MM-DD) within the scope's nights? */
+export function inNights(s: Scope, night: string | null | undefined): boolean {
+  if (!s.date && !s.date_from && !s.date_to) return true
+  if (!night) return false
+  if (s.date) return night === s.date
+  return (!s.date_from || night >= s.date_from) && (!s.date_to || night <= s.date_to)
+}

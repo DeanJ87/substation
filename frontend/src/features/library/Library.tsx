@@ -2,7 +2,7 @@
 // not in a collection with SubStation's suggestion.
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button, EmptyState, ErrorState, Skeleton, Spinner } from '../../components/ui'
 import { VerdictBadge, type VerdictState } from '../../components/VerdictBadge'
 import { integrationText, monthSpan, nightText } from '../format'
@@ -23,6 +23,9 @@ import tb from './tables.module.css'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
+import { ScopeBar } from '../scope/ScopeBar'
+import { isEmpty, scopeParams, scopeQuery, type Scope } from '../scope/scope'
+import { useScope } from '../scope/useScope'
 
 const STATE_LABEL: Record<string, [VerdictState, string]> = {
   integ: ['integ', 'Integrating'],
@@ -41,22 +44,18 @@ type Readouts = {
 
 export function Library() {
   useLiveRefresh()
-  const q = useLibrary()
-  const [search, setSearch] = useState('')
-  const [rig, setRig] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  // the filters are the shared scope, in the address (spec 018): the server narrows the lists and the totals
+  const [scope, setScope] = useScope()
+  const q = useLibrary(scope)
   const d = q.data
-  const rigs = useMemo(
+  const filters = useMemo(
     () =>
       [
         ...new Set([
-          ...(d?.collections ?? []).flatMap((c) => c.rigs),
-          ...(d?.ungrouped ?? []).map((u) => u.rig ?? ''),
+          ...(d?.collections ?? []).flatMap((c) => Object.keys(c.filters)),
+          ...(d?.ungrouped ?? []).map((u) => u.dataset.filter ?? ''),
         ]),
-      ]
-        .filter(Boolean)
-        .sort(),
+      ].filter((f) => f && f !== '?'),
     [d],
   )
   if (q.isError)
@@ -73,25 +72,10 @@ export function Library() {
         <Skeleton height={220} />
       </div>
     )
-  const term = search.trim().toLowerCase()
-  // a night (ISO date) in the chosen range; "on 3 Oct" is the same date in both boxes
-  const inRange = (nights: string[]) =>
-    (!from && !to) || nights.some((n) => (!from || n >= from) && (!to || n <= to))
-  const cards = d.collections.filter(
-    (c) =>
-      (!term ||
-        `${c.name} ${c.objects} ${c.rigs.join(' ')} ${Object.keys(c.filters).join(' ')}`
-          .toLowerCase()
-          .includes(term)) &&
-      (!rig || c.rigs.includes(rig)) &&
-      inRange((c.nights ?? []).map(String)),
-  )
-  const ungrouped = d.ungrouped.filter(
-    (u) =>
-      (!term || `${u.label} ${u.dataset.target}`.toLowerCase().includes(term)) &&
-      (!rig || u.rig === rig) &&
-      inRange((u.nights ?? []).map(String)),
-  )
+  const cards = d.collections
+  const ungrouped = d.ungrouped
+  const scoped = !isEmpty(scope)
+  const resetKey = scopeParams(scope)
   const r = d.readouts as Readouts
   const needs = r.needs_you ?? { review: 0, reconcile: 0, stale: 0 }
   const needsTotal = needs.review + needs.reconcile + needs.stale
@@ -114,56 +98,18 @@ export function Library() {
           </div>
         </div>
         <div className={v.actions}>
-          <input
-            className={`${v.input} ${s.search}`}
-            placeholder="Search objects, rigs, filters"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search"
-          />
-          <select className={v.select} value={rig} onChange={(e) => setRig(e.target.value)} aria-label="Rig">
-            <option value="">Rig: All</option>
-            {rigs.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-          <label className={s.dateField}>
-            From
-            <input
-              type="date"
-              className={v.input}
-              value={from}
-              max={to || undefined}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-          </label>
-          <label className={s.dateField}>
-            To
-            <input
-              type="date"
-              className={v.input}
-              value={to}
-              min={from || undefined}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </label>
-          {(from || to) && (
-            <button
-              type="button"
-              className={v.pill}
-              onClick={() => {
-                setFrom('')
-                setTo('')
-              }}
-            >
-              Any date
-            </button>
-          )}
           <NewCollection />
         </div>
       </header>
 
-      <Stats q={search.trim()} rig={rig} from={from} to={to} />
+      <ScopeBar
+        scope={scope}
+        onChange={setScope}
+        filters={filters}
+        search="Search objects, rigs, filters, months"
+      />
+
+      <Stats scope={scope} />
 
       {/* what's worth knowing on opening SubStation (owner 2026-10-13): what to do next, not machine status */}
       <div className={v.readouts}>
@@ -230,15 +176,23 @@ export function Library() {
 
       {empty && <FirstRun />}
 
+      {scoped && !empty && !cards.length && !ungrouped.length && (
+        <EmptyState title="Nothing matches these filters">
+          Widen the nights, choose another rig or filter, or clear the filters.
+        </EmptyState>
+      )}
+
       {/* the slices start again from the top when the filters change */}
-      <CollectionCards cards={cards} resetKey={`${term}|${rig}|${from}|${to}`} />
-      <UngroupedList rows={ungrouped} collections={d.collections} resetKey={`${term}|${rig}|${from}|${to}`} />
+      <CollectionCards cards={cards} scope={scope} resetKey={resetKey} />
+      <UngroupedList rows={ungrouped} collections={d.collections} resetKey={resetKey} />
     </div>
   )
 }
 
-function CollectionCards({ cards, resetKey }: { cards: Card[]; resetKey: string }) {
+function CollectionCards({ cards, scope, resetKey }: { cards: Card[]; scope: Scope; resetKey: string }) {
   const navigate = useNavigate()
+  // a collection opens with the Library's filters, so its links (the map, a night) carry them on (spec 018)
+  const carry = scopeQuery(scope)
   const { visible, hasMore, more } = useProgressive(cards, 24, resetKey)
   if (!cards.length) return null
   return (
@@ -248,7 +202,10 @@ function CollectionCards({ cards, resetKey }: { cards: Card[]; resetKey: string 
           <CollectionCardView
             key={c.id}
             c={c}
-            onOpen={() => void navigate({ to: '/collections/$id', params: { id: String(c.id) } })}
+            carry={carry}
+            onOpen={() =>
+              void navigate({ to: '/collections/$id', params: { id: String(c.id) }, search: carry })
+            }
           />
         ))}
       </div>
@@ -295,7 +252,15 @@ function UngroupedList({
   )
 }
 
-function CollectionCardView({ c, onOpen }: { c: Card; onOpen: () => void }) {
+function CollectionCardView({
+  c,
+  carry,
+  onOpen,
+}: {
+  c: Card
+  carry: Record<string, string | number>
+  onOpen: () => void
+}) {
   // every sub counts, calibrated or not: the bar is all that was captured, split into usable, still waiting
   // (for calibration or grading) and rejected
   const time = Object.fromEntries(
@@ -317,7 +282,7 @@ function CollectionCardView({ c, onOpen }: { c: Card; onOpen: () => void }) {
       </button>
       <div className={s.cardBody}>
         <h2 className={s.cardTitle}>
-          <Link to="/collections/$id" params={{ id: String(c.id) }}>
+          <Link to="/collections/$id" params={{ id: String(c.id) }} search={carry}>
             {nameParts(c.name).title}
           </Link>
           {nameParts(c.name).designation && (
@@ -574,24 +539,13 @@ function NewCollection() {
   )
 }
 
-/** What the filters cover (owner 2026-10-10): lights taken, hours per filter and rig, kept and rejected, SQM. */
-function Stats({ q, rig, from, to }: { q: string; rig: string; from: string; to: string }) {
-  const query = {
-    ...(q ? { q } : {}),
-    ...(rig ? { rig } : {}),
-    ...(from ? { date_from: from } : {}),
-    ...(to ? { date_to: to } : {}),
-  }
-  // typing in search asks once it settles, not on every key
-  const key = JSON.stringify(query)
-  const [debounced, setDebounced] = useState(query)
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(JSON.parse(key) as typeof query), 250)
-    return () => clearTimeout(t)
-  }, [key])
+/** What the filters cover (owner 2026-10-10): lights taken, hours per filter and rig, kept and rejected, SQM.
+ * Worked out on the server for the shared scope (spec 018 FR-006); the search box settles before it asks. */
+function Stats({ scope }: { scope: Scope }) {
+  const query = scopeQuery(scope)
   const st = useQuery({
-    queryKey: ['library-stats', debounced],
-    queryFn: async () => unwrap(await api.GET('/library/stats', { params: { query: debounced } })),
+    queryKey: ['library-stats', query],
+    queryFn: async () => unwrap(await api.GET('/library/stats', { params: { query } })),
     placeholderData: (prev) => prev,
   })
   const d = st.data

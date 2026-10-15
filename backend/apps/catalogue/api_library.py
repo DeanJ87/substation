@@ -1,6 +1,7 @@
 """Library, collections and rigs (spec 006; v2 design L1–L3). On the catalogue router. No
 `from __future__ import annotations` here: see substation.api."""
 
+import hashlib
 import shutil
 from collections import defaultdict
 from datetime import date, datetime
@@ -9,11 +10,13 @@ from typing import Literal
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from django.shortcuts import get_object_or_404
+from ninja import Query
 
 from substation.api import ApiError, Schema, Status, admin_required
 
 from .api import DatasetOut, dataset_out, router
 from .models import Collection, Dataset, DatasetNight, Rig
+from .scope import Scope, apply, nights_q, rig_id
 from .services.library import add_to_collection, centre, ensure_rig, label, refresh_objects, suggest
 
 
@@ -161,8 +164,10 @@ def clean_goals(current: dict, change: dict[str, float | None]) -> dict:
     return goals
 
 
-def _card(col: Collection) -> CollectionCard:
-    ds = list(col.datasets.select_related("rig"))
+def _card(col: Collection, scope: Scope | None = None) -> CollectionCard:
+    """A collection's card; with a scope, its totals are for what the scope covers (spec 018 FR-006): the datasets
+    it matches, and their sessions on the nights and at the place it names."""
+    ds = list(apply(col.datasets.select_related("rig"), scope, "dataset"))
     for d in ds:
         ensure_rig(d)
     filters: dict[str, float] = defaultdict(float)
@@ -174,6 +179,8 @@ def _card(col: Collection) -> CollectionCard:
         split[f][1] += d.accepted_integration_s or 0
         split[f][2] += d.rejected_integration_s or 0
     nights = DatasetNight.objects.filter(dataset__in=ds)
+    if scope is not None:
+        nights = nights.filter(nights_q(scope, "night__", "night__site_key"))
     span = nights.aggregate(first=Min("night__date"), last=Max("night__date"))
     from apps.processing.models import Master
 
@@ -291,13 +298,20 @@ def _home_readouts() -> dict:
 
 
 @router.get("/library", response=LibraryHomeOut)
-def library(request):
-    cols = [_card(c) for c in Collection.objects.order_by("name")]
+def library(request, scope: Query[Scope]):
+    """Collections and ungrouped datasets, narrowed by the shared scope (spec 018) on the server: a collection is
+    listed when any of its datasets is in scope, and its card counts only those. The readouts stay whole."""
+    scoped = not scope.is_empty()
+    in_scope = apply(Dataset.objects.filter(sub_count__gt=0), scope, "dataset")
+    collections = Collection.objects.order_by("name")
+    if scoped:
+        collections = collections.filter(pk__in=in_scope.values("collection_id"))
+    cols = [_card(c, scope if scoped else None) for c in collections]
     # each suggestion compares one dataset's pointing with every grouped dataset's: work each out once
     centres = {d.pk: centre(d) for d in Dataset.objects.filter(collection__isnull=False)}
     ungrouped = [
         _lib_dataset(d, True, centres)
-        for d in Dataset.objects.filter(collection__isnull=True, sub_count__gt=0)
+        for d in in_scope.filter(collection__isnull=True)
         .select_related("rig")
         .order_by("target", "filter_norm")
     ]
@@ -333,7 +347,7 @@ def library(request):
         ungrouped=ungrouped,
         rigs=Rig.objects.count(),
         counts={
-            "datasets": Dataset.objects.filter(sub_count__gt=0).count(),
+            "datasets": in_scope.count(),
             "collections": len(cols),
             "ungrouped": len(ungrouped),
         },
@@ -899,52 +913,39 @@ def _sqm_by_frame(shas: list[str], keys: tuple[str, ...]) -> dict[str, float]:
     return out
 
 
+class StatsScope(Scope):
+    rig: int | str | None = None  # type: ignore[assignment]  # an id; a rig's name, the older way, still works
+
+
 @router.get("/library/stats", response=LibraryStatsOut)
-def library_stats(
-    request,
-    date_from: date | None = None,
-    date_to: date | None = None,
-    rig: str | None = None,
-    q: str | None = None,
-):
+def library_stats(request, scope: Query[StatsScope]):
     """Totals for what the Library's filters show (006, owner 2026-10-10): lights taken, hours per filter and
-    rig, how many were kept or rejected, and the average SQM where the capture recorded it."""
+    rig, how many were kept or rejected, and the average SQM where the capture recorded it. The filters are the
+    shared scope (spec 018); `rig` may still be a rig's name (FR-005)."""
     from django.core.cache import cache
-    from django.db.models import Q
 
     from apps.processing.api import COND
     from apps.processing.effective import effective
 
     # the totals take a couple of seconds over 12,000 lights and needn't be to the second: kept for a minute
-    key = f"library-stats:{date_from}:{date_to}:{rig}:{q}"
+    key = "library-stats:" + hashlib.sha256(scope.model_dump_json().encode()).hexdigest()
     if (hit := cache.get(key)) is not None:
         return hit
     from apps.processing.models import MachineGrade
 
     from .models import Frame, FrameStatus, FrameType
 
-    def scoped(qs, ds: str):  # noqa: ANN001, ANN202
-        qs = qs.select_related(f"{ds}__rig", "night").prefetch_related("verdicts")
-        if date_from:
-            qs = qs.filter(night__date__gte=date_from)
-        if date_to:
-            qs = qs.filter(night__date__lte=date_to)
-        if rig:
-            qs = qs.filter(**{f"{ds}__rig__name": rig})
-        if q:
-            qs = qs.filter(
-                Q(**{f"{ds}__target__icontains": q})
-                | Q(**{f"{ds}__collection__name__icontains": q})
-                | Q(**{f"{ds}__filter_norm__icontains": q})
-                | Q(**{f"{ds}__rig__name__icontains": q})
-            )
-        return qs
+    shared = Scope(**{**scope.dict(), "rig": rig_id(scope.rig)})
+
+    def scoped(qs, kind: str, ds: str):  # noqa: ANN001, ANN202
+        return apply(qs, shared, kind).select_related(f"{ds}__rig", "night").prefetch_related("verdicts")
 
     lights = Frame.objects.filter(frame_type=FrameType.LIGHT)
-    live = scoped(lights.filter(status=FrameStatus.CATALOGUED, dataset__isnull=False), "dataset")
+    live = scoped(lights.filter(status=FrameStatus.CATALOGUED, dataset__isnull=False), "frame", "dataset")
     # binned and deleted subs still count: history outlives the files (spec 011)
     gone = scoped(
         lights.filter(status__in=[FrameStatus.BINNED, FrameStatus.DELETED], binned_dataset__isnull=False),
+        "binned_frame",
         "binned_dataset",
     )
     frames = [*live, *gone]
