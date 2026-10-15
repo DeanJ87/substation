@@ -122,15 +122,29 @@ describe('the sky dome', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
-  it('keys targets and, with several rigs, rigs; a row hides its marks', () => {
+  it('brings one target into focus at a time; a rig row hides its marks', () => {
     const { container } = render(<SkyView sky={sky()} onOpen={() => {}} />)
     const before = marks(container).length
-    const heart = screen.getByRole('button', { name: /Heart Nebula/ })
-    expect(heart).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /Sony A7 III/ })).toBeInTheDocument()
-    fireEvent.click(heart)
-    expect(heart).toHaveAttribute('aria-pressed', 'false')
-    expect(marks(container).length).toBe(before - 2)
+    const targets = sky().targets.map((x) => screen.getByRole('button', { name: new RegExp(x.name) }))
+    expect(targets.filter((b) => b.getAttribute('aria-pressed') === 'true')).toHaveLength(1)
+    const other = targets.find((b) => b.getAttribute('aria-pressed') === 'false')!
+    fireEvent.click(other)
+    expect(other).toHaveAttribute('aria-pressed', 'true')
+    expect(targets.filter((b) => b.getAttribute('aria-pressed') === 'true')).toHaveLength(1)
+    expect(marks(container).length).toBe(before) // the others stay, faint
+    const sony = screen.getByRole('button', { name: /Sony A7 III/ })
+    fireEvent.click(sony)
+    expect(sony).toHaveAttribute('aria-pressed', 'false')
+    expect(marks(container).length).toBeLessThan(before)
+  })
+
+  it('turns round the dome', () => {
+    render(<SkyView sky={sky()} onOpen={() => {}} />)
+    expect(screen.getByText(/Facing south/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Turn right' }))
+    expect(screen.getByText(/Facing south-west/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'face south' }))
+    expect(screen.getByText(/Facing south ·/)).toBeInTheDocument()
   })
 
   it('replays the night with the slider', () => {

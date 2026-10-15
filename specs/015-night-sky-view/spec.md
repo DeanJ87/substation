@@ -88,3 +88,13 @@ dome); live position during a session; video export (a still image export may fo
   (N7). No refraction is applied: under half a degree above 2° altitude.
 - **015-DR-04 The map's address** is `/map?lat=&lon=&zoom=&date=` (or `from=`/`to=`); the place is the one nearest
   the given point within about 5 km.
+
+### Amendment 2026-10-15: the dome from the side, one target at a time
+
+- **015-DR-05** The dome is drawn in three dimensions, as the owner's reference shows: a wireframe hemisphere
+  (altitude rings at 30° and 60°, meridians every 45°, the far side dashed) over the horizon as an ellipse, seen
+  from behind and above the observer (32° up), facing south by default. Dragging sideways, or the turn buttons,
+  walks round it; "face south" puts it back. Replaces the top-down chart of 015-DR-04.
+- **015-DR-06** One target is in focus at a time: its track, marks and its position at the slider's time are
+  drawn fully; the others stay faint for context. It starts on the target with most subs; choosing a target in the
+  key brings it into focus. Rig rows still hide or show a rig.

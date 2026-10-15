@@ -314,3 +314,99 @@
   cursor: pointer;
   text-decoration: underline;
 }
+/* the dome from the side (2026-10-15) */
+.dome {
+  touch-action: pan-y; /* a sideways drag turns the dome; the page still scrolls up and down */
+  cursor: grab;
+}
+.dome:active {
+  cursor: grabbing;
+}
+.dome:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 4px;
+}
+.ground {
+  fill: color-mix(in srgb, var(--sst-panel-3) 70%, transparent);
+  stroke: none;
+}
+.gridBack {
+  fill: none;
+  stroke: var(--sst-line);
+  stroke-width: 0.35;
+  stroke-dasharray: 1.2 1.6;
+  opacity: 0.7;
+}
+.horizonBack {
+  fill: none;
+  stroke: var(--sst-muted);
+  stroke-width: 0.5;
+  opacity: 0.6;
+}
+.compassBack {
+  opacity: 0.55;
+}
+.keyOn {
+  background: var(--sst-panel-2);
+  box-shadow: inset 2px 0 0 var(--sst-accent);
+}
+.turnHint {
+  margin: 4px 0 0;
+  text-align: center;
+  color: var(--sst-muted);
+  font-size: 12px;
+}
+.linkButton {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--sst-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+/* a target not in focus is only quieter, not crossed out: it's still drawn, faintly */
+.keyTarget[aria-pressed='false'] .keyName {
+  text-decoration: none;
+  color: var(--sst-muted);
+}
+.keyTarget[aria-pressed='false'] {
+  opacity: 1;
+}
+.turnHint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.turn {
+  min-width: 32px;
+  min-height: 28px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+  color: var(--sst-text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.turn:hover,
+.turn:focus-visible {
+  border-color: var(--sst-accent);
+}
+.limb {
+  fill: none;
+  stroke: var(--sst-muted);
+  stroke-width: 0.6;
+  opacity: 0.8;
+}
+/* the grid is lines only: a meridian seen at an angle must never fill */
+.alt,
+.meridian,
+.horizon,
+.gridBack,
+.horizonBack,
+.limb,
+.track {
+  fill: none;
+}

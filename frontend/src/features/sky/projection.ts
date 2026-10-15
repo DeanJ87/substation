@@ -101,3 +101,61 @@ export function hourTicks(start: number, end: number): number[] {
   for (let t = Math.ceil(start / h) * h; t <= end; t += h) out.push(t)
   return out
 }
+
+// ---- the dome seen from the side (owner 2026-10-15) ---------------------------------------------------------
+// The sky as a wireframe dome over a horizon ellipse, seen from a little above and to one side: the viewer faces
+// `yaw` (an azimuth; 180 faces south, where most targets cross the meridian) and looks down by `tilt` degrees.
+
+export type View = { yaw: number; tilt: number }
+export const DEFAULT_VIEW: View = { yaw: 180, tilt: 32 }
+export type Pt3 = Pt & { front: boolean }
+
+const rad = (d: number) => (d * Math.PI) / 180
+
+/** Where (altitude, azimuth) lands on the drawing; `front` is true on the half of the dome facing the viewer. */
+export function project3d(alt: number, az: number, view: View = DEFAULT_VIEW, r = R): Pt3 {
+  const e = Math.sin(rad(az)) * Math.cos(rad(alt))
+  const n = Math.cos(rad(az)) * Math.cos(rad(alt))
+  const u = Math.sin(rad(alt))
+  const yaw = rad(view.yaw)
+  const tilt = rad(view.tilt)
+  const right = e * Math.cos(yaw) - n * Math.sin(yaw) // the viewer's right
+  const ahead = e * Math.sin(yaw) + n * Math.cos(yaw) // away from the viewer
+  const up = u * Math.cos(tilt) + ahead * Math.sin(tilt)
+  return {
+    x: round(right * r),
+    y: round(-up * r),
+    front: -ahead * Math.cos(tilt) + u * Math.sin(tilt) >= -1e-9,
+  }
+}
+
+/** The drawing's extent for a view: the dome's top, the horizon's near edge, and room for the compass. */
+export function domeBox(view: View = DEFAULT_VIEW, r = R) {
+  const top = -r * Math.cos(rad(view.tilt)) - 10
+  const bottom = r * Math.sin(rad(view.tilt)) + 14
+  return { x: -r - 14, y: top, w: 2 * r + 28, h: bottom - top }
+}
+
+/** A line along the sky (a ring or a meridian), as front and back pieces so the far side can be drawn fainter. */
+export function skyLine(points: [alt: number, az: number][], view: View = DEFAULT_VIEW, r = R) {
+  const front: Pt[][] = []
+  const back: Pt[][] = []
+  let run: Pt[] = []
+  let side: boolean | null = null
+  for (const [alt, az] of points) {
+    const p = project3d(alt, az, view, r)
+    if (side !== null && p.front !== side) {
+      run.push(p)
+      ;(side ? front : back).push(run)
+      run = [p]
+    } else run.push(p)
+    side = p.front
+  }
+  if (run.length > 1 && side !== null) (side ? front : back).push(run)
+  return { front: front.map(polyline).join(' '), back: back.map(polyline).join(' ') }
+}
+
+/** An altitude ring all the way round. */
+export const altRing = (alt: number) => Array.from({ length: 73 }, (_, i) => [alt, i * 5] as [number, number])
+/** A meridian from the horizon to the zenith. */
+export const azArc = (az: number) => Array.from({ length: 19 }, (_, i) => [i * 5, az] as [number, number])

@@ -1,6 +1,7 @@
-// The sky as it was shot (spec 015): a dome of the sky from where the night was shot, every sub a mark where its
-// target stood at the middle of its exposure, joined into a track per target; a colour per target and a shape per
-// rig. A slider replays the night; under it, altitude against time. The tracks list and the table of subs say the
+// The sky as it was shot (spec 015): a wireframe dome over the horizon, seen from the side, every sub a mark where
+// its target stood at the middle of its exposure, joined into a track per target; a colour per target and a shape
+// per rig. One target is in focus at a time (owner 2026-10-15); the others stay faint for context. Drag the dome,
+// or use the arrow keys on it, to walk round it. A slider replays the night; under it, altitude against time. The tracks list and the table of subs say the
 // same in words, for screen readers and keyboards.
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
@@ -10,17 +11,21 @@ import { integrationText, timeText } from '../format'
 import {
   type Pt,
   type Shape,
+  type View,
+  DEFAULT_VIEW,
   R,
   SHAPES,
+  altRing,
   at,
+  azArc,
   azAt,
-  compass,
+  domeBox,
   hourTicks,
   marker,
   polyline,
-  project,
-  ring,
+  project3d,
   series,
+  skyLine,
 } from './projection'
 import s from './sky.module.css'
 
@@ -58,6 +63,10 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [focus, setFocus] = useState<Focus>(null)
   const [hover, setHover] = useState<{ sub: SkySub; at: Pt } | null>(null)
+  // the target in focus: the one with the most subs to start with
+  const [chosen, setChosen] = useState<string | null>(null)
+  const [view, setView] = useState<View>(DEFAULT_VIEW)
+  const drag = useRef<{ x: number; yaw: number } | null>(null)
 
   const colourOf = useMemo(() => new Map(sky.targets.map((t, i) => [t.key, series(i)])), [sky.targets])
   const shapeOf = useMemo(
@@ -110,14 +119,24 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
       </p>
     )
 
+  const busiest = [...sky.targets].sort(
+    (a, b) =>
+      sky.tracks.filter((t) => t.target === b.key).reduce((n, t) => n + t.subs, 0) -
+      sky.tracks.filter((t) => t.target === a.key).reduce((n, t) => n + t.subs, 0),
+  )[0]?.key
+  const inFocus = chosen ?? busiest
+  const proj = (alt: number, az: number) => project3d(alt, az, view)
+  const box = domeBox(view)
+  const turn = (by: number) => setView((v) => ({ ...v, yaw: (((v.yaw + by) % 360) + 360) % 360 }))
+
   const shown = (x: SkySub) => {
     const tr = sky.tracks[x.track]
     return !hidden.has(tr.target) && !hidden.has(tr.rig) && (now == null || Date.parse(x.time) <= now)
   }
   const dimmed = (track: number) => {
-    if (!focus) return false
     const tr = sky.tracks[track]
-    return focus.kind === 'target' ? tr.target !== focus.key : tr.rig !== focus.key
+    if (focus) return focus.kind === 'target' ? tr.target !== focus.key : tr.rig !== focus.key
+    return tr.target !== inFocus
   }
   const toggle = (key: string) =>
     setHidden((h) => {
@@ -133,7 +152,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   for (const x of sky.subs) {
     if (!shown(x)) continue
     const k = `${x.track}:${x.segment}`
-    bySeg.set(k, [...(bySeg.get(k) ?? []), project(x.alt, x.az)])
+    bySeg.set(k, [...(bySeg.get(k) ?? []), proj(x.alt, x.az)])
   }
   for (const [k, pts] of bySeg)
     if (pts.length > 1) lines.push({ key: k, track: +k.split(':')[0], d: polyline(pts) })
@@ -144,7 +163,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
       ? (() => {
           const alt = at(sky.moon.points, now, (p) => p.alt)
           const az = azAt(sky.moon.points, now)
-          return alt != null && az != null && alt > 0 ? project(alt, az) : null
+          return alt != null && az != null && alt > 0 ? proj(alt, az) : null
         })()
       : null
 
@@ -153,28 +172,76 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
       <div className={s.domeWrap}>
         <svg
           className={s.dome}
-          viewBox={`${-R - 14} ${-R - 14} ${2 * R + 28} ${2 * R + 28}`}
+          viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
           role="img"
-          aria-label={`The sky from where this night was shot: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`}
+          aria-label={`The sky from where this night was shot, as a dome over the horizon facing ${facing(view.yaw)}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`}
+          onPointerDown={(e) => {
+            drag.current = { x: e.clientX, yaw: view.yaw }
+            e.currentTarget.setPointerCapture?.(e.pointerId)
+          }}
+          onPointerMove={(e) => {
+            if (!drag.current) return
+            const yaw = drag.current.yaw - (e.clientX - drag.current.x) * 0.5
+            setView((v) => ({ ...v, yaw: ((yaw % 360) + 360) % 360 }))
+          }}
+          onPointerUp={() => (drag.current = null)}
+          onPointerCancel={() => (drag.current = null)}
         >
-          <circle r={R} className={s.horizon} />
+          <path
+            d={skyLine(altRing(0), view).front + ' ' + skyLine(altRing(0), view).back}
+            className={s.ground}
+          />
           {[30, 60].map((a) => (
-            <circle key={a} r={ring(a)} className={s.alt} />
+            <path key={`b${a}`} d={skyLine(altRing(a), view).back} className={s.gridBack} />
           ))}
-          <line x1={0} y1={-R} x2={0} y2={R} className={s.meridian} />
-          <line x1={-R} y1={0} x2={R} y2={0} className={s.alt} />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((az) => (
+            <path key={`mb${az}`} d={skyLine(azArc(az), view).back} className={s.gridBack} />
+          ))}
+          <path d={skyLine(altRing(0), view).back} className={s.horizonBack} />
+          {/* the dome's outline, seen side on: half a circle from the horizon's east end to its west end */}
+          <path d={`M${-R} 0A${R} ${R} 0 0 1 ${R} 0`} className={s.limb} />
+          <path d={skyLine(altRing(0), view).front} className={s.horizon} />
           {[30, 60].map((a) => (
-            <text key={a} x={2} y={-ring(a) + 6} className={s.ringLabel}>
-              {a}°
-            </text>
+            <path key={`f${a}`} d={skyLine(altRing(a), view).front} className={s.alt} />
           ))}
-          {compass().map((c) => (
-            <text key={c.label} x={c.at.x} y={c.at.y + 3} className={s.compass} textAnchor="middle">
-              {c.label}
-            </text>
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((az) => (
+            <path
+              key={`mf${az}`}
+              d={skyLine(azArc(az), view).front}
+              className={az % 180 === 0 ? s.meridian : s.alt}
+            />
           ))}
+          {[30, 60].map((a) => {
+            const p = proj(a, view.yaw + 200) // on the near side, just off the near meridian
+            return (
+              <text key={a} x={p.x + 2} y={p.y - 2} className={s.ringLabel}>
+                {a}°
+              </text>
+            )
+          })}
+          {(
+            [
+              ['N', 0],
+              ['E', 90],
+              ['S', 180],
+              ['W', 270],
+            ] as const
+          ).map(([label, az]) => {
+            const p = proj(-7, az)
+            return (
+              <text
+                key={label}
+                x={p.x}
+                y={p.y + 3}
+                className={`${s.compass} ${p.front ? '' : s.compassBack}`}
+                textAnchor="middle"
+              >
+                {label}
+              </text>
+            )
+          })}
           {moonUp.length > 1 && (
-            <path d={polyline(moonUp.map((p) => project(p.alt, p.az)))} className={s.moonTrack} />
+            <path d={polyline(moonUp.map((p) => proj(p.alt, p.az)))} className={s.moonTrack} />
           )}
           {lines.map((l) => (
             <path
@@ -185,7 +252,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
             />
           ))}
           {sky.subs.filter(shown).map((x) => {
-            const p = project(x.alt, x.az)
+            const p = proj(x.alt, x.az)
             const tr = sky.tracks[x.track]
             const colour = colourOf.get(tr.target)
             const reject = x.verdict === 'reject'
@@ -205,12 +272,12 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
           })}
           {now != null &&
             sky.targets
-              .filter((t) => !hidden.has(t.key))
+              .filter((t) => !hidden.has(t.key) && t.key === (focus?.kind === 'target' ? focus.key : inFocus))
               .map((t) => {
                 const alt = at(t.curve, now, (p) => p.alt)
                 const az = azAt(t.curve, now)
                 if (alt == null || az == null || alt < 0) return null
-                const p = project(alt, az)
+                const p = proj(alt, az)
                 return (
                   <circle
                     key={t.key}
@@ -224,7 +291,24 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
               })}
           {moonNow && <circle cx={moonNow.x} cy={moonNow.y} r={4.5} className={s.moon} />}
         </svg>
-        {hover && <Tip sub={hover.sub} at={hover.at} sky={sky} />}
+        {hover && <Tip sub={hover.sub} at={hover.at} sky={sky} box={box} />}
+        <p className={s.turnHint}>
+          <button type="button" className={s.turn} onClick={() => turn(-45)} aria-label="Turn left">
+            ←
+          </button>
+          <span>Facing {facing(view.yaw)} · drag to turn</span>
+          <button type="button" className={s.turn} onClick={() => turn(45)} aria-label="Turn right">
+            →
+          </button>
+          {view.yaw !== DEFAULT_VIEW.yaw && (
+            <>
+              {' · '}
+              <button type="button" className={s.linkButton} onClick={() => setView(DEFAULT_VIEW)}>
+                face south
+              </button>
+            </>
+          )}
+        </p>
       </div>
 
       <div className={s.side}>
@@ -236,6 +320,8 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
           hidden={hidden}
           toggle={toggle}
           setFocus={setFocus}
+          inFocus={inFocus}
+          choose={setChosen}
         />
         <Facts sky={sky} />
       </div>
@@ -283,11 +369,24 @@ const fwhm = (x: SkySub) =>
       ? `FWHM ${x.fwhm_px.toFixed(2)} px`
       : ''
 
-function Tip({ sub, at: p, sky }: { sub: SkySub; at: Pt; sky: Sky }) {
+const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']
+const facing = (yaw: number) => COMPASS[Math.round(yaw / 45) % 8]
+
+function Tip({
+  sub,
+  at: p,
+  sky,
+  box,
+}: {
+  sub: SkySub
+  at: Pt
+  sky: Sky
+  box: { x: number; y: number; w: number; h: number }
+}) {
   const tr = sky.tracks[sub.track]
   const rig = sky.rigs.find((r) => r.key === tr.rig)?.name
-  const left = ((p.x + R + 14) / (2 * R + 28)) * 100
-  const top = ((p.y + R + 14) / (2 * R + 28)) * 100
+  const left = ((p.x - box.x) / box.w) * 100
+  const top = ((p.y - box.y) / box.h) * 100
   return (
     <div className={s.tip} style={{ left: `${left}%`, top: `${top}%` }} role="status">
       <strong>{tr.label}</strong>
@@ -316,6 +415,8 @@ function Key({
   hidden,
   toggle,
   setFocus,
+  inFocus,
+  choose,
 }: {
   sky: Sky
   colourOf: Map<string, string>
@@ -324,14 +425,17 @@ function Key({
   hidden: Set<string>
   toggle: (key: string) => void
   setFocus: (f: Focus) => void
+  inFocus: string | undefined
+  choose: (key: string) => void
 }) {
+  // a target row brings that target into focus; a rig row shows or hides that rig
   const row = (kind: 'target' | 'rig', key: string, name: string, swatch: ReactNode, detail: string) => (
     <li key={key}>
       <button
         type="button"
-        className={s.keyRow}
-        aria-pressed={!hidden.has(key)}
-        onClick={() => toggle(key)}
+        className={`${s.keyRow} ${kind === 'target' ? s.keyTarget : ''} ${kind === 'target' && key === inFocus ? s.keyOn : ''}`}
+        aria-pressed={kind === 'target' ? key === inFocus : !hidden.has(key)}
+        onClick={() => (kind === 'target' ? choose(key) : toggle(key))}
         onMouseEnter={() => setFocus({ kind, key })}
         onMouseLeave={() => setFocus(null)}
         onFocus={() => setFocus({ kind, key })}
@@ -376,7 +480,8 @@ function Key({
         </>
       )}
       <p className={s.keyHint}>
-        Filled: kept. Faded: down-weighted. Hollow: rejected. Choose a row to hide it.
+        Filled: kept. Faded: down-weighted. Hollow: rejected. Choose a target to bring it into focus
+        {many ? '; a rig to hide or show it' : ''}.
       </p>
     </div>
   )

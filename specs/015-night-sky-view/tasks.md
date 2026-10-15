@@ -21,3 +21,5 @@
   labels; slider and key are keyboard operable; phone layout stacks dome, slider, key and chart; screenshots in dark
   and light with two targets on one rig and a second rig
 - [ ] N7 (later) The same dome across all nights of a target on dataset and collection pages
+- [X] N8 (2026-10-15) The dome from the side (`project3d`, near and far halves, outline, drag and turn buttons) and
+  one target in focus at a time (015-DR-05, 015-DR-06); tests; screenshots facing south and south-west
