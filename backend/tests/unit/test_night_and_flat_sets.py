@@ -53,3 +53,19 @@ def test_flats_jittered_by_the_flat_wizard_are_one_set_and_darks_stay_exact():
     d2 = _frame("0", datetime(2026, 2, 17, 23, 31, tzinfo=UTC), exptime_s=61.0, **dark)
     assign_calibration_set(d2)
     assert d2.calibration_set_id != d1.calibration_set_id
+
+
+def test_a_frame_whose_set_was_merged_away_mid_reread_still_resolves():
+    """A long re-read holds frames loaded earlier; another frame can merge their set away (2026-10-14: the re-read
+    failed at 90% with CalibrationSet.DoesNotExist)."""
+    from apps.catalogue.models import CalibrationSet
+
+    common = {"frame_type": "dark", "camera": "ATR2600M", "gain": 100, "offset": 50}
+    a = _frame("g", datetime(2026, 10, 14, 20, 0, tzinfo=UTC), exptime_s=120.0, **common)
+    assign_calibration_set(a)
+    a.save()
+    stale = Frame.objects.get(pk=a.pk)  # loaded in an earlier batch
+    assert a.calibration_set_id is not None
+    CalibrationSet.objects.filter(pk=a.calibration_set_id).delete()
+    old, new = assign_calibration_set(stale)
+    assert old is None and new is not None and stale.calibration_set_id == new.pk

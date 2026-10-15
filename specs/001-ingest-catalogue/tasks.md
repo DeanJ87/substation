@@ -340,3 +340,5 @@ then T051 → T052 → T055 → T056, then T057 and T058 (UI) in parallel, T059 
 - [X] T124 (2026-10-14) `hash_file` re-checks path rules before reading; test
 - [X] T125 (2026-10-14) A light whose header says it holds several subs (STACKCNT or NCOMBINE above 1) is a master
   light, not a sub (001-DR-12); migration 0019 re-reads the targets holding one; test
+- [X] T126 (2026-10-15) A frame whose calibration set was merged away during a long re-read is placed afresh instead of
+  failing the re-read (the dataset case was T123); test

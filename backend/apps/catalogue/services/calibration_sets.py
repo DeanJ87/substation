@@ -72,7 +72,15 @@ def recount(cs: CalibrationSet) -> bool:
 def assign_calibration_set(frame: Frame) -> tuple[CalibrationSet | None, CalibrationSet | None]:
     """Place a calibration frame in its set (creating or merging sets as needed). Sets frame.calibration_set
     (not saved). Returns (old set, new set) so both can be recounted after the frame is saved."""
-    old = frame.calibration_set
+    # looked up, not followed: during a long re-read another frame can merge this frame's set away, and following
+    # the stale link failed the whole re-read at 90% (2026-10-14)
+    old = (
+        CalibrationSet.objects.filter(pk=frame.calibration_set_id).first()
+        if frame.calibration_set_id
+        else None
+    )
+    if old is None and frame.calibration_set_id:
+        frame.calibration_set = None
     t = frame.date_obs_utc
     eligible = (
         frame.frame_type in CALIBRATION_TYPES
