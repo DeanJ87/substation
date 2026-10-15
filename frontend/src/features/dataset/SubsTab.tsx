@@ -45,6 +45,11 @@ export function verdictState(sub: Sub): VerdictState {
   return 'integ'
 }
 
+/** A sub's capture time, local, to the minute: what tells the subs of one night apart. */
+function tileTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
 export function shortName(file: string): string {
   const m = file.match(/(_\d{3,5})(\.[a-z]+)?$/i)
   return m ? `…${m[1]}` : file.replace(/\.(xisf|fits?|fz)$/i, '')
@@ -472,12 +477,21 @@ function Tile({
         <span className={`${s.check} ${selected ? s.checkOn : ''}`} aria-hidden />
       </div>
       <div className={s.tileFoot}>
-        <button type="button" onClick={onOpen} className={`${s.tileName} ${s.tileOpen} ${v.mono}`}>
-          {shortName(sub.file)}
+        {/* what tells subs apart at a glance (2026-10-15): when it was taken and how it measured; the file name, which
+            is mostly the same for every sub, on hover */}
+        <button
+          type="button"
+          onClick={onOpen}
+          className={`${s.tileName} ${s.tileOpen} ${v.mono}`}
+          title={sub.file}
+          aria-label={`Open ${sub.file}`}
+        >
+          {sub.time ? tileTime(sub.time) : shortName(sub.file)}
+          {sub.exptime_s ? <span className={v.muted}> · {sub.exptime_s} s</span> : null}
         </button>
         <div className={`${v.mono} ${s.tileStats}`}>
-          {sub.exptime_s ? `${sub.exptime_s} s · ` : ''}
-          {fwhmText(sub)} · {num(sub.stars)}
+          {fwhmText(sub)} · ★ {num(sub.stars)}
+          {sub.guiding != null ? ` · ${sub.guiding.toFixed(2)}″ RMS` : ''}
         </div>
       </div>
     </div>
