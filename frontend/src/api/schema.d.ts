@@ -2110,6 +2110,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sky/survey/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sky Survey
+         * @description The all-sky survey image the dome draws behind its tracks; `name` is dss or mellinger.
+         */
+        get: operations["apps_processing_api_sky_sky_survey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/solving": {
         parameters: {
             query?: never;
@@ -9206,6 +9226,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SourceUse"][];
                 };
+            };
+        };
+    };
+    apps_processing_api_sky_sky_survey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

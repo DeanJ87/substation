@@ -23,3 +23,6 @@
 - [ ] N7 (later) The same dome across all nights of a target on dataset and collection pages
 - [X] N8 (2026-10-15) The dome from the side (`project3d`, near and far halves, outline, drag and turn buttons) and
   one target in focus at a time (015-DR-05, 015-DR-06); tests; screenshots facing south and south-west
+- [X] N9 (2026-10-15) `GET /sky/survey/{dss|mellinger}` fetched once and cached; `unproject`, `siderealDeg`,
+  `toEquatorial`, `surveyPixel` with tests (sidereal time at J2000, the LMC's pixel, the zenith at the latitude);
+  the survey drawn on the dome (015-DR-07); screenshots

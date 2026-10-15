@@ -159,3 +159,62 @@ export function skyLine(points: [alt: number, az: number][], view: View = DEFAUL
 export const altRing = (alt: number) => Array.from({ length: 73 }, (_, i) => [alt, i * 5] as [number, number])
 /** A meridian from the horizon to the zenith. */
 export const azArc = (az: number) => Array.from({ length: 19 }, (_, i) => [i * 5, az] as [number, number])
+
+// ---- from the drawing back to the sky (the survey behind the dome) ------------------------------------------
+
+/** The sky at a point of the drawing, on the side of the dome facing the viewer; null off the dome, and where that
+ * side is below the horizon (looking down at the floor, which hides the far side). The inverse of project3d. */
+export function unproject(
+  x: number,
+  y: number,
+  view: View = DEFAULT_VIEW,
+  r = R,
+): { alt: number; az: number } | null {
+  const sx = x / r
+  const up = -y / r
+  const rest = 1 - sx * sx - up * up
+  if (rest < 0) return null
+  const tilt = rad(view.tilt)
+  const yaw = rad(view.yaw)
+  // inside the horizon's ellipse is the floor: the near wall's lowest part lies over it, seen from outside
+  if (sx * sx + (up / Math.sin(tilt)) ** 2 <= 1) return null
+  for (const t of [-Math.sqrt(rest)]) {
+    const ahead = up * Math.sin(tilt) + t * Math.cos(tilt)
+    const u = up * Math.cos(tilt) - t * Math.sin(tilt)
+    if (u < 0) return null
+    const e = sx * Math.cos(yaw) + ahead * Math.sin(yaw)
+    const n = -sx * Math.sin(yaw) + ahead * Math.cos(yaw)
+    const az = (Math.atan2(e, n) * 180) / Math.PI
+    return { alt: (Math.asin(Math.min(1, u)) * 180) / Math.PI, az: (az + 360) % 360 }
+  }
+  return null
+}
+
+/** Local sidereal time in degrees at `t` (ms since 1970) and east longitude `lon`. */
+export function siderealDeg(t: number, lon: number): number {
+  const jd = t / 86_400_000 + 2440587.5
+  const gmst = 280.46061837 + 360.98564736629 * (jd - 2451545)
+  return (((gmst + lon) % 360) + 360) % 360
+}
+
+/** Right ascension and declination (degrees) of an altitude and azimuth, for latitude `lat` and sidereal time. */
+export function toEquatorial(alt: number, az: number, lat: number, lst: number): { ra: number; dec: number } {
+  const a = rad(alt)
+  const z = rad(az)
+  const p = rad(lat)
+  const dec = Math.asin(Math.sin(p) * Math.sin(a) + Math.cos(p) * Math.cos(a) * Math.cos(z))
+  const ha = Math.atan2(
+    -Math.sin(z) * Math.cos(a),
+    Math.cos(p) * Math.sin(a) - Math.sin(p) * Math.cos(a) * Math.cos(z),
+  )
+  const ra = lst - (ha * 180) / Math.PI
+  return { ra: ((ra % 360) + 360) % 360, dec: (dec * 180) / Math.PI }
+}
+
+/** Where (ra, dec) falls in the all-sky survey image: RA 360° at the left edge to 0° at the right, Dec +90° at top. */
+export function surveyPixel(ra: number, dec: number, w: number, h: number): [number, number] {
+  let x = w / 2 + ((180 - ra) / 360) * w
+  x = ((x % w) + w) % w
+  const y = Math.min(h - 1, Math.max(0, ((90 - dec) / 180) * h))
+  return [Math.min(w - 1, Math.floor(x)), Math.floor(y)]
+}

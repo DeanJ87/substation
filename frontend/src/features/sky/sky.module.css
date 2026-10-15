@@ -410,3 +410,33 @@
 .track {
   fill: none;
 }
+/* the sky survey under the dome's lines: same box as the drawing, faint */
+.survey {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  opacity: 0.75;
+  pointer-events: none;
+}
+.domeWrap > .dome {
+  position: relative;
+  z-index: 1;
+}
+.surveyPick {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+.surveyPick .turn[aria-pressed='true'] {
+  border-color: var(--sst-accent);
+  color: var(--sst-accent);
+}
+.credit,
+.surveyNote {
+  margin: 2px 0 0;
+  text-align: center;
+  color: var(--sst-muted);
+  font-size: 11px;
+}

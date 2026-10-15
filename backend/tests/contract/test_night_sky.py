@@ -138,3 +138,23 @@ def test_night_sky_without_a_place_lists_everything_as_unplaced(admin_client):
     Frame.objects.filter(pk=f.pk).update(site_lat=None, site_lon=None)
     r = admin_client.get("/api/v1/nights/2026-10-12/sky?site=unknown").json()
     assert r["subs"] == [] and r["unplaced"][0]["reason"] == "Where it was shot isn't known."
+
+
+def test_the_sky_survey_is_fetched_once_and_kept(admin_client, settings, tmp_path, monkeypatch):
+    """Spec 015 amendment: the all-sky image behind the dome comes from CDS the first time, then from the cache."""
+    import io
+    import urllib.request
+
+    settings.STATION_ROOT = tmp_path
+    calls = []
+
+    def fake(url, timeout=0):
+        calls.append(url)
+        return io.BytesIO(b"\xff\xd8" + b"x" * 20_000)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    for _ in range(2):
+        r = admin_client.get("/api/v1/sky/survey/dss")
+        assert r.status_code == 200 and r["Content-Type"] == "image/jpeg"
+    assert len(calls) == 1 and "DSS2" in calls[0] and "projection=CAR" in calls[0]
+    assert admin_client.get("/api/v1/sky/survey/nope").status_code == 404

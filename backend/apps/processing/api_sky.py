@@ -1,7 +1,9 @@
 """The night's sky (spec 015): every light where its target stood when it was taken, tracks per target and rig, the
 Moon and twilight. On the catalogue router. No `from __future__ import annotations` here: see substation.api."""
 
+import logging
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
@@ -13,6 +15,8 @@ from substation.api import Schema
 from . import sky
 from .api import _file, _kw
 from .effective import effective
+
+log = logging.getLogger("substation.sky")
 
 
 class SkyPoint(Schema):
@@ -255,3 +259,65 @@ def _sub(f: Frame, r, track: int, segment: int) -> SkySub:  # noqa: ANN001
         fwhm_arcsec=m.fwhm_arcsec if m else None,
         fwhm_px=m.fwhm_px if m else None,
     )
+
+
+# ---- the sky survey behind the dome (spec 015 amendment, 2026-10-15) -------------------------------------------
+# One all-sky image per survey, fetched once from the CDS image service and kept: right ascension runs from 360° at
+# the left edge to 0° at the right (centred on 180°), declination from +90° at the top to −90° at the bottom.
+SURVEYS = {
+    "dss": ("CDS/P/DSS2/color", "DSS2 colour: STScI/NASA, coloured and HEALPix-ed by CDS"),
+    "mellinger": ("CDS/P/Mellinger/color", "Mellinger all-sky colour mosaic (A. Mellinger), via CDS"),
+}
+SURVEY_SIZE = (4096, 2048)
+
+
+def survey_file(name: str) -> Path:
+    """The cached all-sky image, fetched the first time it's asked for."""
+    import urllib.parse
+    import urllib.request
+
+    from django.conf import settings
+
+    hips, _ = SURVEYS[name]
+    folder = Path(settings.STATION_ROOT) / "cache" / "sky"
+    path = folder / f"{name}-{SURVEY_SIZE[0]}.jpg"
+    if path.exists() and path.stat().st_size > 10_000:
+        return path
+    folder.mkdir(parents=True, exist_ok=True)
+    query = urllib.parse.urlencode(
+        {
+            "hips": hips,
+            "width": SURVEY_SIZE[0],
+            "height": SURVEY_SIZE[1],
+            "projection": "CAR",
+            "ra": 180,
+            "dec": 0,
+            "fov": 360,
+            "format": "jpg",
+            "coordsys": "icrs",
+        }
+    )
+    url = f"https://alasky.cds.unistra.fr/hips-image-services/hips2fits?{query}"
+    part = path.with_suffix(".part")
+    with urllib.request.urlopen(url, timeout=180) as resp, part.open("wb") as out:  # noqa: S310 (a fixed https host)
+        out.write(resp.read())
+    part.replace(path)
+    return path
+
+
+@router.get("/sky/survey/{name}", response={200: None, 404: None, 502: None})
+def sky_survey(request, name: str):
+    """The all-sky survey image the dome draws behind its tracks; `name` is dss or mellinger."""
+    from django.http import FileResponse, HttpResponse
+
+    if name not in SURVEYS:
+        return HttpResponse(status=404)
+    try:
+        path = survey_file(name)
+    except OSError as exc:
+        log.warning("Sky survey %s couldn't be fetched: %s", name, exc)
+        return HttpResponse(status=502)
+    resp = FileResponse(path.open("rb"), content_type="image/jpeg")
+    resp["Cache-Control"] = "private, max-age=2592000"
+    resp["X-Credit"] = SURVEYS[name][1]
+    return resp

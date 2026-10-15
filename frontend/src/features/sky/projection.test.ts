@@ -12,7 +12,11 @@ import {
   project3d,
   ring,
   series,
+  siderealDeg,
   skyLine,
+  surveyPixel,
+  toEquatorial,
+  unproject,
 } from './projection'
 
 describe('the dome projection', () => {
@@ -115,5 +119,46 @@ describe('the dome from the side', () => {
     const thirty = skyLine(altRing(30))
     expect(thirty.front).toMatch(/^M/)
     expect(thirty.back).toMatch(/^M/)
+  })
+})
+
+describe('back from the drawing to the sky', () => {
+  it('undoes project3d on both halves of the dome', () => {
+    let checked = 0
+    for (const [alt, az] of [
+      [10, 200],
+      [45, 30],
+      [80, 120],
+      [75, 300],
+      [60, 0],
+    ]) {
+      const p = project3d(alt, az)
+      const back = unproject(p.x, p.y)
+      // the near side comes back; a point over the floor (the near wall's lower part) is left bare
+      if (p.front && back) {
+        checked++
+        expect(back.alt).toBeCloseTo(alt, 1)
+        expect(back.az).toBeCloseTo(az, 1)
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(2)
+    expect(unproject(0, 200)).toBeNull() // off the dome
+    expect(unproject(0, 10)).toBeNull() // over the floor
+  })
+  it('puts the zenith at the latitude and the sidereal time', () => {
+    const lst = siderealDeg(Date.parse('2026-10-11T22:00:00Z'), -1.66)
+    const z = toEquatorial(90, 0, 54.99, lst)
+    expect(z.dec).toBeCloseTo(54.99, 5)
+    expect(z.ra).toBeCloseTo(lst, 5)
+  })
+  it('knows the sidereal time (J2000.0 at Greenwich: 280.46°)', () => {
+    expect(siderealDeg(Date.parse('2000-01-01T12:00:00Z'), 0)).toBeCloseTo(280.46, 1)
+  })
+  it('finds the Large Magellanic Cloud where the survey image has it', () => {
+    const [x, y] = surveyPixel(80.9, -69.8, 2048, 1024)
+    expect(x).toBeGreaterThan(1580)
+    expect(x).toBeLessThan(1610)
+    expect(y).toBeGreaterThan(900)
+    expect(y).toBeLessThan(915)
   })
 })

@@ -98,3 +98,13 @@ dome); live position during a session; video export (a still image export may fo
 - **015-DR-06** One target is in focus at a time: its track, marks and its position at the slider's time are
   drawn fully; the others stay faint for context. It starts on the target with most subs; choosing a target in the
   key brings it into focus. Rig rows still hide or show a rig.
+
+### Amendment 2026-10-15: the real sky behind the dome
+
+- **015-DR-07** Behind the dome's lines, each point shows the sky that stood there at the slider's time (or the
+  middle of the night), from an all-sky survey image: Mellinger (the default, best for the Milky Way at this scale)
+  or DSS2 colour, or none. The choice is remembered in the browser. The survey is fetched by SubStation once per
+  survey from the CDS image service (hips2fits, 4096 × 2048, plate carrée) and kept in the station's cache; the
+  browser reprojects it (altitude and azimuth → right ascension and declination for the site and sidereal time).
+  The floor inside the horizon is left bare. The image's credit is shown under the dome. If the survey can't be
+  fetched (no internet), the dome draws as before with a note.

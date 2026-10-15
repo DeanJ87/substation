@@ -27,6 +27,7 @@ import {
   series,
   skyLine,
 } from './projection'
+import { CREDIT, SkySurvey, type Survey } from './SkySurvey'
 import s from './sky.module.css'
 
 export type Sky = components['schemas']['SkyOut']
@@ -66,6 +67,21 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   // the target in focus: the one with the most subs to start with
   const [chosen, setChosen] = useState<string | null>(null)
   const [view, setView] = useState<View>(DEFAULT_VIEW)
+  const [survey, setSurvey] = useState<Survey>(() => {
+    try {
+      return (localStorage.getItem('sst-sky-survey') as Survey) || 'mellinger'
+    } catch {
+      return 'mellinger'
+    }
+  })
+  const chooseSurvey = (x: Survey) => {
+    setSurvey(x)
+    try {
+      localStorage.setItem('sst-sky-survey', x)
+    } catch {
+      /* private window: the choice lasts this visit */
+    }
+  }
   const drag = useRef<{ x: number; yaw: number } | null>(null)
 
   const colourOf = useMemo(() => new Map(sky.targets.map((t, i) => [t.key, series(i)])), [sky.targets])
@@ -170,6 +186,16 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   return (
     <div className={s.sky}>
       <div className={s.domeWrap}>
+        {sky.lat != null && sky.lon != null && (
+          <SkySurvey
+            survey={survey}
+            box={box}
+            view={view}
+            lat={sky.lat}
+            lon={sky.lon}
+            t={now ?? (start + end) / 2}
+          />
+        )}
         <svg
           className={s.dome}
           viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
@@ -300,6 +326,25 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
           <button type="button" className={s.turn} onClick={() => turn(45)} aria-label="Turn right">
             →
           </button>
+          <span className={s.surveyPick} role="group" aria-label="Sky behind the dome">
+            {(
+              [
+                ['mellinger', 'Mellinger'],
+                ['dss', 'DSS'],
+                ['off', 'No sky'],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                className={s.turn}
+                aria-pressed={survey === k}
+                onClick={() => chooseSurvey(k)}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
           {view.yaw !== DEFAULT_VIEW.yaw && (
             <>
               {' · '}
@@ -309,6 +354,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
             </>
           )}
         </p>
+        {survey !== 'off' && <p className={s.credit}>{CREDIT[survey]}</p>}
       </div>
 
       <div className={s.side}>

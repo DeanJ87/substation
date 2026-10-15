@@ -17456,6 +17456,43 @@
     ]
    }
   },
+  "/sky/survey/{name}": {
+   "get": {
+    "description": "The all-sky survey image the dome draws behind its tracks; `name` is dss or mellinger.",
+    "operationId": "apps_processing_api_sky_sky_survey",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "title": "Name",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     },
+     "502": {
+      "description": "Bad Gateway"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Sky Survey",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/solving": {
    "get": {
     "operationId": "apps_processing_api_solving_status",
