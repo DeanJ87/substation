@@ -795,6 +795,10 @@ def integrate(master_id: int) -> dict:
         _step(m, "Register", 0.2)
         _check_budget(work, len(order))
         mosaic = mosaic_reason([mm.frame for mm in order.values()])
+        # a registration is reused only if made the same way (a kept folder registered as a mosaic under an
+        # older rule had carried its canvas into a normal stack)
+        if "registered" in ck["done"] and ck.get("mosaic") != bool(mosaic):
+            ck["done"].remove("registered")
         if "registered" in ck["done"] and (work / "r_sub_.seq").exists():
             notes = list(ck.get("notes", []))
             notes.append("Resumed after a restart: registration was already done.")
@@ -855,6 +859,7 @@ def integrate(master_id: int) -> dict:
             )
         if "registered" not in ck["done"]:
             ck["done"].append("registered")
+            ck["mosaic"] = bool(mosaic)
             ck["notes"] = notes
             _save_checkpoint(work, ck)
         eng.run("set32bits")

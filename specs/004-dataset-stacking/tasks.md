@@ -66,3 +66,5 @@
   progress lines over 30 and failed the stack (migration 0015); test
 - [X] D-T14 (2026-10-15) `mosaic_reason` needs several subs away from the middle; `fits_ascii` for header notes
   (004-DR-28); tests
+- [X] D-T15 (2026-10-15) A saved registration is reused only when the new run registers the same way (mosaic or not);
+  checkpoints record which (004-DR-27)
