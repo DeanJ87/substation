@@ -33,6 +33,7 @@ dev = [
   "django-stubs>=5.0",
   "pyyaml>=6",
   "openapi-spec-validator>=0.7",
+  "pytest-cov>=7.1.0",
 ]
 
 [tool.uv]
@@ -44,10 +45,14 @@ target-version = "py312"
 extend-exclude = ["*/migrations/*"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "DJ", "SIM"]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "SIM", "C90", "RET", "BLE"]
 # E501: the formatter owns line length. DJ001: NULL means "unknown" in the catalogue, distinct from "".
 # DJ008: __str__ on every model adds nothing here.
 ignore = ["E501", "DJ001", "DJ008"]
+
+# 005-DR-29: no function may grow more tangled than the worst one today (34); lower this as those are split up
+[tool.ruff.lint.mccabe]
+max-complexity = 34
 
 [tool.mypy]
 python_version = "3.12"
@@ -63,6 +68,7 @@ django_settings_module = "substation.settings"
 DJANGO_SETTINGS_MODULE = "substation.settings_test"
 pythonpath = ["."]
 testpaths = ["tests"]
+
 markers = [
   "golden: runs against the real spike trees in SUBSTATION_GOLDEN_DIR",
   "slow: performance checks",
@@ -75,3 +81,13 @@ asyncio_mode = "auto"
 # Tests use Django test-client internals and Optional lookups that are asserted at runtime.
 module = ["tests.*"]
 disable_error_code = ["operator", "attr-defined", "union-attr", "arg-type"]
+
+# 005-DR-29: CI fails if test coverage falls below this; raise it as coverage grows, never lower it
+[tool.coverage.run]
+source = ["apps", "substation"]
+omit = ["*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 75
+skip_covered = true
+show_missing = false

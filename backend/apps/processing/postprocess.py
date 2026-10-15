@@ -68,7 +68,7 @@ def readiness(cfg: dict) -> dict:
         "rc-astro",
     )
     licensed = bool(rc) and rc_licensed(rc or "")
-    out = {
+    return {
         "graxpert": {
             "ready": bool(gx),
             "path": gx or "",
@@ -86,7 +86,6 @@ def readiness(cfg: dict) -> dict:
             ),
         },
     }
-    return out
 
 
 def _tool_for(step: str, ready: dict) -> str | None:

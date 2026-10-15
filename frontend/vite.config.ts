@@ -19,5 +19,14 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: true,
+    // 005-DR-29: CI fails if coverage of the whole app (not just the files tests touch) drops below today's floor;
+    // raise these as tests are added, never lower them
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.*', 'src/api/**', 'src/test/**'],
+      reporter: ['text-summary'],
+      thresholds: { statements: 4, branches: 3, functions: 2, lines: 4 },
+    },
   },
 })

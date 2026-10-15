@@ -276,3 +276,12 @@ SQLite support was then removed rather than kept as a second, untested path.
 - **005-DR-28 A failure is shown while it matters.** Activity and the header's count list a failed job until it is
   dismissed, a later run of the same job with the same inputs succeeds, or (for a stack and its post-processing) the
   master is deleted or has since been built. Both use the same rule, so they agree.
+
+### Amendment 2026-10-15: quality gates, and nothing deploys on a red build
+
+- **005-DR-29 Quality is gated, and the gate holds the deploy.** On a push, the publish workflow runs every CI check
+  and moves `edge` (what the station follows) only once CI and the images both pass; nothing else moves `edge`.
+  Test coverage has a floor on each side that CI enforces and that only ever rises: backend 75% of lines (measured
+  76% today); frontend measured across the whole app, not only the files tests load (about 4% today, so new
+  frontend work brings its tests). Lint warnings fail the frontend build. Backend lint adds complexity (no function
+  more tangled than the worst today, 34), needless returns and blanket exception catches.

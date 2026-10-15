@@ -1,9 +1,9 @@
 name: ci
 
+# 005-DR-29: on a push, publish.yml calls this workflow and moves `edge` only once it passes, so a red build never
+# deploys. Pull requests run it directly.
 on:
-  push:
-    branches: [main, "poc-*"]
-    paths-ignore: ["specs/**", "docs/**", "**/*.md"]  # docs-only pushes build and test nothing
+  workflow_call:
   pull_request:
     paths-ignore: ["specs/**", "docs/**", "**/*.md"]  # docs-only pushes build and test nothing
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
       - run: uv run mypy .
       - name: Migrations match the models
         run: uv run python manage.py makemigrations --check --dry-run
-      - run: uv run pytest
+      - run: uv run pytest --cov
       - name: Dependencies have no known vulnerabilities (pip-audit)
         run: |
           uv export --frozen --no-dev --no-hashes --no-emit-project > "$RUNNER_TEMP/requirements.txt"
@@ -59,7 +59,7 @@ jobs:
       - run: npm run lint
       - run: npx tsc -b --noEmit
       - run: npm run format:check
-      - run: npm test
+      - run: npm run test:coverage
       - run: npm run build
       - name: Runtime dependencies have no high or critical advisories
         run: npm audit --omit=dev --audit-level=high

@@ -7,14 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "api:gen": "openapi-typescript src/api/openapi.json -o src/api/schema.d.ts",
-    "api:export": "cd ../backend && uv run python manage.py export_openapi ../frontend/src/api/openapi.json"
+    "api:export": "cd ../backend && uv run python manage.py export_openapi ../frontend/src/api/openapi.json",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

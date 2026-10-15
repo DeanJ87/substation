@@ -97,3 +97,8 @@
   with Alpine's security updates, so it ships with no fixable critical vulnerability
 - [X] W37 (2026-10-15) `open_failures`: superseded and orphaned failures drop off Activity and the header count
   (005-DR-28); test
+- [X] W38 (2026-10-15) CI is called from the publish workflow and gates the `edge` move; coverage floors (pytest-cov
+  `fail_under`, vitest thresholds over all of `src`); oxlint `--deny-warnings`; ruff C90/RET/BLE; `scripts/check.sh`
+  matches (005-DR-29)
+- [ ] W39 Raise the frontend floor: tests for the shared components (viewer zoom, file paths, settings draft) and
+  for every new page; split the 30 backend functions above complexity 10, lowering the limit as they go

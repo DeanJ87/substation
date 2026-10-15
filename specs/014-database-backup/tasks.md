@@ -9,4 +9,4 @@
 - [X] K5 Settings → Backups tab: schedule, keep, folder, writable warning, list, Back up now, Download, Restore with
   typed confirmation (FR-007)
 - [X] K6 Tests: round trip, refused schema, prune, settings validation (SC-001, SC-002)
-- [ ] K7 First real backup on the NAS after deploy; screenshot
+- [X] K7 First real backup on the NAS after deploy; screenshot

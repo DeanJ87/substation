@@ -38,7 +38,7 @@ def plan(source: Path) -> list[tuple[datetime | None, Path]]:
             path = Path(root) / name
             try:
                 when = parse_date_obs(read_header(path).primary().get("DATE-OBS"))
-            except Exception:  # unreadable header: copy it anyway, last
+            except Exception:  # noqa: BLE001 - unreadable header: copy it anyway, last
                 when = None
             items.append((when, path))
     items.sort(key=lambda it: (it[0] is None, it[0] or datetime.min, str(it[1])))

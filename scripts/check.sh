@@ -13,7 +13,7 @@ echo "== backend"
   uv run ruff format --check .
   uv run mypy .
   uv run python manage.py makemigrations --check --dry-run >/dev/null
-  uv run pytest -q
+  uv run pytest -q --cov
   uv run python manage.py export_openapi ../frontend/src/api/openapi.json
 )
 git diff --exit-code -- frontend/src/api/openapi.json
@@ -23,9 +23,9 @@ echo "== frontend"
   cd frontend
   npm run -s api:gen
   npx tsc -b
-  npx oxlint src
+  npx oxlint --deny-warnings src
   npx prettier --check .
-  npx vitest run
+  npx vitest run --coverage
 )
 
 echo "== stack"

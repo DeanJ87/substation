@@ -17,6 +17,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 005-DR-29: every check in ci.yml (lint, types, tests with coverage floors, audits, accessibility) gates the deploy
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   image:
     runs-on: ubuntu-latest
     strategy:
@@ -77,7 +83,7 @@ jobs:
   # `edge` image tag does. Anything that polls git (Portainer GitOps, Argo CD, Flux) follows `edge` and so never sees a
   # commit before its images exist. Releases are git tags, which only ever point at built commits too.
   edge-branch:
-    needs: image
+    needs: [ci, image]
     if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
     permissions:
