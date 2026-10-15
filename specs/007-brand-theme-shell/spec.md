@@ -434,3 +434,6 @@ Taken on the recommendation in the design review (owner may overrule):
   no positive tabindex, valid ARIA, and the rest), and CI runs axe (WCAG 2.0/2.1/2.2 A and AA) against the real stack
   on every screen (Library, a dataset, Calibration, Reconcile, Settings, Activity, Map, Bin) in each theme and on the
   sub viewer. A violation fails the build. Map tiles are third-party pictures and are left out of the scan.
+- **007-DR-28 Search reads dates as people type them.** Besides 2026-10 and 2026-10-14, search finds nights from a
+  month name ("october", "oct 2026"), a day and month in either order ("14 october", "oct 14th"), UK numeric dates
+  ("14/10", "14/10/2026") and "yesterday", "last night", "tonight". Typing "october" had found nothing.

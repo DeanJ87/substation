@@ -93,3 +93,5 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
   commit and the session record, owner quotes rewritten in neutral words
 - [X] B41 (2026-10-14) All jsx-a11y rules as errors in `.oxlintrc.json`; axe e2e updated (Map, Bin, Activity, the
   viewer modal, WCAG 2.2 tags) and run in CI against the stack (007-DR-27)
+- [X] B42 (2026-10-15) `night_filter`: month names, day and month, UK numeric dates, yesterday/last night/tonight
+  (007-DR-28); test
