@@ -22,3 +22,6 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]  # fast tes
 
 INGEST_VERIFY_COMPLETE = False  # fixtures are header-only
 PROCESSING_ENABLED = False  # no Siril on the host; processing tests enable it
+
+# nothing cached between tests (the Library's totals are kept for a minute in use)
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}

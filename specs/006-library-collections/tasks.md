@@ -100,3 +100,4 @@ requirement they close.
 - [X] L59 (2026-10-14) `keep_collections` after `reresolve_targets` and `reresolve_library` (006-DR-33); test
 - [X] L60 (2026-10-14) `tidy_datasets` after `reresolve_library` and every re-match (006-DR-34); test
 - [X] L61 (2026-10-15) Library totals read the SQM keyword alone instead of every header (3.3 s → fast); test
+- [X] L62 (2026-10-15) Library totals kept for a minute per filter combination (they took ~2 s over 12,000 lights)

@@ -582,9 +582,12 @@
 }
 .postStrip li > button {
   align-self: flex-start;
-  margin-top: 4px;
+  margin-top: auto; /* at the foot of each stage, level across the row however long its name */
   width: auto;
   height: auto;
+}
+.postStrip li > button + * {
+  margin-top: 6px;
 }
 
 /* master details (owner 2026-10-12): the photo with overlays beside the facts */

@@ -883,10 +883,16 @@ def library_stats(
 ):
     """Totals for what the Library's filters show (006, owner 2026-10-10): lights taken, hours per filter and
     rig, how many were kept or rejected, and the average SQM where the capture recorded it."""
+    from django.core.cache import cache
     from django.db.models import Q
 
     from apps.processing.api import COND
     from apps.processing.effective import effective
+
+    # the totals take a couple of seconds over 12,000 lights and needn't be to the second: kept for a minute
+    key = f"library-stats:{date_from}:{date_to}:{rig}:{q}"
+    if (hit := cache.get(key)) is not None:
+        return hit
     from apps.processing.models import MachineGrade
 
     from .models import Frame, FrameStatus, FrameType
@@ -945,7 +951,7 @@ def library_stats(
                 accepted += h
         if (v := sqm_of.get(f.pk)) is not None and 10 < v < 23:
             sqms.append(v)
-    return LibraryStatsOut(
+    out = LibraryStatsOut(
         frames=n,
         hours=round(hours, 2),
         accepted_hours=round(accepted, 2),
@@ -959,3 +965,5 @@ def library_stats(
         nights=len(nights - {None}),
         binned=binned,
     )
+    cache.set(key, out, 60)
+    return out
