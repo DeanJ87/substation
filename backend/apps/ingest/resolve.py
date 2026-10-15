@@ -246,6 +246,83 @@ def _source_label(mv: MetadataValue | None) -> str:
     return mv.source
 
 
+def _pick_winners(frame: Frame, prefer: dict, order: dict) -> dict[str, MetadataValue]:
+    """The winning value of each field; disagreements between sources are kept as conflicts to show."""
+    by_field: dict[str, list[MetadataValue]] = {}
+    for mv in frame.metadata.all():
+        by_field.setdefault(mv.field, []).append(mv)
+    winners: dict[str, MetadataValue] = {}
+    for f, cands in by_field.items():
+        cands = [c for c in cands if c.value not in (None, "")]
+        if not cands:
+            continue
+        winners[f] = min(cands, key=lambda mv: _rank(mv, prefer, order))
+        # Header and patterns disagreeing is worth showing, whichever wins
+        found = {f"{c.source}:{c.source_detail}": c.value for c in cands if c.source != MetadataSource.USER}
+        if len({_norm(f, v) for v in found.values()}) > 1:
+            HeaderConflict.objects.update_or_create(frame=frame, field=f, defaults={"values": found})
+        else:
+            HeaderConflict.objects.filter(frame=frame, field=f).delete()
+    win_ids = [w.pk for w in winners.values()]
+    HeaderConflict.objects.filter(frame=frame).exclude(field__in=winners).delete()
+    frame.metadata.exclude(pk__in=win_ids).update(is_winner=False)
+    frame.metadata.filter(pk__in=win_ids).update(is_winner=True)
+    return winners
+
+
+def _apply_equipment_names(frame: Frame, eq: dict) -> None:
+    # a rig merge maps one exact camera + telescope pair onto another, so the same telescope name used with a
+    # different camera is left alone; the older name-only maps still apply
+    pair = eq.get("rig", {}).get(f"{frame.camera or ''}|{frame.telescope or ''}")
+    if pair:
+        frame.camera, frame.telescope = pair[0] or None, pair[1] or None
+    else:
+        frame.camera = eq.get("camera", {}).get(frame.camera or "", frame.camera)
+        frame.telescope = eq.get("telescope", {}).get(frame.telescope or "", frame.telescope)
+
+
+def _apply_target(frame: Frame, winners: dict[str, MetadataValue], eq: dict) -> None:
+    frame.target, frame.panel = split_object(frame.object)
+    if "target" in winners:  # a target given directly (pattern or user) beats one split from OBJECT
+        frame.target = winners["target"].value
+        if "panel" not in winners and "object" not in winners:
+            frame.panel = None
+    if "panel" in winners:
+        frame.panel = _coerce("panel", winners["panel"].value)
+    if frame.target:  # names merged into another (Library → collection → Merge names)
+        frame.target = eq.get("target", {}).get(frame.target, frame.target)
+
+
+_CLASSIFIED_BY: dict[str, str] = {
+    MetadataSource.USER: ClassificationSource.USER,
+    MetadataSource.FOLDER_PATTERN: ClassificationSource.PATH_PATTERN,
+    MetadataSource.FILENAME_PATTERN: ClassificationSource.PATH_PATTERN,
+}
+
+
+def _classify(
+    frame: Frame, winners: dict[str, MetadataValue], copies: list[Copy], has_integration: bool | None
+) -> None:
+    """Frame type and where it came from; then the checks that catch a header's wrong type (not your own)."""
+    integ = frame.integration_index is not None if has_integration is None else has_integration
+    ft = winners.get("frame_type")
+    frame.frame_type, frame.classification_reason = classify_type(
+        ft.value if ft else None, _source_label(ft), integ
+    )
+    frame.classification_source = _CLASSIFIED_BY.get(ft.source if ft else "", ClassificationSource.HEADER)
+    if frame.classification_source == ClassificationSource.USER:
+        return
+    # each check looks at the type as the one before left it: a "light" found to be a dark gets the dark rules
+    if frame.frame_type == FrameType.LIGHT and frame.classification_source == ClassificationSource.HEADER:
+        _mislabelled_calibration(frame, copies)
+    if frame.frame_type == FrameType.LIGHT:
+        _already_processed(frame)
+    if frame.frame_type == FrameType.LIGHT:
+        _already_stacked(frame)
+    if frame.frame_type == FrameType.DARK:
+        _dark_flat_rules(frame)
+
+
 def resolve_frame(frame: Frame, has_integration: bool | None = None) -> tuple[Dataset | None, Dataset | None]:
     """Resolve every field, then classify, place in a night and dataset, and update reconciliation items.
     Sets attributes on `frame` and saves it. Returns (old dataset, new dataset) for recounting."""
@@ -262,27 +339,7 @@ def resolve_frame(frame: Frame, has_integration: bool | None = None) -> tuple[Da
     prefer = {f"pattern #{p.row.pk}": set(p.row.prefer_over_header or []) for p in used}
     order = {f"pattern #{p.row.pk}": i for i, p in enumerate(used)}
 
-    by_field: dict[str, list[MetadataValue]] = {}
-    for mv in frame.metadata.all():
-        by_field.setdefault(mv.field, []).append(mv)
-    winners: dict[str, MetadataValue] = {}
-    win_ids = []
-    for f, cands in by_field.items():
-        cands = [c for c in cands if c.value not in (None, "")]
-        if not cands:
-            continue
-        best = min(cands, key=lambda mv: _rank(mv, prefer, order))
-        winners[f] = best
-        win_ids.append(best.pk)
-        # Header and patterns disagreeing is worth showing, whichever wins
-        found = {f"{c.source}:{c.source_detail}": c.value for c in cands if c.source != MetadataSource.USER}
-        if len({_norm(f, v) for v in found.values()}) > 1:
-            HeaderConflict.objects.update_or_create(frame=frame, field=f, defaults={"values": found})
-        else:
-            HeaderConflict.objects.filter(frame=frame, field=f).delete()
-    HeaderConflict.objects.filter(frame=frame).exclude(field__in=winners).delete()
-    frame.metadata.exclude(pk__in=win_ids).update(is_winner=False)
-    frame.metadata.filter(pk__in=win_ids).update(is_winner=True)
+    winners = _pick_winners(frame, prefer, order)
 
     def val(f: str) -> str | None:
         return winners[f].value if f in winners else None
@@ -292,46 +349,13 @@ def resolve_frame(frame: Frame, has_integration: bool | None = None) -> tuple[Da
     from apps.processing.config import processing_settings
 
     eq = processing_settings().get("equipment", {})
-    # a rig merge maps one exact camera + telescope pair onto another, so the same telescope name used with a
-    # different camera is left alone; the older name-only maps still apply
-    pair = eq.get("rig", {}).get(f"{frame.camera or ''}|{frame.telescope or ''}")
-    if pair:
-        frame.camera, frame.telescope = pair[0] or None, pair[1] or None
-    else:
-        frame.camera = eq.get("camera", {}).get(frame.camera or "", frame.camera)
-        frame.telescope = eq.get("telescope", {}).get(frame.telescope or "", frame.telescope)
-    frame.target, frame.panel = split_object(frame.object)
-    if "target" in winners:  # a target given directly (pattern or user) beats one split from OBJECT
-        frame.target = val("target")
-        if "panel" not in winners and "object" not in winners:
-            frame.panel = None
-    if "panel" in winners:
-        frame.panel = _coerce("panel", val("panel"))
-    if frame.target:  # names merged into another (Library → collection → Merge names)
-        frame.target = eq.get("target", {}).get(frame.target, frame.target)
+    _apply_equipment_names(frame, eq)
+    _apply_target(frame, winners, eq)
     frame.filter_norm = normalise_filter(frame.filter_raw, settings_row.filter_aliases or {})
 
     frame.night = _night(frame, copies[0].library if copies else None, settings_row)
     if frame.status != FrameStatus.ERROR:
-        integ = frame.integration_index is not None if has_integration is None else has_integration
-        ft = winners.get("frame_type")
-        frame.frame_type, frame.classification_reason = classify_type(
-            ft.value if ft else None, _source_label(ft), integ
-        )
-        sources: dict[str, str] = {
-            MetadataSource.USER: ClassificationSource.USER,
-            MetadataSource.FOLDER_PATTERN: ClassificationSource.PATH_PATTERN,
-            MetadataSource.FILENAME_PATTERN: ClassificationSource.PATH_PATTERN,
-        }
-        frame.classification_source = sources.get(ft.source if ft else "", ClassificationSource.HEADER)
-        if frame.frame_type == FrameType.LIGHT and frame.classification_source == ClassificationSource.HEADER:
-            _mislabelled_calibration(frame, copies)
-        if frame.frame_type == FrameType.LIGHT and frame.classification_source != ClassificationSource.USER:
-            _already_processed(frame)
-        if frame.frame_type == FrameType.LIGHT and frame.classification_source != ClassificationSource.USER:
-            _already_stacked(frame)
-        if frame.frame_type == FrameType.DARK and frame.classification_source != ClassificationSource.USER:
-            _dark_flat_rules(frame)
+        _classify(frame, winners, copies, has_integration)
 
     old, new = assign_dataset(frame)
     old_cs, new_cs = assign_calibration_set(frame)

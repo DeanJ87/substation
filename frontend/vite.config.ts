@@ -20,13 +20,14 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     css: true,
     // 005-DR-29: CI fails if coverage of the whole app (not just the files tests touch) drops below today's floor;
-    // raise these as tests are added, never lower them
+    // raise these as tests are added, never lower them. Set a point under the measured figure: page tests settle
+    // asynchronously, so a run can differ by about half a point
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.*', 'src/api/**', 'src/test/**'],
       reporter: ['text-summary'],
-      thresholds: { statements: 4, branches: 3, functions: 2, lines: 4 },
+      thresholds: { statements: 48, branches: 39, functions: 35, lines: 50 },
     },
   },
 })

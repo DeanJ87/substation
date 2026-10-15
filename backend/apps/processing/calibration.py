@@ -492,6 +492,106 @@ def one_row_order(work: Path, prefix: str) -> int:
     return n
 
 
+def _usable(frames: list[Frame]) -> tuple[list[tuple[Frame, Path]], list[dict]]:
+    """Frames that pass QA and have a copy on disk; the rest with why."""
+    use, excluded = [], []
+    for f in frames:
+        if _effective_qa(f) == "reject":
+            qa = CalibrationQA.objects.filter(frame=f).first()
+            excluded.append({"sha256": f.sha256, "reason": qa.reason if qa else "rejected"})
+            continue
+        p = _path(f)
+        if p is None:
+            excluded.append({"sha256": f.sha256, "reason": "no copy on disk"})
+        else:
+            use.append((f, p))
+    return use, excluded
+
+
+def _refusal(
+    bm: BuiltMaster, cs: CalibrationSet, n_use: int, *, rgb: bool, has_calibrator: bool
+) -> tuple[str, str, str] | None:
+    """Why this set can't be built now, as (state, reason, result), or None to build it."""
+    word = TYPE_WORD.get(cs.type, cs.type)
+    if rgb and cs.type != FrameType.FLAT:
+        return "blocked", f"8-bit colour {word} frames, not raw. Can't calibrate raw subs.", "processed rgb"
+    if n_use < 3:
+        return "failed", f"Only {n_use} usable {word} frames; needs 3.", "too few"
+    if cs.type == FrameType.FLAT and not has_calibrator and not rgb and not bm.report.get("force"):
+        return (
+            "blocked",
+            f"No master dark flat at {cs.exptime_s:g} s or master bias for this camera. "
+            "Build one first, or build anyway.",
+            "blocked",
+        )
+    return None
+
+
+def _stack_flats(eng, work: Path, out: Path, calibrator, cal, *, colour: bool, rgb: bool) -> str | None:  # noqa: ANN001
+    """Calibrate the flats by their dark flat or bias, then stack; returns the method, or None if they're blank."""
+    seq = "raw_"
+    method = "flats"
+    if calibrator is not None:
+        from .tasks import _top_down, oriented_master
+
+        first = work / "raw_00001.fit"  # the dark flat in the flats' row order (see oriented_master)
+        if first.exists() and cal is not None:
+            cal = oriented_master(Path(cal), _top_down(first))
+        flag = "-bias" if calibrator.frame_type == FrameType.MASTER_BIAS else "-dark"
+        cfa = " -cfa -equalize_cfa" if colour else ""
+        eng.run(f"calibrate raw_ {flag}={cal}{cfa} -prefix=pp_", timeout=3600)
+        seq = "pp_raw_"
+        method = f"flats calibrated by the master {'bias' if flag == '-bias' else 'dark flat'}"
+    from apps.engine.siril import EngineError
+
+    try:
+        eng.run(f"stack {seq} rej w 3 3 -norm=mul -out={out} -32b", timeout=3600)
+    except EngineError as e:
+        # blank frames (a closed cap, an 8-bit exposure of nothing) have no spread to normalise: Siril
+        # stops with "MAD is null"; say what that means rather than pass on Siril's words (set 2, 2026-10-12)
+        if not any("MAD is null" in line for line in e.log):
+            raise
+        return None
+    method += ", winsorised σ 3/3, multiplicative normalisation"
+    if rgb:
+        method += "; 8-bit colour: for 8-bit colour lights only (approximate, as that data isn't linear)"
+    return method
+
+
+def _analyse_master(
+    cs: CalibrationSet, result: Path, *, colour: bool
+) -> tuple[dict, Path, float | None, str]:
+    """Statistics, flat illumination and dust, previews and the comparison with the previous master. Returns the
+    report, the preview, a flat's median level (None for other types) and a note when a flat can't be analysed."""
+    a = read_data(result)
+    if a.ndim == 3:  # colour planes: analyse their mean
+        a = a.mean(axis=0)
+    report: dict = {"stats": frame_stats(a).as_dict()}
+    motes = None
+    dust_map = None
+    note = ""
+    if cs.type == FrameType.FLAT:
+        flat, dust_map = flat_analysis(a, cfa=colour)
+        report |= flat
+        motes = report.get("dust_motes")
+        if "falloff" not in report:
+            note = (
+                "Too faint to analyse: after calibration the flat's level is at or below zero, so there's no "
+                "illumination to measure. Flats should sit at 30–60% of full scale."
+            )
+    prev = result.with_suffix(".jpg")
+    render_array(a, prev, motes=None, thumb=result.with_name(result.stem + "_t.jpg"))
+    if cs.type == FrameType.FLAT and dust_map is not None:
+        render_dust_map(dust_map, motes or [], a.shape[0], result.with_name(result.stem + "_motes.jpg"))
+    previous = previous_master(cs, exclude=result)
+    if previous is not None:
+        report["comparison"] = _compare(
+            a, previous, cs.type == FrameType.FLAT, result.with_name(result.stem + "_cmp.jpg")
+        )
+    signal = float(np.median(a)) if cs.type == FrameType.FLAT else None  # read_data gives ADU
+    return report, prev, signal, note
+
+
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
 def build_master(built_id: int) -> dict:
 
@@ -503,52 +603,21 @@ def build_master(built_id: int) -> dict:
     )
     if not CalibrationQA.objects.filter(frame__in=frames).exists():
         qa_calibration_set.call(cs.pk)
-    use, excluded = [], []
-    for f in frames:
-        v = _effective_qa(f)
-        qa = CalibrationQA.objects.filter(frame=f).first()
-        if v == "reject":
-            excluded.append({"sha256": f.sha256, "reason": qa.reason if qa else "rejected"})
-        else:
-            p = _path(f)
-            if p is None:
-                excluded.append({"sha256": f.sha256, "reason": "no copy on disk"})
-            else:
-                use.append((f, p))
+    use, excluded = _usable(frames)
     word = TYPE_WORD.get(cs.type, cs.type)
     from .tasks import is_processed_rgb
 
     rgb = bool(use) and is_processed_rgb(use[0][0])
-    if rgb and cs.type != FrameType.FLAT:
-        BuiltMaster.objects.filter(pk=bm.pk).update(
-            state="blocked",
-            frames_excluded=excluded,
-            finished_at=timezone.now(),
-            reason=(f"8-bit colour {word} frames, not raw. Can't calibrate raw subs."),
-        )
-        return {"result": "processed rgb"}
-    if len(use) < 3:
-        BuiltMaster.objects.filter(pk=bm.pk).update(
-            state="failed",
-            reason=f"Only {len(use)} usable {word} frames; needs 3.",
-            frames_excluded=excluded,
-            finished_at=timezone.now(),
-        )
-        return {"result": "too few"}
     # 8-bit colour flats (the camera already took off its black level) calibrate 8-bit colour lights only, by
     # division; a raw bias or dark flat doesn't apply to them
     calibrator = flat_calibrator(cs) if cs.type == FrameType.FLAT and not rgb else None
-    if cs.type == FrameType.FLAT and calibrator is None and not rgb and not bm.report.get("force"):
+    refused = _refusal(bm, cs, len(use), rgb=rgb, has_calibrator=calibrator is not None)
+    if refused:
+        state, reason, outcome = refused
         BuiltMaster.objects.filter(pk=bm.pk).update(
-            state="blocked",
-            frames_excluded=excluded,
-            finished_at=timezone.now(),
-            reason=(
-                f"No master dark flat at {cs.exptime_s:g} s or master bias for this camera. "
-                "Build one first, or build anyway."
-            ),
+            state=state, reason=reason, frames_excluded=excluded, finished_at=timezone.now()
         )
-        return {"result": "blocked"}
+        return {"result": outcome}
     work = Path(settings.WORK_DIR) / "masters-build" / f"set{cs.pk}_{bm.pk}"
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
@@ -580,28 +649,8 @@ def build_master(built_id: int) -> dict:
         colour = is_colour_frame(use[0][0]) and not rgb  # a CFA mosaic, not already-colour planes
         report_progress(0.3, "stacking")
         if cs.type == FrameType.FLAT:
-            seq = "raw_"
-            method = "flats"
-            if calibrator is not None:
-                from .tasks import _top_down, oriented_master
-
-                first = work / "raw_00001.fit"  # the dark flat in the flats' row order (see oriented_master)
-                if first.exists() and cal is not None:
-                    cal = oriented_master(Path(cal), _top_down(first))
-                flag = "-bias" if calibrator.frame_type == FrameType.MASTER_BIAS else "-dark"
-                cfa = " -cfa -equalize_cfa" if colour else ""
-                eng.run(f"calibrate raw_ {flag}={cal}{cfa} -prefix=pp_", timeout=3600)
-                seq = "pp_raw_"
-                method = f"flats calibrated by the master {'bias' if flag == '-bias' else 'dark flat'}"
-            from apps.engine.siril import EngineError
-
-            try:
-                eng.run(f"stack {seq} rej w 3 3 -norm=mul -out={out} -32b", timeout=3600)
-            except EngineError as e:
-                # blank frames (a closed cap, an 8-bit exposure of nothing) have no spread to normalise: Siril
-                # stops with "MAD is null"; say what that means rather than pass on Siril's words (set 2, 2026-10-12)
-                if not any("MAD is null" in line for line in e.log):
-                    raise
+            method = _stack_flats(eng, work, out, calibrator, cal, colour=colour, rgb=rgb)
+            if method is None:
                 BuiltMaster.objects.filter(pk=bm.pk).update(
                     state="blocked",
                     frames_used=0,
@@ -613,45 +662,14 @@ def build_master(built_id: int) -> dict:
                 )
                 shutil.rmtree(work, ignore_errors=True)
                 return {"result": "blank"}
-            method += ", winsorised σ 3/3, multiplicative normalisation"
-            if rgb:
-                method += (
-                    "; 8-bit colour: for 8-bit colour lights only (approximate, as that data isn't linear)"
-                )
         else:
             eng.run(f"stack raw_ rej w 3 3 -nonorm -out={out} -32b", timeout=3600)
             method = "winsorised σ 3/3, no normalisation"
         result = out_dir / f"{name}.fit"
         report_progress(0.8, "analysing the master")
-        a = read_data(result)
-        if a.ndim == 3:  # colour planes: analyse their mean
-            a = a.mean(axis=0)
-        report: dict = {"stats": frame_stats(a).as_dict()}
+        report, prev, signal, note = _analyse_master(cs, result, colour=colour)
         if flipped:  # frames in another row order, turned to match before stacking (see one_row_order)
             report["flipped"] = flipped
-        motes = None
-        dust_map = None
-        note = ""
-        if cs.type == FrameType.FLAT:
-            flat, dust_map = flat_analysis(a, cfa=colour)
-            report |= flat
-            motes = report.get("dust_motes")
-            if "falloff" not in report:
-                note = (
-                    "Too faint to analyse: after calibration the flat's level is at or below zero, so there's no "
-                    "illumination to measure. Flats should sit at 30–60% of full scale."
-                )
-        prev = result.with_suffix(".jpg")
-        render_array(a, prev, motes=None, thumb=result.with_name(result.stem + "_t.jpg"))
-        if cs.type == FrameType.FLAT and dust_map is not None:
-            render_dust_map(dust_map, motes or [], a.shape[0], result.with_name(result.stem + "_motes.jpg"))
-        previous = previous_master(cs, exclude=result)
-        if previous is not None:
-            report["comparison"] = _compare(
-                a, previous, cs.type == FrameType.FLAT, result.with_name(result.stem + "_cmp.jpg")
-            )
-        signal = float(np.median(a)) if cs.type == FrameType.FLAT else None  # read_data gives ADU
-        del a
         if signal is not None and signal < (1 if rgb else FLAT_MIN_ADU):
             # near-dark "flats" (a test exposure filed as a flat, a closed cap) would wreck every light they touch
             BuiltMaster.objects.filter(pk=bm.pk).update(

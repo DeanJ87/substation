@@ -121,7 +121,7 @@ export function CalibrationSetView() {
           <div className={s.sheet}>
             {frames.visible.map((f) => {
               const eff = f.override ?? f.verdict
-              const [state, label] = eff ? QA[eff] : (['integ', 'Not checked'] as [VerdictState, string])
+              const [state, label] = (eff && QA[eff]) || (['integ', 'Not checked'] as [VerdictState, string])
               const stats = f.stats as { median?: number; mad?: number }
               return (
                 <figure key={f.sha256} className={`${v.card} ${s.tile}`}>

@@ -11,6 +11,7 @@ Siril's registration output in docs/spikes phase 2).
 from __future__ import annotations
 
 import statistics
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -61,9 +62,12 @@ def _fwhm_text(s: Sub) -> str:
     return f"{s.fwhm * s.scale:.2f}″" if s.scale else f"{s.fwhm:.2f} px"
 
 
-def grade_standard(subs: list[Sub], cfg: dict) -> tuple[dict[str, Grade], dict]:
+Finding = tuple[str, float, str]  # (verdict, weight, reason)
+
+
+def _medians(subs: list[Sub]) -> dict:
     have = [s for s in subs if s.stars > 0]
-    med = {
+    return {
         "fwhm": statistics.median([s.fwhm for s in have if s.fwhm is not None])
         if any(s.fwhm for s in have)
         else None,
@@ -75,98 +79,104 @@ def grade_standard(subs: list[Sub], cfg: dict) -> tuple[dict[str, Grade], dict]:
         if sum(1 for s in have if s.eccentricity is not None) >= 5
         else None,
     }
+
+
+def _check(
+    ratio: float,
+    levels: list[float],
+    higher_is_bad: bool,
+    text: Callable[[float, bool], str],
+    weight_of: Callable[[float], float],
+    found: list[Finding],
+) -> bool:
+    """Add a finding when the ratio to the session median passes a level; True when it is close to the down-weight
+    level without passing it."""
+    down, reject = levels
+    bad = (lambda r, lv: r > lv) if higher_is_bad else (lambda r, lv: r < lv)
+    if bad(ratio, reject):
+        found.append((GradeVerdict.REJECT, 0.0, text(ratio, True)))
+    elif bad(ratio, down):
+        found.append((GradeVerdict.DOWN, weight_of(ratio), text(ratio, False)))
+    elif abs(ratio - down) <= 0.1 * down:
+        return True
+    return False
+
+
+def _check_eccentricity(s: Sub, levels: list[float], e_med: float | None, found: list[Finding]) -> bool:
+    # absolute levels, but never below the session's own elongation plus a margin: a lens or tilt that
+    # elongates every star is the rig, not a bad sub; tracking and wind still stand out from their session
+    down, reject = levels
+    if e_med is not None:
+        down, reject = max(down, e_med + 0.08), max(reject, e_med + 0.15)
+    e = s.eccentricity or 0.0
+    if e > reject:
+        found.append(
+            (GradeVerdict.REJECT, 0.0, f"Elongated stars (eccentricity {e:.2f}): tracking, wind or tilt.")
+        )
+    elif e > down:
+        found.append(
+            (GradeVerdict.DOWN, 0.7, f"Slightly elongated stars (eccentricity {e:.2f}): tracking or wind.")
+        )
+    elif e > 0.9 * down:
+        return True
+    return False
+
+
+def _findings(s: Sub, med: dict, cfg: dict) -> tuple[list[Finding], bool]:
+    """What is wrong with one sub against its session, and whether it is close to a level."""
+    found: list[Finding] = []
+    near = False
+    if med["fwhm"] and s.fwhm:
+        near |= _check(
+            s.fwhm / med["fwhm"],
+            cfg["fwhm"],
+            True,
+            lambda r, rej: (
+                f"FWHM {_fwhm_text(s)}, {_pct(r)}% above median: {'seeing or focus' if rej else 'seeing'}."
+            ),
+            lambda r: (1 / r) ** 2,
+            found,
+        )
+    if med["stars"]:
+        near |= _check(
+            s.stars / med["stars"],
+            cfg["stars"],
+            False,
+            lambda r, rej: f"Stars {round(r * 100)}% of median: {'cloud' if rej else 'thin cloud or haze'}.",
+            lambda r: r,
+            found,
+        )
+    if med["background"] and s.background is not None and med["background"] > 0:
+        # a brighter background only means sky glow (moon, twilight, cloud) when the stars suffer with it; with
+        # as many stars as usual it is more signal, e.g. a nebula filling the frame on a transparent night
+        # (owner 2026-10-10, Soul Nebula Hα)
+        star_ratio = s.stars / med["stars"] if med["stars"] else 1.0
+        if star_ratio < 0.9:
+            near |= _check(
+                s.background / med["background"],
+                cfg["background"],
+                True,
+                lambda r, rej: (
+                    f"Background {_pct(r)}% above median, stars {round(star_ratio * 100)}%: moonlight, twilight "
+                    "or cloud."
+                ),
+                lambda r: 1 / r,
+                found,
+            )
+    if s.eccentricity is not None:
+        near |= _check_eccentricity(s, cfg["eccentricity"], med.get("eccentricity"), found)
+    return found, near
+
+
+def grade_standard(subs: list[Sub], cfg: dict) -> tuple[dict[str, Grade], dict]:
+    med = _medians(subs)
     nmax = max((s.stars for s in subs), default=0)
     out: dict[str, Grade] = {}
     for s in subs:
         if s.stars == 0:
             out[s.key] = Grade(GradeVerdict.REJECT, 0.0, "No stars: cloud or closed shutter.")
             continue
-        found: list[tuple[str, float, str]] = []  # (verdict, weight, reason)
-        near = False
-
-        def check(
-            ratio: float | None,
-            levels: list[float],
-            higher_is_bad: bool,
-            text,
-            weight_of,  # noqa: ANN001
-            found: list = found,
-        ) -> None:
-            nonlocal near
-            if ratio is None:
-                return
-            down, reject = levels
-            bad = (lambda r, lv: r > lv) if higher_is_bad else (lambda r, lv: r < lv)
-            if bad(ratio, reject):
-                found.append((GradeVerdict.REJECT, 0.0, text(ratio, True)))
-            elif bad(ratio, down):
-                found.append((GradeVerdict.DOWN, weight_of(ratio), text(ratio, False)))
-            elif abs(ratio - down) <= 0.1 * down:
-                near = True
-
-        if med["fwhm"] and s.fwhm:
-            check(
-                s.fwhm / med["fwhm"],
-                cfg["fwhm"],
-                True,
-                lambda r, rej, s=s: (
-                    f"FWHM {_fwhm_text(s)}, {_pct(r)}% above median: "
-                    f"{'seeing or focus' if rej else 'seeing'}."
-                ),
-                lambda r: (1 / r) ** 2,
-            )
-        if med["stars"]:
-            check(
-                s.stars / med["stars"],
-                cfg["stars"],
-                False,
-                lambda r, rej: (
-                    f"Stars {round(r * 100)}% of median: {'cloud' if rej else 'thin cloud or haze'}."
-                ),
-                lambda r: r,
-            )
-        if med["background"] and s.background is not None and med["background"] > 0:
-            # a brighter background only means sky glow (moon, twilight, cloud) when the stars suffer with it; with
-            # as many stars as usual it is more signal, e.g. a nebula filling the frame on a transparent night
-            # (owner 2026-10-10, Soul Nebula Hα)
-            star_ratio = s.stars / med["stars"] if med["stars"] else 1.0
-            if star_ratio < 0.9:
-                check(
-                    s.background / med["background"],
-                    cfg["background"],
-                    True,
-                    lambda r, rej, sr=star_ratio: (
-                        f"Background {_pct(r)}% above median, "
-                        f"stars {round(sr * 100)}%: moonlight, twilight "
-                        "or cloud."
-                    ),
-                    lambda r: 1 / r,
-                )
-        if s.eccentricity is not None:
-            # absolute levels, but never below the session's own elongation plus a margin: a lens or tilt that
-            # elongates every star is the rig, not a bad sub; tracking and wind still stand out from their session
-            down, reject = cfg["eccentricity"]
-            e_med = med.get("eccentricity")
-            if e_med is not None:
-                down, reject = max(down, e_med + 0.08), max(reject, e_med + 0.15)
-            if s.eccentricity > reject:
-                found.append(
-                    (
-                        GradeVerdict.REJECT,
-                        0.0,
-                        f"Elongated stars (eccentricity {s.eccentricity:.2f}): tracking, wind or tilt.",
-                    )
-                )
-            elif s.eccentricity > down:
-                found.append(
-                    (
-                        GradeVerdict.DOWN,
-                        0.7,
-                        f"Slightly elongated stars (eccentricity {s.eccentricity:.2f}): tracking or wind.",
-                    )
-                )
-            elif s.eccentricity > 0.9 * down:
-                near = True
+        found, near = _findings(s, med, cfg)
         w = wfwhm(s.fwhm, s.stars, nmax)
         if not found:
             out[s.key] = Grade(GradeVerdict.ACCEPT, 1.0, "Within normal range.", near, w)

@@ -1,6 +1,8 @@
 """Installation settings (site, filter aliases, calibration, grading and stacking defaults; spec 008) and libraries."""
 
 import os
+import re
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from django.conf import settings
@@ -172,104 +174,112 @@ CHOICES = {
 LEVELS = {"fwhm": "above", "background": "above", "eccentricity": "above", "stars": "below"}
 
 
+def _invalid(message: str) -> ApiError:
+    return ApiError(422, "invalid", message)
+
+
+def _check_notifications(values: dict) -> None:
+    from substation.notify import EVENTS
+
+    for k in ("ntfy", "webhook"):
+        if values.get(k) and not str(values[k]).startswith(("http://", "https://")):
+            raise _invalid(f"The {k} address must start with http:// or https://.")
+    if any(e not in EVENTS for e in values.get("events") or []):
+        raise _invalid("Unknown notification event.")
+    for k, label in (("pushover_user", "Pushover user key"), ("pushover_token", "Pushover API token")):
+        v = (values.get(k) or "").strip()
+        if v and not re.fullmatch(r"[A-Za-z0-9]{30}", v):
+            raise _invalid(f"The {label} is 30 letters and digits, as Pushover shows it.")
+
+
+# spec 014: each backup setting and what makes it valid
+_BACKUP_RULES: dict[str, tuple[Callable[[object], bool], str]] = {
+    "enabled": (lambda v: isinstance(v, bool), "Backups are on or off."),
+    "time": (
+        lambda v: isinstance(v, str) and bool(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", v)),
+        "The time is HH:MM, 24-hour.",
+    ),
+    "keep": (lambda v: isinstance(v, int) and 1 <= v <= 365, "Keep between 1 and 365 backups."),
+    "folder": (
+        lambda v: isinstance(v, str) and (v == "" or v.startswith("/")),
+        "The folder is a path inside the containers, starting with /.",
+    ),
+}
+
+
+def _check_backup(values: dict) -> None:
+    for k, v in values.items():
+        if k not in _BACKUP_RULES:
+            raise _invalid(f"Unknown backup setting {k}.")
+        ok, message = _BACKUP_RULES[k]
+        if not ok(v):
+            raise _invalid(message)
+
+
+def _check_bin(values: dict) -> None:
+    for k, v in values.items():
+        if k not in ("auto_bin_rejected_days", "purge_after_days") or not isinstance(v, int) or v < 0:
+            raise _invalid("Days must be a whole number, 0 or more.")
+    if values.get("purge_after_days") == 0:
+        raise _invalid("Keep binned files at least a day before they're deleted.")
+
+
+def _check_level(k: str, v: object) -> None:
+    """A graded measure's [down-weight, reject] pair: both above zero, reject on the bad side of down-weight."""
+    name = k.upper() if k == "fwhm" else k.capitalize()
+    if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, int | float) and x > 0 for x in v)):
+        raise _invalid(f"{name} needs a down-weight and a reject level, both above zero.")
+    down, reject = v
+    if (LEVELS[k] == "above" and reject <= down) or (LEVELS[k] == "below" and reject >= down):
+        raise _invalid(f"{name}: reject level must be {LEVELS[k]} the down-weight level.")
+
+
+def _number_in(lo: float, hi: float, *, whole: bool = False) -> Callable[[object], bool]:
+    kinds = int if whole else int | float
+    return lambda v: isinstance(v, kinds) and lo <= v <= hi  # type: ignore[operator]
+
+
+# single values with a range: (section, key) → (check, message)
+_RANGES: dict[tuple[str, str], tuple[Callable[[object], bool], str]] = {
+    ("calibration", "temp_tolerance_c"): (
+        _number_in(0.5, 10),
+        "Dark temperature tolerance must be 0.5–10 °C.",
+    ),
+    ("stacking", "auto_quiet_hours"): (_number_in(0.5, 24), "Quiet time must be 0.5–24 hours."),
+    ("stacking", "auto_every_n"): (_number_in(3, 1000, whole=True), "N must be 3–1,000."),
+    ("stacking", "sigma"): (
+        lambda v: isinstance(v, list) and len(v) == 2 and all(_number_in(0.5, 10)(x) for x in v),
+        "Sigma low and high must be 0.5–10.",
+    ),
+}
+_SECTION_CHECKS: dict[str, Callable[[dict], None]] = {
+    "notifications": _check_notifications,
+    "backup": _check_backup,
+    "bin": _check_bin,
+}
+
+
+def _check_value(section: str, k: str, v: object) -> None:
+    if (section, k) in CHOICES and v not in CHOICES[(section, k)]:
+        raise _invalid(f"{k.capitalize()} must be one of {', '.join(sorted(CHOICES[(section, k)]))}.")
+    if section == "grading" and k in LEVELS:
+        _check_level(k, v)
+    if (section, k) in _RANGES:
+        ok, message = _RANGES[(section, k)]
+        if not ok(v):
+            raise _invalid(message)
+
+
 def _clean_processing(data: dict) -> dict:
     """Validate a partial calibration/grading/stacking change; messages follow the voice guide."""
     out: dict = {}
     for section, values in data.items():
         if section not in EDITABLE or not isinstance(values, dict):
-            raise ApiError(422, "invalid", f"“{section}” can't be changed here.")
-        if section == "notifications":
-            from substation.notify import EVENTS
-
-            for k in ("ntfy", "webhook"):
-                if values.get(k) and not str(values[k]).startswith(("http://", "https://")):
-                    raise ApiError(422, "invalid", f"The {k} address must start with http:// or https://.")
-            if any(e not in EVENTS for e in values.get("events") or []):
-                raise ApiError(422, "invalid", "Unknown notification event.")
-            import re
-
-            for k, label in (
-                ("pushover_user", "Pushover user key"),
-                ("pushover_token", "Pushover API token"),
-            ):
-                v = (values.get(k) or "").strip()
-                if v and not re.fullmatch(r"[A-Za-z0-9]{30}", v):
-                    raise ApiError(
-                        422, "invalid", f"The {label} is 30 letters and digits, as Pushover shows it."
-                    )
-        if section == "backup":  # spec 014
-            import re
-
-            for k, v in values.items():
-                if k == "enabled" and not isinstance(v, bool):
-                    raise ApiError(422, "invalid", "Backups are on or off.")
-                if k == "time" and not (isinstance(v, str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", v)):
-                    raise ApiError(422, "invalid", "The time is HH:MM, 24-hour.")
-                if k == "keep" and not (isinstance(v, int) and 1 <= v <= 365):
-                    raise ApiError(422, "invalid", "Keep between 1 and 365 backups.")
-                if k == "folder" and not (isinstance(v, str) and (v == "" or v.startswith("/"))):
-                    raise ApiError(
-                        422, "invalid", "The folder is a path inside the containers, starting with /."
-                    )
-                if k not in ("enabled", "time", "keep", "folder"):
-                    raise ApiError(422, "invalid", f"Unknown backup setting {k}.")
-        if section == "bin":
-            for k, v in values.items():
-                if k not in ("auto_bin_rejected_days", "purge_after_days") or not isinstance(v, int) or v < 0:
-                    raise ApiError(422, "invalid", "Days must be a whole number, 0 or more.")
-            if values.get("purge_after_days") == 0:
-                raise ApiError(422, "invalid", "Keep binned files at least a day before they're deleted.")
+            raise _invalid(f"“{section}” can't be changed here.")
+        if section in _SECTION_CHECKS:
+            _SECTION_CHECKS[section](values)
         for k, v in values.items():
-            if (section, k) in CHOICES and v not in CHOICES[(section, k)]:
-                raise ApiError(
-                    422,
-                    "invalid",
-                    f"{k.capitalize()} must be one of {', '.join(sorted(CHOICES[(section, k)]))}.",
-                )
-            if section == "grading" and k in LEVELS:
-                if not (
-                    isinstance(v, list)
-                    and len(v) == 2
-                    and all(isinstance(x, int | float) and x > 0 for x in v)
-                ):
-                    raise ApiError(
-                        422,
-                        "invalid",
-                        f"{k.upper() if k == 'fwhm' else k.capitalize()} needs a "
-                        "down-weight and a reject level, both above zero.",
-                    )
-                down, reject = v
-                if (LEVELS[k] == "above" and reject <= down) or (LEVELS[k] == "below" and reject >= down):
-                    raise ApiError(
-                        422,
-                        "invalid",
-                        f"{k.upper() if k == 'fwhm' else k.capitalize()}: reject level must be "
-                        f"{LEVELS[k]} the down-weight level.",
-                    )
-            if (
-                section == "calibration"
-                and k == "temp_tolerance_c"
-                and not (isinstance(v, int | float) and 0.5 <= v <= 10)
-            ):
-                raise ApiError(422, "invalid", "Dark temperature tolerance must be 0.5–10 °C.")
-            if (
-                section == "stacking"
-                and k == "auto_quiet_hours"
-                and not (isinstance(v, int | float) and 0.5 <= v <= 24)
-            ):
-                raise ApiError(422, "invalid", "Quiet time must be 0.5–24 hours.")
-            if section == "stacking" and k == "auto_every_n" and not (isinstance(v, int) and 3 <= v <= 1000):
-                raise ApiError(422, "invalid", "N must be 3–1,000.")
-            if (
-                section == "stacking"
-                and k == "sigma"
-                and not (
-                    isinstance(v, list)
-                    and len(v) == 2
-                    and all(isinstance(x, int | float) and 0.5 <= x <= 10 for x in v)
-                )
-            ):
-                raise ApiError(422, "invalid", "Sigma low and high must be 0.5–10.")
+            _check_value(section, k, v)
         out[section] = values
     return out
 
@@ -319,34 +329,40 @@ def get_settings(request):  # type: ignore[no-untyped-def]
     return out
 
 
+# installation values with a range: field → (lowest, highest, message); None leaves a field unset
+_INSTALL_RANGES: dict[str, tuple[float, float, str]] = {
+    "site_lat": (-90, 90, "Latitude must be between −90 and 90 degrees."),
+    "site_lon": (-180, 180, "Longitude must be between −180 and 180 degrees."),
+    "worker_count": (1, 16, "Workers must be between 1 and 16."),
+    "siril_mem_ratio": (0.05, 0.9, "Memory share must be 5–90%."),
+    "stack_threads": (1, 256, "Stacking threads must be 1–256."),
+    "stack_mem_ratio": (0.1, 0.95, "Stacking memory share must be 10–95%."),
+    "work_budget_gb": (5, 20000, "Work budget must be 5 GB–20 TB."),
+}
+
+
+def _check_installation(data: dict, s: InstallationSettings) -> None:
+    for k, (lo, hi, message) in _INSTALL_RANGES.items():
+        if data.get(k) is not None and not lo <= data[k] <= hi:
+            raise _invalid(message)
+    if "siril_heavy_slots" in data:
+        heavy = data["siril_heavy_slots"]
+        workers = data.get("worker_count") or s.worker_count or settings.SUBSTATION_WORKERS
+        if heavy is None or not 1 <= heavy <= min(4, workers):
+            raise _invalid(f"Stacking slots must be 1–{min(4, workers)}.")
+    cores = os.cpu_count() or 64
+    if data.get("siril_threads") is not None and not 1 <= data["siril_threads"] <= cores:
+        raise _invalid(f"Siril threads must be 1–{cores}.")
+
+
 @settings_router.patch("", response=SettingsOut)
 @admin_required
 def patch_settings(request, body: SettingsIn):  # type: ignore[no-untyped-def]
     s = InstallationSettings.load()
     data = body.dict(exclude_unset=True)
-    if "site_lat" in data and data["site_lat"] is not None and not -90 <= data["site_lat"] <= 90:
-        raise ApiError(422, "invalid", "Latitude must be between −90 and 90 degrees.")
-    if "site_lon" in data and data["site_lon"] is not None and not -180 <= data["site_lon"] <= 180:
-        raise ApiError(422, "invalid", "Longitude must be between −180 and 180 degrees.")
+    _check_installation(data, s)
     if "filter_aliases" in data and data["filter_aliases"] is not None:
         data["filter_aliases"] = {k.strip().casefold(): v.strip() for k, v in data["filter_aliases"].items()}
-    if data.get("worker_count") is not None and not 1 <= data["worker_count"] <= 16:
-        raise ApiError(422, "invalid", "Workers must be between 1 and 16.")
-    if "siril_heavy_slots" in data:
-        heavy = data["siril_heavy_slots"]
-        workers = data.get("worker_count") or s.worker_count or settings.SUBSTATION_WORKERS
-        if heavy is None or not 1 <= heavy <= min(4, workers):
-            raise ApiError(422, "invalid", f"Stacking slots must be 1–{min(4, workers)}.")
-    if data.get("siril_threads") is not None and not 1 <= data["siril_threads"] <= (os.cpu_count() or 64):
-        raise ApiError(422, "invalid", f"Siril threads must be 1–{os.cpu_count() or 64}.")
-    if data.get("siril_mem_ratio") is not None and not 0.05 <= data["siril_mem_ratio"] <= 0.9:
-        raise ApiError(422, "invalid", "Memory share must be 5–90%.")
-    if data.get("stack_threads") is not None and not 1 <= data["stack_threads"] <= 256:
-        raise ApiError(422, "invalid", "Stacking threads must be 1–256.")
-    if data.get("stack_mem_ratio") is not None and not 0.1 <= data["stack_mem_ratio"] <= 0.95:
-        raise ApiError(422, "invalid", "Stacking memory share must be 10–95%.")
-    if data.get("work_budget_gb") is not None and not 5 <= data["work_budget_gb"] <= 20000:
-        raise ApiError(422, "invalid", "Work budget must be 5 GB–20 TB.")
     regrade = data.pop("regrade", False)
     change = _clean_processing(data.pop("processing", None) or {})
     affected = (

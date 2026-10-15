@@ -303,8 +303,6 @@ def _factor(m: Master, ref: Master) -> float:
 def combine(collection_id: int, combined_ids: list[int]) -> dict:
     from apps.engine.siril import engine
 
-    from .previews import render
-
     rows = list(CombinedMaster.objects.filter(pk__in=combined_ids).select_related("reference", "project"))
     if not rows or rows[0].reference is None:
         return {"result": "nothing to do"}
@@ -337,117 +335,13 @@ def combine(collection_id: int, combined_ids: list[int]) -> dict:
         mosaics = _mosaic_all(eng, groups, ref, root / "mosaic")
     try:
         for n, cm in enumerate(rows):
-            if mosaics:
-                report_progress(n / len(rows), f"Combined {cm.filter_norm}: aligning the mosaic")
-                try:
-                    src = mosaics.get(cm.pk)
-                    if src is None:
-                        raise RuntimeError(
-                            "Couldn't place panels on the mosaic: too few stars matched in the overlap."
-                        )
-                    tag = f"p{cm.project_id}_" if cm.project_id else ""
-                    target = out_dir / f"combined_{tag}{cm.filter_norm}_v{cm.version}.fit".replace(" ", "_")
-                    shutil.copyfile(src, target)  # already on the shared canvas
-                    prev = target.with_suffix(".jpg")
-                    try:
-                        render(target, prev, target.with_name(target.stem + "_t.jpg"))
-                    except Exception as exc:  # noqa: BLE001
-                        log.warning("Combined preview failed: %s", exc)
-                    CombinedMaster.objects.filter(pk=cm.pk).update(
-                        state=MasterState.CURRENT,
-                        error=None,
-                        inputs=[i | {"registered": True} for i in cm.inputs],
-                        output_path=str(target),
-                        preview_path=str(prev) if prev.exists() else "",
-                        finished_at=timezone.now(),
-                        state_reason=f"Mosaic of {len(cm.inputs)} panel(s).",
-                    )
-                    (
-                        CombinedMaster.objects.filter(
-                            collection_id=collection_id,
-                            filter_norm=cm.filter_norm,
-                            state=MasterState.CURRENT,
-                            **in_project(cm.project_id),
-                        )
-                        .exclude(pk=cm.pk)
-                        .update(state=MasterState.SUPERSEDED, state_reason=f"Replaced by v{cm.version}.")
-                    )
-                    done += 1
-                except Exception as exc:  # noqa: BLE001
-                    log.exception("Combining %s failed", cm.filter_norm)
-                    CombinedMaster.objects.filter(pk=cm.pk).update(
-                        state=MasterState.FAILED, error=str(exc), finished_at=timezone.now()
-                    )
-                continue
-            report_progress(
-                n / len(rows), f"Combined {cm.filter_norm}: registering {len(cm.inputs)} master(s)"
-            )
+            what = "aligning the mosaic" if mosaics else f"registering {len(cm.inputs)} master(s)"
+            report_progress(n / len(rows), f"Combined {cm.filter_norm}: {what}")
             try:
-                aligned: list[tuple[Path, int]] = []
-                inputs = []
-                for i, inp in enumerate(cm.inputs):
-                    m = Master.objects.filter(pk=inp["master"]).first()
-                    src = Path(m.output_path) if m else None
-                    got = (
-                        _align(eng, ref, src, root / f"{cm.filter_norm}_{i}", _factor(m, rows[0].reference))
-                        if m and src and src.exists()
-                        else None
-                    )
-                    inputs.append(inp | {"registered": got is not None})
-                    if got is not None:
-                        aligned.append((got, inp.get("subs") or 1))
-                if not aligned:
-                    CombinedMaster.objects.filter(pk=cm.pk).update(inputs=inputs)
-                    raise RuntimeError(
-                        "Stars didn't match the reference. Field or pixel scale too "
-                        "different; stack it with its own rig."
-                    )
-                tag = f"p{cm.project_id}_" if cm.project_id else ""
-                target = out_dir / f"combined_{tag}{cm.filter_norm}_v{cm.version}.fit".replace(" ", "_")
-                if len(aligned) == 1:
-                    shutil.copyfile(aligned[0][0], target)
+                if mosaics:
+                    _place_mosaic(cm, mosaics, out_dir, collection_id)
                 else:
-                    seq = root / f"{cm.filter_norm}_stack"
-                    seq.mkdir(parents=True)
-                    # copied under their own names: convert writes c_00001.fit…, and symlinks on the mounted
-                    # library aren't reliable (2026-10-11, "failed to find or open c_00001.fit")
-                    for k, (pth, _subs) in enumerate(aligned, start=1):
-                        shutil.copyfile(pth, seq / f"in_{k:05d}.fit")
-                    eng.run(f"cd {seq}")
-                    eng.run("convert c -out=.", timeout=600)
-                    # weighted by the number of subs in each master (Siril reads it from STACKCNT)
-                    eng.run(
-                        f"stack c_ rej n -norm=addscale -weight=nbstack -out={target.with_suffix('')}",
-                        timeout=3600,
-                    )
-                prev = target.with_suffix(".jpg")
-                try:
-                    render(target, prev, target.with_name(target.stem + "_t.jpg"))
-                except Exception as exc:  # noqa: BLE001
-                    log.warning("Combined preview failed: %s", exc)
-                CombinedMaster.objects.filter(pk=cm.pk).update(
-                    state=MasterState.CURRENT,
-                    error=None,
-                    inputs=inputs,
-                    output_path=str(target),
-                    preview_path=str(prev) if prev.exists() else "",
-                    finished_at=timezone.now(),
-                    state_reason=""
-                    if all(i["registered"] for i in inputs)
-                    else "Left out (stars didn't match the reference): "
-                    + ", ".join(i["label"] for i in inputs if not i["registered"])
-                    + ".",
-                )
-                (
-                    CombinedMaster.objects.filter(
-                        collection_id=collection_id,
-                        filter_norm=cm.filter_norm,
-                        state=MasterState.CURRENT,
-                        **in_project(cm.project_id),
-                    )
-                    .exclude(pk=cm.pk)
-                    .update(state=MasterState.SUPERSEDED, state_reason=f"Replaced by v{cm.version}.")
-                )
+                    _register_and_stack(eng, cm, ref, rows[0].reference, root, out_dir, collection_id)
                 done += 1
             except Exception as exc:  # noqa: BLE001
                 log.exception("Combining %s failed", cm.filter_norm)
@@ -457,6 +351,107 @@ def combine(collection_id: int, combined_ids: list[int]) -> dict:
     finally:
         shutil.rmtree(root, ignore_errors=True)
         _heavy.__exit__(None, None, None)
+    _after_combine(rows, collection_id)
+    return {"combined": done, "of": len(rows)}
+
+
+def _combined_target(out_dir: Path, cm: CombinedMaster) -> Path:
+    tag = f"p{cm.project_id}_" if cm.project_id else ""
+    return out_dir / f"combined_{tag}{cm.filter_norm}_v{cm.version}.fit".replace(" ", "_")
+
+
+def _make_current(
+    cm: CombinedMaster, target: Path, inputs: list[dict], reason: str, collection_id: int
+) -> None:
+    """Preview the combined master, make it current, and supersede the filter's earlier one."""
+    from .previews import render
+
+    prev = target.with_suffix(".jpg")
+    try:
+        render(target, prev, target.with_name(target.stem + "_t.jpg"))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Combined preview failed: %s", exc)
+    CombinedMaster.objects.filter(pk=cm.pk).update(
+        state=MasterState.CURRENT,
+        error=None,
+        inputs=inputs,
+        output_path=str(target),
+        preview_path=str(prev) if prev.exists() else "",
+        finished_at=timezone.now(),
+        state_reason=reason,
+    )
+    (
+        CombinedMaster.objects.filter(
+            collection_id=collection_id,
+            filter_norm=cm.filter_norm,
+            state=MasterState.CURRENT,
+            **in_project(cm.project_id),
+        )
+        .exclude(pk=cm.pk)
+        .update(state=MasterState.SUPERSEDED, state_reason=f"Replaced by v{cm.version}.")
+    )
+
+
+def _place_mosaic(
+    cm: CombinedMaster, mosaics: dict[int, Path | None], out_dir: Path, collection_id: int
+) -> None:
+    src = mosaics.get(cm.pk)
+    if src is None:
+        raise RuntimeError("Couldn't place panels on the mosaic: too few stars matched in the overlap.")
+    target = _combined_target(out_dir, cm)
+    shutil.copyfile(src, target)  # already on the shared canvas
+    inputs = [i | {"registered": True} for i in cm.inputs]
+    _make_current(cm, target, inputs, f"Mosaic of {len(cm.inputs)} panel(s).", collection_id)
+
+
+def _register_and_stack(
+    eng,  # noqa: ANN001
+    cm: CombinedMaster,
+    ref: Path,
+    reference: Master,
+    root: Path,
+    out_dir: Path,
+    collection_id: int,
+) -> None:
+    """Align each of the filter's masters to the reference, then stack them weighted by their subs."""
+    aligned: list[tuple[Path, int]] = []
+    inputs = []
+    for i, inp in enumerate(cm.inputs):
+        m = Master.objects.filter(pk=inp["master"]).first()
+        src = Path(m.output_path) if m else None
+        got = (
+            _align(eng, ref, src, root / f"{cm.filter_norm}_{i}", _factor(m, reference))
+            if m and src and src.exists()
+            else None
+        )
+        inputs.append(inp | {"registered": got is not None})
+        if got is not None:
+            aligned.append((got, inp.get("subs") or 1))
+    if not aligned:
+        CombinedMaster.objects.filter(pk=cm.pk).update(inputs=inputs)
+        raise RuntimeError(
+            "Stars didn't match the reference. Field or pixel scale too different; stack it with its own rig."
+        )
+    target = _combined_target(out_dir, cm)
+    if len(aligned) == 1:
+        shutil.copyfile(aligned[0][0], target)
+    else:
+        seq = root / f"{cm.filter_norm}_stack"
+        seq.mkdir(parents=True)
+        # copied under their own names: convert writes c_00001.fit…, and symlinks on the mounted
+        # library aren't reliable (2026-10-11, "failed to find or open c_00001.fit")
+        for k, (pth, _subs) in enumerate(aligned, start=1):
+            shutil.copyfile(pth, seq / f"in_{k:05d}.fit")
+        eng.run(f"cd {seq}")
+        eng.run("convert c -out=.", timeout=600)
+        # weighted by the number of subs in each master (Siril reads it from STACKCNT)
+        eng.run(f"stack c_ rej n -norm=addscale -weight=nbstack -out={target.with_suffix('')}", timeout=3600)
+    left_out = [i["label"] for i in inputs if not i["registered"]]
+    reason = f"Left out (stars didn't match the reference): {', '.join(left_out)}." if left_out else ""
+    _make_current(cm, target, inputs, reason, collection_id)
+
+
+def _after_combine(rows: list[CombinedMaster], collection_id: int) -> None:
     # palettes made from these combined masters are redrawn now, so the 100% HOO/SHO views are ready
     from .tasks import PALETTES, combined_view, palette_inputs, palette_view
 
@@ -472,7 +467,6 @@ def combine(collection_id: int, combined_ids: list[int]) -> dict:
                 name,
                 dedupe_key=f"palette:{collection_id}:{project_id}:{name}",
             )
-    return {"combined": done, "of": len(rows)}
 
 
 def staleness(cm: CombinedMaster) -> str:

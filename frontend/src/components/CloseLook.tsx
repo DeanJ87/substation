@@ -9,6 +9,7 @@ import { optimistic } from '../api/optimistic'
 import { Spinner } from './ui'
 import { AnnotateToggle, AnnotationOverlay, type AnnotateTarget, useAnnotateSwitch } from './Annotations'
 import s from './CloseLook.module.css'
+import { anchoredScroll, clampZoom, fitScale as fitOf } from './zoom'
 
 export type LookMode = 'full' | 'inspector'
 /** What to look at: a sub, a master, or a palette made from a project's combined masters. */
@@ -195,24 +196,22 @@ export function CloseLook({
     ro.observe(b)
     return () => ro.disconnect()
   })
-  const fitScale = () => (boxSize && dims ? Math.min(boxSize.w / dims.w, boxSize.h / dims.h, 1) : 1)
+  const fitScale = () => fitOf(boxSize, dims)
   const scale = zoom === 'fit' ? fitScale() : zoom
-  const MAX = 8
   /** Zoom to `next`, keeping the image point under (cx, cy) — the pointer, or the middle — where it is. */
   const zoomTo = (next: number, cx?: number, cy?: number) => {
     const b = box.current
-    const lo = Math.min(fitScale(), 1)
-    const to = Math.min(MAX, Math.max(lo, next))
+    const to = clampZoom(next, fitScale())
     if (!b || !dims) return setZoom(to)
     const r = b.getBoundingClientRect()
     const px = (cx ?? r.left + b.clientWidth / 2) - r.left
     const py = (cy ?? r.top + b.clientHeight / 2) - r.top
-    const ix = (b.scrollLeft + px) / scale
-    const iy = (b.scrollTop + py) / scale
+    const left = anchoredScroll(b.scrollLeft, px, scale, to)
+    const top = anchoredScroll(b.scrollTop, py, scale, to)
     setZoom(to <= fitScale() + 1e-6 ? 'fit' : to)
     requestAnimationFrame(() => {
-      b.scrollLeft = ix * to - px
-      b.scrollTop = iy * to - py
+      b.scrollLeft = left
+      b.scrollTop = top
     })
   }
   const zoomBy = (f: number, cx?: number, cy?: number) => zoomTo(scale * f, cx, cy)

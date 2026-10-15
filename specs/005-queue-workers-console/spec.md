@@ -285,3 +285,5 @@ SQLite support was then removed rather than kept as a second, untested path.
   76% today); frontend measured across the whole app, not only the files tests load (about 4% today, so new
   frontend work brings its tests). Lint warnings fail the frontend build. Backend lint adds complexity (no function
   more tangled than the worst today, 34), needless returns and blanket exception catches.
+
+  Updated 2026-10-15: the frontend floor is now about 50% of lines (whole app) and the complexity limit 14.

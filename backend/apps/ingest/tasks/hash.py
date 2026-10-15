@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import os
 import time
+from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
@@ -44,18 +45,8 @@ def sha256_file(path: Path, size: int) -> str:
     return h.hexdigest()
 
 
-@station_task(queue_name="ingest", max_attempts=5)
-def hash_file(library_id: int, rel_path: str, first_seen: float) -> dict:
-    lib = Library.objects.get(pk=library_id)
-    path = Path(lib.mount_path) / rel_path
-    # the rules again, now: a rule added after this file was queued (darks shot in daylight, ignored while
-    # Robocopy was still copying them, 2026-10-14) must still keep it out
-    if PathRules.load().matches(library_id, rel_path):
-        return {"result": "ignored by a rule"}
-    try:
-        st = os.stat(path)
-    except FileNotFoundError:
-        return {"result": "gone"}  # moved or deleted before we got to it; the next sweep sees where it went
+def _wait_until_written(path: Path, rel_path: str, st: os.stat_result, first_seen: float) -> None:
+    """Reschedule while the file is still arriving; give up on one that keeps changing."""
     if time.time() - st.st_mtime < QUIET_S:
         if time.time() - first_seen > GIVE_UP_S:
             raise RuntimeError(
@@ -68,75 +59,104 @@ def hash_file(library_id: int, rel_path: str, first_seen: float) -> dict:
     recent = time.time() - st.st_mtime < GIVE_UP_S and time.time() - first_seen < GIVE_UP_S
     if need is not None and st.st_size < need and recent:
         raise Reschedule(QUIET_S, f"{path.name} is still being written ({st.st_size} of {need} bytes)")
+
+
+def _new_copy(lib: Library, rel_path: str, frame: Frame, *, created: bool, fp: dict, now: datetime) -> None:
+    # Known content at a new path: a copy, or a move if a copy of it has gone missing (T063). A move
+    # takes over the missing copy's place, so the frame doesn't list a path that no longer exists.
+    details: dict = {"path": rel_path}
+    kind = CopyEventKind.DISCOVERED if created else CopyEventKind.COPIED
+    gone = (
+        None
+        if created
+        else Copy.objects.filter(frame=frame, present=False).order_by("-missing_since").first()
+    )
+    if gone is not None:
+        kind, details = (
+            CopyEventKind.MOVED,
+            {"from": f"{gone.library.name}/{gone.rel_path}", "to": rel_path},
+        )
+        gone.delete()
+    copy = Copy.objects.create(
+        frame=frame,
+        library=lib,
+        rel_path=rel_path,
+        is_bad_prefixed=os.path.basename(rel_path).startswith("BAD_"),
+        first_seen_at=now,
+        last_seen_at=now,
+        **fp,
+    )
+    CopyEvent.objects.create(kind=kind, frame=frame, copy=copy, library=lib, details=details)
+
+
+def _record_copy(
+    lib: Library,
+    rel_path: str,
+    frame: Frame,
+    *,
+    created: bool,
+    st: os.stat_result,
+    digest: str,
+    now: datetime,
+) -> Frame | None:
+    """Record this path as a copy of the frame. Returns a frame left with no copy, when new content replaced it."""
+    copy = Copy.objects.filter(library=lib, rel_path=rel_path).first()
+    fp = {"st_dev": st.st_dev, "st_ino": st.st_ino, "st_size": st.st_size, "st_mtime_ns": st.st_mtime_ns}
+    if copy is None:
+        _new_copy(lib, rel_path, frame, created=created, fp=fp, now=now)
+        return None
+    orphan = None
+    for k, v in fp.items():
+        setattr(copy, k, v)
+    if copy.frame_id != frame.pk:  # same path, new content: the old frame loses this copy
+        old = copy.frame
+        CopyEvent.objects.create(
+            kind=CopyEventKind.REPLACED,
+            frame=old,
+            copy=copy,
+            library=lib,
+            details={"path": rel_path, "new_sha256": digest},
+        )
+        if not Copy.objects.filter(frame=old).exclude(pk=copy.pk).exists():
+            old.status = FrameStatus.MISSING
+            old.save(update_fields=["status"])
+            orphan = old
+    elif not copy.present:
+        CopyEvent.objects.create(
+            kind=CopyEventKind.REAPPEARED, frame=frame, copy=copy, library=lib, details={"path": rel_path}
+        )
+    copy.frame = frame
+    copy.is_bad_prefixed = os.path.basename(rel_path).startswith("BAD_")
+    copy.present, copy.last_seen_at, copy.missing_since = True, now, None
+    copy.save()
+    return orphan
+
+
+@station_task(queue_name="ingest", max_attempts=5)
+def hash_file(library_id: int, rel_path: str, first_seen: float) -> dict:
+    lib = Library.objects.get(pk=library_id)
+    path = Path(lib.mount_path) / rel_path
+    # the rules again, now: a rule added after this file was queued (darks shot in daylight, ignored while
+    # Robocopy was still copying them, 2026-10-14) must still keep it out
+    if PathRules.load().matches(library_id, rel_path):
+        return {"result": "ignored by a rule"}
+    try:
+        st = os.stat(path)
+    except FileNotFoundError:
+        return {"result": "gone"}  # moved or deleted before we got to it; the next sweep sees where it went
+    _wait_until_written(path, rel_path, st, first_seen)
     digest = sha256_file(path, st.st_size)
     st_after = os.stat(path)
     if Fingerprint.of(st_after) != Fingerprint.of(st):
         raise Reschedule(QUIET_S, f"{path.name} changed while it was being read")
 
     now = timezone.now()
-    name = os.path.basename(rel_path)
-    orphan: Frame | None = None
     with transaction.atomic():
         frame, created = Frame.objects.get_or_create(
             sha256=digest,
             defaults={"size_bytes": st.st_size, "format": file_format(path), "first_seen_at": now},
         )
-        copy = Copy.objects.filter(library=lib, rel_path=rel_path).first()
-        fp = {"st_dev": st.st_dev, "st_ino": st.st_ino, "st_size": st.st_size, "st_mtime_ns": st.st_mtime_ns}
-        if copy is None:
-            # Known content at a new path: a copy, or a move if a copy of it has gone missing (T063). A move
-            # takes over the missing copy's place, so the frame doesn't list a path that no longer exists.
-            details: dict = {"path": rel_path}
-            kind = CopyEventKind.DISCOVERED if created else CopyEventKind.COPIED
-            gone = (
-                None
-                if created
-                else Copy.objects.filter(frame=frame, present=False).order_by("-missing_since").first()
-            )
-            if gone is not None:
-                kind, details = (
-                    CopyEventKind.MOVED,
-                    {"from": f"{gone.library.name}/{gone.rel_path}", "to": rel_path},
-                )
-                gone.delete()
-            copy = Copy.objects.create(
-                frame=frame,
-                library=lib,
-                rel_path=rel_path,
-                is_bad_prefixed=name.startswith("BAD_"),
-                first_seen_at=now,
-                last_seen_at=now,
-                **fp,
-            )
-            CopyEvent.objects.create(kind=kind, frame=frame, copy=copy, library=lib, details=details)
-        else:
-            for k, v in fp.items():
-                setattr(copy, k, v)
-            if copy.frame_id != frame.pk:  # same path, new content: the old frame loses this copy
-                old = copy.frame
-                CopyEvent.objects.create(
-                    kind=CopyEventKind.REPLACED,
-                    frame=old,
-                    copy=copy,
-                    library=lib,
-                    details={"path": rel_path, "new_sha256": digest},
-                )
-                if not Copy.objects.filter(frame=old).exclude(pk=copy.pk).exists():
-                    old.status = FrameStatus.MISSING
-                    old.save(update_fields=["status"])
-                    orphan = old
-            elif not copy.present:
-                CopyEvent.objects.create(
-                    kind=CopyEventKind.REAPPEARED,
-                    frame=frame,
-                    copy=copy,
-                    library=lib,
-                    details={"path": rel_path},
-                )
-            copy.frame = frame
-            copy.is_bad_prefixed = name.startswith("BAD_")
-            copy.present, copy.last_seen_at, copy.missing_since = True, now, None
-            copy.save()
+        orphan = _record_copy(lib, rel_path, frame, created=created, st=st, digest=digest, now=now)
     if orphan is not None:
         touch_dataset(orphan.dataset)
     verdict_changed = apply_bad_prefix(frame)

@@ -4,6 +4,7 @@ annotations` here: see substation.api."""
 
 import shutil
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 import psutil
@@ -60,54 +61,66 @@ def kind_name(name: str) -> str:
     return KIND.get(short) or short.replace("_", " ").capitalize()
 
 
+def _n(r: dict, k: str) -> str:
+    return f"{r.get(k, 0):,}"
+
+
+def _measured(r: dict, t: str) -> str:
+    if r.get("stars") is not None:
+        fwhm = f", FWHM {r['fwhm_px']:.2f} px" if r.get("fwhm_px") else ""
+        return f"Measured {t}: {r['stars']:,} stars{fwhm}"
+    return f"Skipped {t}: {r.get('result', 'nothing to do')}"
+
+
+def _post_processed(r: dict, t: str) -> str:
+    if "run" in r:
+        return f"Post-processed {t}: {r.get('done', 0)} done, {r.get('skipped', 0)} skipped"
+    return f"Post-processing {r.get('result', 'ended')} · {t}"
+
+
+def _reresolved(r: dict, _t: str) -> str:
+    if "frames" in r:
+        return f"Re-read {_n(r, 'frames')} frames; {_n(r, 'datasets')} datasets regrouped"
+    return f"Regrouped {_n(r, 'datasets')} datasets"
+
+
+def _catalogued(r: dict, t: str) -> str:
+    kind = f" as {str(r['frame_type']).replace('_', ' ')}" if r.get("frame_type") else ""
+    return f"Catalogued {t}{kind}"
+
+
+# job kind → its result as a sentence, given the job's return value and what it worked on
+_OUTCOMES: dict[str, Callable[[dict, str], str]] = {
+    "calibrate_measure": _measured,
+    "integrate": lambda r, t: (
+        f"Stacked {_n(r, 'subs')} subs · {t}" if "subs" in r else f"Stack {r.get('result', 'ended')} · {t}"
+    ),
+    "postprocess_master": _post_processed,
+    "build_master": lambda r, t: (
+        f"Master blocked · {t}"
+        if r.get("result") == "blocked"
+        else f"Built master from {_n(r, 'frames')} frames · {t}"
+    ),
+    "rematch_lights": lambda r, _t: (
+        f"Matched {_n(r, 'lights')} lights to calibration; {_n(r, 'queued')} queued to measure"
+    ),
+    "regrade_datasets": lambda r, _t: f"Re-graded {_n(r, 'subs')} subs in {_n(r, 'datasets')} datasets",
+    "solve_light": lambda r, t: f"Solved {t}" if r.get("result") == "solved" else f"Couldn't solve {t}",
+    "rerender_previews": lambda r, _t: f"Redrew {_n(r, 'previews')} previews",
+    "reresolve_library": _reresolved,
+    "reresolve_targets": _reresolved,
+    "hash_file": lambda r, t: f"{'New' if r.get('result') == 'new' else 'Known'} file · {t}",
+    "catalogue_frame": _catalogued,
+}
+
+
 def outcome(short: str, rv: object, target: str) -> str:
     """A finished job as a sentence (005-DR-05): what it did, not what it was called."""
     r = rv if isinstance(rv, dict) else {}
-    n = lambda k: f"{r.get(k, 0):,}"  # noqa: E731
-    if short == "calibrate_measure":
-        if r.get("stars") is not None:
-            fwhm = f", FWHM {r['fwhm_px']:.2f} px" if r.get("fwhm_px") else ""
-            return f"Measured {target}: {r['stars']:,} stars{fwhm}"
-        return f"Skipped {target}: {r.get('result', 'nothing to do')}"
-    if short == "integrate":
-        return (
-            f"Stacked {n('subs')} subs · {target}"
-            if "subs" in r
-            else f"Stack {r.get('result', 'ended')} · {target}"
-        )
-    if short == "postprocess_master":
-        if "run" in r:
-            return f"Post-processed {target}: {r.get('done', 0)} done, {r.get('skipped', 0)} skipped"
-        return f"Post-processing {r.get('result', 'ended')} · {target}"
-    if short == "build_master":
-        if r.get("result") == "blocked":
-            return f"Master blocked · {target}"
-        return f"Built master from {n('frames')} frames · {target}"
-    if short == "rematch_lights":
-        return f"Matched {n('lights')} lights to calibration; {n('queued')} queued to measure"
-    if short == "regrade_datasets":
-        return f"Re-graded {n('subs')} subs in {n('datasets')} datasets"
-    if short == "solve_light":
-        return f"Solved {target}" if r.get("result") == "solved" else f"Couldn't solve {target}"
-    if short == "rerender_previews":
-        return f"Redrew {n('previews')} previews"
-    if short in ("reresolve_library", "reresolve_targets"):
-        return (
-            f"Re-read {n('frames')} frames; {n('datasets')} datasets regrouped"
-            if "frames" in r
-            else f"Regrouped {n('datasets')} datasets"
-        )
-    if short == "hash_file":
-        return f"{'New' if r.get('result') == 'new' else 'Known'} file · {target}"
-    if short == "catalogue_frame":
-        return f"Catalogued {target}" + (
-            f" as {str(r['frame_type']).replace('_', ' ')}" if r.get("frame_type") else ""
-        )
-    return (
-        f"{KIND.get(short, short.replace('_', ' ').capitalize())} · {target}"
-        if target
-        else KIND.get(short, short.replace("_", " ").capitalize())
-    )
+    if short in _OUTCOMES:
+        return _OUTCOMES[short](r, target)
+    kind = KIND.get(short, short.replace("_", " ").capitalize())
+    return f"{kind} · {target}" if target else kind
 
 
 def _object_label(ds) -> str:  # noqa: ANN001

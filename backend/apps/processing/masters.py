@@ -738,8 +738,6 @@ def integrate(master_id: int) -> dict:
     from apps.engine import parse
     from apps.engine.siril import engine, heavy_memory
 
-    from .previews import render
-
     m = Master.objects.select_related("dataset").get(pk=master_id)
     if m.state == MasterState.CANCELLED:
         return {"result": "cancelled"}
@@ -755,36 +753,7 @@ def integrate(master_id: int) -> dict:
         work.mkdir(parents=True)
     keep = False
     try:
-        _step(m, "Select inputs", 0.02)
-        members = list(
-            MasterMember.objects.filter(master=m, included=True)
-            .select_related("frame__measurement")
-            .order_by("pk")
-        )
-        cached = [
-            Path(mm.frame.measurement.calibrated_path)
-            for mm in members
-            if mm.frame.measurement.calibrated_path
-        ]
-        for p in cached:  # newest in the cache, so pruning doesn't take them mid-integration
-            with contextlib.suppress(FileNotFoundError):
-                os.utime(p)
-        _step(m, "Calibrate", 0.1)  # done on arrival; subs pruned from the cache are calibrated again here
-        _release_kept(work, KEPT_FOR)
-        if not ck["done"]:
-            ck = _adopt(work, m, members) or ck
-        order = _resumed_inputs(work, ck, m) if "inputs" in ck["done"] else None
-        if order is None:
-            shutil.rmtree(work, ignore_errors=True)
-            work.mkdir(parents=True)
-            ck = {"master": m.pk, "done": []}
-            order = _inputs(m, members, work)
-            ck.update(
-                done=["inputs"],
-                order={str(i): mm.pk for i, mm in order.items()},
-                frames={str(i): mm.frame_id for i, mm in order.items()},
-            )
-            _save_checkpoint(work, ck)
+        members, order, ck = _prepare_inputs(m, work, ck)
         check_interrupted()
         if len(order) < 2:
             raise RuntimeError("Fewer than two calibrated subs.")
@@ -795,120 +764,15 @@ def integrate(master_id: int) -> dict:
         _step(m, "Register", 0.2)
         _check_budget(work, len(order))
         mosaic = mosaic_reason([mm.frame for mm in order.values()])
-        # a registration is reused only if made the same way (a kept folder registered as a mosaic under an
-        # older rule had carried its canvas into a normal stack)
-        if "registered" in ck["done"] and ck.get("mosaic") != bool(mosaic):
-            ck["done"].remove("registered")
-        if "registered" in ck["done"] and (work / "r_sub_.seq").exists():
-            notes = list(ck.get("notes", []))
-            notes.append("Resumed after a restart: registration was already done.")
-        elif mosaic:
-            # register by plate solution onto one canvas that holds every sub (004-DR-23). Each sub is solved on its
-            # own first: a sub that crashes Siril (IC 4605, 2026-10-14: a segfault at sub 284 of 413 took the whole
-            # stack down) costs only itself; seqplatesolve then lays out the canvas from those solutions
-            notes = _fit_registered(eng, work, len(order))
-            solved, unsolved = _solve_each(eng, work, order, m)
-            if len(solved) < 2:
-                raise RuntimeError(f"Only {len(solved)} of {len(order)} subs could be plate solved.")
-            eng.run(f"cd {work}")
-            for (
-                i
-            ) in unsolved:  # positions in the sequence, not file numbers (subs can be missing from the run)
-                at = sorted(order).index(i) + 1
-                eng.run(f"unselect sub_ {at} {at}", check=False)
-            eng.run(
-                "seqplatesolve sub_",
-                timeout=7200,
-                quiet=True,
-                on_line=_Live(m, "Plate solve", 0.45, 0.5, len(order)),
-            )
-            eng.run(
-                "seqapplyreg sub_ -framing=max",
-                timeout=7200,
-                quiet=True,
-                on_line=_Live(m, "Register", 0.5, 0.6, len(order)),
-            )
-            notes.append(f"{mosaic}: registered by plate solution and stacked onto one canvas.")
-            if unsolved:
-                notes.append(
-                    f"{len(unsolved)} sub{'s' if len(unsolved) != 1 else ''} couldn't be plate solved."
-                )
-        elif (m.recipe.get("options") or {}).get("reference") == "most_stars":
-            # the sub with the most stars is the reference; one pass keeps that choice (004 FR-004)
-            best = max(order, key=lambda i: order[i].frame.measurement.stars or 0)
-            notes = _fit_registered(eng, work, len(order))
-            eng.run(f"setref sub_ {sorted(order).index(best) + 1}")
-            eng.run(
-                "register sub_", timeout=7200, quiet=True, on_line=_Live(m, "Register", 0.2, 0.6, len(order))
-            )
-            notes.append(f"Reference: sub with most stars ({order[best].frame.measurement.stars:,}).")
-        else:
-            # two passes: Siril picks the sharpest, roundest sub as the reference (best FWHM)
-            eng.run(
-                "register sub_ -2pass",
-                timeout=7200,
-                quiet=True,
-                on_line=_Live(m, "Register", 0.2, 0.4, len(order)),
-            )
-            notes = _fit_registered(eng, work, len(order))
-            eng.run(
-                "seqapplyreg sub_ -framing=current",
-                timeout=7200,
-                quiet=True,
-                on_line=_Live(m, "Register", 0.4, 0.6, len(order)),
-            )
-        if "registered" not in ck["done"]:
-            ck["done"].append("registered")
-            ck["mosaic"] = bool(mosaic)
-            ck["notes"] = notes
-            _save_checkpoint(work, ck)
+        notes = _register(eng, m, work, ck, order, mosaic)
         eng.run("set32bits")
         registered = {im["filenum"] for im in parse.seq_images(work / "r_sub_.seq")}
-        unmatched = []
-        for i, mm in order.items():
-            if i not in registered:
-                mm.included, mm.reason = (
-                    False,
-                    ("could not plate solve" if mosaic else "could not match stars"),
-                )
-                mm.save(update_fields=["included", "reason"])
-                unmatched.append(mm.frame_id)
-        _reject_unregistered(m, unmatched, mosaic=bool(mosaic))
+        _exclude_unregistered(m, order, registered, mosaic)
         _step(m, "Integrate", 0.6)
-        out_dir = Path(settings.STACKS_DIR) / f"ds{m.dataset_id}"
-        try:
-            out_dir.mkdir(parents=True, exist_ok=True)
-            probe = out_dir / ".write-test"
-            probe.write_bytes(b"")
-            probe.unlink()
-        except OSError as exc:
-            raise RuntimeError(
-                f"Can't write to {settings.STACKS_DIR} ({exc.strerror or exc}). Check the stacks volume "
-                "is writable and has room, then retry."
-            ) from None
+        out_dir = _stacks_dir(m)
         out = out_dir / f"master_v{m.version}"
-        cfg = m.recipe.get("options", {})
-        lo, hi = (cfg.get("sigma") or [3.0, 3.0])[:2]
-        weight = {"grade": "-weight=wfwhm", "snr": "-weight=noise", "equal": ""}.get(
-            cfg.get("weighting", "grade"), ""
-        )
-        # mixed exposures (owner 2026-10-13): weight by noise (inverse
-        # variance), so a 240 s sub counts for about four 60 s ones; sharpness weighting ignores exposure
-        exposures = {round(mm.frame.exptime_s or 0, 3) for mm in order.values() if mm.included}
-        if weight == "-weight=wfwhm" and len(exposures) > 1:
-            weight = "-weight=noise"
-            notes.append(
-                "Mixed exposures ("
-                + ", ".join(f"{e:g} s" for e in sorted(exposures))
-                + "): weighted by noise, so longer subs count for more."
-            )
-        rej = {"winsorized": "w", "sigma": "s", "linear": "l"}.get(cfg.get("rejection", "winsorized"), "w")
-        # a mosaic: the canvas holds every sub; levels match on the overlaps and edges blend
-        canvas = " -maximize -overlap_norm -feather=100" if mosaic else ""
         stack = eng.run(
-            f"stack r_sub_ rej {rej} {lo:g} {hi:g} -norm=addscale {weight}{canvas} -out={out} -32b".replace(
-                "  ", " "
-            ),
+            _stack_command(m, order, notes, mosaic, out),
             timeout=7200,
             quiet=True,
             on_line=_Live(m, "Integrate", 0.6, 0.9, len(order)),
@@ -916,69 +780,10 @@ def integrate(master_id: int) -> dict:
         _step(m, "Write", 0.9)
         result = out.with_suffix(".fit")
         _provenance(result, m, notes)
-        eng.run(f"load {result}")
-        n, fwhm = parse.found_stars(eng.run(f"findstar -out={work / 'stars.lst'}").log)
-        noise = parse.bgnoise(eng.run("bgnoise").log)
-        stars = parse.star_list(work / "stars.lst")
-        prev = out_dir / f"master_v{m.version}.jpg"
-        try:
-            render(result, prev, out_dir / f"master_v{m.version}_t.jpg")
-        except Exception as exc:  # noqa: BLE001
-            log.warning("Master preview failed: %s", exc)
-        from .tasks import pixel_scale
-
-        f0 = members[0].frame
-        scale = pixel_scale(f0)
-        included = MasterMember.objects.filter(master=m, included=True).select_related("frame")
-        report = {
-            "stars": n,
-            "fwhm_px": fwhm,
-            "fwhm_arcsec": fwhm * scale if fwhm and scale else None,
-            "roundness": parse.roundness(stars),
-            "noise": noise,
-            "excluded_registration": len(order) - len(registered & set(order)),
-            "stack_log": [line for line in stack.log if "stacked" in line or "rejection" in line.lower()][
-                -4:
-            ],
-            "notes": notes,
-            "regional": _regional(result, stars),
-        }
-        with transaction.atomic():
-            n_new = included.count()
-            for old in Master.objects.filter(
-                dataset=m.dataset, state__in=[MasterState.CURRENT, MasterState.STALE]
-            ):
-                diff = n_new - old.sub_count
-                why = (
-                    f" ({diff} more sub{'s' if diff != 1 else ''})"
-                    if diff > 0
-                    else (f" ({-diff} fewer sub{'s' if diff != -1 else ''})" if diff < 0 else "")
-                )
-                Master.objects.filter(pk=old.pk).update(
-                    state=MasterState.SUPERSEDED, state_reason=f"Replaced by v{m.version}{why}."
-                )
-            Master.objects.filter(pk=m.pk).update(
-                state=MasterState.CURRENT,
-                step="Done",
-                progress=1.0,
-                output_path=str(result),
-                preview_path=str(prev) if prev.exists() else "",
-                report=report,
-                finished_at=timezone.now(),
-                engine_version=eng.version,
-                sub_count=included.count(),
-                integration_s=sum(mm.frame.exptime_s or 0 for mm in included),
-                session_count=included.values("frame__night").distinct().count(),
-            )
-        from substation.notify import send
-
-        send(
-            "master_finished",
-            f"Master v{m.version} is ready",
-            f"{m.dataset.display_name}: {included.count()} subs, FWHM {report['fwhm_arcsec']:.2f}″."
-            if report.get("fwhm_arcsec")
-            else f"{m.dataset.display_name}: {included.count()} subs.",
+        report, prev = _measure_master(
+            eng, m, work, result, out_dir, members, order, registered, stack, notes
         )
+        _make_current(m, eng, result, prev, report)
     except Interrupted:
         keep = True  # its work folder is where it resumes from
         Master.objects.filter(pk=m.pk).update(
@@ -1009,20 +814,270 @@ def integrate(master_id: int) -> dict:
         if "_heavy" in locals():
             _heavy.__exit__(None, None, None)
     emit("master.updated", {"dataset_id": m.dataset_id, "master_id": m.pk, "state": "current"})
+    _after_stack(m)
+    return {"master": m.pk, "subs": len(registered)}
+
+
+def _prepare_inputs(
+    m: Master, work: Path, ck: dict
+) -> tuple[list[MasterMember], dict[int, MasterMember], dict]:
+    """The included subs, linked into the work folder in a fixed order; a resumed or adopted folder keeps its own."""
+    _step(m, "Select inputs", 0.02)
+    members = list(
+        MasterMember.objects.filter(master=m, included=True)
+        .select_related("frame__measurement")
+        .order_by("pk")
+    )
+    cached = [
+        Path(mm.frame.measurement.calibrated_path) for mm in members if mm.frame.measurement.calibrated_path
+    ]
+    for p in cached:  # newest in the cache, so pruning doesn't take them mid-integration
+        with contextlib.suppress(FileNotFoundError):
+            os.utime(p)
+    _step(m, "Calibrate", 0.1)  # done on arrival; subs pruned from the cache are calibrated again here
+    _release_kept(work, KEPT_FOR)
+    if not ck["done"]:
+        ck = _adopt(work, m, members) or ck
+    order = _resumed_inputs(work, ck, m) if "inputs" in ck["done"] else None
+    if order is None:
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir(parents=True)
+        ck = {"master": m.pk, "done": []}
+        order = _inputs(m, members, work)
+        ck.update(
+            done=["inputs"],
+            order={str(i): mm.pk for i, mm in order.items()},
+            frames={str(i): mm.frame_id for i, mm in order.items()},
+        )
+        _save_checkpoint(work, ck)
+    return members, order, ck
+
+
+def _register(
+    eng, m: Master, work: Path, ck: dict, order: dict[int, MasterMember], mosaic: str | None
+) -> list[str]:  # noqa: ANN001
+    """Register the subs (or reuse a registration made the same way); returns the notes for the report."""
+    # a registration is reused only if made the same way (a kept folder registered as a mosaic under an
+    # older rule had carried its canvas into a normal stack)
+    if "registered" in ck["done"] and ck.get("mosaic") != bool(mosaic):
+        ck["done"].remove("registered")
+    if "registered" in ck["done"] and (work / "r_sub_.seq").exists():
+        notes = list(ck.get("notes", []))
+        notes.append("Resumed after a restart: registration was already done.")
+    elif mosaic:
+        notes = _register_mosaic(eng, m, work, order, mosaic)
+    elif (m.recipe.get("options") or {}).get("reference") == "most_stars":
+        # the sub with the most stars is the reference; one pass keeps that choice (004 FR-004)
+        best = max(order, key=lambda i: order[i].frame.measurement.stars or 0)
+        notes = _fit_registered(eng, work, len(order))
+        eng.run(f"setref sub_ {sorted(order).index(best) + 1}")
+        eng.run("register sub_", timeout=7200, quiet=True, on_line=_Live(m, "Register", 0.2, 0.6, len(order)))
+        notes.append(f"Reference: sub with most stars ({order[best].frame.measurement.stars:,}).")
+    else:
+        # two passes: Siril picks the sharpest, roundest sub as the reference (best FWHM)
+        eng.run(
+            "register sub_ -2pass",
+            timeout=7200,
+            quiet=True,
+            on_line=_Live(m, "Register", 0.2, 0.4, len(order)),
+        )
+        notes = _fit_registered(eng, work, len(order))
+        eng.run(
+            "seqapplyreg sub_ -framing=current",
+            timeout=7200,
+            quiet=True,
+            on_line=_Live(m, "Register", 0.4, 0.6, len(order)),
+        )
+    if "registered" not in ck["done"]:
+        ck["done"].append("registered")
+        ck["mosaic"] = bool(mosaic)
+        ck["notes"] = notes
+        _save_checkpoint(work, ck)
+    return notes
+
+
+def _register_mosaic(eng, m: Master, work: Path, order: dict[int, MasterMember], mosaic: str) -> list[str]:  # noqa: ANN001
+    """Register by plate solution onto one canvas that holds every sub (004-DR-23). Each sub is solved on its own
+    first: a sub that crashes Siril (IC 4605, 2026-10-14: a segfault at sub 284 of 413 took the whole stack down)
+    costs only itself; seqplatesolve then lays out the canvas from those solutions."""
+    notes = _fit_registered(eng, work, len(order))
+    solved, unsolved = _solve_each(eng, work, order, m)
+    if len(solved) < 2:
+        raise RuntimeError(f"Only {len(solved)} of {len(order)} subs could be plate solved.")
+    eng.run(f"cd {work}")
+    for i in unsolved:  # positions in the sequence, not file numbers (subs can be missing from the run)
+        at = sorted(order).index(i) + 1
+        eng.run(f"unselect sub_ {at} {at}", check=False)
+    eng.run(
+        "seqplatesolve sub_", timeout=7200, quiet=True, on_line=_Live(m, "Plate solve", 0.45, 0.5, len(order))
+    )
+    eng.run(
+        "seqapplyreg sub_ -framing=max",
+        timeout=7200,
+        quiet=True,
+        on_line=_Live(m, "Register", 0.5, 0.6, len(order)),
+    )
+    notes.append(f"{mosaic}: registered by plate solution and stacked onto one canvas.")
+    if unsolved:
+        notes.append(f"{len(unsolved)} sub{'s' if len(unsolved) != 1 else ''} couldn't be plate solved.")
+    return notes
+
+
+def _exclude_unregistered(
+    m: Master, order: dict[int, MasterMember], registered: set[int], mosaic: str | None
+) -> None:
+    unmatched = []
+    for i, mm in order.items():
+        if i not in registered:
+            mm.included, mm.reason = (False, ("could not plate solve" if mosaic else "could not match stars"))
+            mm.save(update_fields=["included", "reason"])
+            unmatched.append(mm.frame_id)
+    _reject_unregistered(m, unmatched, mosaic=bool(mosaic))
+
+
+def _stacks_dir(m: Master) -> Path:
+    out_dir = Path(settings.STACKS_DIR) / f"ds{m.dataset_id}"
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        probe = out_dir / ".write-test"
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError as exc:
+        raise RuntimeError(
+            f"Can't write to {settings.STACKS_DIR} ({exc.strerror or exc}). Check the stacks volume "
+            "is writable and has room, then retry."
+        ) from None
+    return out_dir
+
+
+def _stack_command(
+    m: Master, order: dict[int, MasterMember], notes: list[str], mosaic: str | None, out: Path
+) -> str:
+    """Siril's stack command from the recipe; a note is added when mixed exposures change the weighting."""
+    cfg = m.recipe.get("options", {})
+    lo, hi = (cfg.get("sigma") or [3.0, 3.0])[:2]
+    weight = {"grade": "-weight=wfwhm", "snr": "-weight=noise", "equal": ""}.get(
+        cfg.get("weighting", "grade"), ""
+    )
+    # mixed exposures (owner 2026-10-13): weight by noise (inverse
+    # variance), so a 240 s sub counts for about four 60 s ones; sharpness weighting ignores exposure
+    exposures = {round(mm.frame.exptime_s or 0, 3) for mm in order.values() if mm.included}
+    if weight == "-weight=wfwhm" and len(exposures) > 1:
+        weight = "-weight=noise"
+        notes.append(
+            "Mixed exposures ("
+            + ", ".join(f"{e:g} s" for e in sorted(exposures))
+            + "): weighted by noise, so longer subs count for more."
+        )
+    rej = {"winsorized": "w", "sigma": "s", "linear": "l"}.get(cfg.get("rejection", "winsorized"), "w")
+    # a mosaic: the canvas holds every sub; levels match on the overlaps and edges blend
+    canvas = " -maximize -overlap_norm -feather=100" if mosaic else ""
+    return f"stack r_sub_ rej {rej} {lo:g} {hi:g} -norm=addscale {weight}{canvas} -out={out} -32b".replace(
+        "  ", " "
+    )
+
+
+def _measure_master(
+    eng,  # noqa: ANN001
+    m: Master,
+    work: Path,
+    result: Path,
+    out_dir: Path,
+    members: list[MasterMember],
+    order: dict[int, MasterMember],
+    registered: set[int],
+    stack,  # noqa: ANN001
+    notes: list[str],
+) -> tuple[dict, Path]:
+    """Stars, sharpness and noise of the finished master, and its preview."""
+    from apps.engine import parse
+
+    from .previews import render
+    from .tasks import pixel_scale
+
+    eng.run(f"load {result}")
+    n, fwhm = parse.found_stars(eng.run(f"findstar -out={work / 'stars.lst'}").log)
+    noise = parse.bgnoise(eng.run("bgnoise").log)
+    stars = parse.star_list(work / "stars.lst")
+    prev = out_dir / f"master_v{m.version}.jpg"
+    try:
+        render(result, prev, out_dir / f"master_v{m.version}_t.jpg")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Master preview failed: %s", exc)
+    scale = pixel_scale(members[0].frame)
+    report = {
+        "stars": n,
+        "fwhm_px": fwhm,
+        "fwhm_arcsec": fwhm * scale if fwhm and scale else None,
+        "roundness": parse.roundness(stars),
+        "noise": noise,
+        "excluded_registration": len(order) - len(registered & set(order)),
+        "stack_log": [line for line in stack.log if "stacked" in line or "rejection" in line.lower()][-4:],
+        "notes": notes,
+        "regional": _regional(result, stars),
+    }
+    return report, prev
+
+
+def _superseded_reason(m: Master, old: Master, n_new: int) -> str:
+    diff = n_new - old.sub_count
+    why = (
+        f" ({diff} more sub{'s' if diff != 1 else ''})"
+        if diff > 0
+        else (f" ({-diff} fewer sub{'s' if diff != -1 else ''})" if diff < 0 else "")
+    )
+    return f"Replaced by v{m.version}{why}."
+
+
+def _make_current(m: Master, eng, result: Path, prev: Path, report: dict) -> None:  # noqa: ANN001
+    """The new master becomes current; the ones it replaces say why; the owner is told."""
+    included = MasterMember.objects.filter(master=m, included=True).select_related("frame")
+    with transaction.atomic():
+        n_new = included.count()
+        for old in Master.objects.filter(
+            dataset=m.dataset, state__in=[MasterState.CURRENT, MasterState.STALE]
+        ):
+            Master.objects.filter(pk=old.pk).update(
+                state=MasterState.SUPERSEDED, state_reason=_superseded_reason(m, old, n_new)
+            )
+        Master.objects.filter(pk=m.pk).update(
+            state=MasterState.CURRENT,
+            step="Done",
+            progress=1.0,
+            output_path=str(result),
+            preview_path=str(prev) if prev.exists() else "",
+            report=report,
+            finished_at=timezone.now(),
+            engine_version=eng.version,
+            sub_count=included.count(),
+            integration_s=sum(mm.frame.exptime_s or 0 for mm in included),
+            session_count=included.values("frame__night").distinct().count(),
+        )
+    from substation.notify import send
+
+    send(
+        "master_finished",
+        f"Master v{m.version} is ready",
+        f"{m.dataset.display_name}: {included.count()} subs, FWHM {report['fwhm_arcsec']:.2f}″."
+        if report.get("fwhm_arcsec")
+        else f"{m.dataset.display_name}: {included.count()} subs.",
+    )
+
+
+def _after_stack(m: Master) -> None:
+    """Plate solve the master, make its views, and run the finishing chain when it's switched on."""
+    from .config import processing_settings
     from .solving import solve_master
     from .tasks import master_view
 
     enqueue(solve_master, m.pk, dedupe_key=f"solve-master:{m.pk}")
     enqueue(master_view, m.pk, dedupe_key=f"master-view:{m.pk}")
-    from .config import processing_settings
-
     post = processing_settings()["post"]
     # spec 010: the finishing chain, when switched on (globally, or for this dataset when stacking)
     if (m.report or {}).get("post_override", {}).get("enabled", post.get("enabled")):
         from .postprocess import postprocess_master
 
         enqueue(postprocess_master, m.pk, (m.report or {}).get("post_override"), dedupe_key=f"post:{m.pk}")
-    return {"master": m.pk, "subs": len(registered)}
 
 
 def check_stale(ds: Dataset) -> None:

@@ -100,5 +100,11 @@
 - [X] W38 (2026-10-15) CI is called from the publish workflow and gates the `edge` move; coverage floors (pytest-cov
   `fail_under`, vitest thresholds over all of `src`); oxlint `--deny-warnings`; ruff C90/RET/BLE; `scripts/check.sh`
   matches (005-DR-29)
-- [ ] W39 Raise the frontend floor: tests for the shared components (viewer zoom, file paths, settings draft) and
-  for every new page; split the 30 backend functions above complexity 10, lowering the limit as they go
+- [X] W39 (2026-10-15) Frontend floor raised from 4% to 48/39/35/50 (statements/branches/functions/lines): a fake
+  API built from the OpenAPI schema, every route mounting cleanly, the viewer's keys and zoom, file paths,
+  settings sections, backups; zoom maths moved to `components/zoom.ts`; an unknown QA verdict no longer crashes the
+  calibration set page. Backend: the ten functions above complexity 15 split into named steps (supervisor loop,
+  stacking, settings checks, calibration builds, resolving, grading, combining, hashing, activity sentences) with
+  tests; the limit drops from 34 to 14
+- [ ] W40 Split the 21 functions between complexity 11 and 14 and lower the limit to 10; raise the floors as
+  coverage grows
