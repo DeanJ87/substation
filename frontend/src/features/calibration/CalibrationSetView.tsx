@@ -22,6 +22,8 @@ import {
   type Built,
 } from '../v2/hooks'
 import v from '../v2/v2.module.css'
+import { BulkBar, ChooseBox, useChosen } from '../../components/BulkBar'
+import { useBulkOverride } from '../changes/bulk'
 import s from './calibration.module.css'
 
 const route = getRouteApi('/app/calibration/sets/$id')
@@ -47,6 +49,11 @@ export function CalibrationSetView() {
   const act = useCalibrationActions()
   // hundreds of thumbnails: a slice at a time, inside their own scrolling pane
   const frames = useProgressive(q.data?.frames ?? [], 60, id)
+  // spec 016 U6: choose several frames and use them, leave them out, or clear your choice, with Undo
+  const pick = useChosen<string>()
+  const override = useBulkOverride()
+  const overrideChosen = (verdict: 'pass' | 'reject' | null) =>
+    override.mutate({ sha256s: [...pick.chosen], verdict }, { onSuccess: pick.clear })
   if (q.isError)
     return (
       <ErrorState title="Couldn't load this calibration set" onRetry={() => q.refetch()}>
@@ -117,6 +124,34 @@ export function CalibrationSetView() {
         }
       >
         {!d.qa_checked && <p className={`${v.note} ${v.muted}`}>Not checked yet. Checked on build.</p>}
+        <BulkBar
+          count={pick.chosen.size}
+          noun={['frame', 'frames']}
+          label="Selected frames"
+          onClear={pick.clear}
+        >
+          <Button disabled={override.isPending} onClick={() => overrideChosen('pass')}>
+            Use them
+          </Button>
+          <Button disabled={override.isPending} onClick={() => overrideChosen('reject')}>
+            Leave them out
+          </Button>
+          <Button disabled={override.isPending} onClick={() => overrideChosen(null)}>
+            Clear your choice
+          </Button>
+          {pick.chosen.size < d.frames.length && (
+            <Button
+              onClick={() =>
+                pick.setAll(
+                  d.frames.map((f) => f.sha256),
+                  true,
+                )
+              }
+            >
+              Select all {d.frames.length}
+            </Button>
+          )}
+        </BulkBar>
         <div className={s.sheetPane}>
           <div className={s.sheet}>
             {frames.visible.map((f) => {
@@ -124,7 +159,10 @@ export function CalibrationSetView() {
               const [state, label] = (eff && QA[eff]) || (['integ', 'Not checked'] as [VerdictState, string])
               const stats = f.stats as { median?: number; mad?: number }
               return (
-                <figure key={f.sha256} className={`${v.card} ${s.tile}`}>
+                <figure
+                  key={f.sha256}
+                  className={`${v.card} ${s.tile} ${pick.chosen.has(f.sha256) ? s.tileChosen : ''}`}
+                >
                   <div className={s.thumb}>
                     {f.has_thumb ? (
                       <Zoomable target={{ kind: 'sub', sha: f.sha256 }} name={f.file}>
@@ -136,6 +174,11 @@ export function CalibrationSetView() {
                   </div>
                   <figcaption>
                     <div className={s.tileHead}>
+                      <ChooseBox
+                        checked={pick.chosen.has(f.sha256)}
+                        onChange={() => pick.toggle(f.sha256)}
+                        label={`Select ${f.file}`}
+                      />
                       <VerdictBadge state={state} label={f.override ? `${label} (you)` : label} />
                       {f.verdict && (
                         <button

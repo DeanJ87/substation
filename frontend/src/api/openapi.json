@@ -554,6 +554,48 @@
     "title": "BuildIn",
     "type": "object"
    },
+   "BuildManyIn": {
+    "properties": {
+     "force": {
+      "default": false,
+      "title": "Force",
+      "type": "boolean"
+     },
+     "ids": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "ids"
+    ],
+    "title": "BuildManyIn",
+    "type": "object"
+   },
+   "BuildManyOut": {
+    "properties": {
+     "queued": {
+      "title": "Queued",
+      "type": "integer"
+     },
+     "skipped": {
+      "items": {
+       "$ref": "#/components/schemas/Skipped"
+      },
+      "title": "Skipped",
+      "type": "array"
+     }
+    },
+    "required": [
+     "queued",
+     "skipped"
+    ],
+    "title": "BuildManyOut",
+    "type": "object"
+   },
    "BuiltOut": {
     "properties": {
      "calibrated_with": {
@@ -1985,6 +2027,73 @@
     "title": "DatasetRef",
     "type": "object"
    },
+   "DatasetsIn": {
+    "properties": {
+     "dataset_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Dataset Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "dataset_ids"
+    ],
+    "title": "DatasetsIn",
+    "type": "object"
+   },
+   "DatasetsMoveIn": {
+    "properties": {
+     "collection_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Collection Id"
+     },
+     "dataset_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Dataset Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "dataset_ids"
+    ],
+    "title": "DatasetsMoveIn",
+    "type": "object"
+   },
+   "DatasetsMoveOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "moved": {
+      "title": "Moved",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "moved"
+    ],
+    "title": "DatasetsMoveOut",
+    "type": "object"
+   },
    "Field": {
     "properties": {
      "label": {
@@ -3239,6 +3348,22 @@
     "title": "IgnoreRuleOut",
     "type": "object"
    },
+   "JobIdsIn": {
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "ids"
+    ],
+    "title": "JobIdsIn",
+    "type": "object"
+   },
    "JobOut": {
     "properties": {
      "attempts": {
@@ -3435,6 +3560,30 @@
      "extra"
     ],
     "title": "JobOut",
+    "type": "object"
+   },
+   "JobsDoneOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "done": {
+      "title": "Done",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "done"
+    ],
+    "title": "JobsDoneOut",
     "type": "object"
    },
    "LibDatasetOut": {
@@ -6339,6 +6488,17 @@
    },
    "QueuedOut": {
     "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
      "queued": {
       "title": "Queued",
       "type": "integer"
@@ -6818,6 +6978,19 @@
      }
     },
     "title": "RegradeIn",
+    "type": "object"
+   },
+   "RegradeManyOut": {
+    "properties": {
+     "queued": {
+      "title": "Queued",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "queued"
+    ],
+    "title": "RegradeManyOut",
     "type": "object"
    },
    "RegradeOut": {
@@ -8497,6 +8670,24 @@
     "title": "SiteSchema",
     "type": "object"
    },
+   "Skipped": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "reason"
+    ],
+    "title": "Skipped",
+    "type": "object"
+   },
    "SkyMoon": {
     "properties": {
      "illumination": {
@@ -9261,6 +9452,35 @@
      }
     },
     "title": "StackIn",
+    "type": "object"
+   },
+   "StackManyOut": {
+    "properties": {
+     "master_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Master Ids",
+      "type": "array"
+     },
+     "skipped": {
+      "items": {
+       "$ref": "#/components/schemas/Skipped"
+      },
+      "title": "Skipped",
+      "type": "array"
+     },
+     "started": {
+      "title": "Started",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "started",
+     "master_ids",
+     "skipped"
+    ],
+    "title": "StackManyOut",
     "type": "object"
    },
    "StackOptions": {
@@ -10641,8 +10861,161 @@
     ]
    }
   },
+  "/bulk/calibration-sets/build": {
+   "post": {
+    "description": "Queue a master build for each chosen raw set. A set already building, or not a raw set, is skipped and\nsaid why.",
+    "operationId": "apps_processing_api_bulk_build_many",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BuildManyIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BuildManyOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Build Many",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/bulk/datasets/move": {
+   "post": {
+    "description": "Move these datasets into another collection (or out of their collections). They leave any project of the\ncollection they came from; undoing puts them back in both.",
+    "operationId": "apps_processing_api_bulk_move_many",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DatasetsMoveIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DatasetsMoveOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Move Many",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/bulk/datasets/regrade": {
+   "post": {
+    "description": "Re-grade these datasets with the current thresholds, in one job. Human verdicts are kept.",
+    "operationId": "apps_processing_api_bulk_regrade_many",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DatasetsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RegradeManyOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Regrade Many",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/bulk/datasets/stack": {
+   "post": {
+    "description": "Start a master for each dataset with the default rule (accepted and down-weighted subs, every night). A\ndataset that can't be stacked is skipped, with the reason.",
+    "operationId": "apps_processing_api_bulk_stack_many",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DatasetsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StackManyOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Stack Many",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/calibration-qa/override": {
    "post": {
+    "description": "Use or leave out these frames whatever QA said, or clear your choice; recorded so it can be undone (spec\n016 U6).",
     "operationId": "apps_processing_api_calibration_qa_override",
     "parameters": [],
     "requestBody": {
@@ -18493,6 +18866,82 @@
      }
     ],
     "summary": "Activity",
+    "tags": [
+     "activity"
+    ]
+   }
+  },
+  "/work/bulk/jobs/dismiss": {
+   "post": {
+    "description": "Take these failures off Activity's list; recorded, so undoing shows them again.",
+    "operationId": "substation_tasks_activity_dismiss_many",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/JobIdsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobsDoneOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Dismiss Many",
+    "tags": [
+     "activity"
+    ]
+   }
+  },
+  "/work/bulk/jobs/retry": {
+   "post": {
+    "description": "Run these failed jobs again; ones no longer failed are left alone.",
+    "operationId": "substation_tasks_activity_retry_many",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/JobIdsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobsDoneOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Retry Many",
     "tags": [
      "activity"
     ]

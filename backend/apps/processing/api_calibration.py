@@ -82,6 +82,7 @@ class QAOverrideIn(Schema):
 
 class QueuedOut(Schema):
     queued: int
+    change_id: int | None = None  # spec 016: a QA override can be undone with POST /changes/{id}/undo
 
 
 def _file(f: Frame) -> str:
@@ -200,9 +201,31 @@ def build_missing(request):
 
 @router.post("/calibration-qa/override", response=QueuedOut)
 def qa_override(request, body: QAOverrideIn):
-    n = CalibrationQA.objects.filter(frame_id__in=body.sha256s).update(override=body.verdict or "")
+    """Use or leave out these frames whatever QA said, or clear your choice; recorded so it can be undone (spec
+    016 U6)."""
+    from apps.accounts.roles import is_viewer
+    from apps.catalogue.models import Change
+    from apps.catalogue.services.changes import record
+    from substation.api import ApiError
+
+    if is_viewer(request.user):
+        raise ApiError(403, "read_only", "Your account can't change frames.")
+    now = body.verdict or ""
+    before = dict(
+        CalibrationQA.objects.filter(frame_id__in=body.sha256s)
+        .exclude(override=now)
+        .values_list("frame_id", "override")
+    )
+    n = CalibrationQA.objects.filter(frame_id__in=before).update(override=now)
     emit("calibration.updated", {})
-    return QueuedOut(queued=n)
+    if not n:
+        return QueuedOut(queued=0)
+    frames = f"{n:,} calibration frame{'s' if n != 1 else ''}"
+    summary = {"pass": f"Used {frames} whatever QA said", "reject": f"Left out {frames}"}.get(
+        now, f"Cleared your QA choice on {frames}"
+    )
+    change = record(request.user, Change.Kind.QA, summary, n, verdict=now, previous=before)
+    return QueuedOut(queued=n, change_id=change.pk)
 
 
 @router.get("/calibration-qa/{sha256:sha256}/thumb", response={200: None, 404: None})

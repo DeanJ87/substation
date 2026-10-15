@@ -23,6 +23,8 @@ import tb from './tables.module.css'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
+import { ChooseBox, useChosen } from '../../components/BulkBar'
+import { DatasetBulkBar } from './DatasetBulkBar'
 
 const STATE_LABEL: Record<string, [VerdictState, string]> = {
   integ: ['integ', 'Integrating'],
@@ -269,6 +271,8 @@ function UngroupedList({
 }) {
   const actions = useCollectionActions()
   const { visible, hasMore, more } = useProgressive(rows, 60, resetKey)
+  // spec 016 U6: choose several and re-grade, stack or move them together
+  const pick = useChosen<number>()
   if (!rows.length) return null
   return (
     <div className={`${v.card} ${tb.flush}`}>
@@ -284,9 +288,27 @@ function UngroupedList({
           </span>
         }
       >
+        <DatasetBulkBar
+          chosen={pick.chosen}
+          onClear={pick.clear}
+          shown={rows.length}
+          onChooseShown={() =>
+            pick.setAll(
+              rows.map((u) => u.dataset.id),
+              true,
+            )
+          }
+          from={null}
+        />
         <div className={tb.pane}>
           {visible.map((u) => (
-            <UngroupedRow key={u.dataset.id} u={u} collections={collections} />
+            <UngroupedRow
+              key={u.dataset.id}
+              u={u}
+              collections={collections}
+              chosen={pick.chosen.has(u.dataset.id)}
+              onChoose={() => pick.toggle(u.dataset.id)}
+            />
           ))}
           <LoadMore hasMore={hasMore} loading={false} onMore={more} />
         </div>
@@ -395,7 +417,17 @@ function CollectionCardView({ c, onOpen }: { c: Card; onOpen: () => void }) {
   )
 }
 
-function UngroupedRow({ u, collections }: { u: LibDataset; collections: Card[] }) {
+function UngroupedRow({
+  u,
+  collections,
+  chosen,
+  onChoose,
+}: {
+  u: LibDataset
+  collections: Card[]
+  chosen: boolean
+  onChoose: () => void
+}) {
   const actions = useCollectionActions()
   const [choice, setChoice] = useState('')
   const [newName, setNewName] = useState('')
@@ -404,20 +436,23 @@ function UngroupedRow({ u, collections }: { u: LibDataset; collections: Card[] }
   const ds = u.dataset
   return (
     <div className={s.ungrouped}>
-      <div>
-        <Link to="/datasets/$id" params={{ id: String(ds.id) }} className={s.dsName}>
-          {ds.target} · {u.label}
-        </Link>
-        <div className={v.muted}>
-          {u.sessions} session{u.sessions === 1 ? '' : 's'} · {ds.sub_count.toLocaleString('en-GB')} subs
-          {ds.sub_count && Number.isInteger(Math.round((ds.integration_s / ds.sub_count) * 10) / 10)
-            ? ` × ${Math.round(ds.integration_s / ds.sub_count)} s`
-            : ''}
-          {ds.first_utc
-            ? ds.last_night && ds.last_night !== ds.first_utc.slice(0, 10)
-              ? ` · from ${nightText(ds.first_utc.slice(0, 10))} to ${nightText(ds.last_night)}`
-              : ` · ${nightText(ds.first_utc.slice(0, 10))}`
-            : ''}
+      <div className={s.ungroupedName}>
+        <ChooseBox checked={chosen} onChange={onChoose} label={`Select ${ds.target} · ${u.label}`} />
+        <div>
+          <Link to="/datasets/$id" params={{ id: String(ds.id) }} className={s.dsName}>
+            {ds.target} · {u.label}
+          </Link>
+          <div className={v.muted}>
+            {u.sessions} session{u.sessions === 1 ? '' : 's'} · {ds.sub_count.toLocaleString('en-GB')} subs
+            {ds.sub_count && Number.isInteger(Math.round((ds.integration_s / ds.sub_count) * 10) / 10)
+              ? ` × ${Math.round(ds.integration_s / ds.sub_count)} s`
+              : ''}
+            {ds.first_utc
+              ? ds.last_night && ds.last_night !== ds.first_utc.slice(0, 10)
+                ? ` · from ${nightText(ds.first_utc.slice(0, 10))} to ${nightText(ds.last_night)}`
+                : ` · ${nightText(ds.first_utc.slice(0, 10))}`
+              : ''}
+          </div>
         </div>
       </div>
       <span className={`${v.mono} ${v.accent}`}>{integrationText(ds.integration_s)}</span>

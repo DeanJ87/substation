@@ -296,3 +296,9 @@
   background: var(--sst-accent-tint, var(--sst-panel-2));
   font-size: 14px;
 }
+
+/* spec 016 U6: the choose box at the start of a dataset row */
+.chooseCell {
+  width: 28px;
+  padding-right: 0;
+}

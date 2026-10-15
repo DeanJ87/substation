@@ -1,0 +1,34 @@
+.bar {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-block: 8px;
+  border: 1px solid var(--sst-accent-line);
+  border-radius: var(--sst-radius);
+  background: color-mix(in srgb, var(--sst-accent) 10%, var(--sst-panel));
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.actions select {
+  max-width: 100%;
+}
+.box {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--sst-accent);
+  cursor: pointer;
+}
+.inset {
+  margin-inline: 12px;
+}
