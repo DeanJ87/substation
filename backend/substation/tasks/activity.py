@@ -15,7 +15,7 @@ from django.utils import timezone
 from substation.api import ApiError, Router, Schema, admin_required
 
 from .models import ResourceSample, Task, TaskStatus, Worker, WorkerState
-from .summary import priority_class, queue_summary
+from .summary import open_failures, priority_class, queue_summary
 
 router = Router(tags=["activity"])
 
@@ -489,12 +489,7 @@ def activity(request):
     finished = Task.objects.filter(
         status__in=[TaskStatus.SUCCEEDED, TaskStatus.FAILED], finished_at__isnull=False
     )
-    failed = [
-        job_out(t)
-        for t in finished.filter(status=TaskStatus.FAILED, finished_at__gte=now - timedelta(days=2))
-        .exclude(progress_note="dismissed")
-        .order_by("-finished_at")[:20]
-    ]
+    failed = [job_out(t) for t in open_failures()[:20]]
     recent = [job_out(t) for t in finished.filter(status=TaskStatus.SUCCEEDED).order_by("-finished_at")[:25]]
     alive = Worker.objects.filter(heartbeat_at__gte=now - timedelta(seconds=30)).exclude(
         state=WorkerState.STOPPED

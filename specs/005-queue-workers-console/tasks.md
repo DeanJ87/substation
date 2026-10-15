@@ -95,3 +95,5 @@
   e2e accessibility job on `compose.ci.yml`, Trivy on published images; `scripts/check.sh` (005-DR-27)
 - [X] W36 (2026-10-14) The image scan action pinned to a released commit; the frontend image moves to Caddy 2.11.4
   with Alpine's security updates, so it ships with no fixable critical vulnerability
+- [X] W37 (2026-10-15) `open_failures`: superseded and orphaned failures drop off Activity and the header count
+  (005-DR-28); test

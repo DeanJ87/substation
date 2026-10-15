@@ -270,3 +270,9 @@ SQLite support was then removed rather than kept as a second, untested path.
   checks; the whole stack built from the checkout and checked end to end for accessibility; and, when images are
   published, a scan that fails on a critical vulnerability with a known fix. `scripts/check.sh` runs the same
   checks locally and stops at the first failure.
+
+### Amendment 2026-10-15: failures that no longer matter clear themselves
+
+- **005-DR-28 A failure is shown while it matters.** Activity and the header's count list a failed job until it is
+  dismissed, a later run of the same job with the same inputs succeeds, or (for a stack and its post-processing) the
+  master is deleted or has since been built. Both use the same rule, so they agree.
