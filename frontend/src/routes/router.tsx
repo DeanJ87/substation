@@ -17,6 +17,7 @@ import { NightView } from '../features/datasets/NightView'
 import { ReconciliationList } from '../features/reconciliation/ReconciliationList'
 import { CalibrationLibrary } from '../features/calibration/CalibrationLibrary'
 import { CalibrationSetView } from '../features/calibration/CalibrationSetView'
+import { ToShoot } from '../features/calibration/ToShoot'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { BinPage } from '../features/bin/BinPage'
 import { MapView } from '../features/map/MapView'
@@ -110,6 +111,11 @@ const calibration = createRoute({
   path: '/calibration',
   component: CalibrationLibrary,
 })
+const calibrationToShoot = createRoute({
+  getParentRoute: () => app,
+  path: '/calibration/to-shoot',
+  component: ToShoot,
+})
 const calibrationSet = createRoute({
   getParentRoute: () => app,
   path: '/calibration/sets/$id',
@@ -146,6 +152,7 @@ export const routeTree = root.addChildren([
     review,
     calibration,
     calibrationSet,
+    calibrationToShoot,
     settings,
   ]),
 ])

@@ -317,6 +317,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calibration/shopping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shopping
+         * @description The darks, biases and flats that would release the lights waiting for calibration, biggest win first.
+         */
+        get: operations["apps_processing_api_calibration_shopping"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibration/shopping.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shopping Csv */
+        get: operations["apps_processing_api_calibration_shopping_csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibration/shopping/nina.xml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shopping Nina
+         * @description The darks and biases to shoot, as a NINA sequence file.
+         */
+        get: operations["apps_processing_api_calibration_shopping_nina"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/changes": {
         parameters: {
             query?: never;
@@ -3270,6 +3327,13 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /** DatasetRef */
+        DatasetRef: {
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+        };
         /** Field */
         Field: {
             /** Label */
@@ -4167,6 +4231,37 @@ export interface components {
             /** Before */
             before?: string | null;
         };
+        /** NeedOut */
+        NeedOut: {
+            /** Camera */
+            camera: string;
+            /** Datasets */
+            datasets: components["schemas"]["DatasetRef"][];
+            /** Exptime S */
+            exptime_s: number | null;
+            /** Filter */
+            filter: string;
+            /** Gain */
+            gain: number | null;
+            /** Integration S */
+            integration_s: number;
+            /** Kind */
+            kind: string;
+            /** Nights */
+            nights: string[];
+            /** Offset */
+            offset: number | null;
+            /** Size */
+            size: string;
+            /** Subs */
+            subs: number;
+            /** Telescope */
+            telescope: string;
+            /** Temp C */
+            temp_c: number | null;
+            /** Xbin */
+            xbin: number;
+        };
         /** NightDatasetOut */
         NightDatasetOut: {
             dataset: components["schemas"]["DatasetOut"];
@@ -4225,6 +4320,15 @@ export interface components {
             failed: string[];
             /** Sent */
             sent: boolean;
+        };
+        /** OtherNeedOut */
+        OtherNeedOut: {
+            /** Datasets */
+            datasets: components["schemas"]["DatasetRef"][];
+            /** Reason */
+            reason: string;
+            /** Subs */
+            subs: number;
         };
         /** OverrideOut */
         OverrideOut: {
@@ -5288,6 +5392,15 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** ShoppingOut */
+        ShoppingOut: {
+            /** Frames */
+            frames: number;
+            /** Needs */
+            needs: components["schemas"]["NeedOut"][];
+            /** Others */
+            others: components["schemas"]["OtherNeedOut"][];
+        };
         /** SiteSchema */
         SiteSchema: {
             /** Lat */
@@ -6143,6 +6256,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PendingRecalOut"][];
                 };
+            };
+        };
+    };
+    apps_processing_api_calibration_shopping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_calibration_shopping_csv: {
+        parameters: {
+            query?: {
+                frames?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    apps_processing_api_calibration_shopping_nina: {
+        parameters: {
+            query?: {
+                frames?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

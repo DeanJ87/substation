@@ -1959,6 +1959,24 @@
     "title": "DatasetPage",
     "type": "object"
    },
+   "DatasetRef": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "label"
+    ],
+    "title": "DatasetRef",
+    "type": "object"
+   },
    "Field": {
     "properties": {
      "label": {
@@ -4708,6 +4726,119 @@
     "title": "MoveIn",
     "type": "object"
    },
+   "NeedOut": {
+    "properties": {
+     "camera": {
+      "title": "Camera",
+      "type": "string"
+     },
+     "datasets": {
+      "items": {
+       "$ref": "#/components/schemas/DatasetRef"
+      },
+      "title": "Datasets",
+      "type": "array"
+     },
+     "exptime_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exptime S"
+     },
+     "filter": {
+      "title": "Filter",
+      "type": "string"
+     },
+     "gain": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Gain"
+     },
+     "integration_s": {
+      "title": "Integration S",
+      "type": "number"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "nights": {
+      "items": {
+       "format": "date",
+       "type": "string"
+      },
+      "title": "Nights",
+      "type": "array"
+     },
+     "offset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Offset"
+     },
+     "size": {
+      "title": "Size",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     },
+     "telescope": {
+      "title": "Telescope",
+      "type": "string"
+     },
+     "temp_c": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Temp C"
+     },
+     "xbin": {
+      "title": "Xbin",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "kind",
+     "camera",
+     "exptime_s",
+     "gain",
+     "offset",
+     "xbin",
+     "temp_c",
+     "size",
+     "filter",
+     "telescope",
+     "subs",
+     "integration_s",
+     "nights",
+     "datasets"
+    ],
+    "title": "NeedOut",
+    "type": "object"
+   },
    "NightDatasetOut": {
     "properties": {
      "dataset": {
@@ -4919,6 +5050,32 @@
      "failed"
     ],
     "title": "NotifyTestOut",
+    "type": "object"
+   },
+   "OtherNeedOut": {
+    "properties": {
+     "datasets": {
+      "items": {
+       "$ref": "#/components/schemas/DatasetRef"
+      },
+      "title": "Datasets",
+      "type": "array"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "reason",
+     "subs",
+     "datasets"
+    ],
+    "title": "OtherNeedOut",
     "type": "object"
    },
    "OverrideOut": {
@@ -8034,6 +8191,35 @@
     "title": "SettingsPreviewIn",
     "type": "object"
    },
+   "ShoppingOut": {
+    "properties": {
+     "frames": {
+      "title": "Frames",
+      "type": "integer"
+     },
+     "needs": {
+      "items": {
+       "$ref": "#/components/schemas/NeedOut"
+      },
+      "title": "Needs",
+      "type": "array"
+     },
+     "others": {
+      "items": {
+       "$ref": "#/components/schemas/OtherNeedOut"
+      },
+      "title": "Others",
+      "type": "array"
+     }
+    },
+    "required": [
+     "needs",
+     "others",
+     "frames"
+    ],
+    "title": "ShoppingOut",
+    "type": "object"
+   },
    "SiteSchema": {
     "properties": {
      "lat": {
@@ -10136,6 +10322,97 @@
      }
     ],
     "summary": "Pending Recalibration",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/calibration/shopping": {
+   "get": {
+    "description": "The darks, biases and flats that would release the lights waiting for calibration, biggest win first.",
+    "operationId": "apps_processing_api_calibration_shopping",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ShoppingOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Shopping",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/calibration/shopping.csv": {
+   "get": {
+    "operationId": "apps_processing_api_calibration_shopping_csv",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "frames",
+      "required": false,
+      "schema": {
+       "default": 30,
+       "title": "Frames",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Shopping Csv",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/calibration/shopping/nina.xml": {
+   "get": {
+    "description": "The darks and biases to shoot, as a NINA sequence file.",
+    "operationId": "apps_processing_api_calibration_shopping_nina",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "frames",
+      "required": false,
+      "schema": {
+       "default": 30,
+       "title": "Frames",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Shopping Nina",
     "tags": [
      "catalogue"
     ]

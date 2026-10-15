@@ -1,7 +1,7 @@
 """Calibration set inspection and master building (spec 002 US2, US3; on the catalogue router). No
 `from __future__ import annotations` here: see substation.api."""
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -255,3 +255,79 @@ def set_flat_filter(request, id: int, body: SetFilterIn):  # noqa: A002
     now = Frame.objects.filter(pk__in=shas).values_list("calibration_set_id", flat=True).first()
     enqueue(rematch_lights, dedupe_key="rematch-lights", fresh=True)  # lights of that filter can use them now
     return SetFilterOut(updated=n, set_id=now)
+
+
+# ---- what to shoot (spec 017) ----------------------------------------------------------------------------------
+class DatasetRef(Schema):
+    id: int
+    label: str
+
+
+class NeedOut(Schema):
+    kind: str
+    camera: str
+    exptime_s: float | None
+    gain: int | None
+    offset: int | None
+    xbin: int
+    temp_c: float | None
+    size: str
+    filter: str
+    telescope: str
+    subs: int
+    integration_s: float
+    nights: list[date]
+    datasets: list[DatasetRef]
+
+
+class OtherNeedOut(Schema):
+    reason: str
+    subs: int
+    datasets: list[DatasetRef]
+
+
+class ShoppingOut(Schema):
+    needs: list[NeedOut]
+    others: list[OtherNeedOut]
+    frames: int
+
+
+def _refs(d: dict[int, str]) -> list[DatasetRef]:
+    return [DatasetRef(id=k, label=v) for k, v in sorted(d.items(), key=lambda kv: kv[1])]
+
+
+@router.get("/calibration/shopping", response=ShoppingOut)
+def shopping(request):
+    """The darks, biases and flats that would release the lights waiting for calibration, biggest win first."""
+    from .shopping import FRAMES, shopping_list
+
+    needs, others = shopping_list()
+    return ShoppingOut(
+        needs=[
+            NeedOut(**{**n.__dict__, "nights": sorted(n.nights), "datasets": _refs(n.datasets)})
+            for n in needs
+        ],
+        others=[OtherNeedOut(reason=o.reason, subs=o.subs, datasets=_refs(o.datasets)) for o in others],
+        frames=FRAMES,
+    )
+
+
+@router.get("/calibration/shopping/nina.xml", response={200: None})
+def shopping_nina(request, frames: int = 30):
+    """The darks and biases to shoot, as a NINA sequence file."""
+    from .shopping import nina_darks_xml, shopping_list
+
+    resp = HttpResponse(
+        nina_darks_xml(shopping_list()[0], max(1, min(frames, 500))), content_type="application/xml"
+    )
+    resp["Content-Disposition"] = 'attachment; filename="substation-calibration.xml"'
+    return resp
+
+
+@router.get("/calibration/shopping.csv", response={200: None})
+def shopping_csv(request, frames: int = 30):
+    from .shopping import csv_text, shopping_list
+
+    resp = HttpResponse(csv_text(shopping_list()[0], max(1, min(frames, 500))), content_type="text/csv")
+    resp["Content-Disposition"] = 'attachment; filename="substation-calibration.csv"'
+    return resp

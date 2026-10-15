@@ -14,6 +14,7 @@ import { FrameDetail } from '../frames/FrameDetail'
 import { Zoomable } from '../../components/CloseLook'
 import { agoText, nightText, temp } from '../format'
 import ui from '../../components/ui.module.css'
+import v from '../v2/v2.module.css'
 import s from './calibration.module.css'
 import { useSort } from '../../components/sortable'
 import { Collapsible } from '../../components/Collapsible'
@@ -162,6 +163,9 @@ export function CalibrationLibrary() {
           </p>
         </div>
         <div className={s.headButtons}>
+          <Link to="/calibration/to-shoot" className={v.pill}>
+            What to shoot
+          </Link>
           <Button onClick={() => rescan.mutate()} disabled={rescan.isPending || !folders.length}>
             {rescan.isPending || rescan.isSuccess ? 'Rescanning…' : 'Rescan'}
           </Button>
@@ -352,7 +356,7 @@ function Blocking() {
     >
       <p className="muted">
         {subs.toLocaleString('en-GB')} subs waiting. Add the frames below or change the rig in Settings →
-        Rigs.
+        Rigs. <Link to="/calibration/to-shoot">What to shoot</Link> groups them into the frames to take.
       </p>
       <div className={s.pane}>
         <ul className={s.blockList}>
