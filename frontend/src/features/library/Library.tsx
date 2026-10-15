@@ -363,7 +363,15 @@ function CollectionCardView({ c, onOpen }: { c: Card; onOpen: () => void }) {
                     <span className={s.barWait} style={{ width: pct(waiting) }} />
                     <span className={s.barRej} style={{ width: pct(t.rejected_s) }} />
                   </span>
-                  <span className={v.mono}>{integrationText(t.total_s)}</span>
+                  <span className={v.mono}>
+                    {c.goals?.[f] ? (
+                      <span title={`Goal: ${c.goals[f]} h of usable integration`}>
+                        {integrationText(t.accepted_s)} / {c.goals[f]}h
+                      </span>
+                    ) : (
+                      integrationText(t.total_s)
+                    )}
+                  </span>
                 </div>
               )
             })}

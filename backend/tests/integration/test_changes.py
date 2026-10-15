@@ -86,3 +86,17 @@ def test_only_the_maker_or_an_admin_undoes(tmp_path, admin_client, standard_clie
     ).json()["change_id"]
     assert standard_client.get("/api/v1/changes").json() == []  # yours only
     assert standard_client.post(f"/api/v1/changes/{c}/undo").status_code == 403
+
+
+def test_collection_goals_are_set_changed_and_removed(admin_client):
+    """Spec 019: hours wanted per filter."""
+    from apps.catalogue.models import Collection
+
+    col = Collection.objects.create(name="M 81")
+    url = f"/api/v1/collections/{col.pk}"
+    r = admin_client.patch(url, {"goals": {"L": 10, "Ha": 20}}, content_type="application/json").json()
+    assert r["goals"] == {"L": 10, "Ha": 20}
+    r = admin_client.patch(url, {"goals": {"L": 0, "R": 2.5}}, content_type="application/json").json()
+    assert r["goals"] == {"Ha": 20, "R": 2.5}
+    bad = admin_client.patch(url, {"goals": {"OIII": 5000}}, content_type="application/json")
+    assert bad.status_code == 422 and "1,000 hours" in bad.json()["message"]

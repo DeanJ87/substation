@@ -1,0 +1,48 @@
+.list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(120px, 1fr) max-content;
+  align-items: center;
+  gap: 10px 12px;
+  font-size: 14px;
+}
+/* every row on one grid, so the bars line up whatever each row's text */
+.row {
+  display: contents;
+}
+.bar {
+  height: 8px;
+  border-radius: 4px;
+}
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.field input {
+  width: 96px;
+  padding: 5px 8px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}
+@media (max-width: 640px) {
+  .list {
+    grid-template-columns: max-content 1fr;
+  }
+  .row > :last-child {
+    grid-column: 1 / -1;
+    margin-bottom: 6px;
+  }
+}

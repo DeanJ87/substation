@@ -81,6 +81,7 @@ class CollectionCard(Schema):
     preview_master: int | None
     constellation: str = ""
     nights: list[date] = []  # every session's date, for the Library's date filter
+    goals: dict[str, float] = {}  # spec 019: hours of usable integration wanted, per filter
 
 
 class LibraryHomeOut(Schema):
@@ -176,6 +177,7 @@ def _card(col: Collection) -> CollectionCard:
         preview_master=m.pk if m else None,
         constellation=col.constellation,
         nights=sorted(set(nights.values_list("night__date", flat=True))),
+        goals=col.goals or {},
     )
 
 
@@ -321,6 +323,7 @@ class CollectionIn(Schema):
 
 class CollectionPatch(Schema):
     name: str | None = None
+    goals: dict[str, float | None] | None = None  # spec 019: hours per filter; 0 or null removes a goal
 
 
 class SessionDot(Schema):
@@ -434,6 +437,20 @@ def patch_collection(request, id: int, body: CollectionPatch):  # noqa: A002
     if body.name is not None and body.name.strip():
         col.name = body.name.strip()
         col.save(update_fields=["name"])
+    if body.goals is not None:
+        goals = dict(col.goals or {})
+        for f, h in body.goals.items():
+            f = f.strip()
+            if not f:
+                raise ApiError(422, "invalid", "Name the filter the goal is for.")
+            if not h:
+                goals.pop(f, None)
+            elif not 0 < h <= 1000:
+                raise ApiError(422, "invalid", "A goal is between a few minutes and 1,000 hours.")
+            else:
+                goals[f] = round(float(h), 2)
+        col.goals = goals
+        col.save(update_fields=["goals"])
     return _card(col)
 
 

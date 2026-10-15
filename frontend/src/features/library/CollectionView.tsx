@@ -25,6 +25,7 @@ import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import tb from './tables.module.css'
 import { usePlaceName } from '../map/place'
+import { Goals } from './Goals'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -217,6 +218,7 @@ export function CollectionView() {
 
       {tab === 'overview' && (
         <>
+          <Goals card={card} />
           <Framing key={project ?? 'all'} id={card.id} project={project} />
           <div className={c.grid}>
             <section className={`${v.card} ${tb.flush}`}>

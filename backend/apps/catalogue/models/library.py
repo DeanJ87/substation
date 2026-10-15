@@ -74,6 +74,9 @@ class Collection(models.Model):
     constellation = models.CharField(
         max_length=40, blank=True, default="", help_text="from the datasets' pointing"
     )
+    goals = models.JSONField(
+        default=dict, blank=True, help_text="hours of usable integration wanted, per filter"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:

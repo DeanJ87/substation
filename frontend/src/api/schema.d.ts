@@ -3029,6 +3029,13 @@ export interface components {
             };
             /** First Night */
             first_night: string | null;
+            /**
+             * Goals
+             * @default {}
+             */
+            goals: {
+                [key: string]: number;
+            };
             /** Id */
             id: number;
             /** Last Night */
@@ -3105,6 +3112,10 @@ export interface components {
         };
         /** CollectionPatch */
         CollectionPatch: {
+            /** Goals */
+            goals?: {
+                [key: string]: number | null;
+            } | null;
             /** Name */
             name?: string | null;
         };
