@@ -452,3 +452,19 @@ Taken on the recommendation in the design review (owner may overrule):
 - **007-DR-30** The work pill and its flyout are gone: the Activity link already shows running jobs and failures.
   The search box is compact and opens wider when clicked or tabbed into (not animated with reduced motion). The
   account menu is as wide as its items; the version reads as two short lines with the full string on hover.
+
+### Amendment 2026-10-15: phone tables as cards (007-DR-29 follow-up)
+
+- **007-DR-31 Tables read as cards on a phone.** Below 600 px every wide table (a collection's Datasets, Every
+  session, Framing and integration-by-filter tables; a dataset's Quality subs and Calibration sessions and the flat
+  picker; Calibration's Masters and raw sets; What to shoot; the Bin; a night's calibration sets and its sky table)
+  shows each row as a card instead of scrolling sideways. The row's name heads the card; every other value sits
+  under its column name, several to a line, and long text (reasons, states, matches, sessions) takes a line of its
+  own. Sort headings stay above the cards as a wrapping row of buttons after "Sort by"; a select-all box stays too.
+  One shared rule does it: cells carry their column name as `data-label` and the table opts in with `cards`, so
+  there is no second copy of any markup and wide screens are unchanged.
+- **007-DR-32** Activity's queue and recent rows wrap on a phone rather than cutting the job's name short; a
+  queued job's Run next and Cancel sit on their own line beneath it.
+- **007-DR-33** A night's three readouts (Integration, Moon, Calibration) share one compact row on a phone.
+  Checked by screenshots at 400 px of the Library, a collection, every dataset tab, Calibration, What to shoot,
+  Activity, the Bin, Settings, two nights and the map: no page scrolls sideways.

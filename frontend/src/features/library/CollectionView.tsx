@@ -226,7 +226,7 @@ export function CollectionView() {
                 title="Accepted integration by rig and filter"
                 meta={`${rigs.length} rig${rigs.length === 1 ? '' : 's'} · ${filters.length} filter${filters.length === 1 ? '' : 's'}`}
               >
-                <table className={`${v.table} ${tb.table}`}>
+                <table className={`${v.table} ${tb.table} cards`}>
                   <thead>
                     <tr>
                       <th>Rig</th>
@@ -262,7 +262,7 @@ export function CollectionView() {
                             )}
                           </td>
                           {filters.map((f) => (
-                            <td key={f} className={`${v.mono} ${tb.num}`}>
+                            <td key={f} className={`${v.mono} ${tb.num}`} data-label={f}>
                               {d.matrix[r][f] ? integrationText(d.matrix[r][f]) : '—'}
                             </td>
                           ))}
@@ -275,7 +275,7 @@ export function CollectionView() {
                         <div className={v.muted}>{integrationText(card.accepted_integration_s)} accepted</div>
                       </td>
                       {filters.map((f) => (
-                        <td key={f} className={`${v.mono} ${v.accent} ${tb.num}`}>
+                        <td key={f} className={`${v.mono} ${v.accent} ${tb.num}`} data-label={f}>
                           {integrationText(totals[f])}
                         </td>
                       ))}
@@ -390,7 +390,7 @@ function DatasetTable({ rows: all, resetKey }: { rows: ColDataset[]; resetKey: u
     <section className={`${v.card} ${tb.flush}`}>
       <Collapsible id="collection-datasets" title="Datasets" meta={all.length.toLocaleString('en-GB')}>
         <div className={tb.pane}>
-          <table className={`${v.table} ${tb.table}`}>
+          <table className={`${v.table} ${tb.table} cards`}>
             <thead>
               <tr>
                 {th('name', 'Dataset')}
@@ -422,14 +422,16 @@ function DatasetTable({ rows: all, resetKey }: { rows: ColDataset[]; resetKey: u
                           .join(' · ')}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="State" data-wide>
                       <DatasetState x={x} />
                     </td>
-                    <td className={`${v.mono} ${tb.num}`}>{x.sessions}</td>
-                    <td className={`${v.mono} ${v.accent} ${tb.num}`}>
+                    <td className={`${v.mono} ${tb.num}`} data-label="Sessions">
+                      {x.sessions}
+                    </td>
+                    <td className={`${v.mono} ${v.accent} ${tb.num}`} data-label="Accepted">
                       {integrationText(ds.accepted_integration_s)}
                     </td>
-                    <td>
+                    <td data-label="Grades" data-wide>
                       {tot ? (
                         <div className={c.grades}>
                           <div className={c.split} aria-hidden="true">
@@ -446,7 +448,9 @@ function DatasetTable({ rows: all, resetKey }: { rows: ColDataset[]; resetKey: u
                         '—'
                       )}
                     </td>
-                    <td className={`${v.muted} ${tb.num}`}>{x.last_night ? shortDate(x.last_night) : '—'}</td>
+                    <td className={`${v.muted} ${tb.num}`} data-label="Last night">
+                      {x.last_night ? shortDate(x.last_night) : '—'}
+                    </td>
                   </tr>
                 )
               })}
@@ -493,7 +497,7 @@ function SessionList({ sessions }: { sessions: ColSession[] }) {
         meta={sessions.length.toLocaleString('en-GB')}
       >
         <div className={tb.pane}>
-          <table className={`${v.table} ${tb.table}`}>
+          <table className={`${v.table} ${tb.table} cards`}>
             <thead>
               <tr>
                 <th>Night</th>
@@ -511,10 +515,14 @@ function SessionList({ sessions }: { sessions: ColSession[] }) {
                       {nightText(x.night)}
                     </Link>
                   </td>
-                  <td>{x.rig}</td>
-                  <td>{x.filters.join(', ')}</td>
-                  <td className={`${v.mono} ${tb.num}`}>{x.subs.toLocaleString('en-GB')}</td>
-                  <td className={`${v.mono} ${v.accent} ${tb.num}`}>{integrationText(x.accepted_s)}</td>
+                  <td data-label="Rig">{x.rig}</td>
+                  <td data-label="Filters">{x.filters.join(', ')}</td>
+                  <td className={`${v.mono} ${tb.num}`} data-label="Subs">
+                    {x.subs.toLocaleString('en-GB')}
+                  </td>
+                  <td className={`${v.mono} ${v.accent} ${tb.num}`} data-label="Integration">
+                    {integrationText(x.accepted_s)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1077,7 +1085,7 @@ function Framing({ id, project }: { id: number; project: number | null }) {
             </div>
           </div>
           <div className={tb.pane}>
-            <table className={`${v.table} ${tb.table} ${c.selectTable}`}>
+            <table className={`${v.table} ${tb.table} ${c.selectTable} cards`}>
               <thead>
                 <tr>
                   {fth('name', 'Dataset')}
@@ -1119,14 +1127,18 @@ function Framing({ id, project }: { id: number; project: number | null }) {
                       {r.reference && <span className={v.muted}> · reference</span>}
                       <div className={v.muted}>{r.solved} solved</div>
                     </td>
-                    <td className={`${v.mono} ${tb.num}`}>
+                    <td className={`${v.mono} ${tb.num}`} data-label="Field">
                       {deg(r.fov_w)} × {deg(r.fov_h)}
                     </td>
-                    <td className={`${v.mono} ${tb.num}`}>{r.scale.toFixed(2)}″/px</td>
-                    <td className={`${v.mono} ${tb.num}`}>
+                    <td className={`${v.mono} ${tb.num}`} data-label="Scale">
+                      {r.scale.toFixed(2)}″/px
+                    </td>
+                    <td className={`${v.mono} ${tb.num}`} data-label="Offset">
                       {r.reference ? '—' : `${r.offset_arcmin.toFixed(0)}′`}
                     </td>
-                    <td className={`${v.mono} ${tb.num}`}>{Math.round(r.overlap * 100)}%</td>
+                    <td className={`${v.mono} ${tb.num}`} data-label="Overlap">
+                      {Math.round(r.overlap * 100)}%
+                    </td>
                     <td className={tb.act}>
                       {(r.master_id || r.image) && (
                         <button

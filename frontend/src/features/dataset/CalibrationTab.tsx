@@ -143,7 +143,7 @@ export function CalibrationTab({
       <section className={`${v.card} ${tb.flush}`}>
         <Collapsible id="calibration-sessions" title="Sessions" meta={sessions.length}>
           <div className={tb.pane}>
-            <table className={`${v.table} ${tb.table}`}>
+            <table className={`${v.table} ${tb.table} cards`}>
               <thead>
                 <tr>
                   {th('session', 'Session', tb.nowrap)}
@@ -164,8 +164,10 @@ export function CalibrationTab({
                         <td className={tb.nowrap}>
                           <strong>{nightText(x.night)}</strong>
                         </td>
-                        <td className={`${v.mono} ${tb.num}`}>{x.sub_count}</td>
-                        <td>
+                        <td className={`${v.mono} ${tb.num}`} data-label="Subs">
+                          {x.sub_count}
+                        </td>
+                        <td data-label="Dark or bias">
                           {x.dark ? (
                             <>
                               <div className={v.mono}>{x.dark}</div>
@@ -177,7 +179,7 @@ export function CalibrationTab({
                             <span className={v.warn}>No dark yet</span>
                           )}
                         </td>
-                        <td>
+                        <td data-label="Flat">
                           {x.flat ? (
                             <>
                               {x.flat_sha && (
@@ -484,7 +486,7 @@ function ChangePanel({
       {q.isPending && <Spinner label="Loading flats" />}
       {q.data && (
         <>
-          <table className={`${v.table} ${tb.table} ${c.flatTable}`}>
+          <table className={`${v.table} ${tb.table} ${c.flatTable} cards`}>
             <thead>
               <tr>
                 <th style={{ width: COLS[0] }} className={tb.act}>
@@ -515,7 +517,7 @@ function ChangePanel({
                     className={`${c.flatRow} ${on ? c.flatOn : ''} ${f.same ? '' : c.otherFilter}`}
                     onClick={choose}
                   >
-                    <td style={{ width: COLS[0] }} className={tb.act}>
+                    <td style={{ width: COLS[0] }} className={tb.act} data-label="Use">
                       <input
                         type="radio"
                         name={`flat-${night}`}
@@ -548,22 +550,26 @@ function ChangePanel({
                         )
                       })()}
                     </td>
-                    <td style={{ width: COLS[2] }} className={f.same ? undefined : v.warn}>
+                    <td
+                      style={{ width: COLS[2] }}
+                      className={f.same ? undefined : v.warn}
+                      data-label="Filter"
+                    >
                       {f.filter || '—'}
                     </td>
-                    <td style={{ width: COLS[3] }} className={`${tb.nowrap} ${v.mono}`}>
+                    <td style={{ width: COLS[3] }} className={`${tb.nowrap} ${v.mono}`} data-label="Night">
                       {f.night ? nightText(f.night) : '—'}
                     </td>
-                    <td style={{ width: COLS[4] }} className={tb.nowrap}>
+                    <td style={{ width: COLS[4] }} className={tb.nowrap} data-label="From this session">
                       {when(f.days)}
                     </td>
-                    <td style={{ width: COLS[5] }} className={`${v.mono} ${tb.num}`}>
+                    <td style={{ width: COLS[5] }} className={`${v.mono} ${tb.num}`} data-label="Frames">
                       {f.frames ?? '—'}
                     </td>
-                    <td style={{ width: COLS[6] }} className={v.muted}>
+                    <td style={{ width: COLS[6] }} className={v.muted} data-label="Telescope">
                       {f.telescope || '—'}
                     </td>
-                    <td style={{ width: COLS[7] }} className={v.muted}>
+                    <td style={{ width: COLS[7] }} className={v.muted} data-label="State">
                       {f.state}
                     </td>
                   </tr>

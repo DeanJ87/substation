@@ -102,3 +102,78 @@ h3 {
 :root[data-theme='night'] canvas {
   filter: url(#sst-red-only);
 }
+
+/* Phone tables (007-DR-29, B44): below 600 px a table marked `cards` reads as a stack of cards, one per row. Each
+   cell shows its column name from `data-label` above its value, several to a line; a cell without one (the row's
+   name, its actions) or marked `data-wide` (long text) takes a whole line. Headings holding a control (sort buttons, select
+   all) stay as a wrapping strip above the cards. Widths set inline for wide screens give way. */
+@media (max-width: 599px) {
+  table.cards,
+  table.cards > tbody {
+    display: block;
+    width: auto;
+  }
+  table.cards > thead:not(:has(button, input)) {
+    display: none;
+  }
+  table.cards > thead > tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    padding: 0 18px 8px;
+  }
+  table.cards > thead:has(button) > tr::before {
+    content: 'Sort by';
+    color: var(--sst-muted);
+    font-size: 12px;
+  }
+  table.cards > thead > tr > th:nth-child(n) {
+    position: static;
+    padding: 0;
+    width: auto !important;
+    border: 0;
+    background: none;
+    text-align: left;
+  }
+  table.cards > thead > tr > th:not(:has(button, input)) {
+    display: none;
+  }
+  table.cards > tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.75rem, 1fr));
+    grid-auto-flow: row dense;
+    gap: 8px 12px;
+    margin: 0 12px 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--sst-line);
+    border-radius: var(--sst-radius);
+    background: var(--sst-panel-2);
+  }
+  table.cards > tbody > tr > td:nth-child(n) {
+    display: block;
+    min-width: 0;
+    width: auto !important;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    background: none;
+  }
+  table.cards > tbody > tr > td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sst-muted);
+  }
+  table.cards > tbody > tr > td:not([data-label]),
+  table.cards > tbody > tr > td[data-wide] {
+    grid-column: 1 / -1;
+  }
+  table.cards > tbody > tr > td:empty {
+    display: none;
+  }
+}
