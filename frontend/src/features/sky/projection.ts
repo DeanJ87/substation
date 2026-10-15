@@ -1,0 +1,103 @@
+// The sky dome's geometry (spec 015): a zenithal equidistant view, as if lying on your back with north at the top.
+// The zenith is the centre and the horizon the edge; altitude falls off evenly with distance, so the 30° and 60°
+// rings are evenly spaced. Looking up, east is on the left and west on the right.
+
+export const R = 100 // horizon radius in the drawing's units
+
+export type Pt = { x: number; y: number }
+
+/** Where (altitude, azimuth) in degrees lands on the dome; below the horizon lands outside the edge. */
+export function project(alt: number, az: number, r = R): Pt {
+  const rho = ((90 - alt) / 90) * r
+  const a = (az * Math.PI) / 180
+  return { x: round(-rho * Math.sin(a)), y: round(-rho * Math.cos(a)) }
+}
+
+const round = (n: number) => Math.round(n * 100) / 100
+
+/** The radius of an altitude ring. */
+export const ring = (alt: number, r = R) => ((90 - alt) / 90) * r
+
+/** The compass points just outside the horizon. */
+export function compass(r = R): { label: string; at: Pt }[] {
+  return [
+    { label: 'N', at: project(-9, 0, r) },
+    { label: 'E', at: project(-9, 90, r) },
+    { label: 'S', at: project(-9, 180, r) },
+    { label: 'W', at: project(-9, 270, r) },
+  ]
+}
+
+/** An SVG path through points, starting a new piece wherever `breaks` says. */
+export function polyline(points: Pt[]): string {
+  return points.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ')
+}
+
+export type Shape = 'circle' | 'square' | 'triangle' | 'diamond' | 'cross'
+export const SHAPES: Shape[] = ['circle', 'square', 'triangle', 'diamond', 'cross']
+
+/** A marker's outline as a path centred on `p`, about `size` across, so every rig's dots read alike in weight. */
+export function marker(shape: Shape, p: Pt, size: number): string {
+  const h = size / 2
+  const { x, y } = p
+  switch (shape) {
+    case 'square':
+      return `M${x - h * 0.85} ${y - h * 0.85}h${h * 1.7}v${h * 1.7}h${-h * 1.7}Z`
+    case 'triangle':
+      return `M${x} ${y - h * 1.1}L${x + h} ${y + h * 0.75}L${x - h} ${y + h * 0.75}Z`
+    case 'diamond':
+      return `M${x} ${y - h * 1.15}L${x + h * 1.15} ${y}L${x} ${y + h * 1.15}L${x - h * 1.15} ${y}Z`
+    case 'cross': {
+      const t = h * 0.38
+      return `M${x - t} ${y - h}h${2 * t}v${h - t}h${h - t}v${2 * t}h${t - h}v${h - t}h${-2 * t}v${t - h}h${t - h}v${-2 * t}h${h - t}Z`
+    }
+    default:
+      return `M${x - h} ${y}a${h} ${h} 0 1 0 ${size} 0a${h} ${h} 0 1 0 ${-size} 0Z`
+  }
+}
+
+/** The colour token for the n-th series. */
+export const series = (n: number) => `var(--sst-series-${(n % 6) + 1})`
+
+/** Linear interpolation of a value along timed samples (sorted by time); null outside them. */
+export function at<T extends { time: string }>(
+  samples: T[],
+  t: number,
+  value: (s: T) => number,
+): number | null {
+  if (!samples.length) return null
+  const first = Date.parse(samples[0].time)
+  const last = Date.parse(samples[samples.length - 1].time)
+  if (t < first || t > last) return null
+  for (let i = 1; i < samples.length; i++) {
+    const b = Date.parse(samples[i].time)
+    if (t <= b) {
+      const a = Date.parse(samples[i - 1].time)
+      const f = b === a ? 0 : (t - a) / (b - a)
+      return value(samples[i - 1]) + (value(samples[i]) - value(samples[i - 1])) * f
+    }
+  }
+  return value(samples[samples.length - 1])
+}
+
+/** Azimuth interpolated the short way round (350° → 10° passes through 0°, not 180°). */
+export function azAt<T extends { time: string; az: number }>(samples: T[], t: number): number | null {
+  const unwrapped: T[] = []
+  let prev: number | null = null
+  let turn = 0
+  for (const s of samples) {
+    if (prev != null && Math.abs(s.az - prev) > 180) turn += s.az < prev ? 360 : -360
+    unwrapped.push({ ...s, az: s.az + turn })
+    prev = s.az
+  }
+  const v = at(unwrapped, t, (s) => s.az)
+  return v == null ? null : ((v % 360) + 360) % 360
+}
+
+/** Hour ticks across a span, on the hour. */
+export function hourTicks(start: number, end: number): number[] {
+  const out: number[] = []
+  const h = 3_600_000
+  for (let t = Math.ceil(start / h) * h; t <= end; t += h) out.push(t)
+  return out
+}

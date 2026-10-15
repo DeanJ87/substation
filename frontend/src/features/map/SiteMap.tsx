@@ -1,4 +1,5 @@
-// A small map of where one sub was shot (spec 012), with the place's name. Links to the full map.
+// A small map of where one sub was shot (spec 012), with the place's name. Links to the full map, opened at this
+// place and, from a night, on that night (spec 015 FR-001).
 import 'leaflet/dist/leaflet.css'
 import { Link } from '@tanstack/react-router'
 import L from 'leaflet'
@@ -8,7 +9,7 @@ import { coords, usePlaceName } from './place'
 import { baseLayer } from './tiles'
 import s from './map.module.css'
 
-export function SiteMap({ lat, lon }: { lat: number; lon: number }) {
+export function SiteMap({ lat, lon, night }: { lat: number; lon: number; night?: string }) {
   const { theme } = useAppTheme()
   const box = useRef<HTMLDivElement>(null)
   const name = usePlaceName(lat, lon)
@@ -43,7 +44,11 @@ export function SiteMap({ lat, lon }: { lat: number; lon: number }) {
         <span>{name.data ?? (name.isLoading ? '…' : 'Where it was shot')}</span>
         <span className={s.coords}>{coords(lat, lon)}</span>
       </p>
-      <Link to="/map" className={s.siteLink}>
+      <Link
+        to="/map"
+        search={{ lat: +lat.toFixed(4), lon: +lon.toFixed(4), zoom: 12, date: night }}
+        className={s.siteLink}
+      >
         Open the map
       </Link>
     </div>

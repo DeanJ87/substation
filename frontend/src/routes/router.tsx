@@ -20,6 +20,7 @@ import { CalibrationSetView } from '../features/calibration/CalibrationSetView'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { BinPage } from '../features/bin/BinPage'
 import { MapView } from '../features/map/MapView'
+import { mapSearch } from '../features/map/search'
 import { AppFrame } from './AppFrame'
 import { SignIn } from './SignIn'
 
@@ -65,7 +66,12 @@ const collection = createRoute({
   }),
 })
 const binRoute = createRoute({ getParentRoute: () => app, path: '/bin', component: BinPage })
-const mapRoute = createRoute({ getParentRoute: () => app, path: '/map', component: MapView })
+const mapRoute = createRoute({
+  getParentRoute: () => app,
+  path: '/map',
+  component: MapView,
+  validateSearch: mapSearch, // where to look and which nights (spec 015)
+})
 const sub = createRoute({ getParentRoute: () => app, path: '/subs/$sha', component: SubDetail })
 const activity = createRoute({ getParentRoute: () => app, path: '/activity', component: Activity })
 const dataset = createRoute({

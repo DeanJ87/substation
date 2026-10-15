@@ -7966,6 +7966,478 @@
     "title": "SiteSchema",
     "type": "object"
    },
+   "SkyMoon": {
+    "properties": {
+     "illumination": {
+      "title": "Illumination",
+      "type": "number"
+     },
+     "points": {
+      "items": {
+       "$ref": "#/components/schemas/SkyPoint"
+      },
+      "title": "Points",
+      "type": "array"
+     }
+    },
+    "required": [
+     "illumination",
+     "points"
+    ],
+    "title": "SkyMoon",
+    "type": "object"
+   },
+   "SkyOut": {
+    "properties": {
+     "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "lat": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lat"
+     },
+     "lon": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lon"
+     },
+     "moon": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SkyMoon"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "rigs": {
+      "items": {
+       "$ref": "#/components/schemas/SkyRig"
+      },
+      "title": "Rigs",
+      "type": "array"
+     },
+     "site_key": {
+      "title": "Site Key",
+      "type": "string"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "subs": {
+      "items": {
+       "$ref": "#/components/schemas/SkySub"
+      },
+      "title": "Subs",
+      "type": "array"
+     },
+     "targets": {
+      "items": {
+       "$ref": "#/components/schemas/SkyTarget"
+      },
+      "title": "Targets",
+      "type": "array"
+     },
+     "tracks": {
+      "items": {
+       "$ref": "#/components/schemas/SkyTrack"
+      },
+      "title": "Tracks",
+      "type": "array"
+     },
+     "twilight": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SkyTwilight"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "unplaced": {
+      "items": {
+       "$ref": "#/components/schemas/SkyUnplaced"
+      },
+      "title": "Unplaced",
+      "type": "array"
+     }
+    },
+    "required": [
+     "date",
+     "site_key",
+     "lat",
+     "lon",
+     "start",
+     "end",
+     "twilight",
+     "moon",
+     "targets",
+     "rigs",
+     "tracks",
+     "subs",
+     "unplaced"
+    ],
+    "title": "SkyOut",
+    "type": "object"
+   },
+   "SkyPoint": {
+    "properties": {
+     "alt": {
+      "title": "Alt",
+      "type": "number"
+     },
+     "az": {
+      "title": "Az",
+      "type": "number"
+     },
+     "time": {
+      "format": "date-time",
+      "title": "Time",
+      "type": "string"
+     }
+    },
+    "required": [
+     "time",
+     "alt",
+     "az"
+    ],
+    "title": "SkyPoint",
+    "type": "object"
+   },
+   "SkyRig": {
+    "properties": {
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "key",
+     "name"
+    ],
+    "title": "SkyRig",
+    "type": "object"
+   },
+   "SkySub": {
+    "properties": {
+     "alt": {
+      "title": "Alt",
+      "type": "number"
+     },
+     "az": {
+      "title": "Az",
+      "type": "number"
+     },
+     "exptime_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exptime S"
+     },
+     "file": {
+      "title": "File",
+      "type": "string"
+     },
+     "fwhm_arcsec": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fwhm Arcsec"
+     },
+     "fwhm_px": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fwhm Px"
+     },
+     "segment": {
+      "title": "Segment",
+      "type": "integer"
+     },
+     "sha256": {
+      "title": "Sha256",
+      "type": "string"
+     },
+     "source": {
+      "title": "Source",
+      "type": "string"
+     },
+     "time": {
+      "format": "date-time",
+      "title": "Time",
+      "type": "string"
+     },
+     "track": {
+      "title": "Track",
+      "type": "integer"
+     },
+     "verdict": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Verdict"
+     },
+     "weight": {
+      "title": "Weight",
+      "type": "number"
+     }
+    },
+    "required": [
+     "sha256",
+     "file",
+     "time",
+     "exptime_s",
+     "alt",
+     "az",
+     "source",
+     "track",
+     "segment",
+     "verdict",
+     "weight",
+     "fwhm_arcsec",
+     "fwhm_px"
+    ],
+    "title": "SkySub",
+    "type": "object"
+   },
+   "SkyTarget": {
+    "properties": {
+     "collection_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Collection Id"
+     },
+     "curve": {
+      "items": {
+       "$ref": "#/components/schemas/SkyPoint"
+      },
+      "title": "Curve",
+      "type": "array"
+     },
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "key",
+     "name",
+     "collection_id",
+     "curve"
+    ],
+    "title": "SkyTarget",
+    "type": "object"
+   },
+   "SkyTrack": {
+    "properties": {
+     "dataset_id": {
+      "title": "Dataset Id",
+      "type": "integer"
+     },
+     "filter": {
+      "title": "Filter",
+      "type": "string"
+     },
+     "first": {
+      "format": "date-time",
+      "title": "First",
+      "type": "string"
+     },
+     "integration_s": {
+      "title": "Integration S",
+      "type": "number"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "last": {
+      "format": "date-time",
+      "title": "Last",
+      "type": "string"
+     },
+     "rig": {
+      "title": "Rig",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     },
+     "target": {
+      "title": "Target",
+      "type": "string"
+     }
+    },
+    "required": [
+     "target",
+     "rig",
+     "dataset_id",
+     "filter",
+     "label",
+     "first",
+     "last",
+     "subs",
+     "integration_s"
+    ],
+    "title": "SkyTrack",
+    "type": "object"
+   },
+   "SkyTwilight": {
+    "properties": {
+     "dawn": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dawn"
+     },
+     "dusk": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dusk"
+     },
+     "sunrise": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sunrise"
+     },
+     "sunset": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sunset"
+     }
+    },
+    "required": [
+     "sunset",
+     "dusk",
+     "dawn",
+     "sunrise"
+    ],
+    "title": "SkyTwilight",
+    "type": "object"
+   },
+   "SkyUnplaced": {
+    "properties": {
+     "file": {
+      "title": "File",
+      "type": "string"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "sha256": {
+      "title": "Sha256",
+      "type": "string"
+     }
+    },
+    "required": [
+     "sha256",
+     "file",
+     "reason"
+    ],
+    "title": "SkyUnplaced",
+    "type": "object"
+   },
    "SolvingOut": {
     "properties": {
      "available": {
@@ -13288,8 +13760,44 @@
   },
   "/map": {
    "get": {
+    "description": "Every place subs were shot; with `since`/`until` (nights, inclusive) only that period (spec 015 FR-002).",
     "operationId": "apps_catalogue_api_map_map_places",
-    "parameters": [],
+    "parameters": [
+     {
+      "in": "query",
+      "name": "since",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Since"
+      }
+     },
+     {
+      "in": "query",
+      "name": "until",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Until"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "content": {
@@ -13441,6 +13949,53 @@
      }
     ],
     "summary": "Night",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/nights/{date}/sky": {
+   "get": {
+    "operationId": "apps_processing_api_sky_night_sky",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "date",
+      "required": true,
+      "schema": {
+       "format": "date",
+       "title": "Date",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "site",
+      "required": true,
+      "schema": {
+       "title": "Site",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SkyOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Night Sky",
     "tags": [
      "catalogue"
     ]

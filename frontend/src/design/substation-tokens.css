@@ -27,6 +27,14 @@
   --sst-ch-g: #00ff00;
   --sst-ch-b: #0000ff;
   --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+  /* one colour per series (targets on the sky, spec 015): Okabe–Ito hues, told apart with the common colour
+     blindnesses; brightened for a dark ground */
+  --sst-series-1: #ee7bd0;
+  --sst-series-2: #56b4e9;
+  --sst-series-3: #e69f00;
+  --sst-series-4: #f0e442;
+  --sst-series-5: #2ec4a0;
+  --sst-series-6: #f0703a;
 
   --sst-font-sans: 'Inter', system-ui, sans-serif;
   --sst-font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -69,6 +77,12 @@
   --sst-thumb: #1a222c;
   --sst-scrim: rgba(0, 0, 0, 0.5); /* overlays on images */
   --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+  --sst-series-1: #a3307f;
+  --sst-series-2: #0072b2;
+  --sst-series-3: #a35f00;
+  --sst-series-4: #7a6f00;
+  --sst-series-5: #00795a;
+  --sst-series-6: #c04a00;
 }
 
 /* Night vision: deep red on near-black only. No blue, green or white light.
@@ -96,4 +110,11 @@
   --sst-thumb: #000000;
   --sst-scrim: rgba(0, 0, 0, 0.6); /* overlays on images */
   --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+  /* red only: series differ in lightness, and shapes and labels carry the rest */
+  --sst-series-1: #ff4a3a;
+  --sst-series-2: #b8241a;
+  --sst-series-3: #ff8a7a;
+  --sst-series-4: #8a1a12;
+  --sst-series-5: #e06050;
+  --sst-series-6: #ffb0a4;
 }

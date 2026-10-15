@@ -1441,7 +1441,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Map Places */
+        /**
+         * Map Places
+         * @description Every place subs were shot; with `since`/`until` (nights, inclusive) only that period (spec 015 FR-002).
+         */
         get: operations["apps_catalogue_api_map_map_places"];
         put?: never;
         post?: never;
@@ -1497,6 +1500,23 @@ export interface paths {
         };
         /** Night */
         get: operations["apps_catalogue_api_nights_night"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/nights/{date}/sky": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Night Sky */
+        get: operations["apps_processing_api_sky_night_sky"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5206,6 +5226,152 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** SkyMoon */
+        SkyMoon: {
+            /** Illumination */
+            illumination: number;
+            /** Points */
+            points: components["schemas"]["SkyPoint"][];
+        };
+        /** SkyOut */
+        SkyOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** End */
+            end: string | null;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            moon: components["schemas"]["SkyMoon"] | null;
+            /** Rigs */
+            rigs: components["schemas"]["SkyRig"][];
+            /** Site Key */
+            site_key: string;
+            /** Start */
+            start: string | null;
+            /** Subs */
+            subs: components["schemas"]["SkySub"][];
+            /** Targets */
+            targets: components["schemas"]["SkyTarget"][];
+            /** Tracks */
+            tracks: components["schemas"]["SkyTrack"][];
+            twilight: components["schemas"]["SkyTwilight"] | null;
+            /** Unplaced */
+            unplaced: components["schemas"]["SkyUnplaced"][];
+        };
+        /** SkyPoint */
+        SkyPoint: {
+            /** Alt */
+            alt: number;
+            /** Az */
+            az: number;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
+        };
+        /** SkyRig */
+        SkyRig: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+        };
+        /** SkySub */
+        SkySub: {
+            /** Alt */
+            alt: number;
+            /** Az */
+            az: number;
+            /** Exptime S */
+            exptime_s: number | null;
+            /** File */
+            file: string;
+            /** Fwhm Arcsec */
+            fwhm_arcsec: number | null;
+            /** Fwhm Px */
+            fwhm_px: number | null;
+            /** Segment */
+            segment: number;
+            /** Sha256 */
+            sha256: string;
+            /** Source */
+            source: string;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
+            /** Track */
+            track: number;
+            /** Verdict */
+            verdict: string | null;
+            /** Weight */
+            weight: number;
+        };
+        /** SkyTarget */
+        SkyTarget: {
+            /** Collection Id */
+            collection_id: number | null;
+            /** Curve */
+            curve: components["schemas"]["SkyPoint"][];
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+        };
+        /** SkyTrack */
+        SkyTrack: {
+            /** Dataset Id */
+            dataset_id: number;
+            /** Filter */
+            filter: string;
+            /**
+             * First
+             * Format: date-time
+             */
+            first: string;
+            /** Integration S */
+            integration_s: number;
+            /** Label */
+            label: string;
+            /**
+             * Last
+             * Format: date-time
+             */
+            last: string;
+            /** Rig */
+            rig: string;
+            /** Subs */
+            subs: number;
+            /** Target */
+            target: string;
+        };
+        /** SkyTwilight */
+        SkyTwilight: {
+            /** Dawn */
+            dawn: string | null;
+            /** Dusk */
+            dusk: string | null;
+            /** Sunrise */
+            sunrise: string | null;
+            /** Sunset */
+            sunset: string | null;
+        };
+        /** SkyUnplaced */
+        SkyUnplaced: {
+            /** File */
+            file: string;
+            /** Reason */
+            reason: string;
+            /** Sha256 */
+            sha256: string;
+        };
         /** SolvingOut */
         SolvingOut: {
             /** Available */
@@ -7746,7 +7912,10 @@ export interface operations {
     };
     apps_catalogue_api_map_map_places: {
         parameters: {
-            query?: never;
+            query?: {
+                since?: string | null;
+                until?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7830,6 +7999,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NightOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_sky_night_sky: {
+        parameters: {
+            query: {
+                site: string;
+            };
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkyOut"];
                 };
             };
         };

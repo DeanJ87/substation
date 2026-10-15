@@ -289,3 +289,23 @@ class CombinedMaster(models.Model):
     task = models.ForeignKey(
         "substation_tasks.Task", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+
+
+class SkyPosition(models.Model):
+    """Where a light's target stood in the sky at the middle of its exposure, from where it was shot (spec 015).
+    Kept so a night with hundreds of subs draws at once; worked out again when any input changes."""
+
+    frame = models.OneToOneField(
+        "catalogue.Frame", on_delete=models.CASCADE, primary_key=True, related_name="sky"
+    )
+    at = models.DateTimeField(help_text="middle of the exposure, UTC")
+    site_lat = models.FloatField()
+    site_lon = models.FloatField()
+    ra_deg = models.FloatField()
+    dec_deg = models.FloatField()
+    source = models.CharField(
+        max_length=12, help_text="where the pointing came from: solve, header or dataset"
+    )
+    alt_deg = models.FloatField()
+    az_deg = models.FloatField()
+    hour_angle_h = models.FloatField(help_text="hours west of the meridian, −12 to 12")

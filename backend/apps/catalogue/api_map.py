@@ -64,10 +64,15 @@ def _picture(dataset_ids: list[int]) -> str | None:
 
 
 @router.get("/map", response=MapOut)
-def map_places(request):
+def map_places(request, since: date | None = None, until: date | None = None):
+    """Every place subs were shot; with `since`/`until` (nights, inclusive) only that period (spec 015 FR-002)."""
+    lights = Frame.objects.filter(frame_type=FrameType.LIGHT, site_lat__isnull=False, site_lon__isnull=False)
+    if since:
+        lights = lights.filter(night__date__gte=since)
+    if until:
+        lights = lights.filter(night__date__lte=until)
     rows = (
-        Frame.objects.filter(frame_type=FrameType.LIGHT, site_lat__isnull=False, site_lon__isnull=False)
-        .exclude(status__in=[FrameStatus.BINNED, FrameStatus.DELETED, FrameStatus.IGNORED])
+        lights.exclude(status__in=[FrameStatus.BINNED, FrameStatus.DELETED, FrameStatus.IGNORED])
         .exclude(site_lat=0, site_lon=0)
         .values("site_lat", "site_lon", "night__date", "night__site_key", "dataset_id")
         .annotate(n=Count("pk"))
