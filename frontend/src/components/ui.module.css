@@ -1,6 +1,7 @@
 .button {
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   gap: 8px;
   padding: 7px 14px;
   border: 1px solid var(--sst-line);

@@ -95,3 +95,6 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
   viewer modal, WCAG 2.2 tags) and run in CI against the stack (007-DR-27)
 - [X] B42 (2026-10-15) `night_filter`: month names, day and month, UK numeric dates, yesterday/last night/tonight
   (007-DR-28); test
+- [X] B43 (2026-10-15) Phone layout: two-row header, scrolling tabs, unwrapped buttons, full-screen viewer, map below
+  the header, settings within the screen (007-DR-29); screenshots at 400 px
+- [ ] B44 Phone: tables (Masters, raw sets, datasets) as cards below 600 px; the night page's three readouts in one row

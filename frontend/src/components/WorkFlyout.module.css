@@ -169,3 +169,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* on a phone the work pill is its dot and counts; the panel says the rest */
+@media (max-width: 760px) {
+  .label,
+  .pct,
+  .more {
+    display: none;
+  }
+  .panel {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: 56px;
+    width: auto;
+  }
+}

@@ -437,3 +437,12 @@ Taken on the recommendation in the design review (owner may overrule):
 - **007-DR-28 Search reads dates as people type them.** Besides 2026-10 and 2026-10-14, search finds nights from a
   month name ("october", "oct 2026"), a day and month in either order ("14 october", "oct 14th"), UK numeric dates
   ("14/10", "14/10/2026") and "yesterday", "last night", "tonight". Typing "october" had found nothing.
+
+### Amendment 2026-10-15: phone layout
+
+- **007-DR-29 Every screen works at phone width (400 px).** The header becomes two rows (the mark with search, work
+  and account; then the sections as a strip that scrolls sideways), so nothing is cut off. Tab bars scroll rather
+  than wrap; buttons never wrap their labels; a row of buttons wraps instead. The sub viewer fills the screen and
+  long file names wrap. Full-bleed pages (the map) sit below whichever header height applies. Settings and
+  forms never run wider than the screen. Checked by screenshots at 400 px of the Library, a collection, a dataset,
+  the viewer, Calibration, Activity, the map, a night and Settings.

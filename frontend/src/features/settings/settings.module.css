@@ -507,3 +507,28 @@
   color: var(--sst-text);
   font: inherit;
 }
+/* 007 phone layout (2026-10-15): nothing in a section is wider than the screen. A fieldset's default
+   min-width is its content's, which pushed the file-path choices off the edge. */
+@media (max-width: 760px) {
+  .layout > *,
+  .layout fieldset {
+    min-width: 0;
+  }
+  .layout {
+    overflow-wrap: anywhere;
+  }
+  .layout fieldset label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .inline,
+  .inlineForm,
+  .backupRow {
+    flex-wrap: wrap;
+  }
+  .layout input:not([type='checkbox']):not([type='radio']):not(.num),
+  .layout select {
+    max-width: 100%;
+  }
+}

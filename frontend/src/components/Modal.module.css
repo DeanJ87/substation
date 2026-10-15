@@ -35,3 +35,21 @@
 .close:hover {
   color: var(--sst-text);
 }
+/* a phone: the modal is the screen; long names wrap rather than push it wider */
+@media (max-width: 760px) {
+  .backdrop {
+    padding: 0;
+  }
+  .panel {
+    min-height: 100%;
+    padding: 44px 16px 24px;
+    border: 0;
+    border-radius: 0;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .close {
+    top: 6px;
+    right: 10px;
+  }
+}

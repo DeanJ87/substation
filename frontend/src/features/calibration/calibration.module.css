@@ -125,6 +125,7 @@
 /* the page's own actions beside its title, like every other screen (2026-10-15) */
 .headButtons {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }

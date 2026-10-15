@@ -97,3 +97,17 @@
   color: var(--sst-muted);
   font-size: 13px;
 }
+@media (max-width: 760px) {
+  .search {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+  .results {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: 56px;
+    width: auto;
+  }
+}

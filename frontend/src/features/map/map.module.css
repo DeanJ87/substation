@@ -1,7 +1,7 @@
-/* The map fills everything below the header (56 px). */
+/* The map fills everything below the header (one row, or two on a phone). */
 .page {
   position: fixed;
-  inset: 56px 0 0 0;
+  inset: var(--sst-header-h, 56px) 0 0 0;
   z-index: 1;
 }
 .map {
@@ -190,7 +190,7 @@
   .when {
     left: 16px;
     right: 16px;
-    top: 64px;
+    top: 84px; /* below the zoom buttons */
     width: auto;
   }
 }
