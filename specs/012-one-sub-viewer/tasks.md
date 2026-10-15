@@ -22,3 +22,5 @@
 - [X] V10 (2026-10-15) Buttons match pills (filled face, height, focus); Calibration's actions beside its title;
   Change and Filter side by side; a failed job's time over its two actions; post-processing "View at 100%" sized to
   its text
+- [X] V11 (2026-10-15) The sub viewer's picture keeps its own shape, so star and annotation overlays sit on it exactly
+  at any window shape (they drifted into the dead space of a fixed 3:2 box)
