@@ -440,3 +440,19 @@
   color: var(--sst-muted);
   font-size: 11px;
 }
+/* zoomed in, the dome stays inside its frame */
+.domeWrap > .dome {
+  overflow: hidden;
+}
+.domeWrap {
+  width: min(100%, 720px);
+}
+.turnHint {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+/* lines keep their weight however far in you zoom */
+.dome path,
+.dome circle {
+  vector-effect: non-scaling-stroke;
+}

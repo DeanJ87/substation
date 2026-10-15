@@ -75,6 +75,7 @@ export function SkySurvey({
   survey,
   box,
   view,
+  fast = false,
   lat,
   lon,
   t,
@@ -82,6 +83,7 @@ export function SkySurvey({
   survey: Survey
   box: { x: number; y: number; w: number; h: number }
   view: View
+  fast?: boolean
   lat: number
   lon: number
   t: number
@@ -104,7 +106,8 @@ export function SkySurvey({
     const c = ref.current
     if (!c || !pixels || survey === 'off') return
     const raf = requestAnimationFrame(() => {
-      const scale = Math.min(window.devicePixelRatio || 1, 1.5)
+      // half resolution while the dome is being turned, so it keeps up; full when it stops
+      const scale = fast ? 0.5 : Math.min(window.devicePixelRatio || 1, 1.5)
       const w = Math.max(1, Math.round(c.clientWidth * scale))
       const h = Math.max(1, Math.round((w * box.h) / box.w))
       if (c.width !== w || c.height !== h) {
@@ -118,7 +121,7 @@ export function SkySurvey({
       g.putImageData(img, 0, 0)
     })
     return () => cancelAnimationFrame(raf)
-  }, [pixels, survey, box, view, lat, lon, t])
+  }, [pixels, survey, box, view, fast, lat, lon, t])
   if (survey === 'off') return null
   return (
     <>

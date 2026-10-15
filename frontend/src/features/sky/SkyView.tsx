@@ -19,7 +19,6 @@ import {
   at,
   azArc,
   azAt,
-  domeBox,
   hourTicks,
   marker,
   polyline,
@@ -82,7 +81,17 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
       /* private window: the choice lasts this visit */
     }
   }
-  const drag = useRef<{ x: number; yaw: number } | null>(null)
+  // orbit and zoom (owner 2026-10-15): drag turns and tilts; the wheel or a pinch zooms towards the pointer
+  const drag = useRef<{ x: number; y: number; yaw: number; tilt: number } | null>(null)
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<number | null>(null)
+  const [zoom, setZoom] = useState<{ k: number; cx: number; cy: number }>({
+    k: 1,
+    cx: FRAME_CX,
+    cy: FRAME_CY,
+  })
+  const [moving, setMoving] = useState(false)
+  const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null)
 
   const colourOf = useMemo(() => new Map(sky.targets.map((t, i) => [t.key, series(i)])), [sky.targets])
   const shapeOf = useMemo(
@@ -126,6 +135,55 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
     return () => cancelAnimationFrame(raf)
   }, [playing, start, end])
 
+  const box = viewBoxFor(zoom)
+  const zoomAt = (factor: number, point?: { x: number; y: number }) =>
+    setZoom((z) => {
+      const k = Math.min(6, Math.max(1, z.k * factor))
+      if (k === 1) return { k: 1, cx: FRAME_CX, cy: FRAME_CY }
+      const p = point ?? { x: z.cx, y: z.cy }
+      const f = z.k / k
+      return { k, cx: p.x + (z.cx - p.x) * f, cy: p.y + (z.cy - p.y) * f }
+    })
+  /** The drawing's coordinates under a point on the screen. */
+  const toDrawing = (clientX: number, clientY: number) => {
+    const r = svgEl?.getBoundingClientRect()
+    if (!r || !r.width) return undefined
+    return {
+      x: box.x + ((clientX - r.left) / r.width) * box.w,
+      y: box.y + ((clientY - r.top) / r.height) * box.h,
+    }
+  }
+  /** Where the buttons zoom to: the middle of the focused target's marks, else the zenith. */
+  const focusPoint = () => {
+    const pts = sky.subs.filter((x) => sky.tracks[x.track]?.target === inFocus).map((x) => proj(x.alt, x.az))
+    if (!pts.length) return proj(90, 0)
+    return {
+      x: pts.reduce((a, p) => a + p.x, 0) / pts.length,
+      y: pts.reduce((a, p) => a + p.y, 0) / pts.length,
+    }
+  }
+  const reset = () => {
+    setView(DEFAULT_VIEW)
+    setZoom({ k: 1, cx: FRAME_CX, cy: FRAME_CY })
+  }
+  // the wheel zooms (a native listener: React's wheel events can't stop the page scrolling)
+  const zoomRef = useRef(zoomAt)
+  const toDrawingRef = useRef(toDrawing)
+  useEffect(() => {
+    zoomRef.current = zoomAt
+    toDrawingRef.current = toDrawing
+  })
+  useEffect(() => {
+    const el = svgEl
+    if (!el) return
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault()
+      zoomRef.current(Math.exp(-e.deltaY * 0.0015), toDrawingRef.current(e.clientX, e.clientY))
+    }
+    el.addEventListener('wheel', wheel, { passive: false })
+    return () => el.removeEventListener('wheel', wheel)
+  }, [svgEl])
+
   if (!sky.subs.length)
     return (
       <p className="muted">
@@ -142,8 +200,6 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   )[0]?.key
   const inFocus = chosen ?? busiest
   const proj = (alt: number, az: number) => project3d(alt, az, view)
-  const box = domeBox(view)
-  const turn = (by: number) => setView((v) => ({ ...v, yaw: (((v.yaw + by) % 360) + 360) % 360 }))
 
   const shown = (x: SkySub) => {
     const tr = sky.tracks[x.track]
@@ -191,6 +247,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
             survey={survey}
             box={box}
             view={view}
+            fast={moving}
             lat={sky.lat}
             lon={sky.lon}
             t={now ?? (start + end) / 2}
@@ -201,22 +258,46 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
           viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
           role="img"
           aria-label={`The sky from where this night was shot, as a dome over the horizon facing ${facing(view.yaw)}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`}
+          ref={setSvgEl}
           onPointerDown={(e) => {
-            drag.current = { x: e.clientX, yaw: view.yaw }
+            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
             e.currentTarget.setPointerCapture?.(e.pointerId)
+            drag.current = { x: e.clientX, y: e.clientY, yaw: view.yaw, tilt: view.tilt }
+            pinch.current = null
+            setMoving(true)
           }}
           onPointerMove={(e) => {
+            if (!pointers.current.has(e.pointerId)) return
+            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+            const pts = [...pointers.current.values()]
+            if (pts.length >= 2) {
+              const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+              if (pinch.current)
+                zoomAt(d / pinch.current, toDrawing((pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2))
+              pinch.current = d
+              return
+            }
             if (!drag.current) return
-            const yaw = drag.current.yaw - (e.clientX - drag.current.x) * 0.5
-            setView((v) => ({ ...v, yaw: ((yaw % 360) + 360) % 360 }))
+            const yaw = drag.current.yaw - (e.clientX - drag.current.x) * 0.4
+            const tilt = Math.min(85, Math.max(8, drag.current.tilt + (e.clientY - drag.current.y) * 0.3))
+            setView({ yaw: ((yaw % 360) + 360) % 360, tilt })
           }}
-          onPointerUp={() => (drag.current = null)}
-          onPointerCancel={() => (drag.current = null)}
+          onPointerUp={(e) => {
+            pointers.current.delete(e.pointerId)
+            if (!pointers.current.size) {
+              drag.current = null
+              pinch.current = null
+              setMoving(false)
+            }
+          }}
+          onPointerCancel={(e) => {
+            pointers.current.delete(e.pointerId)
+            drag.current = null
+            pinch.current = null
+            setMoving(false)
+          }}
         >
-          <path
-            d={skyLine(altRing(0), view).front + ' ' + skyLine(altRing(0), view).back}
-            className={s.ground}
-          />
+          <path d={polyline(altRing(0).map(([a, z]) => proj(a, z))) + 'Z'} className={s.ground} />
           {[30, 60].map((a) => (
             <path key={`b${a}`} d={skyLine(altRing(a), view).back} className={s.gridBack} />
           ))}
@@ -285,7 +366,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
             return (
               <path
                 key={x.sha256}
-                d={marker(shapeOf.get(tr.rig) ?? 'circle', p, 4.2)}
+                d={marker(shapeOf.get(tr.rig) ?? 'circle', p, 4.2 / zoom.k)}
                 className={`${s.mark} ${x.verdict === 'down' ? s.faded : ''} ${dimmed(x.track) ? s.dim : ''}`}
                 style={
                   reject ? { stroke: colour, fill: 'var(--sst-panel)' } : { fill: colour, stroke: colour }
@@ -309,23 +390,55 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
                     key={t.key}
                     cx={p.x}
                     cy={p.y}
-                    r={5}
+                    r={5 / zoom.k}
                     className={s.now}
                     style={{ stroke: colourOf.get(t.key) }}
                   />
                 )
               })}
-          {moonNow && <circle cx={moonNow.x} cy={moonNow.y} r={4.5} className={s.moon} />}
+          {moonNow && <circle cx={moonNow.x} cy={moonNow.y} r={4.5 / zoom.k} className={s.moon} />}
         </svg>
         {hover && <Tip sub={hover.sub} at={hover.at} sky={sky} box={box} />}
         <p className={s.turnHint}>
-          <button type="button" className={s.turn} onClick={() => turn(-45)} aria-label="Turn left">
-            ←
-          </button>
-          <span>Facing {facing(view.yaw)} · drag to turn</span>
-          <button type="button" className={s.turn} onClick={() => turn(45)} aria-label="Turn right">
-            →
-          </button>
+          <span>
+            Facing {facing(view.yaw)} · {Math.round(view.tilt)}° up · drag to turn, scroll to zoom
+          </span>
+          <span className={s.surveyPick} role="group" aria-label="View">
+            <button
+              type="button"
+              className={s.turn}
+              onClick={() => setView((v) => ({ ...v, yaw: (v.yaw + 315) % 360 }))}
+              aria-label="Turn left"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              className={s.turn}
+              onClick={() => setView((v) => ({ ...v, yaw: (v.yaw + 45) % 360 }))}
+              aria-label="Turn right"
+            >
+              →
+            </button>
+            <button
+              type="button"
+              className={s.turn}
+              onClick={() => zoomAt(1 / 1.4, focusPoint())}
+              aria-label="Zoom out"
+              disabled={zoom.k <= 1}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className={s.turn}
+              onClick={() => zoomAt(1.4, focusPoint())}
+              aria-label="Zoom in"
+              disabled={zoom.k >= 6}
+            >
+              +
+            </button>
+          </span>
           <span className={s.surveyPick} role="group" aria-label="Sky behind the dome">
             {(
               [
@@ -345,13 +458,10 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
               </button>
             ))}
           </span>
-          {view.yaw !== DEFAULT_VIEW.yaw && (
-            <>
-              {' · '}
-              <button type="button" className={s.linkButton} onClick={() => setView(DEFAULT_VIEW)}>
-                face south
-              </button>
-            </>
+          {(view.yaw !== DEFAULT_VIEW.yaw || view.tilt !== DEFAULT_VIEW.tilt || zoom.k !== 1) && (
+            <button type="button" className={s.linkButton} onClick={reset}>
+              Reset view
+            </button>
           )}
         </p>
         {survey !== 'off' && <p className={s.credit}>{CREDIT[survey]}</p>}
@@ -414,6 +524,16 @@ const fwhm = (x: SkySub) =>
     : x.fwhm_px != null
       ? `FWHM ${x.fwhm_px.toFixed(2)} px`
       : ''
+
+// one fixed frame for every tilt, so the drawing doesn't change height as it turns
+const FRAME = { x: -114, y: -110, w: 228, h: 182 }
+const FRAME_CX = FRAME.x + FRAME.w / 2
+const FRAME_CY = FRAME.y + FRAME.h / 2
+function viewBoxFor(z: { k: number; cx: number; cy: number }) {
+  const w = FRAME.w / z.k
+  const h = FRAME.h / z.k
+  return { x: z.cx - w / 2, y: z.cy - h / 2, w, h }
+}
 
 const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']
 const facing = (yaw: number) => COMPASS[Math.round(yaw / 45) % 8]

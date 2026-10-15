@@ -26,3 +26,5 @@
 - [X] N9 (2026-10-15) `GET /sky/survey/{dss|mellinger}` fetched once and cached; `unproject`, `siderealDeg`,
   `toEquatorial`, `surveyPixel` with tests (sidereal time at J2000, the LMC's pixel, the zenith at the latitude);
   the survey drawn on the dome (015-DR-07); screenshots
+- [X] N10 (2026-10-15) Orbit by drag, zoom by wheel and pinch, zoom buttons to the focused track, Reset view
+  (015-DR-08); test; screenshots zoomed

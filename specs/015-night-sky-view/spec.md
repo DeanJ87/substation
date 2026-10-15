@@ -108,3 +108,11 @@ dome); live position during a session; video export (a still image export may fo
   browser reprojects it (altitude and azimuth → right ascension and declination for the site and sidereal time).
   The floor inside the horizon is left bare. The image's credit is shown under the dome. If the survey can't be
   fetched (no internet), the dome draws as before with a note.
+
+### Amendment 2026-10-15: orbit and zoom
+
+- **015-DR-08** Dragging the dome orbits it: sideways turns it round, up and down tilts the viewpoint (8°–85°).
+  The wheel, or a pinch, zooms towards the pointer (up to 6×); the − and + buttons zoom towards the focused
+  target's track; ← and → turn it 45° for keyboards; "Reset view" puts it back. The drawing keeps one frame
+  whatever the tilt and is clipped to it; marks and lines keep their size on screen when zoomed; the sky survey
+  repaints at half resolution while the dome is moving.
