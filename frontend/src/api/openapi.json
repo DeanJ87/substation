@@ -5283,6 +5283,253 @@
     "title": "NightScope",
     "type": "object"
    },
+   "NightsNight": {
+    "properties": {
+     "alt_max": {
+      "title": "Alt Max",
+      "type": "number"
+     },
+     "alt_mid": {
+      "title": "Alt Mid",
+      "type": "number"
+     },
+     "alt_min": {
+      "title": "Alt Min",
+      "type": "number"
+     },
+     "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+     },
+     "first": {
+      "format": "date-time",
+      "title": "First",
+      "type": "string"
+     },
+     "integration_s": {
+      "title": "Integration S",
+      "type": "number"
+     },
+     "last": {
+      "format": "date-time",
+      "title": "Last",
+      "type": "string"
+     },
+     "site_key": {
+      "title": "Site Key",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "date",
+     "site_key",
+     "subs",
+     "integration_s",
+     "first",
+     "last",
+     "alt_min",
+     "alt_max",
+     "alt_mid"
+    ],
+    "title": "NightsNight",
+    "type": "object"
+   },
+   "NightsOut": {
+    "properties": {
+     "fov": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SkyFov"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "lat": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lat"
+     },
+     "lon": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lon"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "nights": {
+      "items": {
+       "$ref": "#/components/schemas/NightsNight"
+      },
+      "title": "Nights",
+      "type": "array"
+     },
+     "places": {
+      "items": {
+       "$ref": "#/components/schemas/NightsPlace"
+      },
+      "title": "Places",
+      "type": "array"
+     },
+     "rigs": {
+      "items": {
+       "$ref": "#/components/schemas/SkyRig"
+      },
+      "title": "Rigs",
+      "type": "array"
+     },
+     "site_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Key"
+     },
+     "subs": {
+      "items": {
+       "$ref": "#/components/schemas/NightsSub"
+      },
+      "title": "Subs",
+      "type": "array"
+     },
+     "unplaced": {
+      "title": "Unplaced",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "name",
+     "site_key",
+     "lat",
+     "lon",
+     "places",
+     "nights",
+     "rigs",
+     "subs",
+     "unplaced",
+     "fov"
+    ],
+    "title": "NightsOut",
+    "type": "object"
+   },
+   "NightsPlace": {
+    "properties": {
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "lat": {
+      "title": "Lat",
+      "type": "number"
+     },
+     "lon": {
+      "title": "Lon",
+      "type": "number"
+     },
+     "nights": {
+      "title": "Nights",
+      "type": "integer"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "key",
+     "lat",
+     "lon",
+     "subs",
+     "nights"
+    ],
+    "title": "NightsPlace",
+    "type": "object"
+   },
+   "NightsSub": {
+    "properties": {
+     "alt": {
+      "title": "Alt",
+      "type": "number"
+     },
+     "az": {
+      "title": "Az",
+      "type": "number"
+     },
+     "dataset_id": {
+      "title": "Dataset Id",
+      "type": "integer"
+     },
+     "night": {
+      "title": "Night",
+      "type": "integer"
+     },
+     "rig": {
+      "title": "Rig",
+      "type": "string"
+     },
+     "segment": {
+      "title": "Segment",
+      "type": "integer"
+     },
+     "sha256": {
+      "title": "Sha256",
+      "type": "string"
+     },
+     "time": {
+      "format": "date-time",
+      "title": "Time",
+      "type": "string"
+     },
+     "verdict": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Verdict"
+     }
+    },
+    "required": [
+     "sha256",
+     "time",
+     "alt",
+     "az",
+     "night",
+     "dataset_id",
+     "segment",
+     "rig",
+     "verdict"
+    ],
+    "title": "NightsSub",
+    "type": "object"
+   },
    "NotifyTestOut": {
     "properties": {
      "failed": {
@@ -8783,6 +9030,40 @@
     "title": "Skipped",
     "type": "object"
    },
+   "SkyFov": {
+    "description": "The rig's field of view as plate solved (spec 015 amendment): centre, size and rotation, so the dome can draw\nwhat the camera framed.",
+    "properties": {
+     "dec_deg": {
+      "title": "Dec Deg",
+      "type": "number"
+     },
+     "h_deg": {
+      "title": "H Deg",
+      "type": "number"
+     },
+     "ra_deg": {
+      "title": "Ra Deg",
+      "type": "number"
+     },
+     "rotation_deg": {
+      "title": "Rotation Deg",
+      "type": "number"
+     },
+     "w_deg": {
+      "title": "W Deg",
+      "type": "number"
+     }
+    },
+    "required": [
+     "ra_deg",
+     "dec_deg",
+     "w_deg",
+     "h_deg",
+     "rotation_deg"
+    ],
+    "title": "SkyFov",
+    "type": "object"
+   },
    "SkyMoon": {
     "properties": {
      "illumination": {
@@ -9131,6 +9412,16 @@
       "format": "date-time",
       "title": "First",
       "type": "string"
+     },
+     "fov": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SkyFov"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "integration_s": {
       "title": "Integration S",
@@ -13501,6 +13792,60 @@
     ]
    }
   },
+  "/collections/{collection_id}/sky": {
+   "get": {
+    "description": "Every light of a collection across all its nights, from one place.",
+    "operationId": "apps_processing_api_sky_nights_collection_sky",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "collection_id",
+      "required": true,
+      "schema": {
+       "title": "Collection Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NightsOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Collection Sky",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/collections/{id}": {
    "delete": {
     "operationId": "apps_catalogue_api_library_delete_collection",
@@ -14883,6 +15228,60 @@
      }
     ],
     "summary": "List Datasets",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/datasets/{dataset_id}/sky": {
+   "get": {
+    "description": "One dataset's lights across all its nights, from one place (the one with most subs unless `site` says).",
+    "operationId": "apps_processing_api_sky_nights_dataset_sky",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "dataset_id",
+      "required": true,
+      "schema": {
+       "title": "Dataset Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "site",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Site"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NightsOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Dataset Sky",
     "tags": [
      "catalogue"
     ]

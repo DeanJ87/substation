@@ -116,3 +116,28 @@ dome); live position during a session; video export (a still image export may fo
   target's track; ← and → turn it 45° for keyboards; "Reset view" puts it back. The drawing keeps one frame
   whatever the tilt and is clipped to it; marks and lines keep their size on screen when zoomed; the sky survey
   repaints at half resolution while the dome is moving.
+
+### Amendment 2026-10-15: across nights (N7) and the camera's frame
+
+- **015-DR-09 Across nights.** A dataset's Sky tab and a collection's Overview ("On the sky") show the same dome
+  with every night of that target from one place: `GET /datasets/{id}/sky` and `GET /collections/{id}/sky`, each
+  with an optional `?site=`. The place defaults to the one with most subs (by the nights' site key); the others are
+  offered in a "From" list. Positions come from the SkyPosition cache, each light seen from its night's place worked
+  out exactly as the night view does (the mean of that night's catalogued lights), so the two views share kept rows
+  rather than overwriting each other. Tracks break per night and dataset at gaps and meridian flips (FR-006).
+- **015-DR-10 Stacked by night.** All nights share the target's colour; the latest is drawn on top at full strength
+  and older nights fade evenly down to a quarter. The key lists the nights newest first as "Night 3 of 11 · date",
+  with subs and integration; hovering or focusing a row brings that night forward, choosing it keeps it forward (and
+  the sky behind is then shown for the middle of that night, else the latest). A shape per rig, named in the key
+  when there are several. The view starts facing the target's usual azimuth so a northern target isn't on the far
+  wall; Reset view returns there.
+- **015-DR-11 Altitude over the dates.** Under the dome, a strip with a bar per night from the lowest to the
+  highest altitude its subs were taken at, a dot at the median, along the dates (month labels), 30° marked; the
+  nights fade by age as on the dome.
+- **015-DR-12 The camera's frame.** Each night track carries its dataset's field of view from its plate solves
+  (median centre, median width and height, rotation folded onto 0–180° since a meridian flip covers the same sky);
+  the across-nights view carries the most-shot rig's. The dome draws it as a rectangle for the target in focus (one
+  per rig) at the time the sky behind is shown (the slider's time, else the middle of the night): the corners go
+  from the tangent plane to right ascension and declination (gnomonic), then to altitude and azimuth for the site
+  and sidereal time, each edge divided so it bends with the dome; the image's top edge is drawn heavier. Nothing is
+  drawn while any part of it is below the horizon. The side panel says the frame's size and rotation in words.

@@ -1,32 +1,29 @@
 // The sky as it was shot (spec 015): a wireframe dome over the horizon, seen from the side, every sub a mark where
 // its target stood at the middle of its exposure, joined into a track per target; a colour per target and a shape
-// per rig. One target is in focus at a time (owner 2026-10-15); the others stay faint for context. Drag the dome,
-// or use the arrow keys on it, to walk round it. A slider replays the night; under it, altitude against time. The tracks list and the table of subs say the
-// same in words, for screen readers and keyboards.
+// per rig. One target is in focus at a time; the others stay faint for context. Drag the dome to orbit it, scroll
+// or pinch to zoom; the focused target's camera frame is drawn where it pointed. A slider replays the night; under
+// it, altitude against time. The tracks list and the table of subs say the same in words, for screen readers and
+// keyboards.
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import { integrationText, timeText } from '../format'
+import { Dome, type DomeCtx, middle } from './Dome'
 import {
+  type Fov,
   type Pt,
   type Shape,
   type View,
-  DEFAULT_VIEW,
-  R,
   SHAPES,
-  altRing,
   at,
-  azArc,
   azAt,
+  frameOnDome,
   hourTicks,
   marker,
   polyline,
-  project3d,
   series,
-  skyLine,
 } from './projection'
-import { CREDIT, SkySurvey, type Survey } from './SkySurvey'
 import s from './sky.module.css'
 
 export type Sky = components['schemas']['SkyOut']
@@ -65,33 +62,6 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   const [hover, setHover] = useState<{ sub: SkySub; at: Pt } | null>(null)
   // the target in focus: the one with the most subs to start with
   const [chosen, setChosen] = useState<string | null>(null)
-  const [view, setView] = useState<View>(DEFAULT_VIEW)
-  const [survey, setSurvey] = useState<Survey>(() => {
-    try {
-      return (localStorage.getItem('sst-sky-survey') as Survey) || 'mellinger'
-    } catch {
-      return 'mellinger'
-    }
-  })
-  const chooseSurvey = (x: Survey) => {
-    setSurvey(x)
-    try {
-      localStorage.setItem('sst-sky-survey', x)
-    } catch {
-      /* private window: the choice lasts this visit */
-    }
-  }
-  // orbit and zoom (owner 2026-10-15): drag turns and tilts; the wheel or a pinch zooms towards the pointer
-  const drag = useRef<{ x: number; y: number; yaw: number; tilt: number } | null>(null)
-  const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const pinch = useRef<number | null>(null)
-  const [zoom, setZoom] = useState<{ k: number; cx: number; cy: number }>({
-    k: 1,
-    cx: FRAME_CX,
-    cy: FRAME_CY,
-  })
-  const [moving, setMoving] = useState(false)
-  const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null)
 
   const colourOf = useMemo(() => new Map(sky.targets.map((t, i) => [t.key, series(i)])), [sky.targets])
   const shapeOf = useMemo(
@@ -99,90 +69,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
     [sky.rigs],
   )
   const many = sky.rigs.length > 1
-
-  // Play: from the start (or where the slider is) to the end, then stop on the whole night
-  const nowRef = useRef(now)
-  useEffect(() => {
-    nowRef.current = now
-  }, [now])
-  useEffect(() => {
-    if (!playing) return
-    const span = end - start
-    if (prefersReducedMotion()) {
-      const id = window.setInterval(() => {
-        const next = (nowRef.current ?? start) + 30 * 60_000
-        if (next >= end) {
-          setNow(null)
-          setPlaying(false)
-        } else setNow(next)
-      }, 700)
-      return () => window.clearInterval(id)
-    }
-    let raf = 0
-    let last = performance.now()
-    const tick = (t: number) => {
-      const next = (nowRef.current ?? start) + ((t - last) / 12_000) * span // the night in twelve seconds
-      last = t
-      if (next >= end) {
-        setNow(null)
-        setPlaying(false)
-        return
-      }
-      setNow(next)
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [playing, start, end])
-
-  const box = viewBoxFor(zoom)
-  const zoomAt = (factor: number, point?: { x: number; y: number }) =>
-    setZoom((z) => {
-      const k = Math.min(6, Math.max(1, z.k * factor))
-      if (k === 1) return { k: 1, cx: FRAME_CX, cy: FRAME_CY }
-      const p = point ?? { x: z.cx, y: z.cy }
-      const f = z.k / k
-      return { k, cx: p.x + (z.cx - p.x) * f, cy: p.y + (z.cy - p.y) * f }
-    })
-  /** The drawing's coordinates under a point on the screen. */
-  const toDrawing = (clientX: number, clientY: number) => {
-    const r = svgEl?.getBoundingClientRect()
-    if (!r || !r.width) return undefined
-    return {
-      x: box.x + ((clientX - r.left) / r.width) * box.w,
-      y: box.y + ((clientY - r.top) / r.height) * box.h,
-    }
-  }
-  /** Where the buttons zoom to: the middle of the focused target's marks, else the zenith. */
-  const focusPoint = () => {
-    const pts = sky.subs.filter((x) => sky.tracks[x.track]?.target === inFocus).map((x) => proj(x.alt, x.az))
-    if (!pts.length) return proj(90, 0)
-    return {
-      x: pts.reduce((a, p) => a + p.x, 0) / pts.length,
-      y: pts.reduce((a, p) => a + p.y, 0) / pts.length,
-    }
-  }
-  const reset = () => {
-    setView(DEFAULT_VIEW)
-    setZoom({ k: 1, cx: FRAME_CX, cy: FRAME_CY })
-  }
-  // the wheel zooms (a native listener: React's wheel events can't stop the page scrolling)
-  const zoomRef = useRef(zoomAt)
-  const toDrawingRef = useRef(toDrawing)
-  useEffect(() => {
-    zoomRef.current = zoomAt
-    toDrawingRef.current = toDrawing
-  })
-  useEffect(() => {
-    const el = svgEl
-    if (!el) return
-    const wheel = (e: WheelEvent) => {
-      e.preventDefault()
-      zoomRef.current(Math.exp(-e.deltaY * 0.0015), toDrawingRef.current(e.clientX, e.clientY))
-    }
-    el.addEventListener('wheel', wheel, { passive: false })
-    return () => el.removeEventListener('wheel', wheel)
-  }, [svgEl])
+  usePlay(playing, setPlaying, now, setNow, start, end)
 
   if (!sky.subs.length)
     return (
@@ -199,7 +86,9 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
       sky.tracks.filter((t) => t.target === a.key).reduce((n, t) => n + t.subs, 0),
   )[0]?.key
   const inFocus = chosen ?? busiest
-  const proj = (alt: number, az: number) => project3d(alt, az, view)
+  const lit = focus?.kind === 'target' ? focus.key : inFocus
+  // the sky behind, and the camera's frame on it, are shown for the slider's time (or the middle of the night)
+  const skyTime = now ?? (start + end) / 2
 
   const shown = (x: SkySub) => {
     const tr = sky.tracks[x.track]
@@ -217,255 +106,113 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
       else next.add(key)
       return next
     })
+  // one frame per rig for the target in focus (its filters share the rig's frame)
+  const frames = new Map<string, Fov>()
+  for (const tr of sky.tracks)
+    if (tr.target === lit && tr.fov && !hidden.has(tr.rig) && !hidden.has(tr.target) && !frames.has(tr.rig))
+      frames.set(tr.rig, tr.fov)
 
-  // one line per track segment, through the subs shown so far
-  const lines: { key: string; track: number; d: string }[] = []
-  const bySeg = new Map<string, Pt[]>()
-  for (const x of sky.subs) {
-    if (!shown(x)) continue
-    const k = `${x.track}:${x.segment}`
-    bySeg.set(k, [...(bySeg.get(k) ?? []), proj(x.alt, x.az)])
-  }
-  for (const [k, pts] of bySeg)
-    if (pts.length > 1) lines.push({ key: k, track: +k.split(':')[0], d: polyline(pts) })
-
-  const moonUp = (sky.moon?.points ?? []).filter((p) => p.alt > 0)
-  const moonNow =
-    now != null && sky.moon
-      ? (() => {
-          const alt = at(sky.moon.points, now, (p) => p.alt)
-          const az = azAt(sky.moon.points, now)
-          return alt != null && az != null && alt > 0 ? proj(alt, az) : null
-        })()
-      : null
-
-  return (
-    <div className={s.sky}>
-      <div className={s.domeWrap}>
-        {sky.lat != null && sky.lon != null && (
-          <SkySurvey
-            survey={survey}
-            box={box}
-            view={view}
-            fast={moving}
-            lat={sky.lat}
-            lon={sky.lon}
-            t={now ?? (start + end) / 2}
-          />
+  const draw = ({ proj, k, view }: DomeCtx) => {
+    // one line per track segment, through the subs shown so far
+    const bySeg = new Map<string, Pt[]>()
+    for (const x of sky.subs) {
+      if (!shown(x)) continue
+      const key = `${x.track}:${x.segment}`
+      bySeg.set(key, [...(bySeg.get(key) ?? []), proj(x.alt, x.az)])
+    }
+    const moonUp = (sky.moon?.points ?? []).filter((p) => p.alt > 0)
+    const moonNow = now != null && sky.moon ? moonAt(sky.moon.points, now, proj) : null
+    return (
+      <>
+        {moonUp.length > 1 && (
+          <path d={polyline(moonUp.map((p) => proj(p.alt, p.az)))} className={s.moonTrack} />
         )}
-        <svg
-          className={s.dome}
-          viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
-          role="img"
-          aria-label={`The sky from where this night was shot, as a dome over the horizon facing ${facing(view.yaw)}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`}
-          ref={setSvgEl}
-          onPointerDown={(e) => {
-            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-            e.currentTarget.setPointerCapture?.(e.pointerId)
-            drag.current = { x: e.clientX, y: e.clientY, yaw: view.yaw, tilt: view.tilt }
-            pinch.current = null
-            setMoving(true)
-          }}
-          onPointerMove={(e) => {
-            if (!pointers.current.has(e.pointerId)) return
-            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-            const pts = [...pointers.current.values()]
-            if (pts.length >= 2) {
-              const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
-              if (pinch.current)
-                zoomAt(d / pinch.current, toDrawing((pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2))
-              pinch.current = d
-              return
-            }
-            if (!drag.current) return
-            const yaw = drag.current.yaw - (e.clientX - drag.current.x) * 0.4
-            const tilt = Math.min(85, Math.max(8, drag.current.tilt + (e.clientY - drag.current.y) * 0.3))
-            setView({ yaw: ((yaw % 360) + 360) % 360, tilt })
-          }}
-          onPointerUp={(e) => {
-            pointers.current.delete(e.pointerId)
-            if (!pointers.current.size) {
-              drag.current = null
-              pinch.current = null
-              setMoving(false)
-            }
-          }}
-          onPointerCancel={(e) => {
-            pointers.current.delete(e.pointerId)
-            drag.current = null
-            pinch.current = null
-            setMoving(false)
-          }}
-        >
-          <path d={polyline(altRing(0).map(([a, z]) => proj(a, z))) + 'Z'} className={s.ground} />
-          {[30, 60].map((a) => (
-            <path key={`b${a}`} d={skyLine(altRing(a), view).back} className={s.gridBack} />
-          ))}
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((az) => (
-            <path key={`mb${az}`} d={skyLine(azArc(az), view).back} className={s.gridBack} />
-          ))}
-          <path d={skyLine(altRing(0), view).back} className={s.horizonBack} />
-          {/* the dome's outline, seen side on: half a circle from the horizon's east end to its west end */}
-          <path d={`M${-R} 0A${R} ${R} 0 0 1 ${R} 0`} className={s.limb} />
-          <path d={skyLine(altRing(0), view).front} className={s.horizon} />
-          {[30, 60].map((a) => (
-            <path key={`f${a}`} d={skyLine(altRing(a), view).front} className={s.alt} />
-          ))}
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((az) => (
-            <path
-              key={`mf${az}`}
-              d={skyLine(azArc(az), view).front}
-              className={az % 180 === 0 ? s.meridian : s.alt}
-            />
-          ))}
-          {[30, 60].map((a) => {
-            const p = proj(a, view.yaw + 200) // on the near side, just off the near meridian
-            return (
-              <text key={a} x={p.x + 2} y={p.y - 2} className={s.ringLabel}>
-                {a}°
-              </text>
-            )
-          })}
-          {(
-            [
-              ['N', 0],
-              ['E', 90],
-              ['S', 180],
-              ['W', 270],
-            ] as const
-          ).map(([label, az]) => {
-            const p = proj(-7, az)
-            return (
-              <text
-                key={label}
-                x={p.x}
-                y={p.y + 3}
-                className={`${s.compass} ${p.front ? '' : s.compassBack}`}
-                textAnchor="middle"
-              >
-                {label}
-              </text>
-            )
-          })}
-          {moonUp.length > 1 && (
-            <path d={polyline(moonUp.map((p) => proj(p.alt, p.az)))} className={s.moonTrack} />
-          )}
-          {lines.map((l) => (
-            <path
-              key={l.key}
-              d={l.d}
-              className={`${s.track} ${dimmed(l.track) ? s.dim : ''}`}
-              style={{ stroke: colourOf.get(sky.tracks[l.track].target) }}
-            />
-          ))}
-          {sky.subs.filter(shown).map((x) => {
-            const p = proj(x.alt, x.az)
-            const tr = sky.tracks[x.track]
-            const colour = colourOf.get(tr.target)
-            const reject = x.verdict === 'reject'
+        {[...bySeg]
+          .filter(([, pts]) => pts.length > 1)
+          .map(([key, pts]) => {
+            const track = +key.split(':')[0]
             return (
               <path
-                key={x.sha256}
-                d={marker(shapeOf.get(tr.rig) ?? 'circle', p, 4.2 / zoom.k)}
-                className={`${s.mark} ${x.verdict === 'down' ? s.faded : ''} ${dimmed(x.track) ? s.dim : ''}`}
-                style={
-                  reject ? { stroke: colour, fill: 'var(--sst-panel)' } : { fill: colour, stroke: colour }
-                }
-                onMouseEnter={() => setHover({ sub: x, at: p })}
-                onMouseLeave={() => setHover(null)}
-                onClick={() => onOpen(x.sha256)}
+                key={key}
+                d={polyline(pts)}
+                className={`${s.track} ${dimmed(track) ? s.dim : ''}`}
+                style={{ stroke: colourOf.get(sky.tracks[track].target) }}
               />
             )
           })}
-          {now != null &&
-            sky.targets
-              .filter((t) => !hidden.has(t.key) && t.key === (focus?.kind === 'target' ? focus.key : inFocus))
-              .map((t) => {
-                const alt = at(t.curve, now, (p) => p.alt)
-                const az = azAt(t.curve, now)
-                if (alt == null || az == null || alt < 0) return null
-                const p = proj(alt, az)
-                return (
-                  <circle
-                    key={t.key}
-                    cx={p.x}
-                    cy={p.y}
-                    r={5 / zoom.k}
-                    className={s.now}
-                    style={{ stroke: colourOf.get(t.key) }}
-                  />
-                )
-              })}
-          {moonNow && <circle cx={moonNow.x} cy={moonNow.y} r={4.5 / zoom.k} className={s.moon} />}
-        </svg>
-        {hover && <Tip sub={hover.sub} at={hover.at} sky={sky} box={box} />}
-        <p className={s.turnHint}>
-          <span>
-            Facing {facing(view.yaw)} · {Math.round(view.tilt)}° up · drag to turn, scroll to zoom
-          </span>
-          <span className={s.surveyPick} role="group" aria-label="View">
-            <button
-              type="button"
-              className={s.turn}
-              onClick={() => setView((v) => ({ ...v, yaw: (v.yaw + 315) % 360 }))}
-              aria-label="Turn left"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              className={s.turn}
-              onClick={() => setView((v) => ({ ...v, yaw: (v.yaw + 45) % 360 }))}
-              aria-label="Turn right"
-            >
-              →
-            </button>
-            <button
-              type="button"
-              className={s.turn}
-              onClick={() => zoomAt(1 / 1.4, focusPoint())}
-              aria-label="Zoom out"
-              disabled={zoom.k <= 1}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className={s.turn}
-              onClick={() => zoomAt(1.4, focusPoint())}
-              aria-label="Zoom in"
-              disabled={zoom.k >= 6}
-            >
-              +
-            </button>
-          </span>
-          <span className={s.surveyPick} role="group" aria-label="Sky behind the dome">
-            {(
-              [
-                ['mellinger', 'Mellinger'],
-                ['dss', 'DSS'],
-                ['off', 'No sky'],
-              ] as const
-            ).map(([k, label]) => (
-              <button
-                key={k}
-                type="button"
-                className={s.turn}
-                aria-pressed={survey === k}
-                onClick={() => chooseSurvey(k)}
-              >
-                {label}
-              </button>
-            ))}
-          </span>
-          {(view.yaw !== DEFAULT_VIEW.yaw || view.tilt !== DEFAULT_VIEW.tilt || zoom.k !== 1) && (
-            <button type="button" className={s.linkButton} onClick={reset}>
-              Reset view
-            </button>
-          )}
-        </p>
-        {survey !== 'off' && <p className={s.credit}>{CREDIT[survey]}</p>}
-      </div>
+        {sky.subs.filter(shown).map((x) => {
+          const p = proj(x.alt, x.az)
+          const tr = sky.tracks[x.track]
+          const colour = colourOf.get(tr.target)
+          const reject = x.verdict === 'reject'
+          return (
+            <path
+              key={x.sha256}
+              d={marker(shapeOf.get(tr.rig) ?? 'circle', p, 4.2 / k)}
+              className={`${s.mark} ${x.verdict === 'down' ? s.faded : ''} ${dimmed(x.track) ? s.dim : ''}`}
+              style={reject ? { stroke: colour, fill: 'var(--sst-panel)' } : { fill: colour, stroke: colour }}
+              onMouseEnter={() => setHover({ sub: x, at: p })}
+              onMouseLeave={() => setHover(null)}
+              onClick={() => onOpen(x.sha256)}
+            />
+          )
+        })}
+        {sky.lat != null &&
+          sky.lon != null &&
+          [...frames].map(([rig, fov]) => (
+            <CameraFrame
+              key={rig}
+              fov={fov}
+              lat={sky.lat!}
+              lon={sky.lon!}
+              t={skyTime}
+              view={view}
+              colour={colourOf.get(lit ?? '')}
+              label={`${sky.rigs.find((r) => r.key === rig)?.name ?? 'The rig'}’s frame, ${fovText(fov)}`}
+            />
+          ))}
+        {now != null &&
+          sky.targets
+            .filter((t) => !hidden.has(t.key) && t.key === lit)
+            .map((t) => {
+              const alt = at(t.curve, now, (p) => p.alt)
+              const az = azAt(t.curve, now)
+              if (alt == null || az == null || alt < 0) return null
+              const p = proj(alt, az)
+              return (
+                <circle
+                  key={t.key}
+                  cx={p.x}
+                  cy={p.y}
+                  r={5 / k}
+                  className={s.now}
+                  style={{ stroke: colourOf.get(t.key) }}
+                />
+              )
+            })}
+        {moonNow && <circle cx={moonNow.x} cy={moonNow.y} r={4.5 / k} className={s.moon} />}
+      </>
+    )
+  }
+
+  return (
+    <div className={s.sky}>
+      <Dome
+        lat={sky.lat}
+        lon={sky.lon}
+        t={skyTime}
+        label={(way) =>
+          `The sky from where this night was shot, as a dome over the horizon facing ${way}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`
+        }
+        zoomTarget={(proj) =>
+          middle(
+            sky.subs.filter((x) => sky.tracks[x.track]?.target === inFocus).map((x) => proj(x.alt, x.az)),
+          )
+        }
+        renderOverlay={({ box }) => hover && <Tip sub={hover.sub} at={hover.at} sky={sky} box={box} />}
+      >
+        {draw}
+      </Dome>
 
       <div className={s.side}>
         <Key
@@ -479,6 +226,14 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
           inFocus={inFocus}
           choose={setChosen}
         />
+        {frames.size > 0 && (
+          <p className={s.keyHint}>
+            The rectangle is the camera’s frame from its plate solve (
+            {[...frames.values()].map(fovText).join('; ')}), where it pointed at{' '}
+            {now == null ? 'the middle of the night' : 'the slider’s time'}. Zoom in to see it against the
+            sky.
+          </p>
+        )}
         <Facts sky={sky} />
       </div>
 
@@ -517,6 +272,88 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   )
 }
 
+/** Play: from the start (or where the slider is) to the end, then stop on the whole night. */
+function usePlay(
+  playing: boolean,
+  setPlaying: (p: boolean) => void,
+  now: number | null,
+  setNow: (t: number | null) => void,
+  start: number,
+  end: number,
+) {
+  const nowRef = useRef(now)
+  useEffect(() => {
+    nowRef.current = now
+  }, [now])
+  useEffect(() => {
+    if (!playing) return
+    const span = end - start
+    if (prefersReducedMotion()) {
+      const id = window.setInterval(() => {
+        const next = (nowRef.current ?? start) + 30 * 60_000
+        if (next >= end) {
+          setNow(null)
+          setPlaying(false)
+        } else setNow(next)
+      }, 700)
+      return () => window.clearInterval(id)
+    }
+    let raf = 0
+    let last = performance.now()
+    const tick = (t: number) => {
+      const next = (nowRef.current ?? start) + ((t - last) / 12_000) * span // the night in twelve seconds
+      last = t
+      if (next >= end) {
+        setNow(null)
+        setPlaying(false)
+        return
+      }
+      setNow(next)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [playing, start, end, setNow, setPlaying])
+}
+
+function moonAt(points: { time: string; alt: number; az: number }[], t: number, proj: DomeCtx['proj']) {
+  const alt = at(points, t, (p) => p.alt)
+  const az = azAt(points, t)
+  return alt != null && az != null && alt > 0 ? proj(alt, az) : null
+}
+
+const deg = (x: number) => (x >= 1 ? `${x.toFixed(1)}°` : `${Math.round(x * 60)}′`)
+export const fovText = (f: Fov) => `${deg(f.w_deg)} × ${deg(f.h_deg)}, turned ${Math.round(f.rotation_deg)}°`
+
+/** The camera's frame on the dome: what it framed, against the sky behind, at time `t` (spec 015 amendment). */
+export function CameraFrame({
+  fov,
+  lat,
+  lon,
+  t,
+  view,
+  colour,
+  label,
+}: {
+  fov: Fov
+  lat: number
+  lon: number
+  t: number
+  view: View
+  colour?: string
+  label: string
+}) {
+  const f = frameOnDome(fov, lat, lon, t, view)
+  if (!f) return null
+  return (
+    <g className={s.frame} style={{ stroke: colour }}>
+      <title>{label}</title>
+      <path d={f.d} className={s.frameEdge} />
+      <path d={f.top} className={s.frameTop} />
+    </g>
+  )
+}
+
 const exposure = (x: number | null | undefined) => (x != null ? `${x % 1 ? x.toFixed(1) : x} s` : '')
 const fwhm = (x: SkySub) =>
   x.fwhm_arcsec != null
@@ -524,19 +361,6 @@ const fwhm = (x: SkySub) =>
     : x.fwhm_px != null
       ? `FWHM ${x.fwhm_px.toFixed(2)} px`
       : ''
-
-// one fixed frame for every tilt, so the drawing doesn't change height as it turns
-const FRAME = { x: -114, y: -110, w: 228, h: 182 }
-const FRAME_CX = FRAME.x + FRAME.w / 2
-const FRAME_CY = FRAME.y + FRAME.h / 2
-function viewBoxFor(z: { k: number; cx: number; cy: number }) {
-  const w = FRAME.w / z.k
-  const h = FRAME.h / z.k
-  return { x: z.cx - w / 2, y: z.cy - h / 2, w, h }
-}
-
-const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']
-const facing = (yaw: number) => COMPASS[Math.round(yaw / 45) % 8]
 
 function Tip({
   sub,
@@ -692,7 +516,7 @@ const H = 190
 const PAD = { l: 36, r: 8, t: 8, b: 22 }
 
 /** The element's width in pixels, so the chart's text stays the same size at any width. */
-function useWidth<T extends HTMLElement>(fallback: number): [RefObject<T | null>, number] {
+export function useWidth<T extends HTMLElement>(fallback: number): [RefObject<T | null>, number] {
   const ref = useRef<T>(null)
   const [w, setW] = useState(fallback)
   useEffect(() => {

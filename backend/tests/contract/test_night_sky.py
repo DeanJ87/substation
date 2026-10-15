@@ -158,3 +158,84 @@ def test_the_sky_survey_is_fetched_once_and_kept(admin_client, settings, tmp_pat
         assert r.status_code == 200 and r["Content-Type"] == "image/jpeg"
     assert len(calls) == 1 and "DSS2" in calls[0] and "projection=CAR" in calls[0]
     assert admin_client.get("/api/v1/sky/survey/nope").status_code == 404
+
+
+def test_a_frame_rotation_folds_a_meridian_flip_onto_the_same_frame():
+    assert sky.frame_rotation([10, 190, 10]) == pytest.approx(10)
+    assert min(sky.frame_rotation([175, 5]), 180 - sky.frame_rotation([175, 5])) < 0.01
+    assert sky.frame_rotation([95, 85]) == pytest.approx(90)
+
+
+def test_night_sky_tracks_carry_the_plate_solved_field_of_view(admin_client):
+    """Spec 015 amendment: each track carries its rig's frame (centre, size, rotation) for the dome to draw."""
+    n = Night.objects.create(date=date(2026, 10, 11), site_key="home")
+    ds = Dataset.objects.create(group_key="1", display_name="NGC 7000", target="NGC 7000", filter_norm="L")
+    t0 = datetime(2026, 10, 11, 21, tzinfo=UTC)
+    for i, rot in enumerate((92.0, 272.0, 90.0)):
+        f = _light(i, n, ds, t0 + timedelta(minutes=6 * i))
+        PlateSolve.objects.create(
+            frame=f,
+            state="solved",
+            ra_deg=314.7,
+            dec_deg=44.3,
+            fov_w_deg=3.2,
+            fov_h_deg=2.1,
+            rotation_deg=rot,
+        )
+    r = admin_client.get("/api/v1/nights/2026-10-11/sky?site=home").json()
+    fov = r["tracks"][0]["fov"]
+    assert fov["w_deg"] == 3.2 and fov["h_deg"] == 2.1 and abs(fov["rotation_deg"] - 91.33) < 0.1
+    assert fov["ra_deg"] == pytest.approx(314.7) and fov["dec_deg"] == pytest.approx(44.3)
+
+
+def test_a_target_across_its_nights_from_its_busiest_place(admin_client):
+    """Spec 015 N7: every night of a collection from one place, oldest first, with each night's altitude span;
+    another place on asking; positions shared with the night view's cache."""
+    from apps.catalogue.models import Collection
+
+    home = [
+        Night.objects.create(
+            date=date(2026, 10, d), site_key="home", site_lat=NEWCASTLE[0], site_lon=NEWCASTLE[1]
+        )
+        for d in (9, 11)
+    ]
+    away = Night.objects.create(date=date(2026, 10, 10), site_key="away", site_lat=55.5, site_lon=-2.0)
+    c = Collection.objects.create(name="NGC 7000 - North America Nebula")
+    rig = Rig.objects.create(key="a", name="Askar 71F + ATR2600M")
+    ds = Dataset.objects.create(
+        group_key="1", display_name="NGC 7000", target="NGC 7000", filter_norm="L", collection=c, rig=rig
+    )
+    i = 0
+    for n, count in ((home[0], 3), (home[1], 2), (away, 1)):
+        t0 = datetime(n.date.year, n.date.month, n.date.day, 21, tzinfo=UTC)
+        for k in range(count):
+            f = _light(i, n, ds, t0 + timedelta(minutes=6 * k), solve=(314.75, 44.3))
+            if n is away:
+                Frame.objects.filter(pk=f.pk).update(site_lat=55.5, site_lon=-2.0)
+            i += 1
+    PlateSolve.objects.filter(frame_id=f"{0:064x}").update(fov_w_deg=3.0, fov_h_deg=2.0, rotation_deg=10.0)
+
+    r = admin_client.get(f"/api/v1/collections/{c.pk}/sky").json()
+    assert r["name"] == "North America Nebula" and r["site_key"] == "home"
+    assert [p["key"] for p in r["places"]] == ["home", "away"] and r["places"][0]["nights"] == 2
+    assert [x["date"] for x in r["nights"]] == ["2026-10-09", "2026-10-11"]
+    assert [x["subs"] for x in r["nights"]] == [3, 2]
+    assert all(x["alt_min"] <= x["alt_mid"] <= x["alt_max"] for x in r["nights"])
+    assert len(r["subs"]) == 5 and {s["night"] for s in r["subs"]} == {0, 1}
+    assert r["rigs"] == [{"key": f"r{rig.pk}", "name": "Askar 71F + ATR2600M"}]
+    assert r["fov"]["w_deg"] == 3.0 and r["unplaced"] == 0
+
+    # the night view reuses the same kept positions
+    kept = {p.pk: (p.alt_deg, p.site_lat) for p in SkyPosition.objects.all()}
+    admin_client.get("/api/v1/nights/2026-10-11/sky?site=home")
+    assert {p.pk: (p.alt_deg, p.site_lat) for p in SkyPosition.objects.all()} == kept
+
+    other = admin_client.get(f"/api/v1/datasets/{ds.pk}/sky?site=away").json()
+    assert other["site_key"] == "away" and len(other["subs"]) == 1 and other["lat"] == 55.5
+    assert admin_client.get("/api/v1/collections/999999/sky").status_code == 404
+
+
+def test_a_target_never_placed_has_an_empty_sky(admin_client):
+    ds = Dataset.objects.create(group_key="1", display_name="M 31", target="M 31", filter_norm="L")
+    r = admin_client.get(f"/api/v1/datasets/{ds.pk}/sky").json()
+    assert r["site_key"] is None and r["places"] == [] and r["subs"] == [] and r["fov"] is None

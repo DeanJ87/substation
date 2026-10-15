@@ -40,6 +40,7 @@ import apps.processing.api_bulk  # noqa: E402,F401  (bulk build, re-grade, stack
 import apps.processing.api_calibration  # noqa: E402,F401  (calibration QA and built masters)
 import apps.processing.api_masters  # noqa: E402,F401  (integrations, on the catalogue router)
 import apps.processing.api_sky  # noqa: E402,F401  (a night's sky, spec 015, on the catalogue router)
+import apps.processing.api_sky_nights  # noqa: E402,F401  (a target across its nights, spec 015 N7)
 from apps.catalogue.api import router as catalogue_router  # noqa: E402
 from apps.libraries.api import libraries_router  # noqa: E402
 

@@ -172,6 +172,19 @@ describe('the sky dome', () => {
     vi.useRealTimers()
   })
 
+  it('draws the focused target’s camera frame where it pointed, and says so', () => {
+    const withFov = sky()
+    withFov.tracks[0].fov = { ra_deg: 314.75, dec_deg: 44.3, w_deg: 3.2, h_deg: 2.1, rotation_deg: 90 }
+    const { container } = render(<SkyView sky={withFov} onOpen={() => {}} />)
+    const frame = container.querySelector('svg[role="img"] g[class*="frame"]')!
+    expect(frame.querySelector('title')?.textContent).toMatch(/Askar 71F \+ ATR2600M’s frame, 3\.2° × 2\.1°/)
+    expect(frame.querySelectorAll('path')).toHaveLength(2)
+    expect(screen.getByText(/camera’s frame from its plate solve/)).toHaveTextContent(/middle of the night/)
+    // another target in focus: its rig has no solve, so no frame
+    fireEvent.click(screen.getByRole('button', { name: /Heart Nebula/ }))
+    expect(container.querySelector('g[class*="frame"]')).toBeNull()
+  })
+
   it('says why nothing can be placed', () => {
     const empty = { ...sky(), subs: [], tracks: [] }
     render(<SkyView sky={empty} onOpen={() => {}} />)

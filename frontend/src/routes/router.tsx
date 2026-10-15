@@ -89,12 +89,12 @@ const dataset = createRoute({
   validateSearch: (
     q: Record<string, unknown>,
   ): {
-    tab?: 'subs' | 'quality' | 'calibration' | 'masters'
+    tab?: 'subs' | 'quality' | 'calibration' | 'masters' | 'sky'
     night?: string
     sub?: string // the viewer is open on this sub (spec 012)
     show?: 'flagged' // the subs grid shows only flagged subs: what Review was (spec 012)
   } => ({
-    tab: ['subs', 'quality', 'calibration', 'masters'].includes(String(q.tab))
+    tab: ['subs', 'quality', 'calibration', 'masters', 'sky'].includes(String(q.tab))
       ? (q.tab as 'subs')
       : undefined,
     night: typeof q.night === 'string' ? q.night : undefined,

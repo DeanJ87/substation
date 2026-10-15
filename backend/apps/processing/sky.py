@@ -5,7 +5,7 @@ network is needed; positions are kept (SkyPosition) and only worked out again wh
 from __future__ import annotations
 
 import statistics
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -137,18 +137,27 @@ def pointing(f: Frame, header: dict, fallback: dict[int, Pointing | None]) -> Po
 
 def positions(frames: Iterable[Frame], lat: float, lon: float, headers: dict[str, dict]) -> dict[str, object]:
     """Each frame's SkyPosition, worked out (in one batch) for any that are new or whose inputs changed."""
+    return positions_at(frames, lambda _f: (lat, lon), headers)
+
+
+def positions_at(
+    frames: Iterable[Frame], place_of: Callable[[Frame], tuple[float, float]], headers: dict[str, dict]
+) -> dict[str, object]:
+    """As `positions`, each frame seen from its own place (a night's place, across many nights: spec 015 N7); the
+    new ones are worked out in one batch per place."""
     from apps.processing.models import SkyPosition
 
     frames = list(frames)
     kept = {p.frame_id: p for p in SkyPosition.objects.filter(frame__in=frames)}
     fallback: dict[int, Pointing | None] = {}
-    todo: list[tuple[Frame, Pointing, datetime]] = []
+    todo: dict[tuple[float, float], list[tuple[Frame, Pointing, datetime]]] = {}
     out: dict[str, object] = {}
     for f in frames:
         at = mid_exposure(f)
         p = pointing(f, headers.get(f.pk, {}), fallback)
         if at is None or p is None:
             continue
+        lat, lon = place_of(f)
         k = kept.get(f.pk)
         same = k is not None and (k.at, k.site_lat, k.site_lon, k.ra_deg, k.dec_deg, k.source) == (
             at,
@@ -161,31 +170,39 @@ def positions(frames: Iterable[Frame], lat: float, lon: float, headers: dict[str
         if same:
             out[f.pk] = k
         else:
-            todo.append((f, p, at))
-    if todo:
-        alts, azs, has = alt_az(
-            [p.ra_deg for _, p, _ in todo],
-            [p.dec_deg for _, p, _ in todo],
-            [at for _, _, at in todo],
-            lat,
-            lon,
+            todo.setdefault((lat, lon), []).append((f, p, at))
+    for (lat, lon), rows in todo.items():
+        out.update(_work_out(rows, lat, lon))
+    return out
+
+
+def _work_out(todo: list[tuple[Frame, Pointing, datetime]], lat: float, lon: float) -> dict[str, object]:
+    from apps.processing.models import SkyPosition
+
+    alts, azs, has = alt_az(
+        [p.ra_deg for _, p, _ in todo],
+        [p.dec_deg for _, p, _ in todo],
+        [at for _, _, at in todo],
+        lat,
+        lon,
+    )
+    out: dict[str, object] = {}
+    for (f, p, at), alt, az, ha in zip(todo, alts, azs, has, strict=True):
+        row, _ = SkyPosition.objects.update_or_create(
+            frame=f,
+            defaults={
+                "at": at,
+                "site_lat": lat,
+                "site_lon": lon,
+                "ra_deg": p.ra_deg,
+                "dec_deg": p.dec_deg,
+                "source": p.source,
+                "alt_deg": alt,
+                "az_deg": az,
+                "hour_angle_h": ha,
+            },
         )
-        for (f, p, at), alt, az, ha in zip(todo, alts, azs, has, strict=True):
-            row, _ = SkyPosition.objects.update_or_create(
-                frame=f,
-                defaults={
-                    "at": at,
-                    "site_lat": lat,
-                    "site_lon": lon,
-                    "ra_deg": p.ra_deg,
-                    "dec_deg": p.dec_deg,
-                    "source": p.source,
-                    "alt_deg": alt,
-                    "az_deg": az,
-                    "hour_angle_h": ha,
-                },
-            )
-            out[f.pk] = row
+        out[f.pk] = row
     return out
 
 
@@ -214,3 +231,13 @@ def median_pointing(rows: list) -> tuple[float, float]:
     if max(ras) - min(ras) > 180:
         ras = [(r + 180) % 360 - 180 for r in ras]
     return statistics.median(ras) % 360, statistics.median(r.dec_deg for r in rows)
+
+
+def frame_rotation(rotations: list[float]) -> float:
+    """The usual rotation of a rig's frame, in degrees 0–180: a rectangle turned by 180° (a meridian flip) covers
+    the same sky, so angles are folded onto half a turn and averaged round that circle (175° and 5° give 0°)."""
+    import math
+
+    x = sum(math.cos(math.radians(2 * r)) for r in rotations)
+    y = sum(math.sin(math.radians(2 * r)) for r in rotations)
+    return round(math.degrees(math.atan2(y, x)) / 2 % 180, 2)
