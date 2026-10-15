@@ -166,3 +166,17 @@ def masters_kept_for():
     from apps.processing.masters import KEPT_FOR
 
     return KEPT_FOR
+
+
+def test_one_stray_sub_does_not_make_a_mosaic(tmp_path):
+    """M 42 L, 2026-10-15: one 1 s framing test 2.9° away turned 25 subs into a "mosaic"."""
+    centres = [(83.82, -5.39)] * 24 + [(86.51, -6.56)]
+    fs = _frames(tmp_path, centres)
+    assert mosaic_reason(fs) is None
+
+
+def test_stack_notes_are_ascii_for_fits():
+    from apps.processing.masters import fits_ascii
+
+    out = fits_ascii("Mosaic: the subs' centres spread 2.9° across a 1.8° field · Hα × 3 −1")
+    assert out.isascii() and "2.9 deg" in out and "Ha x 3 -1" in out

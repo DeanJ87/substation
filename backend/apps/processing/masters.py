@@ -370,9 +370,12 @@ def mosaic_reason(frames: list[Frame]) -> str | None:
             dra = (ra - ra0 + 180) % 360 - 180
             return math.hypot(dra * math.cos(math.radians(dec0)), dec - dec0)
 
-        far = max(sep(r[0], r[1]) for r in solves)
-        if short and far > MOSAIC_SPREAD * short:
-            return f"Mosaic: the subs' centres spread {far:.1f}° across a {short:.1f}° field"
+        seps = [sep(r[0], r[1]) for r in solves]
+        # a stray sub (a slew or framing test, 2.9° off on M 42 L, 2026-10-15) doesn't make a mosaic: enough of
+        # them must sit away from the middle that the field really moves
+        away = [d for d in seps if short and d > MOSAIC_SPREAD * short]
+        if short and len(away) >= max(2, len(seps) // 10):
+            return f"Mosaic: the subs' centres spread {max(away):.1f}° across a {short:.1f}° field"
         return None
     names = [c.rel_path.rsplit("/", 1)[-1].lower() for c in Copy.objects.filter(frame__in=frames)]
     if names and sum("_mosaic_" in n for n in names) > len(names) / 2:
@@ -410,6 +413,28 @@ def _regional(path: Path, stars: list) -> dict:
     return parse.regional(stars, int(h.get("NAXIS1") or 0), int(h.get("NAXIS2") or 0))
 
 
+def fits_ascii(text: str) -> str:
+    """FITS headers take printable ASCII only: a note with "°" failed a finished stack at its last step."""
+    import unicodedata
+
+    for a, b in (
+        ("°", " deg"),
+        ("α", "a"),
+        ("β", "b"),
+        ("×", "x"),
+        ("−", "-"),
+        ("–", "-"),
+        ("—", "-"),
+        ("″", '"'),
+        ("′", "'"),
+        ("·", "-"),
+        ("…", "..."),
+    ):
+        text = text.replace(a, b)
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return "".join(c for c in text if 32 <= ord(c) < 127)
+
+
 def _provenance(path: Path, m: Master, notes: list[str]) -> None:
     """Write where the master came from into its own header (spec 004 FR-009), so the file explains itself."""
     from astropy.io import fits
@@ -438,7 +463,7 @@ def _provenance(path: Path, m: Master, notes: list[str]) -> None:
         )
         h["SST-WGT"] = (str(o.get("weighting", "grade"))[:60], "sub weighting")
         for n in notes:
-            h.add_history(n[:70])
+            h.add_history(fits_ascii(n)[:70])
 
 
 def work_budget_bytes() -> float:

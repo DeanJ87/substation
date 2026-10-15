@@ -281,3 +281,7 @@ split it into, and subs far from the reference share too few stars with it.
 - **004-DR-27 A failed or cancelled stack keeps what it finished.** Its working folder (its inputs, solves and
   registration) is kept for three days. A retry carries on from it, and so does a new run of the same dataset made
   from exactly the same subs. Kept folders give way at once to a stack that needs the room.
+- **004-DR-28 A stray sub doesn't make a mosaic.** A set is stacked as a mosaic only when enough subs (at least two,
+  and a tenth of the solved ones) sit away from the middle; a single framing test or slew 2.9° off had turned M 42 L
+  into a "mosaic". Stack notes written into the master's header are made plain ASCII ("°" → "deg"), since FITS refuses
+  anything else and a finished stack failed at its last step.
