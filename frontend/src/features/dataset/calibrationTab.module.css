@@ -14,6 +14,7 @@
 }
 .rowActions {
   justify-content: flex-end;
+  flex-wrap: nowrap; /* Change and Filter side by side, not stacked at two widths */
 }
 
 /* the change panel: a full-width row under its session (owner 2026-10-12) */

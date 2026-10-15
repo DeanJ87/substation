@@ -123,11 +123,11 @@
 button.pill,
 a.pill,
 label.pill {
-  min-height: 32px;
-  padding: 5px 12px;
+  min-height: 34px;
+  padding: 6px 14px;
   border-radius: var(--sst-radius-sm);
   background: var(--sst-panel-2);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.2;
   text-decoration: none;
@@ -165,6 +165,7 @@ button.pill:disabled {
   border-radius: 999px;
   min-height: 30px;
   padding: 4px 12px;
+  font-size: 13px;
 }
 .pills {
   display: flex;

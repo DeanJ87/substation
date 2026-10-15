@@ -19,3 +19,6 @@
 - [X] V7 (2026-10-15) J previous / K next; key help
 - [X] V8 (2026-10-15) Continuous zoom in the full-size view (wheel, pinch, drag, double click, − % + Fit 100%)
 - [X] V9 (2026-10-15) Clickable pills restyled as buttons site-wide; chips and tags kept
+- [X] V10 (2026-10-15) Buttons match pills (filled face, height, focus); Calibration's actions beside its title;
+  Change and Filter side by side; a failed job's time over its two actions; post-processing "View at 100%" sized to
+  its text

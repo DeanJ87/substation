@@ -214,3 +214,15 @@ def test_a_card_counts_every_sub_whether_calibrated_or_not(admin_client):
     ).json()
     card = next(c for c in admin_client.get("/api/v1/library").json()["collections"] if c["id"] == col["id"])
     assert card["filter_time"]["L"] == {"total_s": 3000, "accepted_s": 600, "rejected_s": 300}
+
+
+def test_stats_read_sky_quality_from_either_header_form():
+    """The SQM is read from the headers' keywords alone (2026-10-15: loading whole headers took over 3 s)."""
+    from apps.catalogue.api_library import _sqm_by_frame
+    from apps.catalogue.models import Frame, HeaderSnapshot
+
+    a = Frame.objects.create(sha256="a" * 64, size_bytes=1, format="fits", first_seen_at=T)
+    b = Frame.objects.create(sha256="b" * 64, size_bytes=1, format="fits", first_seen_at=T)
+    HeaderSnapshot.objects.create(frame=a, keywords={"MPSAS": {"value": 21.3, "comment": ""}})
+    HeaderSnapshot.objects.create(frame=b, keywords={"SQM": "20.1"})
+    assert _sqm_by_frame([a.pk, b.pk], ("MPSAS", "SQM", "SKYQUAL")) == {a.pk: 21.3, b.pk: 20.1}

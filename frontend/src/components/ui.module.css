@@ -5,15 +5,24 @@
   padding: 7px 14px;
   border: 1px solid var(--sst-line);
   border-radius: var(--sst-radius-sm);
-  background: transparent;
+  background: var(--sst-panel-2); /* the same filled face as clickable pills (012-DR-05) */
   color: var(--sst-text);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
+  min-height: 34px;
   cursor: pointer;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .button:hover {
   border-color: var(--sst-accent-line);
+  background: color-mix(in srgb, var(--sst-panel-2), var(--sst-text) 7%);
+}
+.button:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 2px;
 }
 /* primary: accent border, accent-tint fill at rest, accent text at 600 (007-DR-03) */
 .primary {

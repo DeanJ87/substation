@@ -385,16 +385,19 @@ function FailureGroup({
             {j.attempts >= j.max_attempts ? ' · no more retries' : ''}
           </div>
         </div>
-        <div className={v.actions}>
+        {/* the time over a row of its two actions, not three things wrapping into a column (2026-10-15) */}
+        <div className={s.failSide}>
           <span className={v.muted}>
             {many ? `${hhmm(jobs[jobs.length - 1].finished_at)}–${hhmm(j.finished_at)}` : hhmm(j.finished_at)}
           </span>
-          <Button onClick={() => jobs.forEach((x) => act(x.id, 'retry'))}>
-            {many ? 'Retry all' : 'Retry'}
-          </Button>
-          <Button onClick={() => jobs.forEach((x) => act(x.id, 'dismiss'))}>
-            {many ? 'Dismiss all' : 'Dismiss'}
-          </Button>
+          <div className={s.failButtons}>
+            <Button onClick={() => jobs.forEach((x) => act(x.id, 'retry'))}>
+              {many ? 'Retry all' : 'Retry'}
+            </Button>
+            <Button onClick={() => jobs.forEach((x) => act(x.id, 'dismiss'))}>
+              {many ? 'Dismiss all' : 'Dismiss'}
+            </Button>
+          </div>
         </div>
       </div>
       {j.log.length > 1 && (

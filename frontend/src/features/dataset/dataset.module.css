@@ -583,6 +583,8 @@
 .postStrip li > button {
   align-self: flex-start;
   margin-top: 4px;
+  width: auto;
+  height: auto;
 }
 
 /* master details (owner 2026-10-12): the photo with overlays beside the facts */

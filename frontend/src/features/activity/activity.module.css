@@ -299,3 +299,14 @@ button.chip[aria-pressed='true'] {
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+.failSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: none;
+}
+.failButtons {
+  display: flex;
+  gap: 6px;
+}

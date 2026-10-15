@@ -843,6 +843,36 @@ class LibraryStatsOut(Schema):
     binned: int = 0  # of `frames`, in the bin or deleted (spec 011)
 
 
+def _sqm_by_frame(shas: list[str], keys: tuple[str, ...]) -> dict[str, float]:
+    """Each frame's sky quality from its header, reading only those keywords rather than every header whole: loading
+    12,000 headers made the Library's totals take over three seconds (2026-10-15)."""
+    import json
+
+    from django.db.models.fields.json import KT
+
+    from .models import HeaderSnapshot
+
+    out: dict[str, float] = {}
+    rows = HeaderSnapshot.objects.filter(frame_id__in=shas).values_list(
+        "frame_id", *[KT(f"keywords__{k}") for k in keys]
+    )
+    for sha, *vals in rows:
+        if sha in out:
+            continue
+        for raw in vals:
+            if raw is None:
+                continue
+            try:
+                v = json.loads(raw) if raw.startswith("{") else raw
+                n = v.get("value") if isinstance(v, dict) else v
+                if n is not None:
+                    out[sha] = float(n)
+                    break
+            except (TypeError, ValueError, AttributeError):
+                continue
+    return out
+
+
 @router.get("/library/stats", response=LibraryStatsOut)
 def library_stats(
     request,
@@ -855,14 +885,14 @@ def library_stats(
     rig, how many were kept or rejected, and the average SQM where the capture recorded it."""
     from django.db.models import Q
 
-    from apps.processing.api import COND, _num
+    from apps.processing.api import COND
     from apps.processing.effective import effective
     from apps.processing.models import MachineGrade
 
     from .models import Frame, FrameStatus, FrameType
 
     def scoped(qs, ds: str):  # noqa: ANN001, ANN202
-        qs = qs.select_related(f"{ds}__rig", "night").prefetch_related("verdicts", "headers")
+        qs = qs.select_related(f"{ds}__rig", "night").prefetch_related("verdicts")
         if date_from:
             qs = qs.filter(night__date__gte=date_from)
         if date_to:
@@ -887,6 +917,7 @@ def library_stats(
     )
     frames = [*live, *gone]
     grades = {g.frame_id: g for g in MachineGrade.objects.filter(frame__in=[f.pk for f in frames])}
+    sqm_of = _sqm_by_frame([f.pk for f in frames], COND["sqm"])
     by_filter: dict[str, float] = defaultdict(float)
     by_rig: dict[str, float] = defaultdict(float)
     n = graded = kept = rejected = 0
@@ -912,13 +943,7 @@ def library_stats(
             else:
                 kept += 1
                 accepted += h
-        snap = next(iter(f.headers.all()), None)
-        kw = (
-            {k: (x.get("value") if isinstance(x, dict) else x) for k, x in (snap.keywords or {}).items()}
-            if snap
-            else {}
-        )
-        if (v := _num(kw, COND["sqm"])) is not None and 10 < v < 23:
+        if (v := sqm_of.get(f.pk)) is not None and 10 < v < 23:
             sqms.append(v)
     return LibraryStatsOut(
         frames=n,

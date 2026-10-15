@@ -161,36 +161,7 @@ export function CalibrationLibrary() {
             · last scan {agoText(lastScan)}
           </p>
         </div>
-        <div className={s.headActions}>
-          <input
-            type="search"
-            placeholder="Search type, filter, camera, gain"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search"
-          />
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter">
-            <option value="">Filter: All</option>
-            {filters.map((f) => (
-              <option key={f}>{f}</option>
-            ))}
-          </select>
-          <label className={s.dateField}>
-            From
-            <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label className={s.dateField}>
-            To
-            <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
-          </label>
-          <select value={rig} onChange={(e) => setRig(e.target.value)} aria-label="Rig">
-            <option value="">Rig: All</option>
-            {rigs.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
+        <div className={s.headButtons}>
           <Button onClick={() => rescan.mutate()} disabled={rescan.isPending || !folders.length}>
             {rescan.isPending || rescan.isSuccess ? 'Rescanning…' : 'Rescan'}
           </Button>
@@ -203,6 +174,37 @@ export function CalibrationLibrary() {
           </Button>
         </div>
       </header>
+      <div className={s.headActions}>
+        <input
+          type="search"
+          placeholder="Search type, filter, camera, gain"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search"
+        />
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter">
+          <option value="">Filter: All</option>
+          {filters.map((f) => (
+            <option key={f}>{f}</option>
+          ))}
+        </select>
+        <label className={s.dateField}>
+          From
+          <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        <label className={s.dateField}>
+          To
+          <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <select value={rig} onChange={(e) => setRig(e.target.value)} aria-label="Rig">
+          <option value="">Rig: All</option>
+          {rigs.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </div>
       {act.buildMissing.data && (
         <p className="muted">
           {act.buildMissing.data.queued
