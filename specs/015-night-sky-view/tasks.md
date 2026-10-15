@@ -36,3 +36,5 @@
   rotation folded for flips), `toHorizontal`, `fromTangent`, `frameOutline`, `frameOnDome` (corners, side lengths,
   east-left orientation, below-horizon tested); drawn for the target in focus at the sky's time, described in words;
   the dome itself moved to `Dome.tsx` for both views (015-DR-12); screenshots zoomed in
+- [X] N11 (2026-10-16) Play across nights (`sequence.ts` joined clock, with tests), frame at the time shown, spin
+  while playing (015-DR-14, -15); screenshots

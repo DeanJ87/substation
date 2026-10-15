@@ -23,6 +23,7 @@ import { Steps } from '../steps'
 import v from '../v2/v2.module.css'
 import s from './dataset.module.css'
 import tb from '../library/tables.module.css'
+import { Tinted } from '../../components/Tinted'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
@@ -260,7 +261,7 @@ export function MastersTab({
         <Collapsible id="masters-versions" title="Versions" meta={done.length}>
           <div className={s.versions}>
             {versions.visible.map((m) => (
-              <Version key={m.id} m={m} />
+              <Version key={m.id} m={m} filter={dataset.filter} />
             ))}
           </div>
           <LoadMore hasMore={versions.hasMore} loading={false} onMore={versions.more} />
@@ -397,7 +398,7 @@ function usePost(id: number) {
   })
 }
 
-function Version({ m }: { m: Stack }) {
+function Version({ m, filter }: { m: Stack; filter?: string | null }) {
   // owner 2026-10-12: the processed master is the master you look at; the original stack is one click away
   const post = usePost(m.id)
   const processed = [...(post.data?.runs[0]?.stages ?? [])]
@@ -432,10 +433,12 @@ function Version({ m }: { m: Stack }) {
       <div className={s.verThumb}>
         {m.has_preview && (
           <Zoomable target={{ kind: 'master', id: m.id }} name={`Master v${m.version}`}>
-            <img
-              src={processed && showProcessed ? `${processed.preview}?size=thumb` : stackPreviewUrl(m.id)}
-              alt={`Master v${m.version}${processed && showProcessed ? `, ${processed.label}` : ''}`}
-            />
+            <Tinted filter={filter}>
+              <img
+                src={processed && showProcessed ? `${processed.preview}?size=thumb` : stackPreviewUrl(m.id)}
+                alt={`Master v${m.version}${processed && showProcessed ? `, ${processed.label}` : ''}`}
+              />
+            </Tinted>
           </Zoomable>
         )}
         {processed && (

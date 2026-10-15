@@ -146,3 +146,13 @@ dome); live position during a session; video export (a still image export may fo
 
 - **015-DR-13** The across-nights endpoints take the shared scope (spec 018, 018-DR-11); `site` still picks the place
   the sky is seen from. The dataset's Sky tab fits the tab row on a phone (007-DR-34).
+
+### Amendment 2026-10-16: play the nights, and a sky that turns
+
+- **015-DR-14** The across-nights dome has Play and a slider over the nights joined end to end (the days between
+  skipped): the sky behind turns with the time, each night's subs appear as they were shot, earlier nights stay
+  faint, nights still to come aren't drawn, the camera's frame shows where it pointed at that moment, and the
+  night list follows. The key explains why tracks of different nights coincide: the dome is the sky above the
+  observer, where a target follows the same arc every night and only the time it gets there changes.
+- **015-DR-15** While either dome plays, the view slowly walks round it (six degrees a second), as in a filmed
+  sky; a drag takes over, and reduced motion keeps it still.

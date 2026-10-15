@@ -102,3 +102,5 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
   page's three readouts in one row (007-DR-31 to 007-DR-33); before/after screenshots at 400 px
 - [X] B45 (2026-10-15) Work pill removed; search widens on focus; account menu narrower (007-DR-30)
 - [X] B46 (2026-10-15) Bulk choose boxes in phone cards; dataset tabs close up on a phone so Sky fits (007-DR-34)
+- [X] B47 (2026-10-16) Filter tint tokens, `filterTint`, `<Tinted>` on collection, combined and dataset master
+  thumbnails; the collection's masters carry their filter (007-DR-35); tests; screenshots

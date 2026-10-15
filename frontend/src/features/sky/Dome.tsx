@@ -207,6 +207,7 @@ export function Dome({
   children,
   renderOverlay,
   home = DEFAULT_VIEW,
+  spin = false,
 }: {
   lat: number | null
   lon: number | null
@@ -216,17 +217,34 @@ export function Dome({
   children: (ctx: DomeCtx) => ReactNode
   renderOverlay?: (ctx: DomeCtx) => ReactNode
   home?: View // where the view starts, and Reset view returns
+  spin?: boolean // while playing, the view slowly walks round the dome, as a filmed sky would (not with reduced motion)
 }) {
   const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null)
   const [survey, chooseSurvey] = useSurveyChoice()
   const { view, setView, zoom, box, moving, zoomAt, handlers, reset } = useOrbit(svgEl, home)
+  // the slow walk round while playing; a drag (moving) takes over from it
+  useEffect(() => {
+    if (!spin || moving) return
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+      return
+    let raf = 0
+    let last = performance.now()
+    const tick = (now: number) => {
+      const d = (now - last) * 0.006 // six degrees a second
+      last = now
+      setView((v) => ({ ...v, yaw: (v.yaw + d) % 360 }))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [spin, moving, setView])
   const proj = (alt: number, az: number) => project3d(alt, az, view)
   const ctx: DomeCtx = { proj, view, k: zoom.k, box }
   const towards = () => zoomTarget(proj) ?? proj(90, 0)
   return (
     <div className={s.domeWrap}>
       {lat != null && lon != null && (
-        <SkySurvey survey={survey} box={box} view={view} fast={moving} lat={lat} lon={lon} t={t} />
+        <SkySurvey survey={survey} box={box} view={view} fast={moving || spin} lat={lat} lon={lon} t={t} />
       )}
       <svg
         className={s.dome}

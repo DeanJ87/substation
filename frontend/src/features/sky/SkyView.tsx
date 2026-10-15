@@ -201,6 +201,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
         lat={sky.lat}
         lon={sky.lon}
         t={skyTime}
+        spin={playing}
         label={(way) =>
           `The sky from where this night was shot, as a dome over the horizon facing ${way}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`
         }

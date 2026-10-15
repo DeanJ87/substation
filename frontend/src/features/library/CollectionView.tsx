@@ -21,6 +21,7 @@ import { useProjects } from './Projects'
 import { useSort } from '../../components/sortable'
 import { CloseLook, type LookMode, type LookTarget, Zoomable } from '../../components/CloseLook'
 import { Collapsible } from '../../components/Collapsible'
+import { Tinted } from '../../components/Tinted'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import { TargetSky } from '../sky/SkyNights'
@@ -665,7 +666,9 @@ function MasterList({ masters }: { masters: ColMaster[] }) {
             <div className={c.masterThumb}>
               {m.has_preview && (
                 <Zoomable target={{ kind: 'master', id: m.id }} name={`${m.dataset} v${m.version}`}>
-                  <img src={stackPreviewUrl(m.id)} alt={`${m.dataset} v${m.version}`} loading="lazy" />
+                  <Tinted filter={m.filter}>
+                    <img src={stackPreviewUrl(m.id)} alt={`${m.dataset} v${m.version}`} loading="lazy" />
+                  </Tinted>
                 </Zoomable>
               )}
             </div>
@@ -785,11 +788,13 @@ function Combined({
                       target={{ kind: 'combined', id: m.id }}
                       name={`${m.filter} combined v${m.version}`}
                     >
-                      <img
-                        src={`/api/v1/combined/${m.id}/preview?size=thumb`}
-                        alt={`${m.filter} combined`}
-                        loading="lazy"
-                      />
+                      <Tinted filter={m.filter}>
+                        <img
+                          src={`/api/v1/combined/${m.id}/preview?size=thumb`}
+                          alt={`${m.filter} combined`}
+                          loading="lazy"
+                        />
+                      </Tinted>
                     </Zoomable>
                   )}
                 </div>

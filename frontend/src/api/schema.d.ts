@@ -3324,6 +3324,11 @@ export interface components {
             dataset: string;
             /** Dataset Id */
             dataset_id: number;
+            /**
+             * Filter
+             * @default
+             */
+            filter: string;
             /** Finished At */
             finished_at: string | null;
             /** Has Preview */

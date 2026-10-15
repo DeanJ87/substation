@@ -57,6 +57,7 @@ class CollectionMasterOut(Schema):
     integration_s: float
     finished_at: datetime | None
     has_preview: bool
+    filter: str = ""  # the dataset's filter, for the thumbnail's tint (2026-10-16)
 
 
 class FilterTime(Schema):
@@ -497,6 +498,7 @@ def get_collection(request, id: int):  # noqa: A002
                 integration_s=m.integration_s,
                 finished_at=m.finished_at,
                 has_preview=bool(m.preview_path),
+                filter=m.dataset.filter_norm or "",
             )
             for m in Master.objects.filter(dataset__in=ds)
             .exclude(state="deleted")

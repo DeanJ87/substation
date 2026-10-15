@@ -3,7 +3,8 @@
 // strip of the altitudes each night's subs spanned, by date. Choosing a night brings it forward; the camera's frame
 // is drawn where it pointed in the middle of that night.
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { locate, sequence } from './sequence'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import type { Scope } from '../scope/scope'
@@ -66,6 +67,44 @@ export function TargetSky({
 export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) => void }) {
   const [chosen, setChosen] = useState<number | null>(null)
   const [hover, setHover] = useState<number | null>(null)
+  // Play: the nights end to end, the sky turning with them (owner 2026-10-15); null shows every night at once
+  const [pos, setPos] = useState<number | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const seq = sequence(sky.nights)
+  const posRef = useRef(pos)
+  useEffect(() => {
+    posRef.current = pos
+  }, [pos])
+  useEffect(() => {
+    if (!playing || !seq.total) return
+    const reduced =
+      typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const stop = () => {
+      setPlaying(false)
+      setPos(null)
+    }
+    if (reduced) {
+      const id = window.setInterval(() => {
+        const next = (posRef.current ?? 0) + 30 * 60_000
+        if (next >= seq.total) stop()
+        else setPos(next)
+      }, 700)
+      return () => window.clearInterval(id)
+    }
+    // each night takes about five seconds, a minute at most for the lot
+    const ms = Math.min(60_000, Math.max(6_000, sky.nights.length * 5_000))
+    let raf = 0
+    let last = performance.now()
+    const tick = (now: number) => {
+      const next = (posRef.current ?? 0) + ((now - last) / ms) * seq.total
+      last = now
+      if (next >= seq.total) return stop()
+      setPos(next)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [playing, seq.total, sky.nights.length])
   const n = sky.nights.length
   if (!sky.subs.length)
     return (
@@ -77,15 +116,20 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
     )
   const colour = series(0)
   const shapeOf = new Map<string, Shape>(sky.rigs.map((r, i) => [r.key, SHAPES[i % SHAPES.length]]))
-  const lit = hover ?? chosen // a night brought forward, else all by age
-  const shownNight = chosen ?? n - 1
+  const at = pos == null ? null : locate(seq, pos)
+  const lit = at ? at.night : (hover ?? chosen) // a night brought forward, else all by age
+  const shownNight = at ? at.night : (chosen ?? n - 1)
   const tonight = sky.nights[shownNight]
-  const t = (Date.parse(tonight.first) + Date.parse(tonight.last)) / 2
-  const opacity = (i: number) => (lit == null ? ageOpacity(i, n) : i === lit ? 1 : 0.1)
+  const t = at ? at.t : (Date.parse(tonight.first) + Date.parse(tonight.last)) / 2
+  const opacity = (i: number) =>
+    at ? (i === at.night ? 1 : i < at.night ? 0.18 : 0) : lit == null ? ageOpacity(i, n) : i === lit ? 1 : 0.1
+  // while playing, tonight's subs appear as they were shot; nights still to come aren't drawn yet
+  const shownSub = (x: { night: number; time: string }) =>
+    !at || x.night < at.night || (x.night === at.night && Date.parse(x.time) <= at.t)
 
   const draw = ({ proj, k, view }: DomeCtx) => {
     const bySeg = new Map<string, { night: number; pts: Pt[] }>()
-    for (const x of sky.subs) {
+    for (const x of sky.subs.filter(shownSub)) {
       const key = `${x.night}:${x.dataset_id}:${x.segment}`
       const seg = bySeg.get(key) ?? { night: x.night, pts: [] }
       seg.pts.push(proj(x.alt, x.az))
@@ -106,7 +150,8 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
               style={{ stroke: colour, opacity: opacity(seg.night) }}
             />
           ))}
-        {[...sky.subs]
+        {sky.subs
+          .filter(shownSub)
           .sort((a, b) => order(a.night) - order(b.night))
           .map((x) => (
             <path
@@ -142,6 +187,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
         lat={sky.lat}
         lon={sky.lon}
         t={t}
+        spin={playing}
         label={(way) =>
           `${sky.name} on every night from one place, as a dome over the horizon facing ${way}: ${sky.subs.length} subs over ${n} night${n === 1 ? '' : 's'}, the latest brightest. The list of nights says the same.`
         }
@@ -203,12 +249,48 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
             {sky.rigs.length > 1 && (
               <>{sky.rigs.map((r) => `${shapeName(shapeOf.get(r.key))}: ${r.name}`).join('; ')}. </>
             )}
-            Choose a night to bring it forward.
+            Choose a night to bring it forward, or play them in turn: the dome is the sky above you, so a
+            target follows the same arc every night; the date only changes when it gets there, and the sky
+            behind turns with the time.
             {sky.fov &&
-              ` The rectangle is the camera’s frame (${fovText(sky.fov)}) in the middle of ${chosen == null ? 'the latest night' : 'that night'}.`}
+              ` The rectangle is the camera’s frame (${fovText(sky.fov)}) ${at ? 'at the time shown' : `in the middle of ${chosen == null ? 'the latest night' : 'that night'}`}.`}
             {sky.unplaced > 0 && ` ${sky.unplaced} sub${sky.unplaced === 1 ? '' : 's'} couldn’t be placed.`}
           </p>
         </div>
+      </div>
+
+      <div className={s.play}>
+        <button
+          type="button"
+          className={s.playButton}
+          aria-pressed={playing}
+          onClick={() => {
+            if (!playing && (pos == null || pos >= seq.total)) setPos(0)
+            setPlaying(!playing)
+          }}
+        >
+          {playing ? 'Pause' : 'Play the nights'}
+        </button>
+        <input
+          type="range"
+          className={s.slider}
+          min={0}
+          max={Math.max(seq.total, 1)}
+          step={60_000}
+          value={pos ?? seq.total}
+          aria-label="Time through the nights"
+          aria-valuetext={at ? `Night ${at.night + 1} of ${n}, ${clock(at.t)}` : 'Every night'}
+          onChange={(e) => {
+            setPlaying(false)
+            const v = Number(e.target.value)
+            setPos(v >= seq.total ? null : v)
+          }}
+        />
+        <span className={s.clock}>
+          {at
+            ? `Night ${at.night + 1} of ${n} · ${shortDateText(sky.nights[at.night].date)} · ${clock(at.t)}`
+            : 'Every night'}
+        </span>
       </div>
 
       <AltitudeStrip nights={sky.nights} lit={lit} colour={colour} />
@@ -306,3 +388,5 @@ export function monthTicks(start: number, end: number): number[] {
   }
   return out.length ? out : [start + (end - start) / 2]
 }
+
+const clock = (t: number) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })

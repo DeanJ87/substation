@@ -474,3 +474,10 @@ Taken on the recommendation in the design review (owner may overrule):
 - **007-DR-34** Choose boxes added to tables for bulk actions (spec 016 U6) sit in an unlabelled grid slot on a
   phone card (`data-label=""`), so a row's name still heads its card. The dataset tabs (Subs, Quality, Calibration,
   Masters and now Sky, spec 015) close up below 600 px so all five fit a 400 px screen.
+
+### Amendment 2026-10-16: filter tints
+
+- **007-DR-35** A mono master's thumbnail is shown in its filter's colour (the grey picture multiplied by a tint):
+  L white, R red, G green, B blue, Hα deep red, OIII teal, SII amber, as `--sst-filter-*` tokens; night vision keeps
+  them all red. Colour pictures (OSC, palettes, processed colour) are left as they are. The full-size viewer stays
+  grey.

@@ -1183,6 +1183,11 @@
       "title": "Dataset Id",
       "type": "integer"
      },
+     "filter": {
+      "default": "",
+      "title": "Filter",
+      "type": "string"
+     },
      "finished_at": {
       "anyOf": [
        {

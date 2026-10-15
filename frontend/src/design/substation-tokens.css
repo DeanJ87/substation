@@ -118,3 +118,25 @@
   --sst-series-5: #e06050;
   --sst-series-6: #ffb0a4;
 }
+
+/* Filter tints (2026-10-16): a mono master's thumbnail takes its filter's colour. Narrowband as it's usually
+   shown: Hα deep red, OIII teal, SII amber; broadband as itself. */
+:root {
+  --sst-filter-l: #f4f4f2;
+  --sst-filter-r: #ff5a52;
+  --sst-filter-g: #5fd47e;
+  --sst-filter-b: #5a8cff;
+  --sst-filter-ha: #ff3b5c;
+  --sst-filter-oiii: #3fd8c8;
+  --sst-filter-sii: #ffb547;
+}
+/* night vision: only reds, so every filter is a shade of red */
+[data-theme='night'] {
+  --sst-filter-l: #ff6a58;
+  --sst-filter-r: #ff4a3a;
+  --sst-filter-g: #c03a2c;
+  --sst-filter-b: #8a1a12;
+  --sst-filter-ha: #ff2a1a;
+  --sst-filter-oiii: #a02a1e;
+  --sst-filter-sii: #e06050;
+}
