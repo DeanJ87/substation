@@ -98,3 +98,4 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
 - [X] B43 (2026-10-15) Phone layout: two-row header, scrolling tabs, unwrapped buttons, full-screen viewer, map below
   the header, settings within the screen (007-DR-29); screenshots at 400 px
 - [ ] B44 Phone: tables (Masters, raw sets, datasets) as cards below 600 px; the night page's three readouts in one row
+- [X] B45 (2026-10-15) Work pill removed; search widens on focus; account menu narrower (007-DR-30)

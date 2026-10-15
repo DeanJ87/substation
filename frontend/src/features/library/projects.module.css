@@ -1,0 +1,88 @@
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: 12px;
+  margin-block: 12px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius);
+  background: var(--sst-panel-2);
+  min-width: 0;
+}
+.selected {
+  border-color: var(--sst-accent);
+  box-shadow: inset 3px 0 0 var(--sst-accent);
+}
+.loose {
+  border-style: dashed;
+  background: transparent;
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(80px, 1fr) max-content;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 13px;
+}
+.row {
+  display: contents;
+}
+.bar {
+  height: 7px;
+}
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  font-size: 14px;
+}
+.form label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.goals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+}
+.num {
+  width: 80px;
+}
+.head > :last-child {
+  white-space: nowrap;
+}
+.foot form {
+  flex: 1;
+  min-width: min(100%, 320px);
+}
+.foot form input {
+  flex: 1;
+  min-width: 0;
+}

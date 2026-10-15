@@ -10,7 +10,7 @@ import { integrationText } from '../format'
 import v from '../v2/v2.module.css'
 import c from './collection.module.css'
 
-type ProjectT = NonNullable<ReturnType<typeof useProjects>['data']>['projects'][number]
+export type ProjectT = NonNullable<ReturnType<typeof useProjects>['data']>['projects'][number]
 type Ds = { dataset: { id: number }; label: string }
 
 export function useProjects(collectionId: number) {
@@ -35,7 +35,7 @@ const editProjects =
     return { projects, unassigned: [...new Set(was)].filter((x) => !held.has(x)) }
   }
 
-function useProjectActions(collectionId: number) {
+export function useProjectActions(collectionId: number) {
   const qc = useQueryClient()
   const key = ['projects', collectionId]
   const refresh = () => [['framing', collectionId]]
@@ -82,6 +82,9 @@ function useProjectActions(collectionId: number) {
           first_night: null,
           last_night: null,
           position: ps.length,
+          goals: {},
+          filter_time: {},
+          rigs: [],
         },
       ]),
     }),
@@ -94,13 +97,34 @@ function useProjectActions(collectionId: number) {
         name?: string
         kind?: string
         planned_panels?: number | null
+        goals?: Record<string, number | null>
       }) => unwrap(await api.PATCH('/projects/{id}', { params: { path: { id } }, body })),
       scope,
       meta: { failed: "Couldn't save the project" },
       ...edit(
-        ({ id, ...body }: { id: number } & Partial<ProjectT>) =>
+        ({
+          id,
+          goals,
+          ...body
+        }: { id: number; goals?: Record<string, number | null> } & Omit<Partial<ProjectT>, 'goals'>) =>
           (ps) =>
-            ps.map((p) => (p.id === id ? { ...p, ...body } : p)),
+            ps.map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    ...body,
+                    ...(goals
+                      ? {
+                          goals: Object.fromEntries(
+                            Object.entries({ ...p.goals, ...goals }).filter(
+                              (e): e is [string, number] => !!e[1],
+                            ),
+                          ),
+                        }
+                      : {}),
+                  }
+                : p,
+            ),
       ),
     }),
     remove: useMutation({

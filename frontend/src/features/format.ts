@@ -83,3 +83,11 @@ export function durationText(seconds: number | null | undefined): string {
     return `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, '0')} min`
   return `${Math.floor(s / 86400)} day${s < 172800 ? '' : 's'} ${Math.round((s % 86400) / 3600)} h`
 }
+
+/** "Oct 2025" or "Oct 2025 to Jan 2026": the months a collection or project spans. */
+export function monthSpan(a: string | null | undefined, b: string | null | undefined): string {
+  const f = (d: string) =>
+    new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+  if (!a || !b) return ''
+  return f(a) === f(b) ? f(a) : `${f(a)} to ${f(b)}`
+}

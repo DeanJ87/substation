@@ -283,3 +283,16 @@
 .dragging {
   opacity: 0.5;
 }
+/* the page narrowed to one project (spec 019 amendment) */
+.scoped {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--sst-accent-line, var(--sst-line));
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-accent-tint, var(--sst-panel-2));
+  font-size: 14px;
+}

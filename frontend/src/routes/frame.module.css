@@ -273,3 +273,14 @@
     padding: 20px 16px 48px;
   }
 }
+/* the account menu is as wide as its items, not as the build string */
+.menu {
+  width: max-content;
+  max-width: min(260px, calc(100vw - 32px));
+}
+.version {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: normal;
+}

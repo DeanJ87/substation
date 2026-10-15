@@ -8,7 +8,6 @@ import { Toasts } from '../components/Toasts'
 import { KeyHelp } from '../components/KeyHelp'
 import { Search } from '../components/Search'
 import { Lockup } from '../components/Logo'
-import { WorkFlyout } from '../components/WorkFlyout'
 import { ThemeProvider } from '../design/ThemeContext'
 import { UndoKeys } from '../features/changes/changes'
 import { useQueueSummary } from '../features/queue/queries'
@@ -93,7 +92,6 @@ function Frame({ user }: { user: SessionUser }) {
         </nav>
         <div className={s.headerRight}>
           <Search />
-          <WorkFlyout />
           <Link
             to="/settings"
             className={s.watching}
@@ -164,11 +162,26 @@ function AccountMenu({ name, version, onSignOut }: { name: string; version: stri
           <button type="button" role="menuitem" className={s.menuItem} onClick={onSignOut}>
             Sign out
           </button>
-          <div className={s.version} title="SubStation version · branch · commit · built">
-            SubStation {version || 'dev'}
+          <div className={s.version} title={`SubStation ${version || 'dev'}`}>
+            {versionShort(version)}
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+/** "0.1.0.dev0 · poc-substation · 9c18d24 · 15 Oct 2026 18:19" → two short lines: the version and commit, then when
+ * it was built. The whole string is the tooltip. */
+function versionShort(v: string) {
+  const [ver, , commit, built] = (v || 'dev').split(' · ')
+  return (
+    <>
+      <span>
+        SubStation {ver}
+        {commit ? ` · ${commit}` : ''}
+      </span>
+      {built && <span>Built {built}</span>}
+    </>
   )
 }

@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from substation.api import ApiError, Schema, Status
 
 from .api import router
+from .api_library import FilterTime
 from .models import Collection, Dataset, DatasetNight, Project
 
 
@@ -26,6 +27,9 @@ class ProjectOut(Schema):
     first_night: date | None
     last_night: date | None
     accepted_integration_s: float
+    goals: dict[str, float] = {}  # spec 019: hours of usable integration wanted, per filter
+    filter_time: dict[str, FilterTime] = {}
+    rigs: list[str] = []
 
 
 class ProjectsOut(Schema):
@@ -44,6 +48,7 @@ class ProjectPatch(Schema):
     name: str | None = None
     kind: str | None = None
     planned_panels: int | None = None
+    goals: dict[str, float | None] | None = None  # spec 019: hours per filter; 0 or null removes one
 
 
 class IdsIn(Schema):
@@ -51,7 +56,13 @@ class IdsIn(Schema):
 
 
 def _out(p: Project) -> ProjectOut:
-    ds = list(p.datasets.order_by("project_position", "panel", "filter_norm", "pk"))
+    ds = list(p.datasets.select_related("rig").order_by("project_position", "panel", "filter_norm", "pk"))
+    split: dict[str, list[float]] = {}
+    for d in ds:
+        t = split.setdefault(d.filter_norm or "?", [0.0, 0.0, 0.0])
+        t[0] += d.integration_s or 0
+        t[1] += d.accepted_integration_s or 0
+        t[2] += d.rejected_integration_s or 0
     span = DatasetNight.objects.filter(dataset__in=ds).aggregate(
         first=Min("night__date"), last=Max("night__date")
     )
@@ -73,6 +84,11 @@ def _out(p: Project) -> ProjectOut:
         first_night=span["first"],
         last_night=span["last"],
         accepted_integration_s=sum(d.accepted_integration_s or 0 for d in ds),
+        goals=p.goals or {},
+        filter_time={
+            k: FilterTime(total_s=max(t, a + r), accepted_s=a, rejected_s=r) for k, (t, a, r) in split.items()
+        },
+        rigs=sorted({d.rig.name for d in ds if d.rig}),
     )
 
 
@@ -124,7 +140,13 @@ def create_project(request, id: int, body: ProjectIn):  # noqa: A002
 def update_project(request, id: int, body: ProjectPatch):  # noqa: A002
     p = get_object_or_404(Project, pk=id)
     _check(body.kind, body.planned_panels)
-    for k, v in body.dict(exclude_unset=True).items():
+    change = body.dict(exclude_unset=True)
+    if change.get("goals") is not None:
+        from .api_library import clean_goals
+
+        p.goals = clean_goals(p.goals, change.pop("goals"))
+    change.pop("goals", None)
+    for k, v in change.items():
         setattr(p, k, v.strip() if isinstance(v, str) else v)
     p.save()
     return _out(p)

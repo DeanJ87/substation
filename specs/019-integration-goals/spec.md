@@ -19,3 +19,15 @@ each is.
 - **FR-002** Progress counts usable (accepted or down-weighted) integration only; waiting integration is shown
   apart and doesn't count until graded.
 - **FR-003** The bars are labelled for screen readers (progressbar with a value) and line up across rows.
+
+### Amendment 2026-10-15: goals belong to projects
+
+- **019-DR-01** A target is usually shot in more than one way over the years (a single field on one rig, later a
+  20-panel mosaic on a longer one), so goals belong to a project, not the collection. A collection's existing goals
+  moved to its newest project. The Library card shows every project's goals added up.
+- **019-DR-02** Projects are cards on the collection's Overview (replacing the row of project pills under the
+  title): name, kind and panels, rigs, months, and per filter a bar of kept (and waiting) integration against that
+  project's goal, or against the project's biggest filter where there's no goal. Each card has "Show only this"
+  (the page narrows to it, with a "Showing only …" note and "Show everything") and "Edit" (name, kind, panels,
+  goals, remove). Datasets not in a project have their own card with "Suggest projects"; "Arrange datasets…"
+  opens the drag-and-drop board.

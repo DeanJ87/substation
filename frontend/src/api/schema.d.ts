@@ -3133,10 +3133,6 @@ export interface components {
         };
         /** CollectionPatch */
         CollectionPatch: {
-            /** Goals */
-            goals?: {
-                [key: string]: number | null;
-            } | null;
             /** Name */
             name?: string | null;
         };
@@ -4738,8 +4734,22 @@ export interface components {
             accepted_integration_s: number;
             /** Dataset Ids */
             dataset_ids: number[];
+            /**
+             * Filter Time
+             * @default {}
+             */
+            filter_time: {
+                [key: string]: components["schemas"]["FilterTime"];
+            };
             /** First Night */
             first_night: string | null;
+            /**
+             * Goals
+             * @default {}
+             */
+            goals: {
+                [key: string]: number;
+            };
             /** Id */
             id: number;
             /** Kind */
@@ -4756,9 +4766,18 @@ export interface components {
             planned_panels: number | null;
             /** Position */
             position: number;
+            /**
+             * Rigs
+             * @default []
+             */
+            rigs: string[];
         };
         /** ProjectPatch */
         ProjectPatch: {
+            /** Goals */
+            goals?: {
+                [key: string]: number | null;
+            } | null;
             /** Kind */
             kind?: string | null;
             /** Name */

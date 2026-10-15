@@ -88,15 +88,22 @@ def test_only_the_maker_or_an_admin_undoes(tmp_path, admin_client, standard_clie
     assert standard_client.post(f"/api/v1/changes/{c}/undo").status_code == 403
 
 
-def test_collection_goals_are_set_changed_and_removed(admin_client):
-    """Spec 019: hours wanted per filter."""
-    from apps.catalogue.models import Collection
+def test_project_goals_are_set_changed_removed_and_add_up_on_the_card(admin_client):
+    """Spec 019: hours wanted per filter belong to a project; the collection's card adds them up."""
+    from apps.catalogue.models import Collection, Project
 
     col = Collection.objects.create(name="M 81")
-    url = f"/api/v1/collections/{col.pk}"
+    old = Project.objects.create(collection=col, name="Single field 2025")
+    new = Project.objects.create(
+        collection=col, name="20-panel mosaic 2026", kind="mosaic", planned_panels=20
+    )
+    url = f"/api/v1/projects/{new.pk}"
     r = admin_client.patch(url, {"goals": {"L": 10, "Ha": 20}}, content_type="application/json").json()
     assert r["goals"] == {"L": 10, "Ha": 20}
     r = admin_client.patch(url, {"goals": {"L": 0, "R": 2.5}}, content_type="application/json").json()
     assert r["goals"] == {"Ha": 20, "R": 2.5}
+    admin_client.patch(f"/api/v1/projects/{old.pk}", {"goals": {"Ha": 5}}, content_type="application/json")
+    card = admin_client.get(f"/api/v1/collections/{col.pk}").json()["card"]
+    assert card["goals"] == {"Ha": 25, "R": 2.5}
     bad = admin_client.patch(url, {"goals": {"OIII": 5000}}, content_type="application/json")
     assert bad.status_code == 422 and "1,000 hours" in bad.json()["message"]

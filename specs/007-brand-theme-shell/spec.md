@@ -446,3 +446,9 @@ Taken on the recommendation in the design review (owner may overrule):
   long file names wrap. Full-bleed pages (the map) sit below whichever header height applies. Settings and
   forms never run wider than the screen. Checked by screenshots at 400 px of the Library, a collection, a dataset,
   the viewer, Calibration, Activity, the map, a night and Settings.
+
+### Amendment 2026-10-15: a quieter header
+
+- **007-DR-30** The work pill and its flyout are gone: the Activity link already shows running jobs and failures.
+  The search box is compact and opens wider when clicked or tabbed into (not animated with reduced motion). The
+  account menu is as wide as its items; the version reads as two short lines with the full string on hover.

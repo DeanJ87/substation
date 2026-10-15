@@ -1,6 +1,16 @@
 .search {
   position: relative;
-  width: min(300px, 26vw);
+  width: min(220px, 22vw);
+  transition: width 180ms ease;
+}
+/* opens out when you click or tab into it (owner 2026-10-15) */
+.search:focus-within {
+  width: min(440px, 36vw);
+}
+@media (prefers-reduced-motion: reduce) {
+  .search {
+    transition: none;
+  }
 }
 .input {
   width: 100%;

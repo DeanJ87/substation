@@ -17,7 +17,7 @@ import v from '../v2/v2.module.css'
 import s from './library.module.css'
 import { collectionFacts, nameParts } from './names'
 import c from './collection.module.css'
-import { ProjectBar, ProjectBoard, useProjects } from './Projects'
+import { useProjects } from './Projects'
 import { useSort } from '../../components/sortable'
 import { CloseLook, type LookMode, type LookTarget, Zoomable } from '../../components/CloseLook'
 import { Collapsible } from '../../components/Collapsible'
@@ -25,7 +25,7 @@ import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import tb from './tables.module.css'
 import { usePlaceName } from '../map/place'
-import { Goals } from './Goals'
+import { ProjectCards } from './ProjectCards'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -38,7 +38,6 @@ export function CollectionView() {
   const [adding, setAdding] = useState(false)
   const [range, setRange] = useState<[string, string] | null>(null)
   const [project, setProject] = useState<number | null>(null)
-  const [managing, setManaging] = useState(false)
   const projects = useProjects(Number(id))
   const search = route.useSearch()
   const tab = search.tab ?? 'overview'
@@ -192,14 +191,14 @@ export function CollectionView() {
         <AddDatasets id={card.id} onClose={() => setAdding(false)} onDone={() => void q.refetch()} />
       )}
 
-      <ProjectBar
-        collectionId={card.id}
-        value={project}
-        onChange={setProject}
-        managing={managing}
-        onManage={() => setManaging(!managing)}
-      />
-      {managing && <ProjectBoard collectionId={card.id} datasets={d.datasets} />}
+      {chosenProject && (
+        <p className={c.scoped} role="status">
+          Showing only <strong>{chosenProject.name}</strong>
+          <button type="button" className={v.pill} onClick={() => setProject(null)}>
+            Show everything
+          </button>
+        </p>
+      )}
 
       <div className={v.tabs} role="tablist" aria-label="Collection">
         {(
@@ -218,7 +217,7 @@ export function CollectionView() {
 
       {tab === 'overview' && (
         <>
-          <Goals card={card} />
+          <ProjectCards collectionId={card.id} datasets={d.datasets} value={project} onChange={setProject} />
           <Framing key={project ?? 'all'} id={card.id} project={project} />
           <div className={c.grid}>
             <section className={`${v.card} ${tb.flush}`}>

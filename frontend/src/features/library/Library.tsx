@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Button, EmptyState, ErrorState, Skeleton, Spinner } from '../../components/ui'
 import { VerdictBadge, type VerdictState } from '../../components/VerdictBadge'
-import { integrationText, nightText } from '../format'
+import { integrationText, monthSpan, nightText } from '../format'
 import {
   stackPreviewUrl,
   useCollectionActions,
@@ -30,13 +30,6 @@ const STATE_LABEL: Record<string, [VerdictState, string]> = {
   await: ['await', 'Awaiting calibration'],
   recon: ['recon', 'Needs reconciliation'],
   failed: ['reject', 'Master failed'],
-}
-
-function monthSpan(a: string | null, b: string | null): string {
-  const f = (d: string) =>
-    new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
-  if (!a || !b) return ''
-  return f(a) === f(b) ? f(a) : `${f(a)} to ${f(b)}`
 }
 
 type Readouts = {
