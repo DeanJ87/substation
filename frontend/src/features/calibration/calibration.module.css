@@ -280,3 +280,20 @@
   overflow-y: auto;
   padding-right: 4px;
 }
+
+/* spec 016 U6: the choose box at the start of a row */
+.chooseCell {
+  width: 28px;
+  padding-right: 0;
+}
+.tileHead {
+  justify-content: flex-start;
+  gap: 6px;
+}
+.tileHead > button:last-child {
+  margin-left: auto;
+}
+.tileChosen {
+  outline: 2px solid var(--sst-accent);
+  outline-offset: -1px;
+}

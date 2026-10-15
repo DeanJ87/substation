@@ -27,6 +27,8 @@ import tb from './tables.module.css'
 import { usePlaceName } from '../map/place'
 import { ProjectCards } from './ProjectCards'
 import { inNights, omit, readScope, scopeQuery } from '../scope/scope'
+import { ChooseBox, useChosen } from '../../components/BulkBar'
+import { DatasetBulkBar } from './DatasetBulkBar'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -323,7 +325,11 @@ export function CollectionView() {
         </>
       )}
       {tab === 'datasets' && (
-        <DatasetTable resetKey={project} rows={d.datasets.filter((x) => inProject(x.dataset.id))} />
+        <DatasetTable
+          resetKey={project}
+          rows={d.datasets.filter((x) => inProject(x.dataset.id))}
+          collectionId={card.id}
+        />
       )}
       {tab === 'sessions' && (
         <>
@@ -397,8 +403,20 @@ const shortDate = (iso: string) =>
   })
 
 /** The collection's datasets (006-DR-06): state as a badge, grades as a split bar, last night as a short date. */
-function DatasetTable({ rows: all, resetKey }: { rows: ColDataset[]; resetKey: unknown }) {
+function DatasetTable({
+  rows: all,
+  resetKey,
+  collectionId,
+}: {
+  rows: ColDataset[]
+  resetKey: unknown
+  collectionId?: number // given on the Datasets tab: rows can be chosen and acted on together (spec 016 U6)
+}) {
   const navigate = useNavigate()
+  const pick = useChosen<number>()
+  const choosing = collectionId !== undefined
+  const allIds = all.map((x) => x.dataset.id)
+  const picked = allIds.filter((i) => pick.chosen.has(i)).length
   const kept = (x: ColDataset) => {
     const t = x.dataset.accepted_count + x.dataset.down_count + x.dataset.rejected_count
     return t ? (x.dataset.accepted_count + x.dataset.down_count) / t : null
@@ -416,10 +434,29 @@ function DatasetTable({ rows: all, resetKey }: { rows: ColDataset[]; resetKey: u
   return (
     <section className={`${v.card} ${tb.flush}`}>
       <Collapsible id="collection-datasets" title="Datasets" meta={all.length.toLocaleString('en-GB')}>
+        {choosing && (
+          <DatasetBulkBar
+            chosen={pick.chosen}
+            onClear={pick.clear}
+            shown={all.length}
+            onChooseShown={() => pick.setAll(allIds, true)}
+            from={collectionId}
+          />
+        )}
         <div className={tb.pane}>
           <table className={`${v.table} ${tb.table}`}>
             <thead>
               <tr>
+                {choosing && (
+                  <th className={c.chooseCell}>
+                    <ChooseBox
+                      checked={picked > 0 && picked === all.length}
+                      mixed={picked > 0 && picked < all.length}
+                      onChange={(on) => pick.setAll(allIds, on)}
+                      label="Select every dataset"
+                    />
+                  </th>
+                )}
                 {th('name', 'Dataset')}
                 {th('state', 'State')}
                 {th('sessions', 'Sessions', tb.num)}
@@ -438,7 +475,17 @@ function DatasetTable({ rows: all, resetKey }: { rows: ColDataset[]; resetKey: u
                     key={ds.id}
                     className={v.rowLink}
                     onClick={() => void navigate({ to: '/datasets/$id', params: { id: String(ds.id) } })}
+                    aria-selected={choosing ? pick.chosen.has(ds.id) : undefined}
                   >
+                    {choosing && (
+                      <td className={c.chooseCell}>
+                        <ChooseBox
+                          checked={pick.chosen.has(ds.id)}
+                          onChange={() => pick.toggle(ds.id)}
+                          label={`Select ${x.label}`}
+                        />
+                      </td>
+                    )}
                     <td>
                       <Link to="/datasets/$id" params={{ id: String(ds.id) }} className={s.dsName}>
                         {x.label}

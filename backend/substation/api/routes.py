@@ -36,6 +36,7 @@ import apps.catalogue.api_nights  # noqa: E402,F401  (nights, on the catalogue r
 import apps.catalogue.api_projects  # noqa: E402,F401  (projects inside collections)
 import apps.catalogue.api_search  # noqa: E402,F401  (search from the header)
 import apps.processing.api  # noqa: E402,F401  (subs, sessions, grades, review, on the catalogue router)
+import apps.processing.api_bulk  # noqa: E402,F401  (bulk build, re-grade, stack and move, spec 016)
 import apps.processing.api_calibration  # noqa: E402,F401  (calibration QA and built masters)
 import apps.processing.api_masters  # noqa: E402,F401  (integrations, on the catalogue router)
 import apps.processing.api_sky  # noqa: E402,F401  (a night's sky, spec 015, on the catalogue router)

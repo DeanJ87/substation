@@ -602,6 +602,11 @@ def retry(request, id: str):  # noqa: A002
     t = get_object_or_404(Task, pk=id)
     if t.status not in (TaskStatus.FAILED, TaskStatus.CANCELLED):
         raise ApiError(409, "not_failed", "Only failed or cancelled jobs can be retried.")
+    _requeue(t)
+    return job_out(t)
+
+
+def _requeue(t: Task) -> None:
     t.status, t.attempts, t.run_after, t.finished_at, t.worker = (
         TaskStatus.READY,
         0,
@@ -611,7 +616,6 @@ def retry(request, id: str):  # noqa: A002
     )
     t.progress_note = ""
     t.save()
-    return job_out(t)
 
 
 @router.post("/jobs/{id}/cancel", response=JobOut)
@@ -708,3 +712,61 @@ def dismiss(request, id: str):  # noqa: A002
     t.progress_note = "dismissed"
     t.save(update_fields=["progress_note"])
     return job_out(t)
+
+
+# ---- many at once (spec 016 U6) --------------------------------------------------------------------------------
+class JobIdsIn(Schema):
+    ids: list[str]
+
+
+class JobsDoneOut(Schema):
+    done: int
+    change_id: int | None = None  # dismissing can be undone with POST /changes/{id}/undo
+
+
+def _failed(ids: list[str]):  # noqa: ANN202
+    import uuid
+
+    if len(ids) > 500:
+        raise ApiError(422, "too_many", "Up to 500 jobs at a time.")
+    ok = []
+    for i in ids:
+        try:
+            ok.append(uuid.UUID(i))
+        except ValueError:
+            continue
+    return Task.objects.filter(pk__in=ok, status=TaskStatus.FAILED)
+
+
+@router.post("/bulk/jobs/retry", response=JobsDoneOut)
+@admin_required
+def retry_many(request, body: JobIdsIn):
+    """Run these failed jobs again; ones no longer failed are left alone."""
+    n = 0
+    for t in _failed(body.ids):
+        _requeue(t)
+        n += 1
+    return JobsDoneOut(done=n)
+
+
+@router.post("/bulk/jobs/dismiss", response=JobsDoneOut)
+def dismiss_many(request, body: JobIdsIn):
+    """Take these failures off Activity's list; recorded, so undoing shows them again."""
+    from apps.accounts.roles import is_viewer
+    from apps.catalogue.models import Change
+    from apps.catalogue.services.changes import record
+
+    if is_viewer(request.user):
+        raise ApiError(403, "read_only", "Your account can't dismiss jobs.")
+    before = dict(_failed(body.ids).exclude(progress_note="dismissed").values_list("pk", "progress_note"))
+    n = Task.objects.filter(pk__in=before).update(progress_note="dismissed")
+    if not n:
+        return JobsDoneOut(done=0)
+    change = record(
+        request.user,
+        Change.Kind.DISMISS,
+        f"Dismissed {n:,} failed job{'s' if n != 1 else ''}",
+        n,
+        tasks={str(pk): note for pk, note in before.items()},
+    )
+    return JobsDoneOut(done=n, change_id=change.pk)

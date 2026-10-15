@@ -23,6 +23,8 @@ import { useProgressive } from '../../components/useProgressive'
 import { ScopeBar } from '../scope/ScopeBar'
 import { scopeParams, scopeQuery, type Scope } from '../scope/scope'
 import { useScope } from '../scope/useScope'
+import { BulkBar, ChooseBox, useChosen } from '../../components/BulkBar'
+import { useBulkBuild } from '../changes/bulk'
 
 type CalSet = components['schemas']['CalibrationSetOut']
 type Master = components['schemas']['MasterOut']
@@ -115,6 +117,10 @@ export function CalibrationLibrary() {
   const filterKey = scopeParams(scope)
   const nights = useProgressive(byNight, 8, filterKey)
   const setCount = byNight.reduce((n, [, l]) => n + l.length, 0)
+  // spec 016 U6: choose several raw sets and build them in one go
+  const pick = useChosen<number>()
+  const buildMany = useBulkBuild()
+  const shownIds = byNight.flatMap(([, l]) => l.map((cs) => cs.id))
 
   if (sets.isError || masters.isError)
     return (
@@ -190,9 +196,40 @@ export function CalibrationLibrary() {
             Flats, darks and bias appear here once catalogued.
           </EmptyState>
         )}
+        <BulkBar
+          count={pick.chosen.size}
+          noun={['set', 'sets']}
+          label="Selected calibration sets"
+          onClear={pick.clear}
+        >
+          <Button
+            variant="primary"
+            disabled={buildMany.isPending}
+            onClick={() => buildMany.mutate([...pick.chosen], { onSuccess: pick.clear })}
+          >
+            {buildMany.isPending ? 'Queuing…' : `Build ${pick.chosen.size === 1 ? 'master' : 'masters'}`}
+          </Button>
+          {pick.chosen.size < shownIds.length && (
+            <Button onClick={() => pick.setAll(shownIds, true)}>Select all {shownIds.length} shown</Button>
+          )}
+        </BulkBar>
         <div className={`${s.pane} ${s.nights}`}>
           {nights.visible.map(([night, list], i) => (
-            <NightSets key={night} night={night} list={list} open={i < 3} onOpen={openSet} />
+            <NightSets
+              key={night}
+              night={night}
+              list={list}
+              open={i < 3}
+              onOpen={openSet}
+              chosen={pick.chosen}
+              onChoose={pick.toggle}
+              onChooseAll={(on) =>
+                pick.setAll(
+                  list.map((cs) => cs.id),
+                  on,
+                )
+              }
+            />
           ))}
           <LoadMore hasMore={nights.hasMore} loading={false} onMore={nights.more} />
         </div>
@@ -209,16 +246,24 @@ function NightSets({
   list,
   open,
   onOpen,
+  chosen,
+  onChoose,
+  onChooseAll,
 }: {
   night: string
   list: CalSet[]
   open: boolean
   onOpen: (id: number) => void
+  chosen: Set<number>
+  onChoose: (id: number) => void
+  onChooseAll: (on: boolean) => void
 }) {
+  const picked = list.filter((cs) => chosen.has(cs.id)).length
+  const title = night === 'unknown' ? 'Night unknown' : nightText(night)
   return (
     <Collapsible
       id={`calibration-night-${night}`}
-      title={night === 'unknown' ? 'Night unknown' : nightText(night)}
+      title={title}
       meta={`${list.length} set${list.length === 1 ? '' : 's'}`}
       defaultOpen={open}
     >
@@ -226,6 +271,14 @@ function NightSets({
         <table className={ui.table}>
           <thead>
             <tr>
+              <th className={s.chooseCell}>
+                <ChooseBox
+                  checked={picked === list.length}
+                  mixed={picked > 0 && picked < list.length}
+                  onChange={onChooseAll}
+                  label={`Select every set from ${title}`}
+                />
+              </th>
               <th>Type</th>
               <th>Filter</th>
               <th className={s.num}>Exposure</th>
@@ -245,7 +298,15 @@ function NightSets({
                 tabIndex={0}
                 onClick={() => onOpen(cs.id)}
                 onKeyDown={(e) => e.key === 'Enter' && onOpen(cs.id)}
+                aria-selected={chosen.has(cs.id)}
               >
+                <td className={s.chooseCell}>
+                  <ChooseBox
+                    checked={chosen.has(cs.id)}
+                    onChange={() => onChoose(cs.id)}
+                    label={`Select ${[TYPE[cs.type] ?? cs.type, cs.filter, `${cs.exptime_s} s`, hhmm(cs.session_start_utc)].filter(Boolean).join(' ')}`}
+                  />
+                </td>
                 <td className={s.nowrap}>
                   <Link
                     to="/calibration/sets/$id"

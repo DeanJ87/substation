@@ -9,6 +9,8 @@ import { toast } from '../../components/Toasts'
 import { LoadMore } from '../../components/LoadMore'
 import { Link, useRouter } from '@tanstack/react-router'
 import { Button, ErrorState, PageLoading, Skeleton } from '../../components/ui'
+import { BulkBar, ChooseBox, useChosen } from '../../components/BulkBar'
+import { useBulkJobs } from '../changes/bulk'
 import { bytes } from '../format'
 import { useActivity, useJobAction, useMoveJob, usePause, type Job, type WorkerT } from '../v2/hooks'
 import { Steps } from '../steps'
@@ -54,6 +56,9 @@ export function Activity() {
   const [kind, setKind] = useState<string | null>(null)
   const queueQ = useWorkPage('queue', kind)
   const recentQ = useWorkPage('recent')
+  // spec 016 U6: choose several failures and retry or dismiss them together (dismissing can be undone)
+  const pick = useChosen<string>()
+  const bulk = useBulkJobs()
   if (q.isError)
     return (
       <ErrorState title="Couldn't load activity" onRetry={() => q.refetch()}>
@@ -82,6 +87,8 @@ export function Activity() {
   const hosts = [...new Set(d.workers.filter((w) => w.kind !== 'helper').map((w) => w.host))]
   const queue = queueQ.data?.pages.flat() ?? []
   const recent = recentQ.data?.pages.flat() ?? []
+  const failedIds = d.failed.map((j) => j.id)
+  const chosenFailed = failedIds.filter((i) => pick.chosen.has(i))
   return (
     <div className={v.page}>
       <header className={v.head}>
@@ -313,8 +320,53 @@ export function Activity() {
             title="Recent"
             meta={d.failed.length > 0 ? <span className={v.bad}>{d.failed.length} failed</span> : undefined}
           >
+            {d.failed.length > 1 && (
+              <div className={s.chooseAll}>
+                <ChooseBox
+                  checked={chosenFailed.length === failedIds.length}
+                  mixed={chosenFailed.length > 0 && chosenFailed.length < failedIds.length}
+                  onChange={(on) => pick.setAll(failedIds, on)}
+                  label={`Select all ${failedIds.length} failed jobs`}
+                />
+                <span className={v.muted}>Select all {failedIds.length} failed</span>
+              </div>
+            )}
+            <BulkBar
+              count={chosenFailed.length}
+              noun={['failed job', 'failed jobs']}
+              label="Selected failed jobs"
+              className={s.bulk}
+              onClear={pick.clear}
+            >
+              <Button
+                disabled={bulk.retry.isPending}
+                onClick={() => bulk.retry.mutate(chosenFailed, { onSuccess: pick.clear })}
+              >
+                Retry
+              </Button>
+              <Button
+                disabled={bulk.dismiss.isPending}
+                onClick={() => bulk.dismiss.mutate(chosenFailed, { onSuccess: pick.clear })}
+              >
+                Dismiss
+              </Button>
+            </BulkBar>
             {failureGroups(d.failed).map((g) => (
-              <FailureGroup key={g.key} jobs={g.jobs} act={(id, action) => act.mutate({ id, action })} />
+              <FailureGroup
+                key={g.key}
+                jobs={g.jobs}
+                chosen={g.jobs.filter((j) => pick.chosen.has(j.id)).length}
+                onChoose={(on) =>
+                  pick.setAll(
+                    g.jobs.map((j) => j.id),
+                    on,
+                  )
+                }
+                retry={(ids) =>
+                  ids.length === 1 ? act.mutate({ id: ids[0], action: 'retry' }) : bulk.retry.mutate(ids)
+                }
+                dismiss={(ids) => bulk.dismiss.mutate(ids)}
+              />
             ))}
             <div className={s.pane}>
               <ul className={s.recent}>
@@ -398,18 +450,31 @@ function failureGroups(failed: Job[]): { key: string; jobs: Job[] }[] {
 
 function FailureGroup({
   jobs,
-  act,
+  chosen,
+  onChoose,
+  retry,
+  dismiss,
 }: {
   jobs: Job[]
-  act: (id: string, action: 'retry' | 'dismiss') => void
+  chosen: number
+  onChoose: (on: boolean) => void
+  retry: (ids: string[]) => void
+  dismiss: (ids: string[]) => void
 }) {
   const j = jobs[0]
   const many = jobs.length > 1
+  const ids = jobs.map((x) => x.id)
   const targets = [...new Set(jobs.map((x) => x.target).filter(Boolean))]
   return (
-    <article className={s.failed}>
+    <article className={`${s.failed} ${chosen ? s.failedChosen : ''}`}>
       <div className={s.jobHead}>
-        <div>
+        <ChooseBox
+          checked={chosen === jobs.length}
+          mixed={chosen > 0 && chosen < jobs.length}
+          onChange={onChoose}
+          label={`Select ${j.name} failed${many ? ` × ${jobs.length}` : ''}`}
+        />
+        <div className={s.failText}>
           <strong>
             {j.name} failed
             {many ? ` × ${jobs.length}` : ''}
@@ -429,12 +494,8 @@ function FailureGroup({
             {many ? `${hhmm(jobs[jobs.length - 1].finished_at)}–${hhmm(j.finished_at)}` : hhmm(j.finished_at)}
           </span>
           <div className={s.failButtons}>
-            <Button onClick={() => jobs.forEach((x) => act(x.id, 'retry'))}>
-              {many ? 'Retry all' : 'Retry'}
-            </Button>
-            <Button onClick={() => jobs.forEach((x) => act(x.id, 'dismiss'))}>
-              {many ? 'Dismiss all' : 'Dismiss'}
-            </Button>
+            <Button onClick={() => retry(ids)}>{many ? 'Retry all' : 'Retry'}</Button>
+            <Button onClick={() => dismiss(ids)}>{many ? 'Dismiss all' : 'Dismiss'}</Button>
           </div>
         </div>
       </div>

@@ -131,6 +131,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bulk/calibration-sets/build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build Many
+         * @description Queue a master build for each chosen raw set. A set already building, or not a raw set, is skipped and
+         *     said why.
+         */
+        post: operations["apps_processing_api_bulk_build_many"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bulk/datasets/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Many
+         * @description Move these datasets into another collection (or out of their collections). They leave any project of the
+         *     collection they came from; undoing puts them back in both.
+         */
+        post: operations["apps_processing_api_bulk_move_many"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bulk/datasets/regrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regrade Many
+         * @description Re-grade these datasets with the current thresholds, in one job. Human verdicts are kept.
+         */
+        post: operations["apps_processing_api_bulk_regrade_many"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bulk/datasets/stack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stack Many
+         * @description Start a master for each dataset with the default rule (accepted and down-weighted subs, every night). A
+         *     dataset that can't be stacked is skipped, with the reason.
+         */
+        post: operations["apps_processing_api_bulk_stack_many"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/calibration-qa/override": {
         parameters: {
             query?: never;
@@ -140,7 +223,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Qa Override */
+        /**
+         * Qa Override
+         * @description Use or leave out these frames whatever QA said, or clear your choice; recorded so it can be undone (spec
+         *     016 U6).
+         */
         post: operations["apps_processing_api_calibration_qa_override"];
         delete?: never;
         options?: never;
@@ -2563,6 +2650,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/work/bulk/jobs/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Many
+         * @description Take these failures off Activity's list; recorded, so undoing shows them again.
+         */
+        post: operations["substation_tasks_activity_dismiss_many"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work/bulk/jobs/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Many
+         * @description Run these failed jobs again; ones no longer failed are left alone.
+         */
+        post: operations["substation_tasks_activity_retry_many"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/work/jobs/{id}/bump": {
         parameters: {
             query?: never;
@@ -2932,6 +3059,23 @@ export interface components {
              * @default false
              */
             force: boolean;
+        };
+        /** BuildManyIn */
+        BuildManyIn: {
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /** Ids */
+            ids: number[];
+        };
+        /** BuildManyOut */
+        BuildManyOut: {
+            /** Queued */
+            queued: number;
+            /** Skipped */
+            skipped: components["schemas"]["Skipped"][];
         };
         /** BuiltOut */
         BuiltOut: {
@@ -3406,6 +3550,25 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** DatasetsIn */
+        DatasetsIn: {
+            /** Dataset Ids */
+            dataset_ids: number[];
+        };
+        /** DatasetsMoveIn */
+        DatasetsMoveIn: {
+            /** Collection Id */
+            collection_id?: number | null;
+            /** Dataset Ids */
+            dataset_ids: number[];
+        };
+        /** DatasetsMoveOut */
+        DatasetsMoveOut: {
+            /** Change Id */
+            change_id?: number | null;
+            /** Moved */
+            moved: number;
+        };
         /** Field */
         Field: {
             /** Label */
@@ -3849,6 +4012,11 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** JobIdsIn */
+        JobIdsIn: {
+            /** Ids */
+            ids: string[];
+        };
         /** JobOut */
         JobOut: {
             /** Attempts */
@@ -3908,6 +4076,13 @@ export interface components {
             wait_reason: string | null;
             /** Worker */
             worker: string | null;
+        };
+        /** JobsDoneOut */
+        JobsDoneOut: {
+            /** Change Id */
+            change_id?: number | null;
+            /** Done */
+            done: number;
         };
         /** LibDatasetOut */
         LibDatasetOut: {
@@ -4903,6 +5078,8 @@ export interface components {
         };
         /** QueuedOut */
         QueuedOut: {
+            /** Change Id */
+            change_id?: number | null;
             /** Queued */
             queued: number;
         };
@@ -5038,6 +5215,11 @@ export interface components {
              * @default false
              */
             confirm: boolean;
+        };
+        /** RegradeManyOut */
+        RegradeManyOut: {
+            /** Queued */
+            queued: number;
         };
         /** RegradeOut */
         RegradeOut: {
@@ -5562,6 +5744,13 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** Skipped */
+        Skipped: {
+            /** Id */
+            id: number;
+            /** Reason */
+            reason: string;
+        };
         /** SkyMoon */
         SkyMoon: {
             /** Illumination */
@@ -5799,6 +5988,15 @@ export interface components {
              * @enum {string}
              */
             rule: "default" | "accepted" | "graded" | "everything";
+        };
+        /** StackManyOut */
+        StackManyOut: {
+            /** Master Ids */
+            master_ids: number[];
+            /** Skipped */
+            skipped: components["schemas"]["Skipped"][];
+            /** Started */
+            started: number;
         };
         /** StackOptions */
         StackOptions: {
@@ -6359,6 +6557,102 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    apps_processing_api_bulk_build_many: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildManyIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildManyOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_bulk_move_many: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetsMoveIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetsMoveOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_bulk_regrade_many: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetsIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegradeManyOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_bulk_stack_many: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetsIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackManyOut"];
+                };
             };
         };
     };
@@ -10065,6 +10359,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+        };
+    };
+    substation_tasks_activity_dismiss_many: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobIdsIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobsDoneOut"];
+                };
+            };
+        };
+    };
+    substation_tasks_activity_retry_many: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobIdsIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobsDoneOut"];
                 };
             };
         };

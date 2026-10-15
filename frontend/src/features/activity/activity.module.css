@@ -314,3 +314,26 @@ button.chip[aria-pressed='true'] {
 .changes li {
   grid-template-columns: 24px 1fr auto auto;
 }
+
+/* spec 016 U6: choosing failures to retry or dismiss together */
+.chooseAll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 10px;
+  padding-inline: 15px;
+}
+.bulk {
+  margin-inline: 16px;
+}
+.failText {
+  flex: 1;
+  min-width: 0;
+}
+.failedChosen {
+  background: color-mix(in srgb, var(--sst-accent) 8%, transparent);
+}
+.failed .jobHead > input {
+  align-self: flex-start;
+  margin-top: 3px;
+}
