@@ -1,6 +1,6 @@
-// One observing night at one place (T101, spec 012): where it was shot, the Moon, a timeline of what was shot, every
-// sub that night as thumbnails per dataset (they open in the viewer, stepping through the night in time order), and
-// the calibration frames taken.
+// One observing night at one place (T101, spec 012): where it was shot, the Moon, the sky as it was shot (spec 015:
+// every sub where its target stood, with a slider through the night), every sub that night as thumbnails per dataset
+// (they open in the viewer, stepping through the night in time order), and the calibration frames taken.
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
@@ -12,6 +12,7 @@ import { useSort } from '../../components/sortable'
 import { integrationText, nightText, timeText } from '../format'
 import { SiteMap } from '../map/SiteMap'
 import { usePlaceName } from '../map/place'
+import { SkyTable, SkyTracks, SkyView, useNightSky } from '../sky/SkyView'
 import { SubView } from '../sub/SubDetail'
 import v from '../v2/v2.module.css'
 import tb from '../library/tables.module.css'
@@ -51,6 +52,7 @@ export function NightView() {
     queryFn: async () =>
       unwrap(await api.GET('/nights/{date}/subs', { params: { path: { date }, query: { site: site! } } })),
   })
+  const skyQ = useNightSky(date, site)
   const byDataset = useMemo(() => {
     const m = new Map<number, Sub[]>()
     for (const x of subsQ.data ?? []) {
@@ -156,14 +158,30 @@ export function NightView() {
         </div>
       </div>
 
+      <section className={`${v.card} ${v.cardPad}`} aria-label="Through the night">
+        <h2 className={v.sectionLabel}>Through the night</h2>
+        <div className={s.skyBody}>
+          {skyQ.data ? (
+            <SkyView sky={skyQ.data} onOpen={(sha) => open(sha)} />
+          ) : skyQ.isError ? (
+            <Timeline n={n} />
+          ) : (
+            <p className={v.muted}>{site ? 'Working out where each sub was on the sky…' : ''}</p>
+          )}
+        </div>
+      </section>
+
       <div className={v.twoCol}>
-        <section className={`${v.card} ${v.cardPad}`} aria-label="Timeline">
-          <h2 className={v.sectionLabel}>Through the night</h2>
-          <Timeline n={n} />
+        <section className={`${v.card} ${v.cardPad}`} aria-label="Tracks">
+          <h2 className={v.sectionLabel}>Tracks</h2>
+          <div className={s.skyBody}>
+            {skyQ.data ? <SkyTracks sky={skyQ.data} /> : <Timeline n={n} />}
+            {skyQ.data && <SkyTable sky={skyQ.data} onOpen={(sha) => open(sha)} />}
+          </div>
         </section>
         {n.lat != null && n.lon != null ? (
           <section className={`${v.card} ${v.cardPad}`} aria-label="Where">
-            <SiteMap lat={n.lat} lon={n.lon} />
+            <SiteMap lat={n.lat} lon={n.lon} night={n.date} />
           </section>
         ) : (
           <section className={`${v.card} ${v.cardPad} ${v.muted}`}>

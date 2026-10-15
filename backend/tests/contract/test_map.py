@@ -44,3 +44,8 @@ def test_places_group_nearby_lights(admin_client):
     assert home["targets"] == ["M 31"] and home["image"].endswith("/glance")
     assert home["collections"] == [{"id": None, "name": "M 31", "subs": 2}]
     assert home["nights"][0]["site_key"] == "55.0,-1.7"
+    # spec 015 FR-002: a date or a range keeps only those nights, and places with none drop off
+    one = admin_client.get("/api/v1/map?since=2026-09-26&until=2026-09-26").json()["places"]
+    assert [(p["subs"], [n["date"] for n in p["nights"]]) for p in one] == [(1, ["2026-09-26"])]
+    july = admin_client.get("/api/v1/map?until=2026-08-01").json()["places"]
+    assert [p["lat"] < 0 for p in july] == [True]

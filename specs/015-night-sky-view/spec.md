@@ -75,3 +75,16 @@ dome); live position during a session; video export (a still image export may fo
 - **SC-001** From a night page, one click shows that place on the map with only that night's data.
 - **SC-002** On a night with 2+ targets on 2+ rigs, each track can be told apart by target and rig without colour.
 - **SC-003** A sub's dot sits within 0.5° of its true altitude and azimuth (tested against a known ephemeris).
+
+## Amendment 2026-10-15: as built
+
+- **015-DR-01 Where pointing comes from.** SubStation has no offline catalogue of target positions, so a sub with
+  neither a plate solution nor RA/Dec in its header takes its dataset's usual pointing (the median of its other
+  subs' solutions or headers) and says so; only a dataset with no pointing at all leaves its subs unplaced (FR-003).
+- **015-DR-02 One place per night.** Positions use the night's place (the mean of its lights' recorded sites); subs
+  shot a few kilometres apart in one night are drawn from that one point, well within the picture's accuracy.
+- **015-DR-03 The view.** The dome is drawn from directly below (zenithal, north up, east on the left, as looking
+  up), which keeps every track legible; an oblique dome like the reference may follow with the across-nights view
+  (N7). No refraction is applied: under half a degree above 2° altitude.
+- **015-DR-04 The map's address** is `/map?lat=&lon=&zoom=&date=` (or `from=`/`to=`); the place is the one nearest
+  the given point within about 5 km.

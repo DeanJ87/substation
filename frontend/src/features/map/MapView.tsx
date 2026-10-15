@@ -1,8 +1,9 @@
 // The map (spec 012): every place subs were shot, as a picture with a count that merges with its neighbours as you
-// zoom out, like a phone's photo map. Choosing a place lists its nights; a night opens the night page.
+// zoom out, like a phone's photo map. Choosing a place lists its nights; a night opens the night page. The address
+// can say where to look and which nights to show (spec 015): a night page opens it at its place, on its night.
 import 'leaflet/dist/leaflet.css'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import L from 'leaflet'
 import './leafletGlobal'
 import 'leaflet.markercluster'
@@ -11,10 +12,12 @@ import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import { useAppTheme } from '../../design/ThemeContext'
 import { coords, usePlaceName } from './place'
+import { type MapSearch, nearest, period, periodText, presets } from './search'
 import { baseLayer } from './tiles'
 import s from './map.module.css'
 
 type Place = components['schemas']['MapPlace']
+const route = getRouteApi('/app/map')
 
 const count = (n: number) => (n >= 10_000 ? `${Math.round(n / 1000)}k` : n.toLocaleString('en-GB'))
 const day = (d: string | null | undefined) =>
@@ -44,8 +47,25 @@ export function MapView() {
   const { theme } = useAppTheme()
   const box = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
-  const [chosen, setChosen] = useState<Place | null>(null)
-  const places = useQuery({ queryKey: ['map'], queryFn: async () => unwrap(await api.GET('/map')) })
+  const search = route.useSearch()
+  const navigate = useNavigate()
+  const when = period(search)
+  // the place picked on the map; until one is, the place the address points at
+  const [picked, setPicked] = useState<string | null>(null)
+  const places = useQuery({
+    queryKey: ['map', when.since ?? '', when.until ?? ''],
+    queryFn: async () => unwrap(await api.GET('/map', { params: { query: when } })),
+  })
+  const list = places.data?.places ?? []
+  const pointed = search.lat != null && search.lon != null ? nearest(list, search.lat, search.lon) : null
+  const chosen = picked === '' ? null : (list.find((p) => p.key === picked) ?? pointed)
+  const setChosen = (p: Place | null) => setPicked(p ? p.key : '')
+  const setPeriod = (next: MapSearch) =>
+    void navigate({
+      to: '/map',
+      search: { lat: search.lat, lon: search.lon, zoom: search.zoom, ...next },
+      replace: true,
+    })
 
   useEffect(() => {
     if (!box.current || map.current) return
@@ -59,8 +79,8 @@ export function MapView() {
 
   useEffect(() => {
     const m = map.current
-    const list = places.data?.places
-    if (!m || !list?.length) return
+    const all = places.data?.places
+    if (!m || !all?.length) return
     const group = L.markerClusterGroup({
       showCoverageOnHover: false,
       maxClusterRadius: 70,
@@ -71,21 +91,36 @@ export function MapView() {
         return tile(lead.place?.image, total, true)
       },
     })
-    for (const p of list) {
+    for (const p of all) {
       const mk = L.marker([p.lat, p.lon], {
         icon: tile(p.image, p.subs),
         title: p.targets.join(', '),
       }) as PlaceMarker
       mk.place = p
-      mk.on('click', () => setChosen(p))
+      mk.on('click', () => setPicked(p.key))
       group.addLayer(mk)
     }
     m.addLayer(group)
-    m.fitBounds(group.getBounds(), { padding: [60, 60], maxZoom: 9 })
     return () => {
       m.removeLayer(group)
     }
   }, [places.data])
+
+  // where to look: the place in the address, else everything shown
+  const lat = search.lat
+  const lon = search.lon
+  const zoom = search.zoom
+  useEffect(() => {
+    const m = map.current
+    const all = places.data?.places
+    if (!m) return
+    if (lat != null && lon != null) m.setView([lat, lon], zoom ?? 11)
+    else if (all?.length)
+      m.fitBounds(L.latLngBounds(all.map((p) => [p.lat, p.lon] as [number, number])), {
+        padding: [60, 60],
+        maxZoom: 9,
+      })
+  }, [places.data, lat, lon, zoom])
 
   return (
     <div className={s.page}>
@@ -95,8 +130,13 @@ export function MapView() {
         role="region"
         aria-label="Map of where subs were shot"
       />
+      <DateFilter search={search} onChange={setPeriod} />
       {places.isSuccess && !places.data.places.length && (
-        <p className={s.empty}>No subs record where they were shot yet.</p>
+        <p className={s.empty}>
+          {periodText(search)
+            ? `No subs with a place in ${periodText(search)}.`
+            : 'No subs record where they were shot yet.'}
+        </p>
       )}
       {chosen && (
         <aside className={s.panel} aria-label="Place">
@@ -148,6 +188,37 @@ export function MapView() {
             ))}
           </ul>
         </aside>
+      )}
+    </div>
+  )
+}
+
+function DateFilter({ search, onChange }: { search: MapSearch; onChange: (s: MapSearch) => void }) {
+  const [today] = useState(() => new Date())
+  const text = periodText(search)
+  const one = search.date ?? (search.from && search.from === search.to ? search.from : '')
+  return (
+    <div className={s.when} role="group" aria-label="Nights shown">
+      <label className={s.whenDay}>
+        <span className="label">Night</span>
+        <input
+          type="date"
+          value={one}
+          onChange={(e) => onChange(e.target.value ? { date: e.target.value } : {})}
+        />
+      </label>
+      {presets(today).map((p) => (
+        <button key={p.label} type="button" className={s.whenPreset} onClick={() => onChange(p.search)}>
+          {p.label}
+        </button>
+      ))}
+      <span className={s.whenText} aria-live="polite">
+        {text ? `Showing ${text}` : 'Showing every night'}
+      </span>
+      {text && (
+        <button type="button" className={s.whenPreset} onClick={() => onChange({})}>
+          Every night
+        </button>
       )}
     </div>
   )

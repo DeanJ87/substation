@@ -1,0 +1,316 @@
+/* The sky as it was shot (spec 015) */
+.sky {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  grid-template-areas:
+    'dome side'
+    'play play'
+    'chart chart';
+  gap: 16px 24px;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .sky {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'dome' 'play' 'side' 'chart';
+  }
+}
+.domeWrap {
+  grid-area: dome;
+  position: relative;
+  width: min(100%, 560px);
+  justify-self: center;
+}
+.dome {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.horizon {
+  fill: var(--sst-panel-3);
+  stroke: var(--sst-muted);
+  stroke-width: 0.6;
+}
+.alt {
+  fill: none;
+  stroke: var(--sst-line);
+  stroke-width: 0.4;
+}
+.meridian {
+  stroke: var(--sst-line);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 2;
+}
+.ringLabel {
+  font-size: 5px;
+  fill: var(--sst-dim);
+  font-family: var(--sst-font-mono);
+}
+.compass {
+  font-size: 7px;
+  font-weight: 600;
+  fill: var(--sst-muted);
+}
+.moonTrack {
+  fill: none;
+  stroke: var(--sst-dim);
+  stroke-width: 0.6;
+  stroke-dasharray: 1 2;
+}
+.track {
+  fill: none;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+  opacity: 0.55;
+}
+.mark {
+  stroke-width: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.mark:hover {
+  stroke: var(--sst-text);
+  stroke-width: 1.1;
+}
+.faded {
+  opacity: 0.45;
+}
+.dim {
+  opacity: 0.12;
+}
+.now {
+  fill: none;
+  stroke-width: 1.4;
+}
+.moon {
+  fill: var(--sst-text);
+  stroke: var(--sst-panel);
+  stroke-width: 0.8;
+}
+.tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  max-width: 260px;
+  padding: 8px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel);
+  box-shadow: var(--sst-shadow);
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 2;
+}
+.tip span {
+  color: var(--sst-muted);
+}
+.side {
+  grid-area: side;
+  display: grid;
+  gap: 16px;
+}
+.key h3 {
+  margin: 0 0 6px;
+}
+.keyList {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.keyRow {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--sst-radius-sm);
+  background: none;
+  color: var(--sst-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.keyRow:hover,
+.keyRow:focus-visible {
+  border-color: var(--sst-line);
+  background: var(--sst-panel-2);
+}
+.keyRow[aria-pressed='false'] {
+  opacity: 0.45;
+}
+.keyRow[aria-pressed='false'] .keyName {
+  text-decoration: line-through;
+}
+.keyName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.keyDetail {
+  color: var(--sst-muted);
+  font-size: 13px;
+  font-family: var(--sst-font-mono);
+}
+.keyHint {
+  margin: 0;
+  color: var(--sst-muted);
+  font-size: 13px;
+}
+.swatch {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 14px;
+}
+.facts dt {
+  color: var(--sst-muted);
+}
+.facts dd {
+  margin: 0;
+}
+.play {
+  grid-area: play;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.playButton {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+  color: var(--sst-text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.playButton:hover,
+.playButton:focus-visible {
+  border-color: var(--sst-accent);
+}
+.slider {
+  flex: 1 1 200px;
+  accent-color: var(--sst-accent);
+}
+.clock {
+  min-width: 7em;
+  font-family: var(--sst-font-mono);
+  font-size: 14px;
+  color: var(--sst-muted);
+}
+.chart {
+  grid-area: chart;
+  margin: 0;
+}
+.chart figcaption {
+  margin-bottom: 6px;
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.twilight {
+  fill: var(--sst-panel-2);
+}
+.grid {
+  stroke: var(--sst-line);
+  stroke-width: 0.6;
+}
+.thirty {
+  stroke: var(--sst-dim);
+  stroke-width: 0.8;
+  stroke-dasharray: 4 3;
+}
+.axisText {
+  font-size: 10px;
+  fill: var(--sst-muted);
+  font-family: var(--sst-font-mono);
+}
+.moonLine {
+  fill: none;
+  stroke: var(--sst-dim);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.curve {
+  fill: none;
+  stroke-width: 1.2;
+  opacity: 0.5;
+}
+.chartMark,
+.chartReject {
+  stroke-width: 0.8;
+}
+.nowLine {
+  stroke: var(--sst-accent);
+  stroke-width: 1;
+}
+.tracks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.tracks li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.trackName {
+  font-weight: 600;
+}
+.table summary {
+  cursor: pointer;
+  color: var(--sst-muted);
+  font-size: 14px;
+}
+.tableScroll {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+.table th,
+.table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--sst-line-2);
+  text-align: left;
+  white-space: nowrap;
+}
+.table th {
+  color: var(--sst-muted);
+  font-weight: 600;
+}
+.linkish {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--sst-accent);
+  font: inherit;
+  font-family: var(--sst-font-mono);
+  cursor: pointer;
+  text-decoration: underline;
+}

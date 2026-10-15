@@ -137,3 +137,60 @@
   margin: 0 0 2px;
   font-size: 13px;
 }
+/* Which nights the map shows (spec 015) */
+.when {
+  position: absolute;
+  top: 16px;
+  left: 60px;
+  right: 372px;
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--sst-line);
+  border-radius: 0.8rem;
+  background: var(--sst-panel);
+  box-shadow: var(--sst-shadow);
+  font-size: 14px;
+  width: fit-content;
+  max-width: calc(100vw - 76px);
+}
+.whenDay {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.whenDay input {
+  padding: 4px 8px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+}
+.whenPreset {
+  padding: 4px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+  color: var(--sst-text);
+  font: inherit;
+  cursor: pointer;
+}
+.whenPreset:hover,
+.whenPreset:focus-visible {
+  border-color: var(--sst-accent);
+}
+.whenText {
+  color: var(--sst-muted);
+}
+@media (max-width: 760px) {
+  .when {
+    left: 16px;
+    right: 16px;
+    top: 64px;
+    width: auto;
+  }
+}

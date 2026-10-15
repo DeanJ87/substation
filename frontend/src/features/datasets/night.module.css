@@ -103,3 +103,9 @@
   padding: 16px 18px 0;
   margin-bottom: 10px;
 }
+/* the sky and the tracks below a section label (spec 015) */
+.skyBody {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
