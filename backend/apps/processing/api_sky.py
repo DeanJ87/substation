@@ -41,6 +41,17 @@ class SkySub(Schema):
     fwhm_px: float | None
 
 
+class SkyFov(Schema):
+    """The rig's field of view as plate solved (spec 015 amendment): centre, size and rotation, so the dome can draw
+    what the camera framed."""
+
+    ra_deg: float
+    dec_deg: float
+    w_deg: float
+    h_deg: float
+    rotation_deg: float  # the image's up direction, east of north, folded onto 0–180
+
+
 class SkyTrack(Schema):
     target: str  # key into targets
     rig: str  # key into rigs
@@ -51,6 +62,7 @@ class SkyTrack(Schema):
     last: datetime
     subs: int
     integration_s: float
+    fov: SkyFov | None = None
 
 
 class SkyTarget(Schema):
@@ -119,6 +131,62 @@ def _track_label(ds, target: str) -> str:  # noqa: ANN001
     return " · ".join(p for p in parts if p)
 
 
+def night_places(nights: list[Night]) -> dict[int, tuple[float, float]]:
+    """Each night's place: the mean of its catalogued lights' recorded sites, else the night's own (015-DR-02). The
+    night view and the across-nights view use the same place, so a light's kept position serves both."""
+    rows = (
+        Frame.objects.filter(
+            night__in=nights, frame_type=FrameType.LIGHT, status=FrameStatus.CATALOGUED, dataset__isnull=False
+        )
+        .values("night_id")
+        .annotate(lat=Avg("site_lat"), lon=Avg("site_lon"))
+    )
+    mean = {r["night_id"]: (r["lat"], r["lon"]) for r in rows}
+    out: dict[int, tuple[float, float]] = {}
+    for n in nights:
+        lat, lon = mean.get(n.pk, (None, None))
+        lat = lat if lat is not None else n.site_lat
+        lon = lon if lon is not None else n.site_lon
+        if lat is not None and lon is not None:
+            out[n.pk] = (lat, lon)
+    return out
+
+
+def fov_of(frames: list, ds) -> SkyFov | None:  # noqa: ANN001
+    """The dataset's field of view from its plate solves: those among `frames` if any carry a size, else up to 200
+    of the dataset's others."""
+    solves = [
+        s
+        for f in frames
+        if (s := getattr(f, "solve", None)) is not None
+        and s.fov_w_deg
+        and s.fov_h_deg
+        and s.ra_deg is not None
+    ]
+    if not solves:
+        from .models import PlateSolve
+
+        solves = list(
+            PlateSolve.objects.filter(
+                frame__dataset=ds, fov_w_deg__isnull=False, fov_h_deg__isnull=False, ra_deg__isnull=False
+            )[:200]
+        )
+    if not solves:
+        return None
+    import statistics
+
+    ra, dec = sky.median_pointing(solves)
+    return SkyFov(
+        ra_deg=round(ra, 5),
+        dec_deg=round(dec, 5),
+        w_deg=round(statistics.median(s.fov_w_deg for s in solves), 4),
+        h_deg=round(statistics.median(s.fov_h_deg for s in solves), 4),
+        rotation_deg=sky.frame_rotation(
+            [s.rotation_deg for s in solves if s.rotation_deg is not None] or [0]
+        ),
+    )
+
+
 def _span(firsts: list[datetime], tw: dict | None) -> tuple[datetime, datetime]:
     """From dusk (or the first sub, if earlier) to dawn (or the last sub, if later), with a little either side."""
     start, end = min(firsts), max(firsts)
@@ -139,11 +207,8 @@ def night_sky(request, date: date, site: str):  # noqa: A002
         .prefetch_related("verdicts", "copies", "headers")
         .order_by("date_obs_utc")
     )
-    where = Frame.objects.filter(pk__in=[f.pk for f in frames]).aggregate(
-        lat=Avg("site_lat"), lon=Avg("site_lon")
-    )
-    lat = where["lat"] if where["lat"] is not None else n.site_lat
-    lon = where["lon"] if where["lon"] is not None else n.site_lon
+    place = night_places([n]).get(n.pk)
+    lat, lon = (place[0], place[1]) if place else (None, None)
     empty = SkyOut(
         date=date,
         site_key=site,
@@ -234,6 +299,7 @@ def _build(out: SkyOut, night_date: date, frames: list, placed: dict, lat: float
                 last=rows[-1].at,
                 subs=len(rows),
                 integration_s=sum(f.exptime_s or 0 for f in t["frames"]),
+                fov=fov_of(t["frames"], t["ds"]),
             )
         )
     out.subs.sort(key=lambda s: s.time)

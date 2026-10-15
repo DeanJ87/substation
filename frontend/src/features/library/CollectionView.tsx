@@ -23,6 +23,7 @@ import { CloseLook, type LookMode, type LookTarget, Zoomable } from '../../compo
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
+import { TargetSky } from '../sky/SkyNights'
 import tb from './tables.module.css'
 import { usePlaceName } from '../map/place'
 import { ProjectCards } from './ProjectCards'
@@ -290,6 +291,12 @@ export function CollectionView() {
               onDone={() => void q.refetch()}
             />
           </div>
+
+          <section className={`${v.card} ${v.cardPad}`}>
+            <Collapsible id="collection-sky" title="On the sky" meta="every night from one place">
+              <TargetSky kind="collection" id={card.id} />
+            </Collapsible>
+          </section>
 
           <section className={`${v.card} ${v.cardPad}`}>
             <Collapsible

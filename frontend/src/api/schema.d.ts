@@ -448,6 +448,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/collections/{collection_id}/sky": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Collection Sky
+         * @description Every light of a collection across all its nights, from one place.
+         */
+        get: operations["apps_processing_api_sky_nights_collection_sky"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/collections/{id}": {
         parameters: {
             query?: never;
@@ -758,6 +778,26 @@ export interface paths {
         };
         /** List Datasets */
         get: operations["apps_catalogue_api_list_datasets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/datasets/{dataset_id}/sky": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dataset Sky
+         * @description One dataset's lights across all its nights, from one place (the one with most subs unless `site` says).
+         */
+        get: operations["apps_processing_api_sky_nights_dataset_sky"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4362,6 +4402,95 @@ export interface components {
             /** Sites */
             sites: string[];
         };
+        /** NightsNight */
+        NightsNight: {
+            /** Alt Max */
+            alt_max: number;
+            /** Alt Mid */
+            alt_mid: number;
+            /** Alt Min */
+            alt_min: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * First
+             * Format: date-time
+             */
+            first: string;
+            /** Integration S */
+            integration_s: number;
+            /**
+             * Last
+             * Format: date-time
+             */
+            last: string;
+            /** Site Key */
+            site_key: string;
+            /** Subs */
+            subs: number;
+        };
+        /** NightsOut */
+        NightsOut: {
+            fov: components["schemas"]["SkyFov"] | null;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            /** Name */
+            name: string;
+            /** Nights */
+            nights: components["schemas"]["NightsNight"][];
+            /** Places */
+            places: components["schemas"]["NightsPlace"][];
+            /** Rigs */
+            rigs: components["schemas"]["SkyRig"][];
+            /** Site Key */
+            site_key: string | null;
+            /** Subs */
+            subs: components["schemas"]["NightsSub"][];
+            /** Unplaced */
+            unplaced: number;
+        };
+        /** NightsPlace */
+        NightsPlace: {
+            /** Key */
+            key: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Nights */
+            nights: number;
+            /** Subs */
+            subs: number;
+        };
+        /** NightsSub */
+        NightsSub: {
+            /** Alt */
+            alt: number;
+            /** Az */
+            az: number;
+            /** Dataset Id */
+            dataset_id: number;
+            /** Night */
+            night: number;
+            /** Rig */
+            rig: string;
+            /** Segment */
+            segment: number;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
+            /** Verdict */
+            verdict: string | null;
+        };
         /** NotifyTestOut */
         NotifyTestOut: {
             /** Failed */
@@ -5516,6 +5645,23 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /**
+         * SkyFov
+         * @description The rig's field of view as plate solved (spec 015 amendment): centre, size and rotation, so the dome can draw
+         *     what the camera framed.
+         */
+        SkyFov: {
+            /** Dec Deg */
+            dec_deg: number;
+            /** H Deg */
+            h_deg: number;
+            /** Ra Deg */
+            ra_deg: number;
+            /** Rotation Deg */
+            rotation_deg: number;
+            /** W Deg */
+            w_deg: number;
+        };
         /** SkyMoon */
         SkyMoon: {
             /** Illumination */
@@ -5626,6 +5772,7 @@ export interface components {
              * Format: date-time
              */
             first: string;
+            fov?: components["schemas"]["SkyFov"] | null;
             /** Integration S */
             integration_s: number;
             /** Label */
@@ -6728,6 +6875,30 @@ export interface operations {
             };
         };
     };
+    apps_processing_api_sky_nights_collection_sky: {
+        parameters: {
+            query?: {
+                site?: string | null;
+            };
+            header?: never;
+            path: {
+                collection_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NightsOut"];
+                };
+            };
+        };
+    };
     apps_catalogue_api_library_get_collection: {
         parameters: {
             query?: never;
@@ -7293,6 +7464,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatasetPage"];
+                };
+            };
+        };
+    };
+    apps_processing_api_sky_nights_dataset_sky: {
+        parameters: {
+            query?: {
+                site?: string | null;
+            };
+            header?: never;
+            path: {
+                dataset_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NightsOut"];
                 };
             };
         };

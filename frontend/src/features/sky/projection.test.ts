@@ -5,6 +5,9 @@ import {
   at,
   azAt,
   compass,
+  frameOnDome,
+  frameOutline,
+  fromTangent,
   hourTicks,
   marker,
   polyline,
@@ -16,6 +19,7 @@ import {
   skyLine,
   surveyPixel,
   toEquatorial,
+  toHorizontal,
   unproject,
 } from './projection'
 
@@ -160,5 +164,79 @@ describe('back from the drawing to the sky', () => {
     expect(x).toBeLessThan(1610)
     expect(y).toBeGreaterThan(900)
     expect(y).toBeLessThan(915)
+  })
+})
+
+// the great-circle distance between two points, in degrees
+const sep = (a: { ra: number; dec: number }, b: { ra: number; dec: number }) => {
+  const r = Math.PI / 180
+  const c =
+    Math.sin(a.dec * r) * Math.sin(b.dec * r) +
+    Math.cos(a.dec * r) * Math.cos(b.dec * r) * Math.cos((a.ra - b.ra) * r)
+  return Math.acos(Math.min(1, c)) / r
+}
+
+describe('the camera frame on the dome (spec 015 amendment)', () => {
+  it('turns equatorial into horizontal and back', () => {
+    const lst = siderealDeg(Date.parse('2026-10-11T22:00:00Z'), -1.66)
+    for (const [ra, dec] of [
+      [314.75, 44.3],
+      [83.8, -5.4],
+      [10, 80],
+    ]) {
+      const h = toHorizontal(ra, dec, 54.99, lst)
+      const e = toEquatorial(h.alt, h.az, 54.99, lst)
+      expect(e.dec).toBeCloseTo(dec, 6)
+      expect(((e.ra - ra + 540) % 360) - 180).toBeCloseTo(0, 6)
+    }
+    // the celestial pole stands due north at the latitude's altitude
+    const pole = toHorizontal(0, 90, 54.99, lst)
+    expect(pole.alt).toBeCloseTo(54.99, 6)
+    expect(Math.min(pole.az, 360 - pole.az)).toBeCloseTo(0, 6)
+  })
+  it('steps east and north on the tangent plane', () => {
+    expect(fromTangent(10, 0, 0, 0)).toEqual({ ra: 10, dec: 0 })
+    const east = fromTangent(10, 0, 1, 0)
+    expect(east.ra).toBeCloseTo(11, 2)
+    expect(east.dec).toBeCloseTo(0, 6)
+    const north = fromTangent(10, 40, 0, 2)
+    expect(north.ra).toBeCloseTo(10, 6)
+    expect(north.dec).toBeCloseTo(42, 2)
+  })
+  it('puts the corners where a north-up image has them: east on the left', () => {
+    const fov = { ra_deg: 100, dec_deg: 0, w_deg: 4, h_deg: 2, rotation_deg: 0 }
+    const pts = frameOutline(fov, 1)
+    expect(pts).toHaveLength(4)
+    const [tl, tr, br, bl] = pts
+    expect(tl.ra).toBeCloseTo(102, 1) // top left: north and east
+    expect(tl.dec).toBeCloseTo(1, 1)
+    expect(tr.ra).toBeCloseTo(98, 1)
+    expect(br.dec).toBeCloseTo(-1, 1)
+    expect(bl.ra).toBeCloseTo(102, 1)
+    // the sides keep their lengths wherever it points and however it's turned
+    const turned = frameOutline({ ...fov, dec_deg: 60, rotation_deg: 37 }, 1)
+    expect(sep(turned[0], turned[1])).toBeCloseTo(4, 1)
+    expect(sep(turned[1], turned[2])).toBeCloseTo(2, 1)
+    expect(sep(turned[0], turned[2])).toBeCloseTo(Math.hypot(4, 2), 1)
+    // up turned to the east: the top edge now lies east of the centre
+    const east = frameOutline({ ...fov, rotation_deg: 90 }, 1)
+    expect((east[0].ra + east[1].ra) / 2).toBeCloseTo(101, 1)
+  })
+  it('draws the frame round the target on the dome, and not when it has set', () => {
+    const t = Date.parse('2026-10-11T22:00:00Z')
+    const fov = { ra_deg: 314.75, dec_deg: 44.3, w_deg: 3, h_deg: 2, rotation_deg: 0 }
+    const f = frameOnDome(fov, 54.99, -1.66, t)!
+    const h = toHorizontal(314.75, 44.3, 54.99, siderealDeg(t, -1.66))
+    const c = project3d(h.alt, h.az)
+    expect(f.centre.x).toBeCloseTo(c.x, 1)
+    expect(f.centre.y).toBeCloseTo(c.y, 1)
+    expect(f.d.endsWith('Z')).toBe(true)
+    expect(f.d.match(/[ML]/g)).toHaveLength(24) // four sides of six steps
+    expect(f.top.match(/[ML]/g)).toHaveLength(7)
+    // every corner within a couple of degrees' worth of drawing of the centre
+    for (const m of f.d.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g))
+      expect(Math.hypot(+m[1] - c.x, +m[2] - c.y)).toBeLessThan(4)
+    // M 42 is below the horizon from Newcastle at 22:00 in October
+    expect(frameOnDome({ ...fov, ra_deg: 83.8, dec_deg: -5.4 }, 54.99, -1.66, t)).toBeNull()
   })
 })

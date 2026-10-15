@@ -8,6 +8,7 @@ import { toast } from '../../components/Toasts'
 import { ErrorState, PageLoading } from '../../components/ui'
 import { VerdictBadge } from '../../components/VerdictBadge'
 import { nightText, temp } from '../format'
+import { TargetSky } from '../sky/SkyNights'
 import { useDatasetV2, useLiveRefresh, useSessions, useStacks, useSubs } from '../v2/hooks'
 import v from '../v2/v2.module.css'
 import { CalibrationTab } from './CalibrationTab'
@@ -16,7 +17,7 @@ import { QualityTab } from './QualityTab'
 import { isFlagged, SubsTab } from './SubsTab'
 
 const route = getRouteApi('/app/datasets/$id')
-export type Tab = 'subs' | 'quality' | 'calibration' | 'masters'
+export type Tab = 'subs' | 'quality' | 'calibration' | 'masters' | 'sky'
 
 export function DatasetScreen() {
   useLiveRefresh()
@@ -56,6 +57,7 @@ export function DatasetScreen() {
       'masters',
       `Masters ${(stacks.data ?? []).filter((m) => m.state !== 'failed' && m.state !== 'cancelled').length}`,
     ],
+    ['sky', 'Sky'],
   ]
 
   // what Review was (spec 012): rejected, down-weighted or near a threshold, and not decided by hand
@@ -143,6 +145,11 @@ export function DatasetScreen() {
       )}
       {tab === 'masters' && (
         <MastersTab dataset={d} stacks={stacks.data ?? []} sessions={sessions.data ?? []} />
+      )}
+      {tab === 'sky' && (
+        <section className={`${v.card} ${v.cardPad}`} aria-label="The sky across nights">
+          <TargetSky kind="dataset" id={dsId} />
+        </section>
       )}
     </div>
   )

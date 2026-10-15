@@ -218,3 +218,97 @@ export function surveyPixel(ra: number, dec: number, w: number, h: number): [num
   const y = Math.min(h - 1, Math.max(0, ((90 - dec) / 180) * h))
   return [Math.min(w - 1, Math.floor(x)), Math.floor(y)]
 }
+
+// ---- the camera's frame on the dome (spec 015 amendment, 2026-10-15) ----------------------------------------
+
+/** Altitude and azimuth (degrees) of a right ascension and declination, for latitude `lat` and sidereal time `lst`
+ * (degrees): the inverse of toEquatorial. Azimuth runs from north through east. */
+export function toHorizontal(ra: number, dec: number, lat: number, lst: number): { alt: number; az: number } {
+  const h = rad(lst - ra)
+  const d = rad(dec)
+  const p = rad(lat)
+  const alt = Math.asin(Math.sin(p) * Math.sin(d) + Math.cos(p) * Math.cos(d) * Math.cos(h))
+  const az = Math.atan2(
+    -Math.cos(d) * Math.sin(h),
+    Math.sin(d) * Math.cos(p) - Math.cos(d) * Math.cos(h) * Math.sin(p),
+  )
+  return { alt: (alt * 180) / Math.PI, az: ((((az * 180) / Math.PI) % 360) + 360) % 360 }
+}
+
+/** The sky at an offset from a centre, `east` and `north` in degrees on the tangent plane (the camera's flat image
+ * of the sky: a gnomonic projection, as plate solving uses). */
+export function fromTangent(
+  ra0: number,
+  dec0: number,
+  east: number,
+  north: number,
+): { ra: number; dec: number } {
+  const xi = rad(east)
+  const eta = rad(north)
+  const d0 = rad(dec0)
+  const rho = Math.hypot(xi, eta)
+  if (rho === 0) return { ra: ra0, dec: dec0 }
+  const c = Math.atan(rho)
+  const dec = Math.asin(Math.cos(c) * Math.sin(d0) + (eta * Math.sin(c) * Math.cos(d0)) / rho)
+  const dra = Math.atan2(
+    xi * Math.sin(c),
+    rho * Math.cos(d0) * Math.cos(c) - eta * Math.sin(d0) * Math.sin(c),
+  )
+  const ra = ra0 + (dra * 180) / Math.PI
+  return { ra: ((ra % 360) + 360) % 360, dec: (dec * 180) / Math.PI }
+}
+
+export type Fov = { ra_deg: number; dec_deg: number; w_deg: number; h_deg: number; rotation_deg: number }
+
+/** The camera frame's outline on the sky, from its top-left corner round clockwise as the image is seen, each edge
+ * divided into `steps` so it bends as it should on the dome. `rotation_deg` is the image's up direction, east of
+ * north; the image's right is then a quarter turn west of up, as a sky image shown north up has east on the left. */
+export function frameOutline(fov: Fov, steps = 6): { ra: number; dec: number }[] {
+  const th = rad(fov.rotation_deg)
+  const up = { e: Math.sin(th), n: Math.cos(th) }
+  const right = { e: -Math.cos(th), n: Math.sin(th) }
+  const w = fov.w_deg / 2
+  const h = fov.h_deg / 2
+  const corners: [number, number][] = [
+    [-w, h],
+    [w, h],
+    [w, -h],
+    [-w, -h],
+  ]
+  const out: { ra: number; dec: number }[] = []
+  corners.forEach(([x0, y0], i) => {
+    const [x1, y1] = corners[(i + 1) % 4]
+    for (let k = 0; k < steps; k++) {
+      const x = x0 + ((x1 - x0) * k) / steps
+      const y = y0 + ((y1 - y0) * k) / steps
+      out.push(fromTangent(fov.ra_deg, fov.dec_deg, x * right.e + y * up.e, x * right.n + y * up.n))
+    }
+  })
+  return out
+}
+
+/** The camera's frame on the dome at time `t` (ms) from latitude/longitude: the closed outline, its top edge (the
+ * image's up) on its own, and its centre; null when any of it is below the horizon. */
+export function frameOnDome(
+  fov: Fov,
+  lat: number,
+  lon: number,
+  t: number,
+  view: View = DEFAULT_VIEW,
+  r = R,
+): { d: string; top: string; centre: Pt3 } | null {
+  const lst = siderealDeg(t, lon)
+  const steps = 6
+  const pts: Pt3[] = []
+  for (const p of frameOutline(fov, steps)) {
+    const h = toHorizontal(p.ra, p.dec, lat, lst)
+    if (h.alt < 0) return null
+    pts.push(project3d(h.alt, h.az, view, r))
+  }
+  const c = toHorizontal(fov.ra_deg, fov.dec_deg, lat, lst)
+  return {
+    d: polyline(pts) + 'Z',
+    top: polyline([...pts.slice(0, steps), pts[steps]]),
+    centre: project3d(c.alt, c.az, view, r),
+  }
+}
