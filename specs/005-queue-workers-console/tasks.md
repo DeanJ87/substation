@@ -108,3 +108,5 @@
   tests; the limit drops from 34 to 14
 - [ ] W40 Split the 21 functions between complexity 11 and 14 and lower the limit to 10; raise the floors as
   coverage grows
+- [X] W41 (2026-10-15) Stale failures: later version built, deleted masters, rebuilt or emptied calibration sets
+  (005-DR-28); tests

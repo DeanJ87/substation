@@ -287,3 +287,7 @@ SQLite support was then removed rather than kept as a second, untested path.
   more tangled than the worst today, 34), needless returns and blanket exception catches.
 
   Updated 2026-10-15: the frontend floor is now about 50% of lines (whole app) and the complexity limit 14.
+
+  Updated 2026-10-15 (005-DR-28): a failed stack also clears once a later version of the same dataset is built, a
+  master marked deleted counts as gone, and a failed calibration build clears once its set is built again or has no
+  frames left (e.g. all binned).

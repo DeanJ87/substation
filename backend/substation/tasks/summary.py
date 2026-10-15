@@ -22,22 +22,47 @@ def priority_class(priority: int) -> str:
 
 def still_failing(tasks) -> list[Task]:  # noqa: ANN001
     """Failures that still matter (2026-10-15): one whose job later ran again and succeeded, or whose master has
-    since been built or deleted, has nothing left to do and clears itself."""
-    from apps.processing.models import Master, MasterState
-
+    since been built, replaced by a later version or deleted, or whose calibration set has since been built or
+    emptied, has nothing left to do and clears itself."""
     out = []
     for t in tasks:
         later = Task.objects.filter(
             name=t.name, args=t.args, status=TaskStatus.SUCCEEDED, finished_at__gt=t.finished_at
         ).exists()
-        if later:
+        if later or _settled_since(t):
             continue
-        if t.name.endswith((".integrate", ".postprocess_master")) and t.args:
-            m = Master.objects.filter(pk=t.args[0]).values_list("state", flat=True).first()
-            if m is None or (t.name.endswith(".integrate") and m != MasterState.FAILED):
-                continue
         out.append(t)
     return out
+
+
+def _settled_since(t: Task) -> bool:
+    from apps.catalogue.models import Frame, FrameStatus
+    from apps.processing.models import BuiltMaster, Master, MasterState
+
+    if not t.args:
+        return False
+    if t.name.endswith((".integrate", ".postprocess_master")):
+        m = Master.objects.filter(pk=t.args[0]).values("state", "dataset_id", "version").first()
+        if m is None or m["state"] == MasterState.DELETED:
+            return True
+        if t.name.endswith(".integrate"):
+            built = (MasterState.CURRENT, MasterState.STALE, MasterState.SUPERSEDED)
+            newer = Master.objects.filter(
+                dataset_id=m["dataset_id"], version__gt=m["version"], state__in=built
+            )
+            return m["state"] != MasterState.FAILED or newer.exists()
+        return False
+    if t.name.endswith(".build_master"):
+        bm = BuiltMaster.objects.filter(pk=t.args[0]).values("calibration_set_id").first()
+        if bm is None:
+            return True
+        set_id = bm["calibration_set_id"]
+        rebuilt = BuiltMaster.objects.filter(
+            calibration_set_id=set_id, state="done", pk__gt=t.args[0]
+        ).exists()
+        empty = not Frame.objects.filter(calibration_set_id=set_id, status=FrameStatus.CATALOGUED).exists()
+        return rebuilt or empty
+    return False
 
 
 def open_failures() -> list[Task]:
