@@ -338,7 +338,8 @@ def master_label(f: Frame | None) -> str | None:
     t = f.set_temp_c if f.set_temp_c is not None else f.ccd_temp_c
     when = f.night.date.strftime("%-d %b %Y") if f.night else None
     if f.frame_type == FrameType.MASTER_DARK:
-        return f"Dark {f.exptime_s:g} s" + (f" {t:g} °C".replace("-", "−") if t is not None else "")
+        exp = f" {f.exptime_s:g} s" if f.exptime_s is not None else ""  # a library master may not say
+        return f"Dark{exp}" + (f" {t:g} °C".replace("-", "−") if t is not None else "")
     if f.frame_type == FrameType.MASTER_FLAT:
         return f"Flat {f.filter_norm or ''}" + (f" · {when}" if when else "")
     return f.frame_type.replace("_", " ").capitalize()
@@ -896,10 +897,101 @@ def regrade_dataset(request, id: int, body: RegradeIn):  # noqa: A002
     return RegradeOut(changes=sum(by.values()), by_change=by, queued=body.confirm)
 
 
+class RecalChange(Schema):
+    """One session's change, so the choice can be made knowing what changes (002-DR-28)."""
+
+    night: str
+    subs: int
+    dark_from: str | None = None
+    dark_to: str | None = None
+    flat_from: str | None = None
+    flat_to: str | None = None
+    why: list[str] = []
+
+
 class RecalibrationOut(Schema):
     pending: int
     sessions: dict[str, int]
     queued: int = 0
+    changes: list[RecalChange] = []
+
+
+def _master_word(f: Frame | None, night: date | None) -> str | None:
+    if f is None:
+        return None
+    bits = [master_label(f) or f.pk[:12]]
+    if f.night is not None and night:
+        days = (f.night.date - night).days
+        bits.append("same night" if days == 0 else f"{abs(days)} days {'after' if days > 0 else 'before'}")
+    if f.status != FrameStatus.CATALOGUED:
+        bits.append("no longer in the library")
+    return " · ".join(bits)
+
+
+def _why(old: Frame | None, new: Frame | None, kind: str, night: date | None) -> str | None:
+    """Plainly, why the new master matters, or that it hardly does."""
+    from .matching import _temp
+
+    if old is None:
+        return f"it was calibrated with no {kind}"
+    if new is None:
+        return None
+    if old.status != FrameStatus.CATALOGUED:
+        return f"the {kind} it used is no longer in the library"
+    if old.calibration_set_id and old.calibration_set_id == new.calibration_set_id:
+        return f"the {kind} was rebuilt from the same frames"
+    if kind == "dark":
+        ot, nt = _temp(old), _temp(new)
+        if ot is not None and nt is not None and ot != nt:
+            return f"a dark at {nt:g} °C instead of {ot:g} °C"
+        return "another dark at the same settings"
+    if night and new.night is not None and old.night is not None:
+        nd, od = abs((new.night.date - night).days), abs((old.night.date - night).days)
+        if nd < od:
+            return (
+                f"flats from {'the same night' if nd == 0 else f'{nd} days away'} instead of {od} days away"
+            )
+    if old.filter_norm != new.filter_norm:
+        return f"a {new.filter_norm} flat instead of {old.filter_norm}"
+    return "another flat for the same filter"
+
+
+def _changes(dataset_id: int) -> list[RecalChange]:
+    rows = list(
+        SubMeasurement.objects.filter(state=MeasureState.DONE, frame__dataset_id=dataset_id)
+        .exclude(frame__calibration=None)
+        .select_related("frame__night", "frame__calibration")
+    )
+    groups: dict[tuple, int] = defaultdict(int)
+    for sm in rows:
+        cm = sm.frame.calibration
+        if cm.state != MatchState.MATCHED or (sm.dark_id, sm.flat_id) == (cm.dark_id, cm.flat_id):
+            continue
+        night = sm.frame.night.date if sm.frame.night else None
+        groups[(night, sm.dark_id, cm.dark_id, sm.flat_id, cm.flat_id)] += 1
+    frames = {
+        f.pk: f
+        for f in Frame.objects.filter(pk__in={x for k in groups for x in k[1:] if x}).select_related("night")
+    }
+    out = []
+    for (night, d0, d1, f0, f1), n in sorted(groups.items(), key=lambda kv: str(kv[0][0])):
+        why = []
+        if d0 != d1:
+            why.append(_why(frames.get(d0) if d0 else None, frames.get(d1) if d1 else None, "dark", night))
+        if f0 != f1:
+            why.append(_why(frames.get(f0) if f0 else None, frames.get(f1) if f1 else None, "flat", night))
+        out.append(
+            RecalChange(
+                night=str(night),
+                subs=n,
+                dark_from=_master_word(frames.get(d0) if d0 else None, night) if d0 != d1 else None,
+                dark_to=_master_word(frames.get(d1) if d1 else None, night) if d0 != d1 else None,
+                flat_from=_master_word(frames.get(f0) if f0 else None, night) if f0 != f1 else None,
+                flat_to=_master_word(frames.get(f1) if f1 else None, night) if f0 != f1 else None,
+                why=[w for w in why if w],
+            )
+        )
+    return out
 
 
 def _outdated(dataset_id: int) -> list[tuple[str, str]]:
@@ -967,7 +1059,9 @@ def pending_recalibration(request):
 def recalibration(request, id: int):  # noqa: A002
     """002 C11 / 004 T014: newer calibration is offered, never applied silently to calibrated subs."""
     rows = _outdated(id)
-    return RecalibrationOut(pending=len(rows), sessions=dict(Counter(n for _, n in rows)))
+    return RecalibrationOut(
+        pending=len(rows), sessions=dict(Counter(n for _, n in rows)), changes=_changes(id)
+    )
 
 
 @router.post("/datasets/{id}/recalibration", response=RecalibrationOut)

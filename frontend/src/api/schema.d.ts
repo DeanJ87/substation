@@ -4484,8 +4484,36 @@ export interface components {
             /** Queued */
             queued: number;
         };
+        /**
+         * RecalChange
+         * @description One session's change, so the choice can be made knowing what changes (002-DR-28).
+         */
+        RecalChange: {
+            /** Dark From */
+            dark_from?: string | null;
+            /** Dark To */
+            dark_to?: string | null;
+            /** Flat From */
+            flat_from?: string | null;
+            /** Flat To */
+            flat_to?: string | null;
+            /** Night */
+            night: string;
+            /** Subs */
+            subs: number;
+            /**
+             * Why
+             * @default []
+             */
+            why: string[];
+        };
         /** RecalibrationOut */
         RecalibrationOut: {
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["RecalChange"][];
             /** Pending */
             pending: number;
             /**

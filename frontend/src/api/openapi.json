@@ -5949,8 +5949,87 @@
     "title": "QueuedOut",
     "type": "object"
    },
+   "RecalChange": {
+    "description": "One session's change, so the choice can be made knowing what changes (002-DR-28).",
+    "properties": {
+     "dark_from": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dark From"
+     },
+     "dark_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dark To"
+     },
+     "flat_from": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Flat From"
+     },
+     "flat_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Flat To"
+     },
+     "night": {
+      "title": "Night",
+      "type": "string"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     },
+     "why": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Why",
+      "type": "array"
+     }
+    },
+    "required": [
+     "night",
+     "subs"
+    ],
+    "title": "RecalChange",
+    "type": "object"
+   },
    "RecalibrationOut": {
     "properties": {
+     "changes": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/RecalChange"
+      },
+      "title": "Changes",
+      "type": "array"
+     },
      "pending": {
       "title": "Pending",
       "type": "integer"

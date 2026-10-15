@@ -97,3 +97,19 @@ def test_a_flat_chosen_with_no_matching_dark_waits_for_one(admin_client):
     again = update_match(sub)
     assert again is not None and again.state == MatchState.MATCHED
     assert again.dark_id == right.pk and again.flat_id == flat.pk
+
+
+def test_recalibration_says_what_changes_and_why(admin_client):
+    """002-DR-28: newer calibration is offered with what it changes, so it can be judged."""
+    ds, sub, wrong, right = _setup()
+    SubMeasurement.objects.update_or_create(frame=sub, defaults={"state": "done", "dark": wrong})
+    flat = _frame("e5", frame_type=FrameType.MASTER_FLAT, camera="ATR2600M", filter_norm="G")
+    CalibrationMatch.objects.update_or_create(
+        frame=sub, defaults={"state": MatchState.MATCHED, "dark": right, "flat": None}
+    )
+    SubMeasurement.objects.filter(frame=sub).update(flat=flat)
+    r = admin_client.get(f"/api/v1/datasets/{ds.pk}/recalibration").json()
+    (c,) = r["changes"]
+    assert c["subs"] == 1 and c["night"] == "2026-01-22"
+    assert "0 °C instead of -20 °C" in " ".join(c["why"])
+    assert c["flat_from"] and c["flat_to"] is None

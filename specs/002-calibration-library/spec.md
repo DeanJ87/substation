@@ -351,3 +351,7 @@ exposure (0.00654 / 0.00655 s) and sets required an exact match.
   KStars "dark flats" at 29,400 ADU, as bright as the flats, had calibrated a flat set down to nothing.
   A re-match that starts while an earlier one is still going waits for it (three ran side by side and slowed each
   other).
+- **002-DR-28 Newer calibration says what it changes.** A dataset's offer of newer calibration lists, per session,
+  the dark and flat its subs were calibrated with, what they would use now, and why that matters in plain words
+  (the master it used is gone, a dark nearer the subs' temperature, flats from the same night, or only a rebuild of
+  the same frames), so the choice can be made without opening every sub.
