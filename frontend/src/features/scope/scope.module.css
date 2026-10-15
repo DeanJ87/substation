@@ -1,0 +1,23 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 14px;
+}
+.bar select,
+.bar input {
+  padding: 6px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+  max-width: 100%;
+}
+.bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sst-muted);
+}

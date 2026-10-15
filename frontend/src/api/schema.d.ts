@@ -1558,7 +1558,8 @@ export interface paths {
         };
         /**
          * Map Places
-         * @description Every place subs were shot; with `since`/`until` (nights, inclusive) only that period (spec 015 FR-002).
+         * @description Every place subs were shot, narrowed by the shared scope (spec 018: nights, rig, filter, collection…);
+         *     `since`/`until` are the older names for `date_from`/`date_to` (spec 015 FR-002).
          */
         get: operations["apps_catalogue_api_map_map_places"];
         put?: never;
@@ -5096,6 +5097,41 @@ export interface components {
             /** Why */
             why: string;
         };
+        /** Scope */
+        Scope: {
+            /** Camera */
+            camera?: string | null;
+            /** Collection */
+            collection?: number | null;
+            /** Dataset */
+            dataset?: number | null;
+            /** Date */
+            date?: string | null;
+            /** Date From */
+            date_from?: string | null;
+            /** Date To */
+            date_to?: string | null;
+            /** Filter */
+            filter?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Project */
+            project?: number | null;
+            /** Q */
+            q?: string | null;
+            /** Rig */
+            rig?: number | null;
+            /** Site */
+            site?: string | null;
+            /** Target */
+            target?: string | null;
+            /** Telescope */
+            telescope?: string | null;
+            /** Within Km */
+            within_km?: number | null;
+        };
         /** SearchCollection */
         SearchCollection: {
             /** Datasets */
@@ -6398,7 +6434,24 @@ export interface operations {
     };
     apps_catalogue_api_calibration_blocking: {
         parameters: {
-            query?: never;
+            query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6438,7 +6491,24 @@ export interface operations {
     };
     apps_processing_api_calibration_shopping: {
         parameters: {
-            query?: never;
+            query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6459,6 +6529,22 @@ export interface operations {
     apps_processing_api_calibration_shopping_csv: {
         parameters: {
             query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
                 frames?: number;
             };
             header?: never;
@@ -6479,6 +6565,22 @@ export interface operations {
     apps_processing_api_calibration_shopping_nina: {
         parameters: {
             query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
                 frames?: number;
             };
             header?: never;
@@ -8265,6 +8367,22 @@ export interface operations {
     apps_catalogue_api_map_map_places: {
         parameters: {
             query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
                 since?: string | null;
                 until?: string | null;
             };
@@ -8768,7 +8886,24 @@ export interface operations {
     };
     apps_processing_api_review: {
         parameters: {
-            query?: never;
+            query?: {
+                site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;

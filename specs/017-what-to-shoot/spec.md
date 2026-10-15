@@ -33,3 +33,10 @@ exportable to NINA. Flats are listed but never scheduled: they depend on the rig
 
 The NINA import format is the simple sequencer's XML target file; if NINA's current version doesn't import it, an
 Advanced Sequencer export follows (to be confirmed with the owner's NINA).
+
+### Amendment 2026-10-15
+
+- **017-DR-01** Only lights still in the library count (catalogued, in a dataset): binned or ignored subs kept their
+  old "waiting" record and showed as rows with no datasets (385 binned second-Hα subs). The list takes the shared
+  scope (spec 018), so the NINA file can be for one rig, filter or date range.
+

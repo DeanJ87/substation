@@ -18,6 +18,7 @@ import { ReconciliationList } from '../features/reconciliation/ReconciliationLis
 import { CalibrationLibrary } from '../features/calibration/CalibrationLibrary'
 import { CalibrationSetView } from '../features/calibration/CalibrationSetView'
 import { ToShoot } from '../features/calibration/ToShoot'
+import { readScope, type Scope } from '../features/scope/scope'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { BinPage } from '../features/bin/BinPage'
 import { MapView } from '../features/map/MapView'
@@ -121,6 +122,7 @@ const calibrationToShoot = createRoute({
   getParentRoute: () => app,
   path: '/calibration/to-shoot',
   component: ToShoot,
+  validateSearch: (q: Record<string, unknown>): Scope => readScope(q), // spec 018
 })
 const calibrationSet = createRoute({
   getParentRoute: () => app,

@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from ninja import Query
 
 from apps.catalogue.api import router
 from apps.catalogue.models import (
@@ -27,6 +28,7 @@ from apps.catalogue.models import (
     Verdict,
     VerdictSource,
 )
+from apps.catalogue.scope import Scope
 from apps.catalogue.services.tracking import touch_dataset
 from substation.api import ApiError, Schema
 from substation.events.emit import emit
@@ -910,11 +912,13 @@ class ReviewGroup(Schema):
 
 
 @router.get("/review", response=list[ReviewGroup])
-def review(request):
+def review(request, scope: Query[Scope]):
     """Flagged subs (spec 003 A2): rejected, down-weighted or near a threshold, grouped by dataset and night,
     newest first. Subs the user already decided are left out."""
     groups: dict[tuple[int, date | None], list[SubOut]] = defaultdict(list)
-    qs = _lights(dataset__isnull=False, grade__isnull=False)
+    from apps.catalogue.scope import apply
+
+    qs = apply(_lights(dataset__isnull=False, grade__isnull=False), scope, "frame")
     for f in qs:
         s = sub_out(f)
         if s.manual or s.source == "nina":

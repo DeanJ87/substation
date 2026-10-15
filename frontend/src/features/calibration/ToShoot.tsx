@@ -2,13 +2,15 @@
 // them, biggest win first. Darks and biases download as a NINA sequence; flats are listed with their nights, to be
 // shot with the rig as it was then.
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import { Collapsible } from '../../components/Collapsible'
 import { EmptyState, ErrorState, PageLoading } from '../../components/ui'
 import { integrationText, nightText } from '../format'
+import { ScopeBar } from '../scope/ScopeBar'
+import { scopeParams, scopeQuery } from '../scope/scope'
 import v from '../v2/v2.module.css'
 import s from './toShoot.module.css'
 
@@ -44,10 +46,16 @@ function nightsText(nights: string[]) {
   return `${nightText(nights[0])} to ${nightText(nights[nights.length - 1])} (${nights.length} nights)`
 }
 
+const route = getRouteApi('/app/calibration/to-shoot')
+
 export function ToShoot() {
+  const scope = route.useSearch()
+  const navigate = useNavigate()
   const q = useQuery({
-    queryKey: ['calibration-shopping'],
-    queryFn: async () => unwrap(await api.GET('/calibration/shopping')),
+    queryKey: ['calibration-shopping', scope],
+    queryFn: async () =>
+      unwrap(await api.GET('/calibration/shopping', { params: { query: scopeQuery(scope) } })),
+    placeholderData: (prev) => prev,
   })
   const [frames, setFrames] = useState(30)
   if (q.isPending) return <PageLoading />
@@ -56,6 +64,8 @@ export function ToShoot() {
   const darks = needs.filter((n) => n.kind === 'dark' || n.kind === 'bias')
   const flats = needs.filter((n) => n.kind === 'flat')
   const n = Math.max(1, Math.min(500, frames || 1))
+  const narrowed = scopeParams(scope)
+  const also = narrowed ? `&${narrowed}` : ''
   return (
     <div className={s.page}>
       <p className={s.crumbs}>
@@ -69,9 +79,16 @@ export function ToShoot() {
           </p>
         </div>
       </header>
+      <ScopeBar
+        scope={scope}
+        filters={[...new Set(needs.filter((x) => x.filter).map((x) => x.filter))]}
+        onChange={(next) => void navigate({ to: '/calibration/to-shoot', search: next, replace: true })}
+      />
 
       {!needs.length && !others.length && (
-        <EmptyState title="Nothing to shoot">Every sub has the calibration it needs.</EmptyState>
+        <EmptyState title="Nothing to shoot">
+          {narrowed ? 'Nothing waiting within these filters.' : 'Every sub has the calibration it needs.'}
+        </EmptyState>
       )}
 
       {darks.length > 0 && (
@@ -92,10 +109,10 @@ export function ToShoot() {
                 className={s.num}
               />
             </label>
-            <a className={v.pill} href={`/api/v1/calibration/shopping/nina.xml?frames=${n}`} download>
+            <a className={v.pill} href={`/api/v1/calibration/shopping/nina.xml?frames=${n}${also}`} download>
               Download NINA sequence
             </a>
-            <a className={v.pill} href={`/api/v1/calibration/shopping.csv?frames=${n}`} download>
+            <a className={v.pill} href={`/api/v1/calibration/shopping.csv?frames=${n}${also}`} download>
               Download CSV
             </a>
             <span className="muted">

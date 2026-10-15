@@ -7,9 +7,11 @@ from typing import Literal
 
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404
+from ninja import Query
 
 from apps.catalogue.api import router
 from apps.catalogue.models import CalibrationSet, Copy, Frame, FrameStatus, FrameType
+from apps.catalogue.scope import Scope
 from substation.api import Schema
 from substation.events.emit import emit
 from substation.tasks import PRIORITY_BULK, enqueue
@@ -297,11 +299,11 @@ def _refs(d: dict[int, str]) -> list[DatasetRef]:
 
 
 @router.get("/calibration/shopping", response=ShoppingOut)
-def shopping(request):
+def shopping(request, scope: Query[Scope]):
     """The darks, biases and flats that would release the lights waiting for calibration, biggest win first."""
     from .shopping import FRAMES, shopping_list
 
-    needs, others = shopping_list()
+    needs, others = shopping_list(scope)
     return ShoppingOut(
         needs=[
             NeedOut(**{**n.__dict__, "nights": sorted(n.nights), "datasets": _refs(n.datasets)})
@@ -313,21 +315,21 @@ def shopping(request):
 
 
 @router.get("/calibration/shopping/nina.xml", response={200: None})
-def shopping_nina(request, frames: int = 30):
+def shopping_nina(request, scope: Query[Scope], frames: int = 30):
     """The darks and biases to shoot, as a NINA sequence file."""
     from .shopping import nina_darks_xml, shopping_list
 
     resp = HttpResponse(
-        nina_darks_xml(shopping_list()[0], max(1, min(frames, 500))), content_type="application/xml"
+        nina_darks_xml(shopping_list(scope)[0], max(1, min(frames, 500))), content_type="application/xml"
     )
     resp["Content-Disposition"] = 'attachment; filename="substation-calibration.xml"'
     return resp
 
 
 @router.get("/calibration/shopping.csv", response={200: None})
-def shopping_csv(request, frames: int = 30):
+def shopping_csv(request, scope: Query[Scope], frames: int = 30):
     from .shopping import csv_text, shopping_list
 
-    resp = HttpResponse(csv_text(shopping_list()[0], max(1, min(frames, 500))), content_type="text/csv")
+    resp = HttpResponse(csv_text(shopping_list(scope)[0], max(1, min(frames, 500))), content_type="text/csv")
     resp["Content-Disposition"] = 'attachment; filename="substation-calibration.csv"'
     return resp

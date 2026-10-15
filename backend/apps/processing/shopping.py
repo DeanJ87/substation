@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from xml.sax.saxutils import escape
 
-from apps.catalogue.models import Frame
+from apps.catalogue.models import Frame, FrameStatus, FrameType
 
 from .matching import dims
 from .models import CalibrationMatch, MatchState
@@ -72,12 +72,19 @@ def _key(kind: str, f: Frame) -> tuple:
     return (kind, f.camera or "", f.exptime_s, f.gain, f.offset, f.xbin or 1, _temp(f), size)
 
 
-def shopping_list() -> tuple[list[Need], list[Other]]:
+def shopping_list(scope=None) -> tuple[list[Need], list[Other]]:  # noqa: ANN001
     needs: dict[tuple, Need] = {}
     others: dict[str, Other] = defaultdict(lambda: Other(""))
-    rows = CalibrationMatch.objects.filter(state=MatchState.AWAITING).select_related(
-        "frame", "frame__night", "frame__dataset"
+    from apps.catalogue.scope import apply
+
+    # only lights still in the library: a binned or ignored sub keeps its old match row, but nothing waits on it
+    waiting = CalibrationMatch.objects.filter(
+        state=MatchState.AWAITING,
+        frame__status=FrameStatus.CATALOGUED,
+        frame__frame_type=FrameType.LIGHT,
+        frame__dataset__isnull=False,
     )
+    rows = apply(waiting, scope, "match").select_related("frame", "frame__night", "frame__dataset")
     for m in rows.prefetch_related("frame__headers"):
         f = m.frame
         label = f.dataset.display_name if f.dataset else ""

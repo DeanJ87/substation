@@ -2,7 +2,7 @@
 
 **Feature Branch**: `poc-substation`
 **Created**: 2026-10-15
-**Status**: Proposed 2026-10-15; not built
+**Status**: In progress 2026-10-15: the scope and its first endpoints built
 **Input**: Owner suggestion, 2026-10-15: the endpoints could share the same inputs (place, date, date range,
 camera, rig, project and so on), so the interfaces and the architecture stay consistent.
 
@@ -33,7 +33,7 @@ and one place in the backend that turns it into a query for each kind of record.
 |---|---|
 | `site` | a place (its site key); or `lat`, `lon`, `within_km` for "near here" |
 | `date` | one night (the observing night, not the calendar day) |
-| `from`, `to` | a range of nights, either end open |
+| `date_from`, `date_to` | a range of nights, either end open (`from` can't be a parameter name in the backend's language) |
 | `camera` | camera id (cameras become records, as rigs are) |
 | `rig` | rig id |
 | `telescope` | telescope name, until telescopes are records too |
@@ -68,3 +68,14 @@ and one place in the backend that turns it into a query for each kind of record.
 3. Endpoints with their own names: frames, datasets, library stats, calibration sets, nights.
 4. Frontend `useScope()`, the shared filter bar, links that carry the scope; remove browser-side filtering.
 5. Cameras as records (rigs already are), so `camera` is an id like `rig`.
+
+### Amendment 2026-10-15: as built so far
+
+- **018-DR-01** The range is `date_from` / `date_to` (Library stats already used those names); the map's `since` /
+  `until` (spec 015) are accepted as the older names. `camera` and `telescope` are names until they are records.
+- **018-DR-02** `q` reads a date the way search does ("october", "last night") and otherwise matches the target,
+  dataset or collection name.
+- **018-DR-03** Built: the scope and `apply()` for frames, datasets, nights and calibration matches; What to shoot
+  (and its NINA and CSV downloads), Waiting for calibration, Review and the map take it. What to shoot has the
+  shared filter bar, in its address.
+

@@ -6,9 +6,11 @@ from collections import defaultdict
 from datetime import date
 
 from django.db.models import Count
+from ninja import Query
 
 from apps.catalogue.api import router
 from apps.catalogue.models import Dataset, Frame, FrameStatus, FrameType
+from apps.catalogue.scope import Scope
 from substation.api import Schema
 
 NEAR_DEG = 0.01  # lights within about a kilometre of a place are that place
@@ -64,13 +66,15 @@ def _picture(dataset_ids: list[int]) -> str | None:
 
 
 @router.get("/map", response=MapOut)
-def map_places(request, since: date | None = None, until: date | None = None):
-    """Every place subs were shot; with `since`/`until` (nights, inclusive) only that period (spec 015 FR-002)."""
+def map_places(request, scope: Query[Scope], since: date | None = None, until: date | None = None):
+    """Every place subs were shot, narrowed by the shared scope (spec 018: nights, rig, filter, collection…);
+    `since`/`until` are the older names for `date_from`/`date_to` (spec 015 FR-002)."""
+    from .scope import apply
+
+    scope.date_from = scope.date_from or since
+    scope.date_to = scope.date_to or until
     lights = Frame.objects.filter(frame_type=FrameType.LIGHT, site_lat__isnull=False, site_lon__isnull=False)
-    if since:
-        lights = lights.filter(night__date__gte=since)
-    if until:
-        lights = lights.filter(night__date__lte=until)
+    lights = apply(lights, scope, "frame")
     rows = (
         lights.exclude(status__in=[FrameStatus.BINNED, FrameStatus.DELETED, FrameStatus.IGNORED])
         .exclude(site_lat=0, site_lon=0)

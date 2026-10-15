@@ -4,10 +4,12 @@ see substation.api."""
 from datetime import date, datetime
 
 from django.shortcuts import get_object_or_404
+from ninja import Query
 
 from substation.api import ApiError, Schema
 
 from .api import FrameSummaryOut, frame_summary, router
+from .scope import Scope
 from .services.calibration_queries import calibration_sets, masters, value_sources
 
 
@@ -216,7 +218,7 @@ def set_window(request, sha256: str, body: WindowIn):
 
 
 @router.get("/calibration/blocking", response=list[BlockingOut])
-def blocking(request):
+def blocking(request, scope: Query[Scope]):
     """What is stopping grading (002-DR-02): lights waiting for calibration, per dataset and night, with what
     SubStation is looking for."""
     from collections import Counter
@@ -226,9 +228,12 @@ def blocking(request):
     from .models import Dataset
 
     n: Counter = Counter()
-    for ds, night, reason in CalibrationMatch.objects.filter(
-        state="awaiting", frame__dataset__isnull=False
-    ).values_list("frame__dataset_id", "frame__night__date", "reason"):
+    from .scope import apply
+
+    waiting = apply(
+        CalibrationMatch.objects.filter(state="awaiting", frame__dataset__isnull=False), scope, "match"
+    )
+    for ds, night, reason in waiting.values_list("frame__dataset_id", "frame__night__date", "reason"):
         n[(ds, night, reason)] += 1
     names = {
         d.pk: d for d in Dataset.objects.filter(pk__in={k[0] for k in n}).select_related("rig", "collection")

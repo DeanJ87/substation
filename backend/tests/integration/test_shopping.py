@@ -88,3 +88,12 @@ def test_the_darks_export_as_a_nina_sequence(admin_client):
     assert b"-20 \xc2\xb0C" in r.content  # the set point, in the row's comment
     csv = admin_client.get("/api/v1/calibration/shopping.csv").content.decode()
     assert csv.splitlines()[0].startswith("kind,camera") and "600" in csv
+
+
+def test_binned_lights_are_not_on_the_list(admin_client):
+    """2026-10-15: 385 binned second-Hα subs still counted, as a row with no datasets."""
+    ds = Dataset.objects.create(group_key="m42", target="M 42", filter_norm="Ha", display_name="M 42 · Ha")
+    night = Night.objects.create(site_key="55,-1.7", date=date(2026, 1, 10))
+    f = _light(1, ds, night, "Awaiting calibration: no 120 s dark within 2 °C of 0 °C.", temp=0)
+    Frame.objects.filter(pk=f.pk).update(status=FrameStatus.BINNED)
+    assert admin_client.get("/api/v1/calibration/shopping").json()["needs"] == []
