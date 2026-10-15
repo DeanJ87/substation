@@ -268,7 +268,7 @@ function NightSets({
       defaultOpen={open}
     >
       <div className={s.tableWrap}>
-        <table className={ui.table}>
+        <table className={`${ui.table} cards`}>
           <thead>
             <tr>
               <th className={s.chooseCell}>
@@ -316,23 +316,31 @@ function NightSets({
                     {TYPE[cs.type] ?? cs.type}
                   </Link>
                 </td>
-                <td>
+                <td data-label="Filter">
                   {cs.filter ??
                     Object.entries(cs.filter_blocks)
                       .map(([f, n]) => `${f} ×${n}`)
                       .join(', ')}
                 </td>
-                <td className={`mono ${s.num}`}>{cs.exptime_s} s</td>
-                <td className={`mono ${s.num}`}>{cs.frame_count}</td>
-                <td className={`mono ${s.num}`}>
+                <td className={`mono ${s.num}`} data-label="Exposure">
+                  {cs.exptime_s} s
+                </td>
+                <td className={`mono ${s.num}`} data-label="Frames">
+                  {cs.frame_count}
+                </td>
+                <td className={`mono ${s.num}`} data-label="Session (UTC)">
                   {hhmm(cs.session_start_utc)}–{hhmm(cs.session_end_utc)}
                 </td>
-                <td className={`mono ${s.num}`}>
+                <td className={`mono ${s.num}`} data-label="Gain / offset">
                   {cs.gain ?? '—'} / {cs.offset ?? '—'}
                 </td>
-                <td className={`mono ${s.num}`}>{cs.binning}</td>
-                <td className={s.num}>{temp(cs.set_temp_c)}</td>
-                <td className={s.nowrap}>
+                <td className={`mono ${s.num}`} data-label="Bin">
+                  {cs.binning}
+                </td>
+                <td className={s.num} data-label="Set temp">
+                  {temp(cs.set_temp_c)}
+                </td>
+                <td className={s.nowrap} data-label="Master">
                   {cs.built_state && BUILT[cs.built_state] ? (
                     <VerdictBadge state={BUILT[cs.built_state][0]} label={BUILT[cs.built_state][1]} />
                   ) : (
@@ -608,7 +616,7 @@ function MastersTable({
         <EmptyState title="No masters here">Build missing masters, or add masters made elsewhere.</EmptyState>
       ) : (
         <div className={`${s.tableWrap} ${s.pane}`}>
-          <table className={ui.table}>
+          <table className={`${ui.table} cards`}>
             <thead>
               <tr>
                 <th>
@@ -634,7 +642,7 @@ function MastersTable({
                   onClick={() => onOpen(m.sha256)}
                   onKeyDown={(e) => e.key === 'Enter' && onOpen(m.sha256)}
                 >
-                  <td className={s.thumbCell}>
+                  <td className={s.thumbCell} data-label="">
                     <Zoomable
                       target={{ kind: 'sub', sha: m.sha256 }}
                       name={TYPE[m.frame_type] ?? m.frame_type}
@@ -646,8 +654,8 @@ function MastersTable({
                       )}
                     </Zoomable>
                   </td>
-                  <td>{TYPE[m.frame_type] ?? m.frame_type}</td>
-                  <td>
+                  <td data-label="Type">{TYPE[m.frame_type] ?? m.frame_type}</td>
+                  <td data-label="Matches" data-wide>
                     <span className="mono">
                       {[
                         m.filter,
@@ -660,7 +668,7 @@ function MastersTable({
                     </span>
                     <div className="muted">{rigOf(m)}</div>
                   </td>
-                  <td className={`mono ${s.num}`}>
+                  <td className={`mono ${s.num}`} data-label="Frames">
                     {m.built_set_id ? (
                       <Link
                         to="/calibration/sets/$id"
@@ -673,13 +681,15 @@ function MastersTable({
                       (m.frames ?? '—')
                     )}
                   </td>
-                  <td className={s.nowrap}>{m.night ? nightText(m.night) : '—'}</td>
-                  <td>
+                  <td className={s.nowrap} data-label="Created">
+                    {m.night ? nightText(m.night) : '—'}
+                  </td>
+                  <td data-label="Used by">
                     {m.used_sessions
                       ? `${m.used_datasets} dataset${m.used_datasets === 1 ? '' : 's'} · ${m.used_sessions} session${m.used_sessions === 1 ? '' : 's'}`
                       : '—'}
                   </td>
-                  <td>
+                  <td data-label="State" data-wide>
                     {m.missing.length > 0 ? (
                       <Link to="/reconcile" onClick={(e) => e.stopPropagation()}>
                         <VerdictBadge state="recon" label={`Needs ${m.missing.join(', ')}`} />

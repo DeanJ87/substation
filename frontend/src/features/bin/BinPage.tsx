@@ -181,7 +181,7 @@ export function BinPage() {
             )}
           </div>
           <div className={s.pane}>
-            <table className={s.table}>
+            <table className={`${s.table} cards`}>
               <thead>
                 <tr>
                   <th className={s.check}>
@@ -207,7 +207,7 @@ export function BinPage() {
                   const size = bytes(r.size_bytes)
                   return (
                     <tr key={r.sha256} className={picked.has(r.sha256) ? s.picked : ''}>
-                      <td className={s.check}>
+                      <td className={s.check} data-label="">
                         <input
                           type="checkbox"
                           aria-label={`Select ${r.name}`}
@@ -215,7 +215,7 @@ export function BinPage() {
                           onChange={() => toggle(r.sha256)}
                         />
                       </td>
-                      <td className={s.thumbCell}>
+                      <td className={s.thumbCell} data-label="">
                         <img
                           className={s.thumb}
                           src={`/api/v1/frames/${r.sha256}/glance`}
@@ -232,15 +232,17 @@ export function BinPage() {
                           {r.target ? ` · ${r.target}` : ''}
                         </div>
                       </td>
-                      <td className={s.why}>
+                      <td className={s.why} data-label="Why" data-wide>
                         {r.reason || 'No reason given'}
                         {r.by ? <div className={v.muted}>by {r.by}</div> : null}
                       </td>
-                      <td className={s.nowrap}>{day(r.binned_at)}</td>
-                      <td className={s.nowrap}>
+                      <td className={s.nowrap} data-label="Binned">
+                        {day(r.binned_at)}
+                      </td>
+                      <td className={s.nowrap} data-label="Goes">
                         {r.purge_after ? `deleted ${day(r.purge_after)}` : 'hidden only'}
                       </td>
-                      <td className={`${s.num} ${v.mono}`}>
+                      <td className={`${s.num} ${v.mono}`} data-label="Size">
                         {size.value} {size.unit}
                       </td>
                     </tr>

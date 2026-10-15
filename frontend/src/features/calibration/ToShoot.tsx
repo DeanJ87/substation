@@ -123,7 +123,7 @@ export function ToShoot() {
             </span>
           </div>
           <div className={s.scroll}>
-            <table className={s.table}>
+            <table className={`${s.table} cards`}>
               <thead>
                 <tr>
                   <th scope="col">Frame</th>
@@ -142,15 +142,17 @@ export function ToShoot() {
                     <td>
                       <strong>{d.kind === 'bias' ? 'Bias' : `${d.exptime_s} s dark`}</strong>
                     </td>
-                    <td>{d.camera || 'Unknown camera'}</td>
-                    <td className={v.mono}>{d.kind === 'bias' ? '–' : temp(d.temp_c)}</td>
-                    <td className={v.mono}>
+                    <td data-label="Camera">{d.camera || 'Unknown camera'}</td>
+                    <td className={v.mono} data-label="Cool to">
+                      {d.kind === 'bias' ? '–' : temp(d.temp_c)}
+                    </td>
+                    <td className={v.mono} data-label="Settings" data-wide>
                       {[gainText(d), `bin ${d.xbin}`, d.size].filter(Boolean).join(' · ')}
                     </td>
-                    <td className={v.mono}>
+                    <td className={v.mono} data-label="Releases">
                       {subsText(d.subs)} · {integrationText(d.integration_s)}
                     </td>
-                    <td>
+                    <td data-label="For" data-wide>
                       <Datasets list={d.datasets} />
                     </td>
                   </tr>

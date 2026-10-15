@@ -337,3 +337,23 @@ button.chip[aria-pressed='true'] {
   align-self: flex-start;
   margin-top: 3px;
 }
+
+/* Phone (007-DR-29, B44): a queued job reads in full, its name and target wrapping, with Run next and Cancel on a
+   line of their own; a recent job wraps too, its time beneath. */
+@media (max-width: 599px) {
+  .queue li,
+  .recent li {
+    grid-template-columns: 24px minmax(0, 1fr);
+    align-items: start;
+    row-gap: 6px;
+  }
+  .queue .rowText,
+  .recent .rowText {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .queue .rowActions,
+  .recent li > :last-child {
+    grid-column: 2;
+  }
+}

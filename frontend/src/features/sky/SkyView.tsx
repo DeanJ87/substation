@@ -827,7 +827,7 @@ export function SkyTable({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => v
     <details className={s.table}>
       <summary>Every sub on the sky, as a table</summary>
       <div className={s.tableScroll}>
-        <table>
+        <table className="cards">
           <thead>
             <tr>
               <th scope="col">Time</th>
@@ -846,11 +846,13 @@ export function SkyTable({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => v
                     {timeText(x.time)}
                   </button>
                 </td>
-                <td>{sky.tracks[x.track].label}</td>
-                <td>{Math.round(x.alt)}°</td>
-                <td>{Math.round(x.az)}°</td>
-                <td>{VERDICT[x.verdict ?? ''] ?? 'Not graded'}</td>
-                <td>{SOURCE[x.source] ?? x.source}</td>
+                <td data-label="Track" data-wide>
+                  {sky.tracks[x.track].label}
+                </td>
+                <td data-label="Altitude">{Math.round(x.alt)}°</td>
+                <td data-label="Azimuth">{Math.round(x.az)}°</td>
+                <td data-label="Grade">{VERDICT[x.verdict ?? ''] ?? 'Not graded'}</td>
+                <td data-label="Pointing from">{SOURCE[x.source] ?? x.source}</td>
               </tr>
             ))}
           </tbody>

@@ -288,7 +288,7 @@ export function QualityTab({
         <section className={`${v.card} ${tb.flush}`}>
           <Collapsible id="quality-subs" title="Subs" meta={nightSubs.length.toLocaleString('en-GB')}>
             <div className={tb.pane}>
-              <table className={`${v.table} ${tb.table}`}>
+              <table className={`${v.table} ${tb.table} cards`}>
                 <thead>
                   <tr>
                     {th('grade', 'Grade')}
@@ -340,7 +340,7 @@ export function QualityTab({
                         </span>
                         {x.manual && <span className={s.manual}>M</span>}
                       </td>
-                      <td className={`${v.mono} ${tb.nowrap}`}>
+                      <td className={`${v.mono} ${tb.nowrap}`} data-label="Time">
                         {chosen === ALL && x.night
                           ? `${new Date(`${x.night}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} `
                           : ''}
@@ -348,20 +348,30 @@ export function QualityTab({
                           {timeText(x.time).slice(0, 5)}
                         </Glance>
                       </td>
-                      <td className={`${v.mono} ${tb.num}`}>{fwhmText(x)}</td>
-                      <td className={`${v.mono} ${tb.num}`}>{num(x.stars)}</td>
-                      <td className={`${v.mono} ${tb.num}`}>{num(x.background)}</td>
-                      <td className={`${v.mono} ${tb.num}`}>{x.sqm ? x.sqm.toFixed(2) : '—'}</td>
-                      <td className={`${v.mono} ${tb.num}`}>
+                      <td className={`${v.mono} ${tb.num}`} data-label="FWHM">
+                        {fwhmText(x)}
+                      </td>
+                      <td className={`${v.mono} ${tb.num}`} data-label="Stars">
+                        {num(x.stars)}
+                      </td>
+                      <td className={`${v.mono} ${tb.num}`} data-label="BG">
+                        {num(x.background)}
+                      </td>
+                      <td className={`${v.mono} ${tb.num}`} data-label="SQM">
+                        {x.sqm ? x.sqm.toFixed(2) : '—'}
+                      </td>
+                      <td className={`${v.mono} ${tb.num}`} data-label="Alt">
                         {x.altitude ? `${Math.round(x.altitude)}°` : '—'}
                       </td>
                       {hasFocus && (
-                        <td className={`${v.mono} ${tb.num}`}>
+                        <td className={`${v.mono} ${tb.num}`} data-label="Focus" data-wide>
                           {x.focpos != null ? Math.round(x.focpos) : '—'}
                           {x.foctemp != null && <span className={v.muted}> · {x.foctemp.toFixed(1)} °C</span>}
                         </td>
                       )}
-                      <td className={v.note}>{x.reason ?? x.awaiting_reason ?? ''}</td>
+                      <td className={v.note} data-label="Reason" data-wide>
+                        {x.reason ?? x.awaiting_reason ?? ''}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -144,7 +144,7 @@ export function NightView() {
         </div>
       )}
 
-      <div className={v.readouts}>
+      <div className={`${v.readouts} ${s.readouts}`}>
         <div className={v.readout}>
           <div className={v.readoutLabel}>Integration</div>
           <div className={`${v.readoutValue} ${v.accentValue}`}>{integrationText(integ)}</div>
@@ -345,7 +345,7 @@ function Calibration({ n }: { n: Night }) {
     <section className={v.card} aria-label="Calibration">
       <h2 className={`${v.sectionLabel} ${s.tableTitle}`}>Calibration taken this night</h2>
       <div className={tb.pane}>
-        <table className={`${v.table} ${tb.table}`}>
+        <table className={`${v.table} ${tb.table} cards`}>
           <thead>
             <tr>
               {th('type', 'Type')}
@@ -363,15 +363,19 @@ function Calibration({ n }: { n: Night }) {
                     {TYPE[c.type] ?? c.type}
                   </Link>
                 </td>
-                <td>
+                <td data-label="Filter">
                   {c.filter ??
                     Object.entries(c.filter_blocks)
                       .map(([f, k]) => `${f} ×${k}`)
                       .join(', ')}
                 </td>
-                <td className={`${v.mono} ${tb.num}`}>{c.exptime_s} s</td>
-                <td className={`${v.mono} ${tb.num}`}>{c.frame_count}</td>
-                <td className={`${v.mono} ${tb.num}`}>
+                <td className={`${v.mono} ${tb.num}`} data-label="Exposure">
+                  {c.exptime_s} s
+                </td>
+                <td className={`${v.mono} ${tb.num}`} data-label="Frames">
+                  {c.frame_count}
+                </td>
+                <td className={`${v.mono} ${tb.num}`} data-label="Session">
                   {timeText(c.session_start_utc)}–{timeText(c.session_end_utc)}
                 </td>
               </tr>

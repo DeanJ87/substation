@@ -109,3 +109,29 @@
   gap: 16px;
   margin-top: 16px;
 }
+
+/* On a phone the three readouts (integration, Moon, calibration) share one compact row (007-DR-29, B44) */
+@media (max-width: 599px) {
+  div.readouts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  div.readouts > div {
+    padding: 10px 10px 12px;
+    min-width: 0;
+  }
+  div.readouts > div > div:first-child {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+  div.readouts > div > div:nth-child(2) {
+    font-size: 18px;
+    margin: 4px 0;
+    white-space: nowrap;
+  }
+  div.readouts > div > div:nth-child(3) {
+    font-size: 11px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+}
