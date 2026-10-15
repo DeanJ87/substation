@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { api, unwrap } from '../../api/client'
-import { toast } from '../../components/Toasts'
+import { offerUndo } from '../changes/changes'
 import { useDraft } from './draft'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
@@ -119,7 +119,7 @@ export function useBinFiles() {
   return useMutation({
     mutationFn: async (sha256s: string[]) =>
       unwrap(await api.POST('/bin', { body: { sha256s, reason: '' } })),
-    onSuccess: (r) => toast(binMessage(r)),
+    onSuccess: (r) => offerUndo(qc, binMessage(r), r.change_id),
     onSettled: () => void qc.invalidateQueries(),
     meta: { failed: "Couldn't bin the files" },
   })

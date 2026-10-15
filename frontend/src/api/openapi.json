@@ -87,6 +87,45 @@
     "title": "ActivityOut",
     "type": "object"
    },
+   "AgreeIn": {
+    "properties": {
+     "dataset_id": {
+      "title": "Dataset Id",
+      "type": "integer"
+     },
+     "night": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Night"
+     },
+     "sha256s": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sha256S"
+     }
+    },
+    "required": [
+     "dataset_id"
+    ],
+    "title": "AgreeIn",
+    "type": "object"
+   },
    "AnnotationOut": {
     "properties": {
      "alias": {
@@ -319,6 +358,17 @@
       "default": 0,
       "title": "Binned",
       "type": "integer"
+     },
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
      },
      "hidden": {
       "default": 0,
@@ -850,6 +900,63 @@
      "note"
     ],
     "title": "CandidateOut",
+    "type": "object"
+   },
+   "ChangeOut": {
+    "properties": {
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "can_undo": {
+      "title": "Can Undo",
+      "type": "boolean"
+     },
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "summary": {
+      "title": "Summary",
+      "type": "string"
+     },
+     "undone_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Undone At"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "summary",
+     "count",
+     "created_at",
+     "undone_at",
+     "by",
+     "can_undo"
+    ],
+    "title": "ChangeOut",
     "type": "object"
    },
    "ClassificationIn": {
@@ -8865,6 +8972,23 @@
     "title": "SubOut",
     "type": "object"
    },
+   "UndoneOut": {
+    "properties": {
+     "change": {
+      "$ref": "#/components/schemas/ChangeOut"
+     },
+     "note": {
+      "title": "Note",
+      "type": "string"
+     }
+    },
+    "required": [
+     "note",
+     "change"
+    ],
+    "title": "UndoneOut",
+    "type": "object"
+   },
    "UpdatedOut": {
     "properties": {
      "updated": {
@@ -9042,6 +9166,17 @@
    },
    "VerdictUpdatedOut": {
     "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
      "updated": {
       "title": "Updated",
       "type": "integer"
@@ -10001,6 +10136,96 @@
      }
     ],
     "summary": "Pending Recalibration",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/changes": {
+   "get": {
+    "description": "Your latest changes, newest first (everyone's, for an admin who asks).",
+    "operationId": "apps_catalogue_api_changes_list_changes",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "everyone",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Everyone",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ChangeOut"
+         },
+         "title": "Response",
+         "type": "array"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "List Changes",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/changes/{id}/undo": {
+   "post": {
+    "operationId": "apps_catalogue_api_changes_undo_change",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UndoneOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Undo Change",
     "tags": [
      "catalogue"
     ]
@@ -12039,6 +12264,44 @@
      }
     ],
     "summary": "List Frames",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/frames/agree": {
+   "post": {
+    "description": "Agree with the automatic grades of flagged subs (spec 016): each becomes your own verdict, the same as\nthe grade, so it leaves the review list. Subs you already decided are left alone.",
+    "operationId": "apps_processing_api_agree_with_grades",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AgreeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VerdictUpdatedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Agree With Grades",
     "tags": [
      "catalogue"
     ]

@@ -23,6 +23,7 @@ class BinOut(Schema):
     hidden: int = 0  # in a library SubStation may not delete in: only hidden
     restored: int = 0
     not_restored: int = 0
+    change_id: int | None = None  # spec 016: undo it with POST /changes/{id}/undo
 
 
 class BinRow(Schema):
@@ -59,13 +60,30 @@ def _by(request) -> str:  # noqa: ANN001
     return getattr(request.user, "username", "") or ""
 
 
+def _bin_and_record(request, shas: list[str], reason: str) -> BinOut:  # noqa: ANN001
+    """Bin, and record which files went so the change can be undone (spec 016)."""
+    from apps.catalogue.services.changes import record
+
+    before = set(
+        Frame.objects.filter(pk__in=shas).exclude(status=FrameStatus.BINNED).values_list("pk", flat=True)
+    )
+    out = BinOut(**bin_frames(shas, reason, by=_by(request)))
+    went = list(Frame.objects.filter(pk__in=before, status=FrameStatus.BINNED).values_list("pk", flat=True))
+    if went:
+        n = len(went)
+        out.change_id = record(
+            request.user, "bin", f"Binned {n:,} file{'s' if n != 1 else ''}", n, sha256s=went
+        ).pk
+    return out
+
+
 @router.post("/bin", response=BinOut)
 def bin_files(request, body: BinIn):
     """Bin files by hand: moved to their library's quarantine where SubStation may delete, else hidden."""
     _no_viewers(request)
     if not body.sha256s:
         raise ApiError(422, "invalid", "Choose at least one file.")
-    return BinOut(**bin_frames(body.sha256s, body.reason.strip() or "Binned by hand", by=_by(request)))
+    return _bin_and_record(request, body.sha256s, body.reason.strip() or "Binned by hand")
 
 
 @router.post("/bin/restore", response=BinOut)
@@ -91,7 +109,7 @@ def bin_rejected(request, id: int):  # noqa: A002
             g = None
         if effective(f, list(f.verdicts.all()), g).verdict == "reject":
             shas.append(f.pk)
-    return BinOut(**bin_frames(shas, "Rejected; binned by hand", by=_by(request)))
+    return _bin_and_record(request, shas, "Rejected; binned by hand")
 
 
 @router.post("/ignore-rules/{id}/bin", response=BinOut)

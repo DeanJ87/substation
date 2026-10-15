@@ -310,3 +310,7 @@ button.chip[aria-pressed='true'] {
   display: flex;
   gap: 6px;
 }
+/* spec 016: your changes carry an Undo at the end of the row */
+.changes li {
+  grid-template-columns: 24px 1fr auto auto;
+}

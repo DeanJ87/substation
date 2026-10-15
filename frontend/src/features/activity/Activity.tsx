@@ -4,6 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { Collapsible } from '../../components/Collapsible'
+import { useChanges, useUndo } from '../changes/changes'
 import { toast } from '../../components/Toasts'
 import { LoadMore } from '../../components/LoadMore'
 import { Link, useRouter } from '@tanstack/react-router'
@@ -343,7 +344,44 @@ export function Activity() {
           </Collapsible>
         </section>
       </div>
+      <YourChanges />
     </div>
+  )
+}
+
+/** Spec 016: what you changed by hand lately, each with Undo (Ctrl/Cmd+Z undoes the latest). */
+function YourChanges() {
+  const q = useChanges(10)
+  const undo = useUndo()
+  const list = q.data ?? []
+  if (!list.length) return null
+  return (
+    <section className={v.card}>
+      <Collapsible id="activity-changes" title="Your changes" meta={<kbd>Ctrl/⌘ Z</kbd>}>
+        <ul className={`${s.recent} ${s.changes}`}>
+          {list.map((c) => (
+            <li key={c.id}>
+              <span className={c.undone_at ? v.muted : v.ok}>{c.undone_at ? '↶' : '✓'}</span>
+              <div className={`${s.rowText} ${c.undone_at ? v.muted : ''}`}>
+                {c.summary}
+                {c.undone_at && ' (undone)'}
+              </div>
+              <span className={`${v.mono} ${v.muted}`}>{hhmm(c.created_at)}</span>
+              {c.can_undo && (
+                <button
+                  type="button"
+                  className={v.pill}
+                  disabled={undo.isPending}
+                  onClick={() => undo.mutate(c.id)}
+                >
+                  Undo
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Collapsible>
+    </section>
   )
 }
 

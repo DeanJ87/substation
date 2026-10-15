@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { optimistic, patchDeep, patchItems } from '../../api/optimistic'
 import { toast } from '../../components/Toasts'
+import { offerUndo } from '../changes/changes'
 import { useRef } from 'react'
 import { api, unwrap } from '../../api/client'
 import { useLiveEvents } from '../../api/events'
@@ -145,6 +146,10 @@ export function useVerdict() {
   return useMutation({
     mutationFn: async (body: VerdictBody) => unwrap(await api.POST('/frames/verdict', { body })),
     meta: { failed: "Couldn't save the verdict" },
+    // spec 016: a change to several subs offers Undo (one sub has its own keys: U reverts it)
+    onSuccess: (r, b) => {
+      if (r.updated > 1) offerUndo(qc, verdictText(b.verdict, r.updated), r.change_id)
+    },
     // the same subs judged again wait for the previous answer, so the last click wins
     scope: { id: 'verdict' },
     ...optimistic<VerdictBody>(qc, (b) => [
@@ -490,3 +495,13 @@ export function useCalibrationActions() {
 export const qaThumbUrl = (sha: string) => `/api/v1/calibration-qa/${sha}/thumb`
 export const builtPreviewUrl = (id: number, kind: 'screen' | 'thumb' | 'motes' | 'cmp' = 'screen') =>
   `/api/v1/built-masters/${id}/preview?kind=${kind}`
+
+const VERDICT_DONE = {
+  accept: 'Accepted',
+  keep: 'Down-weighted',
+  reject: 'Rejected',
+  auto: 'Cleared overrides on',
+}
+export function verdictText(verdict: keyof typeof VERDICT_DONE, n: number) {
+  return `${VERDICT_DONE[verdict]} ${n.toLocaleString('en-GB')} subs`
+}

@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import s from './Toasts.module.css'
 
-type Toast = { id: number; text: string; bad: boolean }
+// spec 016: a toast can carry one action (Undo); it then stays a little longer
+export type ToastAction = { label: string; run: () => void }
+type Toast = { id: number; text: string; bad: boolean; action?: ToastAction }
 let next = 1
 let listeners: ((t: Toast[]) => void)[] = []
 let toasts: Toast[] = []
@@ -12,19 +14,18 @@ function emit() {
   for (const l of listeners) l(toasts)
 }
 
-export function toast(text: string, bad = false) {
+function dismiss(id: number) {
+  toasts = toasts.filter((x) => x.id !== id)
+  emit()
+}
+
+export function toast(text: string, bad = false, action?: ToastAction) {
   // the same message twice (a spammed button) shows once
   if (toasts.some((t) => t.text === text)) return
-  const t = { id: next++, text, bad }
+  const t = { id: next++, text, bad, action }
   toasts = [...toasts, t].slice(-4)
   emit()
-  setTimeout(
-    () => {
-      toasts = toasts.filter((x) => x.id !== t.id)
-      emit()
-    },
-    bad ? 7000 : 3500,
-  )
+  setTimeout(() => dismiss(t.id), bad || action ? 8000 : 3500)
 }
 
 export function Toasts() {
@@ -39,7 +40,19 @@ export function Toasts() {
     <div className={s.stack} aria-live="polite">
       {list.map((t) => (
         <div key={t.id} className={`${s.toast} ${t.bad ? s.bad : ''}`} role={t.bad ? 'alert' : 'status'}>
-          {t.text}
+          <span>{t.text}</span>
+          {t.action && (
+            <button
+              type="button"
+              className={s.action}
+              onClick={() => {
+                dismiss(t.id)
+                t.action?.run()
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
         </div>
       ))}
     </div>

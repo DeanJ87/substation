@@ -10,6 +10,7 @@ import { Search } from '../components/Search'
 import { Lockup } from '../components/Logo'
 import { WorkFlyout } from '../components/WorkFlyout'
 import { ThemeProvider } from '../design/ThemeContext'
+import { UndoKeys } from '../features/changes/changes'
 import { useQueueSummary } from '../features/queue/queries'
 import s from './frame.module.css'
 
@@ -57,6 +58,7 @@ function Frame({ user }: { user: SessionUser }) {
     <div className={s.app}>
       <BusyBar />
       <Toasts />
+      <UndoKeys />
       <header className={s.header}>
         <Link to="/" className={s.brand} aria-label="SubStation home">
           <Lockup size={22} />

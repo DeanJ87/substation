@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from apps.catalogue.api import router
 from apps.catalogue.models import (
+    Change,
     Copy,
     Dataset,
     Frame,
@@ -426,6 +427,7 @@ class VerdictIn(Schema):
 
 class VerdictUpdatedOut(Schema):
     updated: int
+    change_id: int | None = None  # spec 016: undo it with POST /changes/{id}/undo
 
 
 @router.post("/frames/verdict", response=VerdictUpdatedOut)
@@ -437,18 +439,84 @@ def set_verdict(request, body: VerdictIn):
     if len(body.sha256s) > 10000:
         raise ApiError(422, "too_many", "Up to 10,000 subs at a time.")
     frames = list(Frame.objects.filter(pk__in=body.sha256s, frame_type=FrameType.LIGHT))
-    UserVerdict.objects.bulk_create(
+    change = _save_verdicts(
+        request,
+        {f: body.verdict for f in frames},
+        Change.Kind.VERDICT,
+        _verdict_summary(body.verdict, len(frames)),
+    )
+    return VerdictUpdatedOut(updated=len(frames), change_id=change.pk if change else None)
+
+
+VERDICT_WORDS = {"accept": "Accepted", "keep": "Kept, down-weighted,", "reject": "Rejected"}
+
+
+def _verdict_summary(verdict: str, n: int) -> str:
+    subs = f"{n:,} sub{'s' if n != 1 else ''}"
+    if verdict == "auto":
+        return f"Put {subs} back to their automatic grades"
+    return f"{VERDICT_WORDS[verdict]} {subs}"
+
+
+def _save_verdicts(request, verdicts: dict[Frame, str], kind: str, summary: str) -> Change | None:  # noqa: ANN001
+    """Add a human verdict per frame, recount, tell open pages, and record the change so it can be undone."""
+    if not verdicts:
+        return None
+    rows = UserVerdict.objects.bulk_create(
         [
-            UserVerdict(frame=f, verdict=body.verdict, source=VerdictSource.OVERRIDE, user=request.user)
-            for f in frames
+            UserVerdict(frame=f, verdict=v, source=VerdictSource.OVERRIDE, user=request.user)
+            for f, v in verdicts.items()
         ]
     )
-    for ds in Dataset.objects.filter(pk__in={f.dataset_id for f in frames if f.dataset_id}):
+    for ds in Dataset.objects.filter(pk__in={f.dataset_id for f in verdicts if f.dataset_id}):
         recount_grades(ds)
         touch_dataset(ds)
-    for f in frames:
+    for f in verdicts:
         emit("frame.updated", {"sha256": f.sha256, "fields": ["verdict"]})
-    return VerdictUpdatedOut(updated=len(frames))
+    from apps.catalogue.services.changes import record
+
+    return record(request.user, kind, summary, len(rows), verdict_ids=[r.pk for r in rows])
+
+
+class AgreeIn(Schema):
+    dataset_id: int
+    night: date | None = None  # one session; all of the dataset's when left out
+    sha256s: list[str] | None = None  # or just these
+
+
+# the machine's grade, as the human verdict that keeps it
+AGREE_AS = {"reject": "reject", "down": "keep", "accept": "accept"}
+
+
+@router.post("/frames/agree", response=VerdictUpdatedOut)
+def agree_with_grades(request, body: AgreeIn):
+    """Agree with the automatic grades of flagged subs (spec 016): each becomes your own verdict, the same as
+    the grade, so it leaves the review list. Subs you already decided are left alone."""
+    from apps.accounts.roles import is_viewer
+
+    if is_viewer(request.user):
+        raise ApiError(403, "read_only", "Your account can't change verdicts.")
+    ds = get_object_or_404(Dataset, pk=body.dataset_id)
+    qs = _lights(dataset=ds, grade__isnull=False)
+    if body.night is not None:
+        qs = qs.filter(night__date=body.night)
+    if body.sha256s is not None:
+        qs = qs.filter(pk__in=body.sha256s)
+    verdicts: dict[Frame, str] = {}
+    for f in qs:
+        s = sub_out(f)
+        if s.manual or s.source == "nina" or not (s.verdict in ("reject", "down") or s.near_threshold):
+            continue
+        verdicts[f] = AGREE_AS[s.verdict or "accept"]
+    where = f" · {body.night:%-d %b %Y}" if body.night else ""
+    n = len(verdicts)
+    change = _save_verdicts(
+        request,
+        verdicts,
+        Change.Kind.AGREE,
+        f"Agreed with {n:,} grade{'s' if n != 1 else ''} · {ds.display_name}{where}",
+    )
+    return VerdictUpdatedOut(updated=n, change_id=change.pk if change else None)
 
 
 # ---- previews ---------------------------------------------------------------------------------------------

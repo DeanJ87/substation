@@ -22,3 +22,24 @@
 .bad {
   border-color: var(--sst-bad);
 }
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.action {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.action:hover,
+.action:focus-visible {
+  border-color: var(--sst-accent);
+}

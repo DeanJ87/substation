@@ -81,3 +81,25 @@ class ReconciliationItem(models.Model):
                 name="recon_one_open_per_issue",
             )
         ]
+
+
+class Change(models.Model):
+    """One change made by hand, kept so it can be undone (spec 016): verdicts set, grades agreed with, files binned.
+    `data` holds what undoing needs (the verdict rows added, the files binned); undoing never rewrites history,
+    it removes this change's own rows or reverses its own moves."""
+
+    class Kind(models.TextChoices):
+        VERDICT = "verdict"
+        AGREE = "agree"
+        BIN = "bin"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    summary = models.CharField(max_length=200)
+    data = models.JSONField(default=dict)
+    count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    undone_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "-created_at"], name="change_user_idx")]

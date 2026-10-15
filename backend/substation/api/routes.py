@@ -27,6 +27,7 @@ register_router("/users", users_router)
 
 import apps.catalogue.api_bin  # noqa: E402,F401  (the bin: binning and restoring files, spec 011)
 import apps.catalogue.api_calibration  # noqa: E402,F401  (calibration library, on the catalogue router)
+import apps.catalogue.api_changes  # noqa: E402,F401  (your recent changes and undo, spec 016)
 import apps.catalogue.api_ignore  # noqa: E402,F401  (ignore endpoints, on the catalogue router)
 import apps.catalogue.api_library  # noqa: E402,F401  (library, collections, rigs)
 import apps.catalogue.api_map  # noqa: E402,F401  (the map of where subs were shot)

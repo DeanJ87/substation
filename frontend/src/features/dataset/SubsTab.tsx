@@ -4,11 +4,11 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../api/client'
-import { toast } from '../../components/Toasts'
 import { Button, ConfirmButton } from '../../components/ui'
 import { Modal } from '../../components/Modal'
 import { SubView } from '../sub/SubDetail'
 import { binMessage, useBinFiles } from '../settings/Bin'
+import { offerUndo, useAgree } from '../changes/changes'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
@@ -83,10 +83,12 @@ export function SubsTab({
   const stack = useStartStack(dataset.id)
   const qc = useQueryClient()
   const bin = useBinFiles()
+  const agree = useAgree(dataset.id)
+  const selectAll = (list: Sub[]) => setSelected(new Set(list.map((x) => x.sha256)))
   const binRejected = useMutation({
     mutationFn: async () =>
       unwrap(await api.POST('/datasets/{id}/bin-rejected', { params: { path: { id: dataset.id } } })),
-    onSuccess: (r) => toast(binMessage(r)),
+    onSuccess: (r) => offerUndo(qc, binMessage(r), r.change_id),
     onSettled: () => void qc.invalidateQueries(),
     meta: { failed: "Couldn't bin the rejected subs" },
   })
@@ -244,6 +246,20 @@ export function SubsTab({
           )}
         </div>
         <span className={v.actions}>
+          {count('flagged') > 0 && (
+            <ConfirmButton
+              question={
+                <>
+                  Agree with the automatic grades of all {count('flagged')} flagged subs? Each becomes your
+                  own verdict and leaves the review list. You can undo it.
+                </>
+              }
+              confirm="Agree"
+              onConfirm={() => agree.mutate({})}
+            >
+              Agree with {count('flagged')} flagged
+            </ConfirmButton>
+          )}
           {count('reject') > 0 && (
             <ConfirmButton
               question={
@@ -308,7 +324,12 @@ export function SubsTab({
             >
               Stack these {selected.size}
             </Button>
-            <Button onClick={() => setSelected(new Set())}>Deselect</Button>
+            {selected.size < visible.length && (
+              <Button onClick={() => selectAll(visible)}>Select all {visible.length} shown</Button>
+            )}
+            <Button onClick={() => setSelected(new Set())}>
+              Deselect <kbd>Esc</kbd>
+            </Button>
           </div>
         </div>
       )}
@@ -327,6 +348,8 @@ export function SubsTab({
           selected={selected}
           onClick={click}
           onOpen={openSub}
+          onSelectAll={() => selectAll(list)}
+          onAgree={() => agree.mutate({ night })}
         />
       ))}
       <LoadMore hasMore={groups.hasMore} loading={false} onMore={groups.more} />
@@ -385,6 +408,8 @@ function SessionGroup({
   selected,
   onClick,
   onOpen,
+  onSelectAll,
+  onAgree,
 }: {
   datasetId: number
   night: string
@@ -394,8 +419,12 @@ function SessionGroup({
   selected: Set<string>
   onClick: (sha: string, e: React.MouseEvent) => void
   onOpen: (sha: string) => void
+  onSelectAll: () => void
+  onAgree: () => void
 }) {
   const { visible, hasMore, more } = useProgressive(list, 120, resetKey)
+  const flagged = list.filter(isFlagged).length
+  const allSelected = list.every((x) => selected.has(x.sha256))
   return (
     <Collapsible
       id={`dataset-${datasetId}-session-${night}`}
@@ -420,9 +449,26 @@ function SessionGroup({
         ) : (
           <span />
         )}
-        <Link to="/nights/$date" params={{ date: night }}>
-          The night
-        </Link>
+        <span className={v.actions}>
+          {!allSelected && (
+            <button type="button" className={v.pill} onClick={onSelectAll}>
+              Select all {list.length.toLocaleString('en-GB')}
+            </button>
+          )}
+          {flagged > 0 && (
+            <button
+              type="button"
+              className={v.pill}
+              onClick={onAgree}
+              title="Each flagged sub of this night keeps its automatic grade as your own verdict, and leaves the review list"
+            >
+              Agree with {flagged} flagged
+            </button>
+          )}
+          <Link to="/nights/$date" params={{ date: night }}>
+            The night
+          </Link>
+        </span>
       </div>
       <div className={s.tilePane}>
         <div className={s.tiles}>

@@ -1,4 +1,5 @@
 from .decisions import (
+    Change,
     ReconciliationItem,
     ReconciliationKind,
     ReconciliationStatus,
@@ -26,6 +27,7 @@ from .metadata import ContentCorrection, HeaderConflict, MetadataField, Metadata
 from .patterns import PathPattern, PatternKind
 
 __all__ = [
+    "Change",
     "CALIBRATION_TYPES",
     "MASTER_TYPES",
     "CalibrationSet",

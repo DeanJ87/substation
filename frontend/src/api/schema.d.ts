@@ -317,6 +317,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Changes
+         * @description Your latest changes, newest first (everyone's, for an admin who asks).
+         */
+        get: operations["apps_catalogue_api_changes_list_changes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/changes/{id}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo Change */
+        post: operations["apps_catalogue_api_changes_undo_change"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/collections": {
         parameters: {
             query?: never;
@@ -917,6 +954,27 @@ export interface paths {
         get: operations["apps_catalogue_api_list_frames"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/agree": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agree With Grades
+         * @description Agree with the automatic grades of flagged subs (spec 016): each becomes your own verdict, the same as
+         *     the grade, so it leaves the review list. Subs you already decided are left alone.
+         */
+        post: operations["apps_processing_api_agree_with_grades"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2566,6 +2624,15 @@ export interface components {
             /** Workers */
             workers: components["schemas"]["WorkerOut"][];
         };
+        /** AgreeIn */
+        AgreeIn: {
+            /** Dataset Id */
+            dataset_id: number;
+            /** Night */
+            night?: string | null;
+            /** Sha256S */
+            sha256s?: string[] | null;
+        };
         /** AnnotationOut */
         AnnotationOut: {
             /**
@@ -2673,6 +2740,8 @@ export interface components {
              * @default 0
              */
             binned: number;
+            /** Change Id */
+            change_id?: number | null;
             /**
              * Hidden
              * @default 0
@@ -2849,6 +2918,28 @@ export interface components {
             subs: number;
             /** Target */
             target: string;
+        };
+        /** ChangeOut */
+        ChangeOut: {
+            /** By */
+            by: string;
+            /** Can Undo */
+            can_undo: boolean;
+            /** Count */
+            count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Summary */
+            summary: string;
+            /** Undone At */
+            undone_at: string | null;
         };
         /** ClassificationIn */
         ClassificationIn: {
@@ -5453,6 +5544,12 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** UndoneOut */
+        UndoneOut: {
+            change: components["schemas"]["ChangeOut"];
+            /** Note */
+            note: string;
+        };
         /** UpdatedOut */
         UpdatedOut: {
             /** Updated */
@@ -5523,6 +5620,8 @@ export interface components {
         };
         /** VerdictUpdatedOut */
         VerdictUpdatedOut: {
+            /** Change Id */
+            change_id?: number | null;
             /** Updated */
             updated: number;
         };
@@ -6043,6 +6142,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PendingRecalOut"][];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_changes_list_changes: {
+        parameters: {
+            query?: {
+                everyone?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeOut"][];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_changes_undo_change: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UndoneOut"];
                 };
             };
         };
@@ -7041,6 +7185,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FramePage"];
+                };
+            };
+        };
+    };
+    apps_processing_api_agree_with_grades: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgreeIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerdictUpdatedOut"];
                 };
             };
         };
