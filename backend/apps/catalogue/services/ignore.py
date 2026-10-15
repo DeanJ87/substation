@@ -61,10 +61,40 @@ def _covered(frame: Frame, path_rules: PathRules) -> bool:
     return bool(copies) and all(path_rules.matches(lib, rel) for lib, rel in copies)
 
 
-def refresh_frames(frames: list[Frame]) -> int:
-    """Bring each frame's ignored status in line with the active rules. Returns frames changed."""
+def _catalogue_now(frame: Frame) -> None:
+    """A frame that was ignored before it was ever catalogued: mark it pending and queue its cataloguing from
+    any copy still on disk."""
     from apps.ingest.tasks.catalogue import catalogue_frame
     from substation.tasks import PRIORITY_BULK, enqueue
+
+    frame.status = FrameStatus.PENDING
+    frame.save(update_fields=["status"])
+    c = Copy.objects.filter(frame=frame, present=True).first()
+    if c is not None:
+        enqueue(
+            catalogue_frame,
+            frame.sha256,
+            c.library_id,
+            c.rel_path,
+            dedupe_key=f"catalogue:{frame.sha256}",
+            priority=PRIORITY_BULK + 1,
+        )
+
+
+def _unignore(frame: Frame) -> Dataset | None:
+    """A catalogued frame no rule covers any more: back to catalogued (or error, if it had one) and resolved
+    into its dataset again. Returns the dataset it joins, if any."""
+    from apps.ingest.resolve import resolve_frame
+
+    frame.status = FrameStatus.ERROR if frame.error else FrameStatus.CATALOGUED
+    frame.save(update_fields=["status"])
+    _, new_ds = resolve_frame(frame)
+    return new_ds
+
+
+def refresh_frames(frames: list[Frame]) -> int:
+    """Bring each frame's ignored status in line with the active rules. Returns frames changed."""
+    from substation.tasks import enqueue
 
     rules = PathRules.load()
     touched: dict[int, Dataset] = {}
@@ -81,26 +111,9 @@ def refresh_frames(frames: list[Frame]) -> int:
                 frame.status, frame.dataset = FrameStatus.IGNORED, None
                 frame.save(update_fields=["status", "dataset"])
             elif frame.catalogued_at is None:  # never processed: do it now
-                frame.status = FrameStatus.PENDING
-                frame.save(update_fields=["status"])
-                c = Copy.objects.filter(frame=frame, present=True).first()
-                if c is not None:
-                    enqueue(
-                        catalogue_frame,
-                        frame.sha256,
-                        c.library_id,
-                        c.rel_path,
-                        dedupe_key=f"catalogue:{frame.sha256}",
-                        priority=PRIORITY_BULK + 1,
-                    )
-            else:
-                frame.status = FrameStatus.ERROR if frame.error else FrameStatus.CATALOGUED
-                frame.save(update_fields=["status"])
-                from apps.ingest.resolve import resolve_frame
-
-                _, new_ds = resolve_frame(frame)
-                if new_ds is not None:
-                    touched[new_ds.pk] = new_ds
+                _catalogue_now(frame)
+            elif (new_ds := _unignore(frame)) is not None:
+                touched[new_ds.pk] = new_ds
         if old_ds is not None:
             touched[old_ds.pk] = old_ds
         emit("frame.updated", {"sha256": frame.sha256, "fields": ["status"]})

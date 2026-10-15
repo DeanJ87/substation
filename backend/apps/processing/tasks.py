@@ -382,6 +382,51 @@ def calibrate_file(frame: Frame, cm: CalibrationMatch, src: Path, tmp: Path, des
         p.unlink(missing_ok=True)
 
 
+def _calibrate_sequence(eng, dark: Path | None, flat: Path | None, colour: bool, rgb: bool) -> str:  # noqa: ANN001
+    """Calibrate the converted `light_` sequence in Siril's current folder with what applies: dark and flat, a
+    flat alone (8-bit colour lights: the camera already removed the black level), or only a debayer (calibrated
+    in the camera, as a Seestar is; kept at 16 bits). A raw colour sub is debayered in the same command. Returns
+    the prefix of the files it wrote: "" when there was nothing to apply and the converted files are the
+    result."""
+    cfa = " -cfa -equalize_cfa -debayer" if colour and not rgb else ""
+    if dark and flat:
+        eng.run(
+            f"calibrate light_ -dark={dark} -flat={flat} -cc=dark{cfa} -prefix=pp_",
+            timeout=7200,
+            quiet=True,
+        )
+        return "pp_"
+    if flat:
+        eng.run(f"calibrate light_ -flat={flat}{cfa} -prefix=pp_", timeout=7200, quiet=True)
+        return "pp_"
+    if colour and not rgb:
+        eng.run("set16bits")
+        try:
+            eng.run("calibrate light_ -cfa -debayer -prefix=pp_", timeout=7200, quiet=True)
+        finally:
+            eng.run("set32bits")
+        return "pp_"
+    return ""
+
+
+def _collect_batch(
+    g: Path, prefix: str, group: list[tuple[Frame, CalibrationMatch, Path, Path]], left: list[Frame]
+) -> None:
+    """Move each calibrated file to its sub's `dest` (the files are numbered in input order). A sub Siril wrote
+    nothing for is added to `left`, to be done one at a time. Siril links a FITS it only converts: the real
+    file is copied, never the link."""
+    for j, (frame, _cm, _src, dest) in enumerate(group, start=1):
+        produced = g / f"{prefix}light_{j:05d}.fit"
+        if not produced.exists():
+            left.append(frame)
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if produced.is_symlink():
+            shutil.copyfile(produced.resolve(), dest)
+        else:
+            os.replace(produced, dest)
+
+
 def calibrate_batch(items: list[tuple[Frame, CalibrationMatch, Path, Path]], tmp: Path) -> list[Frame]:
     """Calibrate many subs at once into their `dest`s: subs sharing their masters (and colour) are converted to one
     sequence and calibrated by one Siril command, which uses every thread, instead of one Siril round trip each
@@ -416,36 +461,8 @@ def calibrate_batch(items: list[tuple[Frame, CalibrationMatch, Path, Path]], tmp
             cm = group[0][1]
             dark = oriented_master(master_fits(cm.dark), td) if cm.dark else None
             flat = oriented_master(master_fits(cm.flat), td) if cm.flat else None
-            cfa = " -cfa -equalize_cfa -debayer" if colour and not rgb else ""
-            prefix = "pp_"
-            if dark and flat:
-                eng.run(
-                    f"calibrate light_ -dark={dark} -flat={flat} -cc=dark{cfa} -prefix=pp_",
-                    timeout=7200,
-                    quiet=True,
-                )
-            elif flat:  # 8-bit colour lights: the camera already removed the black level
-                eng.run(f"calibrate light_ -flat={flat}{cfa} -prefix=pp_", timeout=7200, quiet=True)
-            elif colour and not rgb:  # calibrated in the camera (Seestar): only debayer, kept at 16 bits
-                eng.run("set16bits")
-                try:
-                    eng.run("calibrate light_ -cfa -debayer -prefix=pp_", timeout=7200, quiet=True)
-                finally:
-                    eng.run("set32bits")
-            else:
-                prefix = ""  # nothing to apply: the converted files are the result
-            for j, (frame, _cm, _src, dest) in enumerate(group, start=1):
-                produced = g / f"{prefix}light_{j:05d}.fit"
-                if not produced.exists():
-                    left.append(frame)
-                    continue
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                if (
-                    produced.is_symlink()
-                ):  # Siril links a FITS it only converts: copy the real file, never the link
-                    shutil.copyfile(produced.resolve(), dest)
-                else:
-                    os.replace(produced, dest)
+            prefix = _calibrate_sequence(eng, dark, flat, colour, rgb)
+            _collect_batch(g, prefix, group, left)
         except Exception:  # noqa: BLE001 (the group is done one at a time instead)
             log.warning(
                 "Batch calibration of %s subs failed; calibrating them one at a time",

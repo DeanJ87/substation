@@ -116,25 +116,37 @@ def _typed(field: str, value: Any) -> Any:
     return str(value).strip()
 
 
+def _from_keywords(img: ImageHeader, field: str) -> FieldValue | None:
+    """The first of the field's FITS keywords present with a usable value, in KEYWORDS order."""
+    for name in KEYWORDS[field]:
+        kw = img.keywords.get(name)
+        if kw is None:
+            continue
+        typed = _typed(field, kw.value)
+        if typed is not None:
+            return FieldValue(typed, str(kw.value), name)
+    return None
+
+
+def _from_properties(img: ImageHeader, field: str) -> FieldValue | None:
+    """Failing a keyword, the first of the field's XISF properties present with a usable value."""
+    for prop in PROPERTIES.get(field, ()):
+        if prop in img.properties:
+            typed = _typed(field, img.properties[prop])
+            if typed is not None:
+                return FieldValue(typed, str(img.properties[prop]), prop)
+    return None
+
+
 def extract(img: ImageHeader) -> dict[str, FieldValue]:
     """Header-derived candidate values for each field (only fields actually present)."""
     out: dict[str, FieldValue] = {}
-    for field, names in KEYWORDS.items():
-        for name in names:
-            kw = img.keywords.get(name)
-            if kw is None:
-                continue
-            typed = _typed(field, kw.value)
-            if typed is not None:
-                out[field] = FieldValue(typed, str(kw.value), name)
-                break
-        if field not in out:
-            for prop in PROPERTIES.get(field, ()):
-                if prop in img.properties:
-                    typed = _typed(field, img.properties[prop])
-                    if typed is not None:
-                        out[field] = FieldValue(typed, str(img.properties[prop]), prop)
-                        break
+    for field in KEYWORDS:
+        got = _from_keywords(img, field)
+        if got is None:
+            got = _from_properties(img, field)
+        if got is not None:
+            out[field] = got
     if "frame_type" not in out and img.image_type:
         out["frame_type"] = FieldValue(img.image_type, img.image_type, "XISF imageType")
     if "filter" not in out and is_colour(img):

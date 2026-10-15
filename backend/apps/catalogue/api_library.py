@@ -899,6 +899,29 @@ def _sqm_by_frame(shas: list[str], keys: tuple[str, ...]) -> dict[str, float]:
     return out
 
 
+def _stats_scope(qs, ds: str, date_from: date | None, date_to: date | None, rig: str | None, q: str | None):
+    """The Library's filters applied to lights reached through `ds` (the live `dataset` or the `binned_dataset`
+    a binned or deleted sub remembers): nights in the date range, the rig by name, and the search text matched
+    against target, collection, filter or rig."""
+    from django.db.models import Q
+
+    qs = qs.select_related(f"{ds}__rig", "night").prefetch_related("verdicts")
+    if date_from:
+        qs = qs.filter(night__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(night__date__lte=date_to)
+    if rig:
+        qs = qs.filter(**{f"{ds}__rig__name": rig})
+    if q:
+        qs = qs.filter(
+            Q(**{f"{ds}__target__icontains": q})
+            | Q(**{f"{ds}__collection__name__icontains": q})
+            | Q(**{f"{ds}__filter_norm__icontains": q})
+            | Q(**{f"{ds}__rig__name__icontains": q})
+        )
+    return qs
+
+
 @router.get("/library/stats", response=LibraryStatsOut)
 def library_stats(
     request,
@@ -910,7 +933,6 @@ def library_stats(
     """Totals for what the Library's filters show (006, owner 2026-10-10): lights taken, hours per filter and
     rig, how many were kept or rejected, and the average SQM where the capture recorded it."""
     from django.core.cache import cache
-    from django.db.models import Q
 
     from apps.processing.api import COND
     from apps.processing.effective import effective
@@ -924,21 +946,7 @@ def library_stats(
     from .models import Frame, FrameStatus, FrameType
 
     def scoped(qs, ds: str):  # noqa: ANN001, ANN202
-        qs = qs.select_related(f"{ds}__rig", "night").prefetch_related("verdicts")
-        if date_from:
-            qs = qs.filter(night__date__gte=date_from)
-        if date_to:
-            qs = qs.filter(night__date__lte=date_to)
-        if rig:
-            qs = qs.filter(**{f"{ds}__rig__name": rig})
-        if q:
-            qs = qs.filter(
-                Q(**{f"{ds}__target__icontains": q})
-                | Q(**{f"{ds}__collection__name__icontains": q})
-                | Q(**{f"{ds}__filter_norm__icontains": q})
-                | Q(**{f"{ds}__rig__name__icontains": q})
-            )
-        return qs
+        return _stats_scope(qs, ds, date_from, date_to, rig, q)
 
     lights = Frame.objects.filter(frame_type=FrameType.LIGHT)
     live = scoped(lights.filter(status=FrameStatus.CATALOGUED, dataset__isnull=False), "dataset")

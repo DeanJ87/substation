@@ -69,19 +69,8 @@ def with_xml(header: bytes, xml: bytes) -> bytes:
     return header[:8] + struct.pack("<I", len(xml)) + header[12:16] + xml
 
 
-def main(src_root: Path) -> None:
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    OUT.mkdir(parents=True)
-    # fill sources chosen by pattern
-    heart = sorted((src_root / "2026-09-28/LIGHT").glob("2026-09-29_02-*_Halpha_*.xisf"))[0]
-    XISF_FIXTURES["capture/2026-09-28/LIGHT/" + heart.name] = str(heart.relative_to(src_root))
-    del XISF_FIXTURES["capture/2026-09-28/LIGHT/2026-09-29_02-18-08_Halpha_-20.00_600.00s_0003.xisf"]
-    flat = sorted((src_root / "2026-09-28/FLAT").glob("*_Halpha_*_2.00s_*.xisf"))[0]
-    XISF_FIXTURES["capture/2026-09-28/FLAT/" + flat.name] = str(flat.relative_to(src_root))
-    del XISF_FIXTURES["capture/2026-09-28/FLAT/2026-09-29_05-02-31_Halpha_-19.90_2.00s_0000.xisf"]
-
-    manifest: dict[str, dict] = {}
+def _write_xisf_headers(src_root: Path, manifest: dict[str, dict]) -> None:
+    """Each chosen XISF's header alone (no image data), recorded in the manifest with its source's hash."""
     for rel, src_rel in XISF_FIXTURES.items():
         src = src_root / src_rel
         dst = OUT / rel
@@ -89,6 +78,9 @@ def main(src_root: Path) -> None:
         dst.write_bytes(xisf_header_bytes(src))
         manifest[rel] = {"source": src_rel, "source_sha256": sha256(src), "kind": "xisf header-only"}
 
+
+def _write_stripped(manifest: dict[str, dict]) -> None:
+    """Copies of written headers with some FITS keywords and XISF properties removed, for the fallbacks."""
     for rel, (base, keywords, props) in STRIPPED.items():
         header = (OUT / base).read_bytes()
         xml = header[16:].decode("utf-8")
@@ -105,21 +97,14 @@ def main(src_root: Path) -> None:
             "kind": f"xisf header-only, removed {keywords + props}",
         }
 
-    ad_src = src_root / APPLEDOUBLE_SRC
-    if ad_src.exists():
-        dst = OUT / "capture/2026-09-28/LIGHT/._2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf"
-        shutil.copyfile(ad_src, dst)
-        manifest[str(dst.relative_to(OUT))] = {
-            "source": APPLEDOUBLE_SRC,
-            "source_sha256": sha256(ad_src),
-            "kind": "AppleDouble",
-        }
 
-    # FITS light built from a real NINA light's keywords, plus a tile-compressed copy
+def _fits_header_from(xisf_path: Path) -> fits.Header:
+    """A FITS header carrying an XISF's keywords (structural ones and names over 8 characters left out), each
+    value read as an int or float where it is one, comments cut to 40 characters; keywords FITS refuses are
+    skipped."""
     import xisf
 
-    base_rel = "capture/2026-09-28/LIGHT/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf"
-    meta = xisf.XISF(str(OUT / base_rel)).get_images_metadata()[0]
+    meta = xisf.XISF(str(xisf_path)).get_images_metadata()[0]
     hdr = fits.Header()
     for name, entries in meta["FITSKeywords"].items():
         if (
@@ -138,6 +123,38 @@ def main(src_root: Path) -> None:
             hdr[name] = (v, entries[0].get("comment", "")[:40])
         except ValueError:
             continue
+    return hdr
+
+
+def main(src_root: Path) -> None:
+    if OUT.exists():
+        shutil.rmtree(OUT)
+    OUT.mkdir(parents=True)
+    # fill sources chosen by pattern
+    heart = sorted((src_root / "2026-09-28/LIGHT").glob("2026-09-29_02-*_Halpha_*.xisf"))[0]
+    XISF_FIXTURES["capture/2026-09-28/LIGHT/" + heart.name] = str(heart.relative_to(src_root))
+    del XISF_FIXTURES["capture/2026-09-28/LIGHT/2026-09-29_02-18-08_Halpha_-20.00_600.00s_0003.xisf"]
+    flat = sorted((src_root / "2026-09-28/FLAT").glob("*_Halpha_*_2.00s_*.xisf"))[0]
+    XISF_FIXTURES["capture/2026-09-28/FLAT/" + flat.name] = str(flat.relative_to(src_root))
+    del XISF_FIXTURES["capture/2026-09-28/FLAT/2026-09-29_05-02-31_Halpha_-19.90_2.00s_0000.xisf"]
+
+    manifest: dict[str, dict] = {}
+    _write_xisf_headers(src_root, manifest)
+    _write_stripped(manifest)
+
+    ad_src = src_root / APPLEDOUBLE_SRC
+    if ad_src.exists():
+        dst = OUT / "capture/2026-09-28/LIGHT/._2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf"
+        shutil.copyfile(ad_src, dst)
+        manifest[str(dst.relative_to(OUT))] = {
+            "source": APPLEDOUBLE_SRC,
+            "source_sha256": sha256(ad_src),
+            "kind": "AppleDouble",
+        }
+
+    # FITS light built from a real NINA light's keywords, plus a tile-compressed copy
+    base_rel = "capture/2026-09-28/LIGHT/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.xisf"
+    hdr = _fits_header_from(OUT / base_rel)
     data = np.array([[100, 101], [102, 103]], dtype=np.uint16)
     fits_rel = "capture/fits/2026-09-28_20-05-02_Halpha_-20.00_600.00s_0027.fits"
     (OUT / fits_rel).parent.mkdir(parents=True, exist_ok=True)

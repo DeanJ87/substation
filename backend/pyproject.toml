@@ -50,9 +50,9 @@ select = ["E", "F", "W", "I", "B", "UP", "DJ", "SIM", "C90", "RET", "BLE"]
 # DJ008: __str__ on every model adds nothing here.
 ignore = ["E501", "DJ001", "DJ008"]
 
-# 005-DR-29: no function may grow more tangled than the worst one today; lower this as the rest are split up
+# 005-DR-29: no function may branch more than ten ways; split a function that would into named steps
 [tool.ruff.lint.mccabe]
-max-complexity = 14
+max-complexity = 10
 
 [tool.mypy]
 python_version = "3.12"

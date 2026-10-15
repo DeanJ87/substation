@@ -64,6 +64,16 @@ def walk(root: Path, result: SweepResult | None = None):  # -> Iterator[tuple[st
                 continue
 
 
+# what each path-check outcome other than "unchanged" adds to the sweep's counts (anything else was skipped)
+_TALLY = {Action.QUEUED: "queued", Action.MOVED: "moved", Action.IGNORED: "ignored"}
+
+
+def _tally(result: SweepResult, action: Action) -> None:
+    """Count one checked file under its outcome: queued, moved, ignored, or skipped for anything else."""
+    name = _TALLY.get(action, "skipped")
+    setattr(result, name, getattr(result, name) + 1)
+
+
 def sweep_library(lib: Library) -> SweepResult:
     root = Path(lib.mount_path)
     result = SweepResult(library=lib.name)
@@ -93,14 +103,8 @@ def sweep_library(lib: Library) -> SweepResult:
             unchanged_ids.append(known[rel].pk)
             if len(unchanged_ids) >= BATCH:
                 flush()
-        elif action is Action.QUEUED:
-            result.queued += 1
-        elif action is Action.MOVED:
-            result.moved += 1
-        elif action is Action.IGNORED:
-            result.ignored += 1
         else:
-            result.skipped += 1
+            _tally(result, action)
     flush()
     if result.unreadable_dirs:
         # Part of the tree couldn't be listed: don't call anything missing on the strength of it.

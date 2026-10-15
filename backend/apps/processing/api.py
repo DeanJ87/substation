@@ -537,13 +537,37 @@ def preview(request, sha256: str, size: Literal["screen", "thumb"] = "screen"):
     return resp
 
 
+def _stored_glance(sha256: str) -> Path | None:
+    """An image already made for this frame, first found of: its measurement preview, its calibration QA
+    thumbnail, the latest built master's preview. Only files still on disk count."""
+    from .models import BuiltMaster, CalibrationQA
+
+    m = SubMeasurement.objects.filter(frame_id=sha256).exclude(preview_path="").first()
+    if m is not None and (p := Path(m.preview_path)).exists():
+        return p
+    q = CalibrationQA.objects.filter(frame_id=sha256).exclude(thumb_path="").first()
+    if q is not None and (p := Path(q.thumb_path)).exists():
+        return p
+    b = BuiltMaster.objects.filter(frame_id=sha256).exclude(preview_path="").order_by("-pk").first()
+    if b is not None and (p := Path(b.preview_path)).exists():
+        return p
+    return None
+
+
+def _any_copy_on_disk(frame: Frame) -> Path | None:
+    """The first of the frame's copies whose file is still there, present or not in the catalogue's eyes."""
+    for c in Copy.objects.filter(frame=frame).select_related("library"):
+        if (Path(c.library.mount_path) / c.rel_path).is_file():
+            return Path(c.library.mount_path) / c.rel_path
+    return None
+
+
 @router.get("/frames/{sha256:sha256}/glance", response={200: None, 404: None})
 def glance_image(request, sha256: str):
     """A small image of any frame for hover previews: its preview, QA thumbnail or built-master preview when one
     exists, else drawn from the file once and cached (owner 2026-10-11)."""
     import tempfile
 
-    from .models import BuiltMaster, CalibrationQA
     from .previews import glance
     from .tasks import source_path
 
@@ -552,15 +576,8 @@ def glance_image(request, sha256: str):
         resp["Cache-Control"] = "private, max-age=86400"
         return resp
 
-    m = SubMeasurement.objects.filter(frame_id=sha256).exclude(preview_path="").first()
-    if m is not None and (p := Path(m.preview_path)).exists():
-        return send(p)
-    q = CalibrationQA.objects.filter(frame_id=sha256).exclude(thumb_path="").first()
-    if q is not None and (p := Path(q.thumb_path)).exists():
-        return send(p)
-    b = BuiltMaster.objects.filter(frame_id=sha256).exclude(preview_path="").order_by("-pk").first()
-    if b is not None and (p := Path(b.preview_path)).exists():
-        return send(p)
+    if (stored := _stored_glance(sha256)) is not None:
+        return send(stored)
     # the API's folders are read-only: cache in its own temp space
     cached = Path(tempfile.gettempdir()) / "sst-glance" / f"{sha256[:24]}.jpg"
     if cached.exists():
@@ -570,10 +587,7 @@ def glance_image(request, sha256: str):
     if (
         src is None
     ):  # a binned file in a read-only library is only hidden: it is still there to look at (spec 011)
-        for c in Copy.objects.filter(frame=frame).select_related("library"):
-            if (Path(c.library.mount_path) / c.rel_path).is_file():
-                src = Path(c.library.mount_path) / c.rel_path
-                break
+        src = _any_copy_on_disk(frame)
     if src is None:
         return HttpResponse(status=404)
     try:
@@ -1002,14 +1016,22 @@ def _master_word(f: Frame | None, night: date | None) -> str | None:
 
 def _why(old: Frame | None, new: Frame | None, kind: str, night: date | None) -> str | None:
     """Plainly, why the new master matters, or that it hardly does."""
-    from .matching import _temp
-
     if old is None:
         return f"it was calibrated with no {kind}"
     if new is None:
         return None
     if old.status != FrameStatus.CATALOGUED:
         return f"the {kind} it used is no longer in the library"
+    if (why := _why_frames(old, new, kind)) is not None:
+        return why
+    if kind == "dark":
+        return _why_dark(old, new)
+    return _why_flat(old, new, night)
+
+
+def _why_frames(old: Frame, new: Frame, kind: str) -> str | None:
+    """When both masters were built here: a rebuild of the same calibration set (with more frames, or the same
+    ones), or a master from a different number of frames. None when that says nothing."""
     from .models import BuiltMaster
 
     ob = BuiltMaster.objects.filter(frame=old).order_by("-pk").first()
@@ -1020,11 +1042,21 @@ def _why(old: Frame | None, new: Frame | None, kind: str, night: date | None) ->
         return f"the {kind} was rebuilt from the same frames: little or no difference"
     if ob and nb and ob.frames_used and nb.frames_used and nb.frames_used != ob.frames_used:
         return f"a {kind} from {nb.frames_used} frames instead of {ob.frames_used}"
-    if kind == "dark":
-        ot, nt = _temp(old), _temp(new)
-        if ot is not None and nt is not None and ot != nt:
-            return f"a dark at {nt:g} °C instead of {ot:g} °C"
-        return "another dark at the same settings"
+    return None
+
+
+def _why_dark(old: Frame, new: Frame) -> str:
+    """A dark at another sensor temperature, or one at the same settings."""
+    from .matching import _temp
+
+    ot, nt = _temp(old), _temp(new)
+    if ot is not None and nt is not None and ot != nt:
+        return f"a dark at {nt:g} °C instead of {ot:g} °C"
+    return "another dark at the same settings"
+
+
+def _why_flat(old: Frame, new: Frame, night: date | None) -> str:
+    """Flats nearer the subs' night, flats for another filter, or another flat for the same filter."""
     if night and new.night is not None and old.night is not None:
         nd, od = abs((new.night.date - night).days), abs((old.night.date - night).days)
         if nd < od:
@@ -1475,7 +1507,6 @@ def change_session_calibration(request, id: int, night: date, body: SessionCalib
     """Use these masters for this session only (002-DR-07): pinned so a later rematch keeps them, then the
     session is calibrated and graded again. Human verdicts stay."""
     from .models import Master, MasterState
-    from .tasks import queue_measure
 
     lights = _session_lights(id, night)
     if not lights:
@@ -1487,64 +1518,14 @@ def change_session_calibration(request, id: int, night: date, body: SessionCalib
             raise ApiError(422, "invalid", "Choose one of the listed masters.")
     if body.flat_set is not None:
         # a flat set rather than a master: use its master when built, else build it and apply it when done
-        from apps.catalogue.models import CalibrationSet
-
-        from .calibration import request_build
-        from .models import BuiltMaster
-
-        cs = get_object_or_404(CalibrationSet, pk=body.flat_set, type=FrameType.FLAT)
-        done = (
-            BuiltMaster.objects.filter(calibration_set=cs, state="done")
-            .exclude(frame=None)
-            .order_by("-pk")
-            .first()
-        )
-        if done is not None:
-            body.flat = done.frame_id
-        else:
-            if not BuiltMaster.objects.filter(calibration_set=cs, state__in=["queued", "running"]).exists():
-                request_build(cs, force=True, priority=PRIORITY_LIVE)
-            for f in lights:
-                cm, _ = CalibrationMatch.objects.get_or_create(
-                    frame=f, defaults={"state": MatchState.AWAITING}
-                )
-                cm.pending_flat_set, cm.pinned = cs, True
-                cm.state, cm.reason = (
-                    MatchState.AWAITING,
-                    f"Waiting for flats ({cs.session_start_utc:%-d %b}) to be built.",
-                )
-                cm.save()
-            return RecalibrationOut(pending=len(lights), sessions={str(night): len(lights)}, queued=0)
-    from .matching import match
-
+        waiting_for_flats = _use_flat_set(body, lights, night)
+        if waiting_for_flats is not None:
+            return waiting_for_flats
     queued = waiting = 0
     for f in lights:
-        cm, _ = CalibrationMatch.objects.get_or_create(frame=f)
-        cm.dark_id = body.dark or cm.dark_id
-        cm.flat_id = body.flat or cm.flat_id
-        cm.pinned, cm.weak = True, False
-        cm.pending_flat_set = None
-        cm.dark_note = "Chosen by you" if body.dark else cm.dark_note
-        cm.flat_note = "Chosen by you" if body.flat else cm.flat_note
-        m = None
-        if cm.dark_id is None or cm.flat_id is None:
-            # only one was chosen: the other comes from matching, and with none to be had the session waits for
-            # it rather than being calibrated without (a flat chosen for M 42 · B calibrated 41 subs with no dark)
-            m = match(f)
-            if cm.dark_id is None and m.dark is not None:
-                cm.dark, cm.dark_note = m.dark, m.dark_note
-            if cm.flat_id is None and m.flat is not None:
-                cm.flat, cm.flat_note = m.flat, m.flat_note
-        if (cm.dark_id is not None and cm.flat_id is not None) or (
-            m is not None and (m.no_calibration or (m.flat_only and cm.flat_id is not None))
-        ):
-            cm.state, cm.reason = MatchState.MATCHED, ""
-            cm.save()
-            queue_measure(f, force=True)
+        if _pin_chosen(f, body):
             queued += 1
         else:
-            cm.state, cm.reason = MatchState.AWAITING, (m or match(f)).reason
-            cm.save()
             waiting += 1
     Master.objects.filter(
         dataset_id=id, state=MasterState.CURRENT, members__frame__in=lights, members__included=True
@@ -1552,6 +1533,73 @@ def change_session_calibration(request, id: int, night: date, body: SessionCalib
         state=MasterState.STALE, state_reason=f"Calibration changed for the {night:%-d %b} session."
     )
     return RecalibrationOut(pending=waiting, sessions={str(night): len(lights)}, queued=queued)
+
+
+def _use_flat_set(body: SessionCalibrationIn, lights: list[Frame], night: date) -> RecalibrationOut | None:
+    """A flat set chosen for the session. Built: its latest master becomes the chosen flat (`body.flat` is set)
+    and None is returned so the session is calibrated as usual. Not built: it is built (unless a build is
+    already queued or running) and every sub waits for it, pinned, with the set remembered so the flat is
+    applied once it is done; the answer to send is returned."""
+    from apps.catalogue.models import CalibrationSet
+
+    from .calibration import request_build
+    from .models import BuiltMaster
+
+    cs = get_object_or_404(CalibrationSet, pk=body.flat_set, type=FrameType.FLAT)
+    done = (
+        BuiltMaster.objects.filter(calibration_set=cs, state="done")
+        .exclude(frame=None)
+        .order_by("-pk")
+        .first()
+    )
+    if done is not None:
+        body.flat = done.frame_id
+        return None
+    if not BuiltMaster.objects.filter(calibration_set=cs, state__in=["queued", "running"]).exists():
+        request_build(cs, force=True, priority=PRIORITY_LIVE)
+    for f in lights:
+        cm, _ = CalibrationMatch.objects.get_or_create(frame=f, defaults={"state": MatchState.AWAITING})
+        cm.pending_flat_set, cm.pinned = cs, True
+        cm.state, cm.reason = (
+            MatchState.AWAITING,
+            f"Waiting for flats ({cs.session_start_utc:%-d %b}) to be built.",
+        )
+        cm.save()
+    return RecalibrationOut(pending=len(lights), sessions={str(night): len(lights)}, queued=0)
+
+
+def _pin_chosen(f: Frame, body: SessionCalibrationIn) -> bool:
+    """Pin the chosen dark and/or flat on one sub. If only one was chosen, the other comes from matching; with
+    none to be had the sub waits for it rather than being calibrated without (a flat chosen for M 42 · B once
+    calibrated 41 subs with no dark), unless matching says the sub needs no calibration or only a flat. True
+    when the sub is matched and queued to be calibrated again; False when it waits."""
+    from .matching import match
+    from .tasks import queue_measure
+
+    cm, _ = CalibrationMatch.objects.get_or_create(frame=f)
+    cm.dark_id = body.dark or cm.dark_id
+    cm.flat_id = body.flat or cm.flat_id
+    cm.pinned, cm.weak = True, False
+    cm.pending_flat_set = None
+    cm.dark_note = "Chosen by you" if body.dark else cm.dark_note
+    cm.flat_note = "Chosen by you" if body.flat else cm.flat_note
+    m = None
+    if cm.dark_id is None or cm.flat_id is None:
+        m = match(f)
+        if cm.dark_id is None and m.dark is not None:
+            cm.dark, cm.dark_note = m.dark, m.dark_note
+        if cm.flat_id is None and m.flat is not None:
+            cm.flat, cm.flat_note = m.flat, m.flat_note
+    if (cm.dark_id is not None and cm.flat_id is not None) or (
+        m is not None and (m.no_calibration or (m.flat_only and cm.flat_id is not None))
+    ):
+        cm.state, cm.reason = MatchState.MATCHED, ""
+        cm.save()
+        queue_measure(f, force=True)
+        return True
+    cm.state, cm.reason = MatchState.AWAITING, (m or match(f)).reason
+    cm.save()
+    return False
 
 
 def _back_to_automatic(dataset_id: int, night: date, lights: list[Frame]) -> RecalibrationOut:

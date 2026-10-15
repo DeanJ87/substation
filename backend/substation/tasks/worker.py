@@ -86,6 +86,28 @@ class WorkerProcess:
         signal.signal(signal.SIGTERM, stop)
         signal.signal(signal.SIGINT, stop)
 
+    def _with_children(
+        self, children_cpu: dict[int, psutil.Process], cpu: float, rss: int
+    ) -> tuple[float, int, float, int]:
+        """This process's CPU% and RSS (`cpu`, `rss`) with its children's added, and Siril's alone: (cpu, rss,
+        engine cpu, engine rss). A child seen for the first time is only primed (psutil's first CPU reading is
+        meaningless) and remembered in `children_cpu`; one that has gone is forgotten."""
+        ecpu, erss = 0.0, 0
+        for child in self.proc.children(recursive=True):
+            if child.pid not in children_cpu:
+                child.cpu_percent(None)
+                children_cpu[child.pid] = child
+                continue
+            try:
+                c, r = child.cpu_percent(None), child.memory_info().rss
+                cpu += c
+                rss += r
+                if "siril" in child.name():
+                    ecpu, erss = ecpu + c, erss + r
+            except psutil.Error:
+                children_cpu.pop(child.pid, None)
+        return cpu, rss, ecpu, erss
+
     def sampler(self) -> None:
         """Every 2 s: CPU% and RSS for this process and its children (Siril), plus heartbeats."""
         self.proc.cpu_percent(None)
@@ -95,20 +117,7 @@ class WorkerProcess:
             try:
                 cpu = self.proc.cpu_percent(None)
                 rss = self.proc.memory_info().rss
-                ecpu, erss = 0.0, 0
-                for child in self.proc.children(recursive=True):
-                    if child.pid not in children_cpu:
-                        child.cpu_percent(None)
-                        children_cpu[child.pid] = child
-                        continue
-                    try:
-                        c, r = child.cpu_percent(None), child.memory_info().rss
-                        cpu += c
-                        rss += r
-                        if "siril" in child.name():
-                            ecpu, erss = ecpu + c, erss + r
-                    except psutil.Error:
-                        children_cpu.pop(child.pid, None)
+                cpu, rss, ecpu, erss = self._with_children(children_cpu, cpu, rss)
                 now = timezone.now()
                 ResourceSample.objects.create(
                     worker_id=self.worker_id,

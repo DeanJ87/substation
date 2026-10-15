@@ -56,6 +56,14 @@ def siril_env() -> dict[str, str]:
     return env
 
 
+def _report(on_line, line: str) -> None:  # noqa: ANN001
+    """Pass one line of Siril's output to a progress callback; reporting progress must never break a command."""
+    try:
+        on_line(line)
+    except Exception:  # noqa: BLE001 — progress reporting must never break a command
+        log.debug("progress callback failed", exc_info=True)
+
+
 class EngineError(RuntimeError):
     """A Siril command failed; carries the command and its log for the user and the queue console."""
 
@@ -223,14 +231,7 @@ class Siril:
             try:
                 line = self._lines.get(timeout=min(left, 1.0))
             except queue.Empty:
-                self._stop_if_cancelled(command)
-                if not self.alive():
-                    raise EngineDied(
-                        command,
-                        got + self._stdout[-5:],
-                        f"Siril stopped while running “{command.split()[0]}” (exit {self.proc.returncode if self.proc else '?'}"
-                        f"; last output: {' | '.join(self._stdout[-3:]) or 'none'}).",
-                    ) from None
+                self._check_running(command, got)
                 continue
             if line == "<<EOF>>":
                 if self.proc is not None:
@@ -247,12 +248,21 @@ class Siril:
             if quiet:
                 end = time.monotonic() + timeout
             if on_line is not None:
-                try:
-                    on_line(line)
-                except Exception:  # noqa: BLE001 — progress reporting must never break a command
-                    log.debug("progress callback failed", exc_info=True)
+                _report(on_line, line)
             if done(line):
                 return got
+
+    def _check_running(self, command: str, got: list[str]) -> None:
+        """Between lines: stop if the task was cancelled or the worker is stopping, and fail if Siril has exited
+        (with its exit code and last output, so the failure says why)."""
+        self._stop_if_cancelled(command)
+        if not self.alive():
+            raise EngineDied(
+                command,
+                got + self._stdout[-5:],
+                f"Siril stopped while running “{command.split()[0]}” (exit {self.proc.returncode if self.proc else '?'}"
+                f"; last output: {' | '.join(self._stdout[-3:]) or 'none'}).",
+            ) from None
 
     def _stop_if_cancelled(self, command: str) -> None:
         """A cancelled task stops Siril mid-command; it starts afresh for the next task. So does a worker that is

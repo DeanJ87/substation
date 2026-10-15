@@ -733,6 +733,21 @@ def _adopt(work: Path, m: Master, members: list[MasterMember]) -> dict | None:
     return None
 
 
+def _open_work(m: Master) -> tuple[Path, dict]:
+    """The stack's work folder and its checkpoint. 005-DR-25: a stack stopped by a redeploy resumes from what it
+    had finished (its inputs, its registration); with nothing finished the folder starts empty. A folder kept
+    from a failed or cancelled run is in use again, so nothing may release it."""
+    work = Path(settings.WORK_DIR) / "integrations" / f"ds{m.dataset_id}_v{m.version}"
+    ck = _checkpoint(work, m.pk)
+    if ck.get("kept"):
+        ck["kept"] = None
+        _save_checkpoint(work, ck)
+    if not ck["done"]:
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir(parents=True)
+    return work, ck
+
+
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
 def integrate(master_id: int) -> dict:
     from apps.engine import parse
@@ -742,15 +757,7 @@ def integrate(master_id: int) -> dict:
     if m.state == MasterState.CANCELLED:
         return {"result": "cancelled"}
     Master.objects.filter(pk=m.pk).update(state=MasterState.RUNNING, started_at=timezone.now(), error=None)
-    work = Path(settings.WORK_DIR) / "integrations" / f"ds{m.dataset_id}_v{m.version}"
-    # 005-DR-25: a stack stopped by a redeploy resumes from what it had finished (its inputs, its registration)
-    ck = _checkpoint(work, m.pk)
-    if ck.get("kept"):  # a retry of a kept folder: it's in use again, so nothing may release it
-        ck["kept"] = None
-        _save_checkpoint(work, ck)
-    if not ck["done"]:
-        shutil.rmtree(work, ignore_errors=True)
-        work.mkdir(parents=True)
+    work, ck = _open_work(m)
     keep = False
     try:
         members, order, ck = _prepare_inputs(m, work, ck)
@@ -1114,13 +1121,40 @@ def check_stale(ds: Dataset) -> None:
             )
 
 
+def _measured_since_last_master(ds: Dataset) -> list[SubMeasurement]:
+    """The dataset's subs measured since its latest master (deleted ones aside) was created; all of them when
+    it has none."""
+    last = (
+        Master.objects.filter(dataset=ds).exclude(state=MasterState.DELETED).order_by("-created_at").first()
+    )
+    since = last.created_at if last else None
+    subs = SubMeasurement.objects.filter(frame__dataset=ds, state=MeasureState.DONE)
+    if since is not None:
+        subs = subs.filter(measured_at__gt=since)
+    return list(subs.select_related("frame", "frame__grade").prefetch_related("frame__verdicts"))
+
+
+def _usable(measured: list[SubMeasurement]) -> list[SubMeasurement]:
+    """Those whose effective verdict (a person's, else the machine grade's) is accept or down."""
+    from .effective import effective
+
+    usable = []
+    for m in measured:
+        try:
+            g = m.frame.grade
+        except MachineGrade.DoesNotExist:
+            g = None
+        if effective(m.frame, list(m.frame.verdicts.all()), g).verdict in ("accept", "down"):
+            usable.append(m)
+    return usable
+
+
 def auto_stacks(now=None) -> list[int]:  # noqa: ANN001
     """Automatic stacks (004 T012, FR-011): with Settings → Stacking → Auto set, queue a default-rule master for each
     dataset that is due, and return the datasets queued. "After each session" waits until no sub has arrived for
     the quiet time; "every N new subs" counts usable subs since the last master. Fewer than 3 usable subs never
     stack, and a dataset with a master already queued or integrating waits for it."""
     from .config import processing_settings
-    from .effective import effective
 
     cfg = processing_settings()["stacking"]
     mode = cfg.get("auto", "never")
@@ -1133,25 +1167,8 @@ def auto_stacks(now=None) -> list[int]:  # noqa: ANN001
     for ds in Dataset.objects.filter(sub_count__gt=0):
         if Master.objects.filter(dataset=ds, state__in=[MasterState.QUEUED, MasterState.RUNNING]).exists():
             continue
-        last = (
-            Master.objects.filter(dataset=ds)
-            .exclude(state=MasterState.DELETED)
-            .order_by("-created_at")
-            .first()
-        )
-        since = last.created_at if last else None
-        subs = SubMeasurement.objects.filter(frame__dataset=ds, state=MeasureState.DONE)
-        if since is not None:
-            subs = subs.filter(measured_at__gt=since)
-        new = list(subs.select_related("frame", "frame__grade").prefetch_related("frame__verdicts"))
-        usable = []
-        for m in new:
-            try:
-                g = m.frame.grade
-            except MachineGrade.DoesNotExist:
-                g = None
-            if effective(m.frame, list(m.frame.verdicts.all()), g).verdict in ("accept", "down"):
-                usable.append(m)
+        new = _measured_since_last_master(ds)
+        usable = _usable(new)
         if len(usable) < 3:
             continue
         times = [t for m in new if (t := m.frame.date_obs_utc or m.measured_at) is not None]

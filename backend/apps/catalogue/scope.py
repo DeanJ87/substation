@@ -108,18 +108,9 @@ def apply(qs: QuerySet, scope: Scope | None, kind: str) -> QuerySet:
     night = p["night"]
     if scope.site:
         cond &= Q(**{p["site"]: scope.site})
-    if scope.date:
-        cond &= Q(**{f"{night}date": scope.date})
-    if scope.date_from:
-        cond &= Q(**{f"{night}date__gte": scope.date_from})
-    if scope.date_to:
-        cond &= Q(**{f"{night}date__lte": scope.date_to})
+    cond &= _dates(scope, night)
     if scope.lat is not None and scope.lon is not None and "lat" in p:
-        km = scope.within_km or 5.0
-        dlat = km / 111.0
-        dlon = km / (111.0 * max(math.cos(math.radians(scope.lat)), 0.01))
-        cond &= Q(**{f"{p['lat']}__range": (scope.lat - dlat, scope.lat + dlat)})
-        cond &= Q(**{f"{p['lon']}__range": (scope.lon - dlon, scope.lon + dlon)})
+        cond &= _near(scope.lat, scope.lon, scope.within_km, p)
     for key in ("rig", "collection", "project", "dataset"):
         if getattr(scope, key) is not None:
             cond &= Q(**{p[key]: getattr(scope, key)})
@@ -131,6 +122,29 @@ def apply(qs: QuerySet, scope: Scope | None, kind: str) -> QuerySet:
     qs = qs.filter(cond)
     many = kind in ("dataset", "night")
     return qs.distinct() if many else qs
+
+
+def _dates(scope: Scope, night: str) -> Q:
+    """The night (one date, or a from/to range, either end optional), reached through `night`."""
+    cond = Q()
+    if scope.date:
+        cond &= Q(**{f"{night}date": scope.date})
+    if scope.date_from:
+        cond &= Q(**{f"{night}date__gte": scope.date_from})
+    if scope.date_to:
+        cond &= Q(**{f"{night}date__lte": scope.date_to})
+    return cond
+
+
+def _near(lat: float, lon: float, within_km: float | None, p: dict[str, str]) -> Q:
+    """A box round the point, `within_km` (default 5 km) each way: a degree of latitude is about 111 km, and a
+    degree of longitude shrinks with the cosine of the latitude (floored so the poles stay finite)."""
+    km = within_km or 5.0
+    dlat = km / 111.0
+    dlon = km / (111.0 * max(math.cos(math.radians(lat)), 0.01))
+    return Q(**{f"{p['lat']}__range": (lat - dlat, lat + dlat)}) & Q(
+        **{f"{p['lon']}__range": (lon - dlon, lon + dlon)}
+    )
 
 
 def _text(q: str, p: dict[str, str], night: str) -> Q:

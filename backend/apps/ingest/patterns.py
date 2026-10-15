@@ -175,37 +175,52 @@ def match(c: Compiled, rel_path: str, site_lon: float | None = None) -> dict[str
     types = dict(c.tokens)
     out: dict[str, Any] = {}
     for name, raw in got.items():
-        typ, fields = types[name], TOKENS[name][1]
-        if not fields:
-            continue
-        try:
-            if name == "bin":
-                x, _, y = raw.lower().partition("x")
-                out["xbin"], out["ybin"] = int(x), int(y or x)
-            elif name == "type":
-                t = normalise_type(raw)
-                if t is not None:
-                    out["frame_type"] = t.value
-            elif typ == _INT:
-                out[fields[0]] = int(raw)
-            elif typ == _FLOAT:
-                out[fields[0]] = float(raw)
-            else:
-                out[fields[0]] = raw.strip()
-        except ValueError:
-            continue
+        _put_token(out, name, raw, types[name])
     if "date" in got and "time" in got:
-        try:
-            y, mo, d = _parse_date(got["date"])
-            h, mi, s = _parse_time(got["time"])
-            when = datetime(y, mo, d, h, mi, s, tzinfo=UTC)
-            if got.get("tz", "local").lower() == "local":
-                if site_lon is None:
-                    raise ValueError("local time needs a site longitude")
-                # Read as local mean solar time, as nights are: a clock time with summer time may be up to an
-                # hour off, which moves the time but not the night.
-                when -= timedelta(hours=site_lon / 15.0)
+        when = _date_obs(got, site_lon)
+        if when is not None:
             out["date_obs"] = when
-        except ValueError:
-            pass
     return out
+
+
+def _put_token(out: dict[str, Any], name: str, raw: str, typ: str) -> None:
+    """Write one captured token's value into `out` under the fields it sets: a binning gives both axes ("2x2",
+    or "2" for both), a frame type is normalised (unknown words set nothing), numbers are typed and text is
+    trimmed. A token that sets no field, or whose value can't be read, writes nothing."""
+    fields = TOKENS[name][1]
+    if not fields:
+        return
+    try:
+        if name == "bin":
+            x, _, y = raw.lower().partition("x")
+            out["xbin"], out["ybin"] = int(x), int(y or x)
+        elif name == "type":
+            t = normalise_type(raw)
+            if t is not None:
+                out["frame_type"] = t.value
+        elif typ == _INT:
+            out[fields[0]] = int(raw)
+        elif typ == _FLOAT:
+            out[fields[0]] = float(raw)
+        else:
+            out[fields[0]] = raw.strip()
+    except ValueError:
+        return
+
+
+def _date_obs(got: dict[str, str], site_lon: float | None) -> datetime | None:
+    """The capture time from the path's date and time tokens, in UTC. A local time (the default when no tz token
+    says UTC) is read as local mean solar time at the site's longitude, as nights are: a clock time with summer
+    time may be up to an hour off, which moves the time but not the night. None for an impossible date or time,
+    or a local time with no site longitude."""
+    try:
+        y, mo, d = _parse_date(got["date"])
+        h, mi, s = _parse_time(got["time"])
+        when = datetime(y, mo, d, h, mi, s, tzinfo=UTC)
+        if got.get("tz", "local").lower() == "local":
+            if site_lon is None:
+                raise ValueError("local time needs a site longitude")
+            when -= timedelta(hours=site_lon / 15.0)
+    except ValueError:
+        return None
+    return when
