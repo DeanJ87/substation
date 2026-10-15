@@ -614,7 +614,7 @@ function StackDetail({ id }: { id: number }) {
           <>
             <dt>File</dt>
             <dd>
-              <FilePath path={d.output_path} />
+              <FilePath path={d.output_path} download={`/api/v1/stacks/${id}/download`} />
             </dd>
           </>
         )}
@@ -743,7 +743,7 @@ function PostStages({ id, version }: { id: number; version: number }) {
                   View at 100%
                 </Zoomable>
               )}
-              {st.file_path && <FilePath path={st.file_path} />}
+              {st.file_path && <FilePath path={st.file_path} download={st.download} />}
             </li>
           ))}
         </ol>

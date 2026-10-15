@@ -5178,6 +5178,17 @@
    },
    "PostStageOut": {
     "properties": {
+     "download": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Download"
+     },
      "file_path": {
       "default": "",
       "title": "File Path",
@@ -14765,6 +14776,58 @@
      }
     ],
     "summary": "Redraw Post",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/stacks/{id}/post/{run}/{stage}/download": {
+   "get": {
+    "description": "A processed version's linear 32-bit file, to download (spec 010 FR-008, 2026-10-15).",
+    "operationId": "apps_processing_api_masters_master_post_download",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run",
+      "required": true,
+      "schema": {
+       "title": "Run",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "title": "Stage",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Master Post Download",
     "tags": [
      "catalogue"
     ]

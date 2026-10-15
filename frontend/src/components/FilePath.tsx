@@ -8,6 +8,26 @@ import v from '../features/v2/v2.module.css'
 
 export type PathMap = { from: string; to: string }
 const KEY = 'sst-path-map'
+const MODE_KEY = 'sst-file-mode'
+export type FileMode = 'open' | 'download'
+
+/** How this browser gets at a file (2026-10-15): open it where it is on a mapped share, or download it. Per
+ * browser, since a machine without the share mounted can only download. */
+export function fileMode(): FileMode {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'download' ? 'download' : 'open'
+  } catch {
+    return 'open'
+  }
+}
+
+export function saveFileMode(mode: FileMode) {
+  try {
+    localStorage.setItem(MODE_KEY, mode)
+  } catch {
+    /* private window: opening in place stays the default */
+  }
+}
 
 export function localPathMap(): PathMap[] {
   try {
@@ -44,11 +64,38 @@ export function useSitePathMap(): PathMap[] {
   return Array.isArray(p) ? p : []
 }
 
-export function FilePath({ path, className }: { path: string; className?: string }) {
+export function FilePath({
+  path,
+  download,
+  className,
+}: {
+  path: string
+  download?: string | null // the same file over the web, for a browser set to download
+  className?: string
+}) {
   const site = useSitePathMap()
   const [shown] = useState(() => localPathMap())
+  const [mode] = useState(fileMode)
   if (!path) return null
-  const local = mapPath(path, [...shown, ...site.filter((s) => !shown.some((l) => l.from === s.from))])
+  const maps = [...shown, ...site.filter((s) => !shown.some((l) => l.from === s.from))]
+  const local = mapPath(path, maps)
+  const name = path.split('/').pop() ?? 'file'
+  if (download && (mode === 'download' || local === path)) {
+    // set to download, or no mapping reaches this folder from here: a path the machine can't open is no use
+    return (
+      <span
+        className={className}
+        style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minWidth: 0 }}
+      >
+        <a className={v.pill} href={download} download>
+          Download
+        </a>
+        <code style={{ overflowWrap: 'anywhere', fontSize: 12 }} title={path}>
+          {name}
+        </code>
+      </span>
+    )
+  }
   return (
     <span className={className} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
       <code style={{ overflowWrap: 'anywhere', fontSize: 12 }} title={path}>

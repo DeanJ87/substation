@@ -706,7 +706,9 @@ function Combined({
                   {m.stale && <span className={v.warn}>{m.stale}</span>}
                   {m.state_reason && <span className={v.muted}>{m.state_reason}</span>}
                   {m.error && <span className={v.bad}>{m.error}</span>}
-                  {m.state === 'current' && <FilePath path={m.file_path ?? ''} />}
+                  {m.state === 'current' && (
+                    <FilePath path={m.file_path ?? ''} download={`/api/v1/combined/${m.id}/download`} />
+                  )}
                 </div>
               </article>
             ))}

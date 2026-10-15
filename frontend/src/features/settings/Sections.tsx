@@ -1,5 +1,12 @@
 // Settings sections from the design (v2 A4, spec 008): Folders, Grading, Stacking, Metadata sources, Workers.
-import { localPathMap, saveLocalPathMap, type PathMap } from '../../components/FilePath'
+import {
+  fileMode,
+  localPathMap,
+  saveFileMode,
+  saveLocalPathMap,
+  type FileMode,
+  type PathMap,
+} from '../../components/FilePath'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { api, unwrap } from '../../api/client'
@@ -353,6 +360,7 @@ const POST_STEPS: Record<
 export function FilePaths() {
   const { draft, set, readOnly } = useDraft()
   const [mine, setMine] = useState(() => localPathMap())
+  const [mode, setMode] = useState<FileMode>(fileMode)
   if (!draft) return null
   const site = draft.paths?.map ?? []
   const row = (list: PathMap[], i: number, change: (next: PathMap[]) => void, disabled: boolean) => (
@@ -380,9 +388,31 @@ export function FilePaths() {
   return (
     <SettingsSection id="paths" title="File paths">
       <p className="muted">
-        Masters and stages show where they are, with a Copy path button, instead of a download. Map the
-        server's folders to the drive or share your machines use.
+        Masters and processed versions can open where they are on your share, or download. Map the server's
+        folders to the drive or share your machines use; a file no mapping reaches downloads instead.
       </p>
+      <fieldset className={s.inline}>
+        <legend>In this browser, files</legend>
+        {(
+          [
+            ['open', 'Open where they are (show the path, copy it)'],
+            ['download', 'Download'],
+          ] as const
+        ).map(([value, label]) => (
+          <label key={value}>
+            <input
+              type="radio"
+              name="file-mode"
+              checked={mode === value}
+              onChange={() => {
+                setMode(value)
+                saveFileMode(value)
+              }}
+            />{' '}
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <strong>For everyone</strong>
       {site.map((_, i) => row(site, i, (next) => set('paths', 'map', next), readOnly))}
       <button

@@ -759,6 +759,7 @@ class PostStageOut(Schema):
     tool_label: str = ""  # "GraXpert", "BlurXTerminator", … for the version tabs
     stats: dict = {}  # background_adu, noise_adu, peak_adu, snr
     file_path: str = ""  # the stage's linear 32-bit file
+    download: str | None = None  # the same file, for a viewer who downloads rather than opens in place
 
 
 class PostRunOut(Schema):
@@ -810,6 +811,9 @@ def _post_out(m: Master) -> PostOut:
                 tool_label=_tool_label(s),
                 stats=s.get("stats") or {},
                 file_path=s.get("path", "") if s.get("state") == "done" else "",
+                download=f"/api/v1/stacks/{m.pk}/post/{r['run']}/{i}/download"
+                if s.get("state") == "done" and s.get("path")
+                else None,
             )
             for i, s in enumerate(r.get("stages", []))
         ]
@@ -872,6 +876,24 @@ def master_post_full(request, id: int, run: int, stage: int):  # noqa: A002
             p = Path(r["stages"][stage].get("full") or "")
             if p.is_file():
                 return FileResponse(p.open("rb"), content_type="image/jpeg")
+    return 404, None
+
+
+@router.get("/stacks/{id}/post/{run}/{stage}/download", response={200: None, 404: None})
+def master_post_download(request, id: int, run: int, stage: int):  # noqa: A002
+    """A processed version's linear 32-bit file, to download (spec 010 FR-008, 2026-10-15)."""
+    m = get_object_or_404(Master, pk=id)
+    for r in (m.report or {}).get("post_runs", []):
+        if r["run"] == run and 0 <= stage < len(r.get("stages", [])):
+            s = r["stages"][stage]
+            p = Path(s.get("path") or "")
+            if s.get("state") == "done" and p.is_file():
+                base = m.dataset.display_name.replace(" · ", "_").replace(" ", "")
+                return FileResponse(
+                    p.open("rb"),
+                    as_attachment=True,
+                    filename=f"{base}_master_v{m.version}_{s['step']}{p.suffix}",
+                )
     return 404, None
 
 

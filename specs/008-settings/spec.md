@@ -73,3 +73,11 @@ each machine mounts the share, e.g. a Windows drive letter) lets them open it in
 - **008-DR-13**: Notifications can go to Pushover as well as ntfy and a webhook: a user (or group) key and the
   application's API token, each 30 letters and digits. A failed job is sent at high priority; a link opens the item
   in SubStation. Only admins see the keys and private addresses; other users see that a channel is set.
+
+### Amendment 2026-10-15: open in place, or download
+
+- **008-DR-14 Each browser chooses how it gets files.** Settings → File paths has a per-browser choice: open files
+  where they are (the path mapped to this machine's share, with Copy path), or download them. Masters, combined
+  masters and every processed version (GraXpert, BlurXTerminator, NoiseXTerminator) offer both; a file no mapping
+  reaches from this browser downloads even when opening in place is chosen, since a path the machine can't reach is
+  of no use. Processed versions gained their own download (`/stacks/{id}/post/{run}/{stage}/download`).

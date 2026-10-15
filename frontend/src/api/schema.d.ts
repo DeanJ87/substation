@@ -2132,6 +2132,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stacks/{id}/post/{run}/{stage}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Master Post Download
+         * @description A processed version's linear 32-bit file, to download (spec 010 FR-008, 2026-10-15).
+         */
+        get: operations["apps_processing_api_masters_master_post_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stacks/{id}/post/{run}/{stage}/full": {
         parameters: {
             query?: never;
@@ -4198,6 +4218,8 @@ export interface components {
         };
         /** PostStageOut */
         PostStageOut: {
+            /** Download */
+            download?: string | null;
             /**
              * File Path
              * @default
@@ -8560,6 +8582,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PostOut"];
                 };
+            };
+        };
+    };
+    apps_processing_api_masters_master_post_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                run: number;
+                stage: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
