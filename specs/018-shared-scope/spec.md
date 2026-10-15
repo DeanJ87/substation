@@ -107,3 +107,13 @@ and one place in the backend that turns it into a query for each kind of record.
   range) and back. The map says when a link narrowed it beyond its nights, with a way to show everything.
 - **018-DR-10** Cameras as records (SC5) stay open: cameras are free text on frames, datasets, rigs and calibration
   sets, so a record needs a model, a backfill from all four, and the rig editor to pick one.
+
+### Amendment 2026-10-15: the scope meets the night sky and the selection bars
+
+- **018-DR-11** The night sky across nights (`/datasets/{id}/sky`, `/collections/{id}/sky`, spec 015 N7) takes the
+  shared scope: its nights, rigs, filters and the rest narrow the lights drawn. Its `site` keeps the meaning it had
+  there, the place the sky is seen from, so every other place stays in the "From" picker. A collection's "On the
+  sky" section passes the scope's nights, as its sessions are narrowed.
+- **018-DR-12** A selection bar (spec 016 U6) on a list the scope narrows (the Library's Not in a collection, the
+  Calibration page's raw sets) acts only on chosen rows still shown: narrowing the list drops hidden rows from the
+  choice, so an action never reaches what the page doesn't show.

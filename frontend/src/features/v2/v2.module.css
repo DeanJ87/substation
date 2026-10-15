@@ -190,6 +190,12 @@ button.pill:disabled {
   overflow-x: auto; /* a phone scrolls the tabs sideways rather than wrapping their counts */
   scrollbar-width: none;
 }
+/* five tabs (Subs, Quality, Calibration, Masters, Sky) fit a 400 px phone with tighter spacing (007-DR-34) */
+@media (max-width: 599px) {
+  .tabs {
+    gap: 14px;
+  }
+}
 .tab {
   flex: none;
   white-space: nowrap;

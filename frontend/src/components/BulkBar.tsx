@@ -1,6 +1,6 @@
 // The bar shown while several things are chosen (spec 016): how many, the actions as buttons with text, and
 // Clear. A toolbar, so a keyboard reaches every action in turn; Escape clears the choice.
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Button } from './ui'
 import s from './BulkBar.module.css'
 
@@ -44,9 +44,15 @@ export function BulkBar({
   )
 }
 
-/** A set of chosen ids, with toggle, choose-these and clear. */
-export function useChosen<T>() {
-  const [chosen, setChosen] = useState<Set<T>>(() => new Set())
+/** A set of chosen ids, with toggle, choose-these and clear. Given the ids `shown`, a choice no longer shown (the
+ *  shared scope narrowed the list, spec 018) drops out, so an action never reaches what the page doesn't show. */
+export function useChosen<T>(shown?: readonly T[]) {
+  const [all, setChosen] = useState<Set<T>>(() => new Set())
+  const chosen = useMemo(() => {
+    if (!shown) return all
+    const here = new Set(shown)
+    return new Set([...all].filter((id) => here.has(id)))
+  }, [all, shown])
   const toggle = useCallback(
     (id: T) =>
       setChosen((old) => {

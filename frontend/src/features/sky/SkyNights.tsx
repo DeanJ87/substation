@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
+import type { Scope } from '../scope/scope'
 import { integrationText, shortDateText } from '../format'
 import { Dome, type DomeCtx, middle } from './Dome'
 import { type Pt, type Shape, DEFAULT_VIEW, SHAPES, marker, polyline, series } from './projection'
@@ -15,11 +16,17 @@ import { CameraFrame, fovText, useWidth } from './SkyView'
 export type Nights = components['schemas']['NightsOut']
 type Night = Nights['nights'][number]
 
-export function useTargetSky(kind: 'dataset' | 'collection', id: number, site: string | null) {
+/** `nights` narrows to the shared scope's nights (spec 018), as the collection's sessions are. */
+export function useTargetSky(
+  kind: 'dataset' | 'collection',
+  id: number,
+  site: string | null,
+  nights: NightsScope = {},
+) {
   return useQuery({
-    queryKey: ['target-sky', kind, id, site],
+    queryKey: ['target-sky', kind, id, site, nights],
     queryFn: async () => {
-      const query = { site: site ?? undefined }
+      const query = { ...nights, site: site ?? undefined }
       return unwrap(
         kind === 'dataset'
           ? await api.GET('/datasets/{dataset_id}/sky', { params: { path: { dataset_id: id }, query } })
@@ -38,9 +45,19 @@ const placeText = (p: Nights['places'][number]) =>
   `${Math.abs(p.lat).toFixed(2)}° ${p.lat >= 0 ? 'N' : 'S'}, ${Math.abs(p.lon).toFixed(2)}° ${p.lon >= 0 ? 'E' : 'W'} · ${p.subs} subs over ${p.nights} night${p.nights === 1 ? '' : 's'}`
 
 /** The dome across nights, loading its own data. */
-export function TargetSky({ kind, id }: { kind: 'dataset' | 'collection'; id: number }) {
+type NightsScope = Pick<Scope, 'date' | 'date_from' | 'date_to'>
+
+export function TargetSky({
+  kind,
+  id,
+  nights,
+}: {
+  kind: 'dataset' | 'collection'
+  id: number
+  nights?: NightsScope
+}) {
   const [site, setSite] = useState<string | null>(null)
-  const q = useTargetSky(kind, id, site)
+  const q = useTargetSky(kind, id, site, nights)
   if (q.isError) return <p className="muted">The sky across nights couldn’t be loaded.</p>
   if (!q.data) return <p className="muted">Working out where each sub was on the sky…</p>
   return <SkyNights sky={q.data} onSite={setSite} />

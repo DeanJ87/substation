@@ -18,3 +18,5 @@
   calibration sets, so a camera record needs a model, a migration that backfills it from all four, and the rig
   editor to choose one; not done with the scope work. `camera` stays a name, matched whatever the case (018-DR-01)
 - [ ] SC6 Drop the old parameter names once nothing sends them
+- [X] SC7 (2026-10-15) The across-nights sky takes the scope (its `site` picks the view); the collection's On the sky
+  passes the scope's nights; selection bars on scoped lists keep only rows still shown (018-DR-11, 018-DR-12); tests

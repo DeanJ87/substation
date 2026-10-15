@@ -308,7 +308,11 @@ export function CollectionView() {
 
           <section className={`${v.card} ${v.cardPad}`}>
             <Collapsible id="collection-sky" title="On the sky" meta="every night from one place">
-              <TargetSky kind="collection" id={card.id} />
+              <TargetSky
+                kind="collection"
+                id={card.id}
+                nights={{ date: scope.date, date_from: scope.date_from, date_to: scope.date_to }}
+              />
             </Collapsible>
           </section>
 
@@ -485,7 +489,7 @@ function DatasetTable({
                     aria-selected={choosing ? pick.chosen.has(ds.id) : undefined}
                   >
                     {choosing && (
-                      <td className={c.chooseCell}>
+                      <td className={c.chooseCell} data-label="">
                         <ChooseBox
                           checked={pick.chosen.has(ds.id)}
                           onChange={() => pick.toggle(ds.id)}

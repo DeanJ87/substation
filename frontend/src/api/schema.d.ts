@@ -550,7 +550,7 @@ export interface paths {
         };
         /**
          * Collection Sky
-         * @description Every light of a collection across all its nights, from one place.
+         * @description Every light of a collection across all its nights, from one place, narrowed by the rest of the scope.
          */
         get: operations["apps_processing_api_sky_nights_collection_sky"];
         put?: never;
@@ -892,7 +892,8 @@ export interface paths {
         };
         /**
          * Dataset Sky
-         * @description One dataset's lights across all its nights, from one place (the one with most subs unless `site` says).
+         * @description One dataset's lights across all its nights, from one place (the one with most subs unless `site` says),
+         *     on the scope's nights, rigs and filters (spec 018).
          */
         get: operations["apps_processing_api_sky_nights_dataset_sky"];
         put?: never;
@@ -7287,6 +7288,21 @@ export interface operations {
         parameters: {
             query?: {
                 site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
             };
             header?: never;
             path: {
@@ -7894,6 +7910,21 @@ export interface operations {
         parameters: {
             query?: {
                 site?: string | null;
+                lat?: number | null;
+                lon?: number | null;
+                within_km?: number | null;
+                date?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                camera?: string | null;
+                rig?: number | null;
+                telescope?: string | null;
+                filter?: string | null;
+                collection?: number | null;
+                project?: number | null;
+                dataset?: number | null;
+                target?: string | null;
+                q?: string | null;
             };
             header?: never;
             path: {

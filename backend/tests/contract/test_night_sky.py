@@ -234,6 +234,11 @@ def test_a_target_across_its_nights_from_its_busiest_place(admin_client):
     assert other["site_key"] == "away" and len(other["subs"]) == 1 and other["lat"] == 55.5
     assert admin_client.get("/api/v1/collections/999999/sky").status_code == 404
 
+    # the shared scope's nights narrow it (spec 018); its place only picks the view, other places stay listed
+    one = admin_client.get(f"/api/v1/collections/{c.pk}/sky?date_from=2026-10-10&site=home").json()
+    assert [x["date"] for x in one["nights"]] == ["2026-10-11"] and len(one["subs"]) == 2
+    assert [p["key"] for p in one["places"]] == ["home", "away"]
+
 
 def test_a_target_never_placed_has_an_empty_sky(admin_client):
     ds = Dataset.objects.create(group_key="1", display_name="M 31", target="M 31", filter_norm="L")

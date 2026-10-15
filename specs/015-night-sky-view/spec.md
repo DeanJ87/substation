@@ -141,3 +141,8 @@ dome); live position during a session; video export (a still image export may fo
   from the tangent plane to right ascension and declination (gnomonic), then to altitude and azimuth for the site
   and sidereal time, each edge divided so it bends with the dome; the image's top edge is drawn heavier. Nothing is
   drawn while any part of it is below the horizon. The side panel says the frame's size and rotation in words.
+
+### Amendment 2026-10-15: across nights within the shared scope
+
+- **015-DR-13** The across-nights endpoints take the shared scope (spec 018, 018-DR-11); `site` still picks the place
+  the sky is seen from. The dataset's Sky tab fits the tab row on a phone (007-DR-34).

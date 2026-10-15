@@ -7,9 +7,11 @@ from collections import defaultdict
 from datetime import date, datetime
 
 from django.shortcuts import get_object_or_404
+from ninja import Query
 
 from apps.catalogue.api import router
 from apps.catalogue.models import Collection, Dataset, Frame, FrameStatus, FrameType
+from apps.catalogue.scope import Scope, apply, without
 from substation.api import Schema
 
 from . import sky
@@ -63,16 +65,20 @@ class NightsOut(Schema):
     fov: SkyFov | None  # the most-shot rig's field of view, for a frame on the dome
 
 
-def _frames(**where: object) -> list:  # of Frame, its night and dataset always set
+def _frames(scope: Scope | None = None, **where: object) -> list:  # of Frame, night and dataset set
+    """The lights, narrowed by the shared scope (spec 018) less its place: `site` here picks the place the sky is
+    seen from, and the other places stay in the picker."""
+    qs = Frame.objects.filter(
+        frame_type=FrameType.LIGHT,
+        status=FrameStatus.CATALOGUED,
+        night__isnull=False,
+        dataset__isnull=False,
+        **where,
+    )
+    if scope is not None:
+        qs = apply(qs, without(scope, "site"), "frame")
     return list(
-        Frame.objects.filter(
-            frame_type=FrameType.LIGHT,
-            status=FrameStatus.CATALOGUED,
-            night__isnull=False,
-            dataset__isnull=False,
-            **where,
-        )
-        .select_related("dataset__rig", "night", "grade", "solve")
+        qs.select_related("dataset__rig", "night", "grade", "solve")
         .prefetch_related("verdicts", "headers")
         .order_by("date_obs_utc")
     )
@@ -180,15 +186,16 @@ def _fill(out: NightsOut, frames: list, placed: dict) -> None:
 
 
 @router.get("/datasets/{dataset_id}/sky", response=NightsOut)
-def dataset_sky(request, dataset_id: int, site: str | None = None):
-    """One dataset's lights across all its nights, from one place (the one with most subs unless `site` says)."""
+def dataset_sky(request, dataset_id: int, scope: Query[Scope]):
+    """One dataset's lights across all its nights, from one place (the one with most subs unless `site` says),
+    on the scope's nights, rigs and filters (spec 018)."""
     ds = get_object_or_404(Dataset, pk=dataset_id)
-    return across_nights(ds.display_name or ds.target, _frames(dataset=ds), site)
+    return across_nights(ds.display_name or ds.target, _frames(scope, dataset=ds), scope.site)
 
 
 @router.get("/collections/{collection_id}/sky", response=NightsOut)
-def collection_sky(request, collection_id: int, site: str | None = None):
-    """Every light of a collection across all its nights, from one place."""
+def collection_sky(request, collection_id: int, scope: Query[Scope]):
+    """Every light of a collection across all its nights, from one place, narrowed by the rest of the scope."""
     c = get_object_or_404(Collection, pk=collection_id)
     name = c.name.split(" - ", 1)[1] if " - " in c.name else c.name
-    return across_nights(name, _frames(dataset__collection=c), site)
+    return across_nights(name, _frames(scope, dataset__collection=c), scope.site)

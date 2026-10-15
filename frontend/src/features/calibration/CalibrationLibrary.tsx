@@ -118,9 +118,9 @@ export function CalibrationLibrary() {
   const nights = useProgressive(byNight, 8, filterKey)
   const setCount = byNight.reduce((n, [, l]) => n + l.length, 0)
   // spec 016 U6: choose several raw sets and build them in one go
-  const pick = useChosen<number>()
+  const shownIds = useMemo(() => byNight.flatMap(([, l]) => l.map((cs) => cs.id)), [byNight])
+  const pick = useChosen<number>(shownIds)
   const buildMany = useBulkBuild()
-  const shownIds = byNight.flatMap(([, l]) => l.map((cs) => cs.id))
 
   if (sets.isError || masters.isError)
     return (
@@ -300,7 +300,7 @@ function NightSets({
                 onKeyDown={(e) => e.key === 'Enter' && onOpen(cs.id)}
                 aria-selected={chosen.has(cs.id)}
               >
-                <td className={s.chooseCell}>
+                <td className={s.chooseCell} data-label="">
                   <ChooseBox
                     checked={chosen.has(cs.id)}
                     onChange={() => onChoose(cs.id)}

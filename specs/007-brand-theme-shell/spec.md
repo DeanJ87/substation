@@ -468,3 +468,9 @@ Taken on the recommendation in the design review (owner may overrule):
 - **007-DR-33** A night's three readouts (Integration, Moon, Calibration) share one compact row on a phone.
   Checked by screenshots at 400 px of the Library, a collection, every dataset tab, Calibration, What to shoot,
   Activity, the Bin, Settings, two nights and the map: no page scrolls sideways.
+
+### Amendment 2026-10-15: cards and tabs meet the newer features
+
+- **007-DR-34** Choose boxes added to tables for bulk actions (spec 016 U6) sit in an unlabelled grid slot on a
+  phone card (`data-label=""`), so a row's name still heads its card. The dataset tabs (Subs, Quality, Calibration,
+  Masters and now Sky, spec 015) close up below 600 px so all five fit a 400 px screen.

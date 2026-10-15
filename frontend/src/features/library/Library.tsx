@@ -229,7 +229,8 @@ function UngroupedList({
   const actions = useCollectionActions()
   const { visible, hasMore, more } = useProgressive(rows, 60, resetKey)
   // spec 016 U6: choose several and re-grade, stack or move them together
-  const pick = useChosen<number>()
+  const shownIds = useMemo(() => rows.map((u) => u.dataset.id), [rows])
+  const pick = useChosen<number>(shownIds)
   if (!rows.length) return null
   return (
     <div className={`${v.card} ${tb.flush}`}>
