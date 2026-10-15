@@ -62,3 +62,5 @@
   solutions made during a stack are stored (004-DR-26); test
 - [X] D-T12 (2026-10-14) Failed and cancelled stacks keep their folder for three days; retries and same-subs reruns
   carry on from it; kept folders give way to running stacks (004-DR-27); test
+- [X] D-T13 (2026-10-15) `Master.step` widened to 200 characters and trimmed when written: PostgreSQL refused
+  progress lines over 30 and failed the stack (migration 0015); test

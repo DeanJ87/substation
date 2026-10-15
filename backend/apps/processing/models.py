@@ -121,7 +121,8 @@ class Master(models.Model):
     state = models.CharField(max_length=12, choices=MasterState.choices, default=MasterState.QUEUED)
     state_reason = models.TextField(blank=True, default="")
     recipe = models.JSONField(default=dict, help_text="scope, rule, options; enough to re-run")
-    step = models.CharField(max_length=30, blank=True, default="")
+    # live progress text; PostgreSQL enforces the length
+    step = models.CharField(max_length=200, blank=True, default="")
     progress = models.FloatField(default=0)
     sub_count = models.PositiveIntegerField(default=0)
     session_count = models.PositiveIntegerField(default=0)

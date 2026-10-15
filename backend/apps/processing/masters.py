@@ -258,7 +258,8 @@ def reconcile_states() -> int:
 
 
 def _step(m: Master, step: str, progress: float) -> None:
-    Master.objects.filter(pk=m.pk).update(step=step, progress=progress)
+    # PostgreSQL refuses an over-long value (SQLite never did): a long progress line failed a whole stack
+    Master.objects.filter(pk=m.pk).update(step=step[:200], progress=progress)
     report_progress(progress, f"Master v{m.version}: {step}")
     emit(
         "master.updated", {"dataset_id": m.dataset_id, "master_id": m.pk, "step": step, "progress": progress}
