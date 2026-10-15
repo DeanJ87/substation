@@ -232,6 +232,25 @@ def create_pattern(request, body: PathPatternIn):
     return Status(201, _pattern_out(p))
 
 
+def _preview_diff(frame, got: dict, prefer: set[str]) -> list[PreviewChange]:  # noqa: ANN001
+    """What a pattern's values would change on one frame: a field its header already gives is left alone
+    unless the pattern is preferred over the header for it (a target or panel still comes from the path when
+    the header names no OBJECT), and a value equal to the current one (as text, or as the same number) is no
+    change."""
+    diff = []
+    header = set(frame.metadata.filter(source="header").exclude(value=None).values_list("field", flat=True))
+    for f, v in got.items():
+        if f in header and f not in prefer and not (f in ("target", "panel") and "object" not in header):
+            continue  # the header keeps this value
+        attr = RESOLVED_FIELD.get(f)
+        cur = getattr(frame, attr) if attr else None
+        new = v.isoformat() if isinstance(v, datetime) else str(v)
+        curs = cur.isoformat() if isinstance(cur, datetime) else (None if cur is None else str(cur))
+        if curs != new and not (cur is not None and _same_number(cur, v)):
+            diff.append(PreviewChange(field=f, current=curs, new=new))
+    return diff
+
+
 @router.post("/path-patterns/preview", response=PreviewOut)
 def preview_pattern(request, body: PreviewIn):
     data = body.pattern.dict()
@@ -255,24 +274,7 @@ def preview_pattern(request, body: PreviewIn):
             continue
         matching += 1
         if len(changes) < 50 and matching <= 500:  # bounded work per keystroke
-            diff = []
-            prefer = set(data.get("prefer_over_header") or [])
-            header = set(
-                c.frame.metadata.filter(source="header").exclude(value=None).values_list("field", flat=True)
-            )
-            for f, v in got.items():
-                if (
-                    f in header
-                    and f not in prefer
-                    and not (f in ("target", "panel") and "object" not in header)
-                ):
-                    continue  # the header keeps this value
-                attr = RESOLVED_FIELD.get(f)
-                cur = getattr(c.frame, attr) if attr else None
-                new = v.isoformat() if isinstance(v, datetime) else str(v)
-                curs = cur.isoformat() if isinstance(cur, datetime) else (None if cur is None else str(cur))
-                if curs != new and not (cur is not None and _same_number(cur, v)):
-                    diff.append(PreviewChange(field=f, current=curs, new=new))
+            diff = _preview_diff(c.frame, got, set(data.get("prefer_over_header") or []))
             if diff:
                 changes.append(
                     PreviewFrame(sha256=c.frame_id, path=f"{c.library.name}/{c.rel_path}", changes=diff)

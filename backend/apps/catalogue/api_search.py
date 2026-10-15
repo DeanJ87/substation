@@ -49,16 +49,27 @@ def night_filter(q: str, today: date | None = None) -> Q | None:
         return Q(date=today - timedelta(days=1))
     m = re.fullmatch(r"(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?", t)
     if m:  # day first, as written in the UK
-        dd, mm, yy = int(m.group(1)), int(m.group(2)), m.group(3)
-        if not (1 <= mm <= 12 and 1 <= dd <= 31):
-            return None
-        out = Q(date__month=mm, date__day=dd)
-        return out & Q(date__year=int(yy) + (2000 if len(yy) == 2 else 0)) if yy else out
-    words = [w for w in re.split(r"\s+", t) if w]
+        return _slashed_night(m)
+    return _worded_night(t)
+
+
+def _slashed_night(m: re.Match[str]) -> Q | None:
+    """ "14/10" or "14.10.26" (day first): that day of that month, in that year when one is given (two digits
+    mean this century). None when the day or month is out of range."""
+    dd, mm, yy = int(m.group(1)), int(m.group(2)), m.group(3)
+    if not (1 <= mm <= 12 and 1 <= dd <= 31):
+        return None
+    out = Q(date__month=mm, date__day=dd)
+    return out & Q(date__year=int(yy) + (2000 if len(yy) == 2 else 0)) if yy else out
+
+
+def _worded_night(t: str) -> Q | None:
+    """A month name with an optional day ("14th", "14") and year ("2026"), in any order. None when any other
+    word appears or no month is named."""
     month: int | None = None
     day: int | None = None
     year: int | None = None
-    for w in words:
+    for w in (w for w in re.split(r"\s+", t) if w):
         w2 = re.sub(r"(st|nd|rd|th)$", "", w)
         if w in _MONTHS and month is None:
             month = _MONTHS[w]

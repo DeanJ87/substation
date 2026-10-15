@@ -279,6 +279,41 @@ def _closer_flat_pending(light: Frame, best: Frame | None, cache: dict, later_ok
     return None
 
 
+def _within_windows(pool: list[Frame], windows: dict, night: date | None) -> list[Frame]:
+    """Masters whose validity window (002 C13) covers the night: a master with no window, or an open end,
+    is unbounded on that side. All of them when no windows are set or the night is unknown."""
+    if not windows or night is None:
+        return pool
+    return [
+        f
+        for f in pool
+        if f.pk not in windows
+        or (
+            (windows[f.pk][0] is None or night >= windows[f.pk][0])
+            and (windows[f.pk][1] is None or night <= windows[f.pk][1])
+        )
+    ]
+
+
+def _match_processed_rgb(light: Frame, all_flats: list[Frame], cfg: dict) -> Match:
+    """8-bit colour: no dark applies, but a colour flat from the same camera corrects vignetting and dust. With
+    no colour flat to divide by the image is used uncalibrated."""
+    colour_flats = [f for f in all_flats if is_colour_master(f)]
+    flat, fnote, weak, _ = match_flat(light, colour_flats, cfg["weak_flat_days"], cfg["later_flat_fallback"])
+    if flat is not None:
+        return Match(
+            None,
+            flat,
+            "",
+            "No dark: 8-bit colour image",
+            f"{fnote} · colour flat (approximate)",
+            weak,
+            flat_only=True,
+        )
+    note = "8-bit colour image, not raw: used uncalibrated (no 8-bit colour flat to divide by)"
+    return Match(None, None, "", note, note, False, no_calibration=True)
+
+
 def match(light: Frame, cache: dict | None = None) -> Match:
     rig = None
     if light.dataset_id and light.dataset:
@@ -298,37 +333,11 @@ def match(light: Frame, cache: dict | None = None) -> Match:
 
     def usable(pool: list[Frame]) -> list[Frame]:
         """Masters whose validity window (002 C13) covers this light's night."""
-        if not windows or night is None:
-            return pool
-        return [
-            f
-            for f in pool
-            if f.pk not in windows
-            or (
-                (windows[f.pk][0] is None or night >= windows[f.pk][0])
-                and (windows[f.pk][1] is None or night <= windows[f.pk][1])
-            )
-        ]
+        return _within_windows(pool, windows, night)
 
     all_flats = usable(cache.setdefault("flats", masters(FrameType.MASTER_FLAT)))
     if is_processed_rgb(light):
-        # 8-bit colour: no dark applies, but a colour flat from the same camera corrects vignetting and dust
-        colour_flats = [f for f in all_flats if is_colour_master(f)]
-        flat, fnote, weak, _ = match_flat(
-            light, colour_flats, cfg["weak_flat_days"], cfg["later_flat_fallback"]
-        )
-        if flat is not None:
-            return Match(
-                None,
-                flat,
-                "",
-                "No dark: 8-bit colour image",
-                f"{fnote} · colour flat (approximate)",
-                weak,
-                flat_only=True,
-            )
-        note = "8-bit colour image, not raw: used uncalibrated (no 8-bit colour flat to divide by)"
-        return Match(None, None, "", note, note, False, no_calibration=True)
+        return _match_processed_rgb(light, all_flats, cfg)
     darks = usable(cache.setdefault("darks", masters(FrameType.MASTER_DARK)))
     flats = [f for f in all_flats if not is_colour_master(f)]
     dark, dnote, dwhy = match_dark(light, darks, cfg["temp_tolerance_c"])

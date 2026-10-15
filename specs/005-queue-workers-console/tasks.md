@@ -106,7 +106,12 @@
   calibration set page. Backend: the ten functions above complexity 15 split into named steps (supervisor loop,
   stacking, settings checks, calibration builds, resolving, grading, combining, hashing, activity sentences) with
   tests; the limit drops from 34 to 14
-- [ ] W40 Split the 21 functions between complexity 11 and 14 and lower the limit to 10; raise the floors as
-  coverage grows
+- [X] W40 (2026-10-15) The 21 functions between complexity 11 and 14 split into named steps (library totals'
+  filters, pattern preview's per-frame diff, typed nights, scope dates and distance, ignore rules' re-catalogue
+  and un-ignore, Siril's between-lines check, FITS cards and data size, header keywords and properties, pattern
+  tokens and capture time, sweep tallies, watcher event files, glance sources, recalibration reasons, the
+  session's chosen flat set and pinning, calibration QA per frame, stack work folder, auto-stack candidates,
+  master windows and 8-bit colour matching, batch calibration and collection, worker child usage, and the two
+  test helpers); the limit drops from 14 to 10 (005-DR-29); `tests/unit/test_split_helpers_w40.py`
 - [X] W41 (2026-10-15) Stale failures: later version built, deleted masters, rebuilt or emptied calibration sets
   (005-DR-28); tests

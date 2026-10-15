@@ -62,28 +62,40 @@ def _fits(path: Path) -> int | None:
                 if len(block) < FITS_BLOCK:
                     return pos + header_len + FITS_BLOCK  # header incomplete
                 header_len += FITS_BLOCK
-                done = False
-                for i in range(0, FITS_BLOCK, CARD):
-                    card = block[i : i + CARD].decode("ascii", "replace")
-                    key = card[:8].strip()
-                    if key == "END":
-                        done = True
-                        break
-                    if card[8:10] == "= ":
-                        cards[key] = card[10:].split("/", 1)[0].strip()
-                if done:
+                if _read_cards(block, cards):
                     break
                 if pos == 0 and header_len == FITS_BLOCK and "SIMPLE" not in cards:
                     return None  # not FITS
-            try:
-                naxis = int(cards.get("NAXIS", "0"))
-                count = 1 if naxis else 0
-                for n in range(1, naxis + 1):
-                    count *= int(cards[f"NAXIS{n}"])
-                bitpix = abs(int(cards["BITPIX"]))
-                data = bitpix // 8 * int(cards.get("GCOUNT", "1")) * (int(cards.get("PCOUNT", "0")) + count)
-            except (KeyError, ValueError):
+            data = _data_bytes(cards)
+            if data is None:
                 return None
             end = pos + header_len + data
             pos = end + (-data % FITS_BLOCK)
     return end
+
+
+def _read_cards(block: bytes, cards: dict[str, str]) -> bool:
+    """Add one header block's `KEY = value` cards to `cards` (comments after '/' dropped). True once the END
+    card is reached; the cards after it are not read."""
+    for i in range(0, FITS_BLOCK, CARD):
+        card = block[i : i + CARD].decode("ascii", "replace")
+        key = card[:8].strip()
+        if key == "END":
+            return True
+        if card[8:10] == "= ":
+            cards[key] = card[10:].split("/", 1)[0].strip()
+    return False
+
+
+def _data_bytes(cards: dict[str, str]) -> int | None:
+    """The data bytes an HDU's header declares, before padding: |BITPIX|/8 x GCOUNT x (PCOUNT + the product of
+    the axes; no axes means no data). None when BITPIX or an axis is missing or a number is unreadable."""
+    try:
+        naxis = int(cards.get("NAXIS", "0"))
+        count = 1 if naxis else 0
+        for n in range(1, naxis + 1):
+            count *= int(cards[f"NAXIS{n}"])
+        bitpix = abs(int(cards["BITPIX"]))
+        return bitpix // 8 * int(cards.get("GCOUNT", "1")) * (int(cards.get("PCOUNT", "0")) + count)
+    except (KeyError, ValueError):
+        return None

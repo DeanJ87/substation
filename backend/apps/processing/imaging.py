@@ -149,53 +149,75 @@ def qa_set(kind: str, stats: dict[str, FrameStats]) -> dict[str, tuple[str, str]
     meds = np.array([s.median for s in stats.values()])
     set_med = float(np.median(meds))
     spread = float(np.median(np.abs(meds - set_med))) * 1.4826
-    out: dict[str, tuple[str, str]] = {}
-    for key, s in stats.items():
-        if s.zero_rows_frac > 0.02 or s.zero_cols_frac > 0.02:
-            pct = round(max(s.zero_rows_frac, s.zero_cols_frac) * 100)
-            out[key] = ("reject", f"Truncated readout: {pct}% of rows are zero. Not used.")
-            continue
-        dev = s.median - set_med
-        limit = max(5 * spread, 0.02 * set_med, 3.0)
-        notes = []
-        verdict = "pass"
-        if abs(dev) > limit:
-            verdict = "warn"
-            notes.append(f"Level {s.median:.0f} ADU ({dev:+.0f} vs set {set_med:.0f}).")
-        if kind in ("flat",):
-            level = s.median / FULL_SCALE
-            if level < 0.1 or level > 0.85:
-                verdict = "warn"
-                notes.append(f"{level:.0%} of full scale (aim 30–60%).")
-            if s.saturated_frac > 0.01:
-                verdict = "warn"
-                notes.append(f"{s.saturated_frac:.1%} of pixels saturated.")
-        if kind in ("dark", "bias", "dark_flat") and s.median > DARK_MAX_LEVEL * FULL_SCALE:
-            word = {"dark": "dark", "bias": "bias", "dark_flat": "dark flat"}[kind]
-            out[key] = (
-                "reject",
-                f"Far too bright for a {word} ({s.median / FULL_SCALE:.0%} of full scale): light reached the "
-                "sensor, a cover off or a flat panel on. Not used.",
-            )
-            continue
-        if kind in ("dark", "bias", "dark_flat"):
-            spots = [x.spots for x in stats.values()]
-            typical = float(np.median(spots))
-            if s.spots > max(25, 8 * typical):  # plainly stars: every light it touched would gain them
-                verdict = "reject"
-                notes.append(f"{s.spots} spots (typical {typical:.0f}): light leak. Not used.")
-            elif s.spots > max(10, 3 * typical):
-                verdict = "warn"
-                notes.append(f"{s.spots} spots (typical {typical:.0f}): possible light leak.")
-            structures = [x.structure for x in stats.values()]
-            if s.structure > max(8.0, 2 * float(np.median(structures))):
-                verdict = "warn"
-                notes.append(
-                    f"Uneven level ({s.structure:.0f}× noise, set "
-                    f"{float(np.median(structures)):.0f}×): light leak or glow?"
-                )
-        out[key] = (verdict, " ".join(notes))  # nothing to say about a good frame
-    return out
+    return {key: _qa_frame(kind, s, stats, set_med, spread) for key, s in stats.items()}
+
+
+_DARK_KINDS = ("dark", "bias", "dark_flat")
+
+
+def _qa_frame(
+    kind: str, s: FrameStats, stats: dict[str, FrameStats], set_med: float, spread: float
+) -> tuple[str, str]:
+    """One frame's (verdict, reason). A truncated readout, or a dark-like frame far too bright, is rejected
+    outright; otherwise the checks run in order (level against the set, then the flat or dark checks), each
+    adding a note and setting the verdict, so a later check's verdict replaces an earlier one's."""
+    if s.zero_rows_frac > 0.02 or s.zero_cols_frac > 0.02:
+        pct = round(max(s.zero_rows_frac, s.zero_cols_frac) * 100)
+        return ("reject", f"Truncated readout: {pct}% of rows are zero. Not used.")
+    dev = s.median - set_med
+    limit = max(5 * spread, 0.02 * set_med, 3.0)
+    notes: list[str] = []
+    verdict = "pass"
+    if abs(dev) > limit:
+        verdict = "warn"
+        notes.append(f"Level {s.median:.0f} ADU ({dev:+.0f} vs set {set_med:.0f}).")
+    if kind in ("flat",):
+        verdict = _flat_checks(s, verdict, notes)
+    if kind in _DARK_KINDS and s.median > DARK_MAX_LEVEL * FULL_SCALE:
+        word = {"dark": "dark", "bias": "bias", "dark_flat": "dark flat"}[kind]
+        return (
+            "reject",
+            f"Far too bright for a {word} ({s.median / FULL_SCALE:.0%} of full scale): light reached the "
+            "sensor, a cover off or a flat panel on. Not used.",
+        )
+    if kind in _DARK_KINDS:
+        verdict = _dark_checks(s, stats, verdict, notes)
+    return (verdict, " ".join(notes))  # nothing to say about a good frame
+
+
+def _flat_checks(s: FrameStats, verdict: str, notes: list[str]) -> str:
+    """A flat's exposure: warn outside 10–85% of full scale, and when over 1% of pixels saturate. Appends to
+    `notes`; returns the verdict after these checks."""
+    level = s.median / FULL_SCALE
+    if level < 0.1 or level > 0.85:
+        verdict = "warn"
+        notes.append(f"{level:.0%} of full scale (aim 30–60%).")
+    if s.saturated_frac > 0.01:
+        verdict = "warn"
+        notes.append(f"{s.saturated_frac:.1%} of pixels saturated.")
+    return verdict
+
+
+def _dark_checks(s: FrameStats, stats: dict[str, FrameStats], verdict: str, notes: list[str]) -> str:
+    """A dark, bias or dark flat against its set: far more spots than typical is a light leak (rejected: every
+    light it touched would gain stars), somewhat more is a possible leak (warn); an uneven level is warned of.
+    The unevenness check comes last, so its warning replaces an earlier verdict, as it always has. Appends to
+    `notes`; returns the verdict after these checks."""
+    spots = [x.spots for x in stats.values()]
+    typical = float(np.median(spots))
+    if s.spots > max(25, 8 * typical):  # plainly stars: every light it touched would gain them
+        verdict = "reject"
+        notes.append(f"{s.spots} spots (typical {typical:.0f}): light leak. Not used.")
+    elif s.spots > max(10, 3 * typical):
+        verdict = "warn"
+        notes.append(f"{s.spots} spots (typical {typical:.0f}): possible light leak.")
+    structures = [x.structure for x in stats.values()]
+    if s.structure > max(8.0, 2 * float(np.median(structures))):
+        verdict = "warn"
+        notes.append(
+            f"Uneven level ({s.structure:.0f}× noise, set {float(np.median(structures)):.0f}×): light leak or glow?"
+        )
+    return verdict
 
 
 def _superpixels(a: np.ndarray) -> np.ndarray:

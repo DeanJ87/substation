@@ -41,6 +41,27 @@ ACTIVE_WINDOW = timedelta(hours=1)
 UNREACHABLE_RETRY_S = 15  # an unmounted share, or a capture folder that is still empty: look again soon
 
 
+def _event_file(lib: Library, abs_path: str) -> tuple[str, os.stat_result] | None:
+    """The library-relative path and stat of an event's file, or None when it isn't one to check: outside the
+    library (after following links), not an image name or inside a skipped folder (e.g. macOS ._ files, which
+    the share may not even let us stat), gone already, unreadable, or not a regular file."""
+    rel = os.path.relpath(os.path.realpath(abs_path), os.path.realpath(lib.mount_path))
+    if rel.startswith(".."):
+        return None
+    if not is_image_name(os.path.basename(rel)) or any(skip_dir(p) for p in Path(rel).parts[:-1]):
+        return None
+    try:
+        st = os.stat(abs_path)
+    except FileNotFoundError:
+        return None  # deleted or moved away; the next sweep records it
+    except OSError as e:
+        log.warning("Couldn't read %s: %s. The next sweep will try again.", abs_path, e)
+        return None
+    if not os.path.isfile(abs_path):
+        return None
+    return rel, st
+
+
 class _Handler(FileSystemEventHandler):
     def __init__(self, lib_id: int, root: str, q: queue.Queue) -> None:
         self.lib_id, self.root, self.q = lib_id, root, q
@@ -100,20 +121,10 @@ class Watcher:
             lib = Library.objects.filter(pk=lib_id, enabled=True).first()
             if lib is None:
                 continue
-            rel = os.path.relpath(os.path.realpath(abs_path), os.path.realpath(lib.mount_path))
-            if rel.startswith(".."):
+            target = _event_file(lib, abs_path)
+            if target is None:
                 continue
-            if not is_image_name(os.path.basename(rel)) or any(skip_dir(p) for p in Path(rel).parts[:-1]):
-                continue  # e.g. macOS ._ files, which the share may not even let us stat
-            try:
-                st = os.stat(abs_path)
-            except FileNotFoundError:
-                continue  # deleted or moved away; the next sweep records it
-            except OSError as e:
-                log.warning("Couldn't read %s: %s. The next sweep will try again.", abs_path, e)
-                continue
-            if not os.path.isfile(abs_path):
-                continue
+            rel, st = target
             if rules is None:
                 rules = PathRules.load()
             check_path(lib, rel, st, Copy.objects.filter(library=lib, rel_path=rel).first(), rules)
