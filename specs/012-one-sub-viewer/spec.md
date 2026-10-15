@@ -131,3 +131,14 @@ experience; propose something better. Also asked for: a map on the sub page.
   that night, the page offers each place. The Moon is worked out locally, with no network access; a night with no
   recorded place shows the phase only.
 
+
+### Amendment 2026-10-15: keys, zoom and buttons
+
+- **012-DR-03 J goes back, K goes on.** J sits left of K on the keyboard, so J (and ←) is the previous sub and K (and
+  →) the next, in the viewer and the key help.
+- **012-DR-04 The full-size view zooms like any image viewer.** The wheel or a trackpad pinch zooms about the
+  pointer; drag pans; a double click switches between fitting the window and 100%; − and + buttons, the zoom as a
+  percentage, Fit and 100% sit together in the bar, with keys + − 0 1. The fixed Fit / 100% / 200% steps are gone.
+- **012-DR-05 Clickable pills are buttons.** A button or link drawn as a pill has the main buttons' height, radius,
+  type, a filled face and hover, pressed and focus states; toggles in a group stay rounded chips; static tags stay
+  small capsules.

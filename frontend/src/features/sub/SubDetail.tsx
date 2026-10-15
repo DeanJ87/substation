@@ -1,5 +1,5 @@
 // Sub detail (design v2 D3): preview, verdict with reason, and every field tagged with where it came from.
-// Spec 012: it opens as a modal over the list it was opened from and steps through that list (J or → next, K or ←
+// Spec 012: it opens as a modal over the list it was opened from and steps through that list (K or → next, J or ←
 // previous). /subs/<sha> opens the sub's dataset with the viewer on it.
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
@@ -110,8 +110,9 @@ export function SubView({
     function key(e: KeyboardEvent) {
       if (!d || (e.target as HTMLElement).closest('input, select, textarea') || e.metaKey || e.ctrlKey) return
       const k = e.key.toLowerCase()
-      if (k === 'j' || e.key === 'ArrowRight') go(n.next)
-      else if (k === 'k' || e.key === 'ArrowLeft') go(n.previous)
+      // J sits left of K: J goes back, K goes on, like ← and → (2026-10-15)
+      if (k === 'k' || e.key === 'ArrowRight') go(n.next)
+      else if (k === 'j' || e.key === 'ArrowLeft') go(n.previous)
       else if (k === 'a') decide('accept')
       else if (k === 'w') decide('keep')
       else if (k === 'r') decide('reject')
@@ -186,10 +187,10 @@ export function SubView({
             </span>
           ) : null}
           <Button disabled={!n.previous} onClick={() => go(n.previous)}>
-            Previous <kbd>K</kbd>
+            Previous <kbd>J</kbd>
           </Button>
           <Button disabled={!n.next} onClick={() => go(n.next)}>
-            Next <kbd>J</kbd>
+            Next <kbd>K</kbd>
           </Button>
           <ConfirmButton
             question="Bin this sub?"

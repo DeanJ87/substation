@@ -103,6 +103,10 @@
 .cardPad {
   padding: 16px 18px;
 }
+/* A static tag: a small capsule. Clickable ones (a button or link with this class) are buttons in their own right
+   (2026-10-15: actions drawn as 12 px outlined capsules looked flat and like labels): the same height, radius and
+   type as the main buttons, a filled face, and hover, pressed and focus states. Toggles in a .pills group stay
+   chips. */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -116,12 +120,51 @@
   font-family: inherit;
   white-space: nowrap;
 }
-button.pill {
+button.pill,
+a.pill,
+label.pill {
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
   cursor: pointer;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
-.pill[aria-pressed='true'] {
+button.pill:hover,
+a.pill:hover,
+label.pill:hover {
+  border-color: var(--sst-accent-line);
+  background: color-mix(in srgb, var(--sst-panel-2), var(--sst-text) 7%);
+}
+button.pill:focus-visible,
+a.pill:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 2px;
+}
+button.pill:disabled {
+  border-style: dashed;
+  background: transparent;
+  color: var(--sst-dim);
+  cursor: default;
+}
+.pill[aria-pressed='true'],
+.pill[aria-current='page'],
+.pill[aria-selected='true'] {
   border-color: var(--sst-accent);
   background: var(--sst-accent-tint);
+  color: var(--sst-accent);
+}
+.pills > button.pill,
+.pills > a.pill {
+  border-radius: 999px;
+  min-height: 30px;
+  padding: 4px 12px;
 }
 .pills {
   display: flex;

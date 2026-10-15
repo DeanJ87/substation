@@ -1,4 +1,4 @@
-// A close look at one sub (owner 2026-10-10): the whole sub at 100% (or 200%, or fitted) to pan around, and an
+// A close look at one sub (owner 2026-10-10): the whole sub to zoom (wheel, pinch, + −, fit, 100%) and pan around, and an
 // aberration inspector (nine full-resolution crops: corners, edges and centre) to see whether stars are really
 // elongated, and where. Made by a worker on request, in a few seconds; Esc closes.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -120,7 +120,9 @@ export function CloseLook({
   onClose: () => void
   initialVersion?: string
 }) {
-  const [zoom, setZoom] = useState<'fit' | 1 | 2>(1)
+  // zoom like any image viewer (2026-10-15): the wheel or a pinch zooms about the pointer, drag pans, a double
+  // click toggles fit and 100%; 'fit' follows the window, a number is the scale (1 = 100%)
+  const [zoom, setZoom] = useState<'fit' | number>(1)
   const [annotate, setAnnotate] = useAnnotateSwitch()
   // owner 2026-10-12: tab through a master's versions at 100% — Original, + GraXpert, + BlurXTerminator, + NoiseXTerminator
   const post = useQuery({
@@ -180,12 +182,58 @@ export function CloseLook({
   }, [idle, make])
   const box = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; l: number; t: number } | null>(null)
+  // start in the middle once; switching versions keeps your place (owner 2026-10-12), and the image keeps its size
+  // while the next version loads, so the scroll position never collapses
+  const centred = useRef(false)
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
+  // the window's size, watched so "fit" follows it
+  const [boxSize, setBoxSize] = useState<{ w: number; h: number } | null>(null)
+  useEffect(() => {
+    const b = box.current
+    if (!b) return
+    const ro = new ResizeObserver(() => setBoxSize({ w: b.clientWidth, h: b.clientHeight }))
+    ro.observe(b)
+    return () => ro.disconnect()
+  })
+  const fitScale = () => (boxSize && dims ? Math.min(boxSize.w / dims.w, boxSize.h / dims.h, 1) : 1)
+  const scale = zoom === 'fit' ? fitScale() : zoom
+  const MAX = 8
+  /** Zoom to `next`, keeping the image point under (cx, cy) — the pointer, or the middle — where it is. */
+  const zoomTo = (next: number, cx?: number, cy?: number) => {
+    const b = box.current
+    const lo = Math.min(fitScale(), 1)
+    const to = Math.min(MAX, Math.max(lo, next))
+    if (!b || !dims) return setZoom(to)
+    const r = b.getBoundingClientRect()
+    const px = (cx ?? r.left + b.clientWidth / 2) - r.left
+    const py = (cy ?? r.top + b.clientHeight / 2) - r.top
+    const ix = (b.scrollLeft + px) / scale
+    const iy = (b.scrollTop + py) / scale
+    setZoom(to <= fitScale() + 1e-6 ? 'fit' : to)
+    requestAnimationFrame(() => {
+      b.scrollLeft = ix * to - px
+      b.scrollTop = iy * to - py
+    })
+  }
+  const zoomBy = (f: number, cx?: number, cy?: number) => zoomTo(scale * f, cx, cy)
+  // a non-passive wheel listener, so the page itself doesn't scroll while zooming
+  useEffect(() => {
+    const b = box.current
+    if (!b) return
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault()
+      zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002)), e.clientX, e.clientY)
+    }
+    b.addEventListener('wheel', wheel, { passive: false })
+    return () => b.removeEventListener('wheel', wheel)
+  })
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
-      else if (e.key === '1') setZoom(1)
-      else if (e.key === '2') setZoom(2)
+      else if (e.key === '1') zoomTo(1)
       else if (e.key === '0') setZoom('fit')
+      else if (e.key === '+' || e.key === '=') zoomBy(1.25)
+      else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.25)
       else if (e.key.toLowerCase() === 'x') onMode(mode === 'full' ? 'inspector' : 'full')
       else if (e.key.toLowerCase() === 'n' && canAnnotate) setAnnotate(!annotate)
       else if ((e.key === '[' || e.key === ']') && versions.length) {
@@ -198,11 +246,7 @@ export function CloseLook({
     }
     window.addEventListener('keydown', key, true)
     return () => window.removeEventListener('keydown', key, true)
-  }, [mode, onClose, onMode, annotate, setAnnotate, canAnnotate, versions, version])
-  // start in the middle once; switching versions keeps your place (owner 2026-10-12), and the image keeps its size
-  // while the next version loads, so the scroll position never collapses
-  const centred = useRef(false)
-  const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
+  })
   // a 26 MP version takes a moment: say so while it loads (owner 2026-10-13), and fetch the others in the
   // background once the first is up, so later switches are instant
   const d = q.data
@@ -242,18 +286,27 @@ export function CloseLook({
           </button>
         </div>
         {mode === 'full' && (
-          <div className={s.group} role="group" aria-label="Zoom">
-            {(
-              [
-                ['fit', 'Fit', '0'],
-                [1, '100%', '1'],
-                [2, '200%', '2'],
-              ] as const
-            ).map(([z, label, k]) => (
-              <button key={label} type="button" aria-pressed={zoom === z} onClick={() => setZoom(z)}>
-                {label} <kbd>{k}</kbd>
-              </button>
-            ))}
+          <div className={s.zoom} role="group" aria-label="Zoom">
+            <button type="button" onClick={() => zoomBy(1 / 1.25)} aria-label="Zoom out" title="Zoom out (−)">
+              −
+            </button>
+            <span className={s.zoomValue} aria-live="polite">
+              {Math.round(scale * 100)}%
+            </span>
+            <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in" title="Zoom in (+)">
+              +
+            </button>
+            <button
+              type="button"
+              aria-pressed={zoom === 'fit'}
+              onClick={() => setZoom('fit')}
+              title="Fit (0)"
+            >
+              Fit
+            </button>
+            <button type="button" aria-pressed={zoom === 1} onClick={() => zoomTo(1)} title="100% (1)">
+              100%
+            </button>
           </div>
         )}
         {mode === 'full' && solvable && (
@@ -282,7 +335,8 @@ export function CloseLook({
         <div className={s.body}>
           <div
             ref={box}
-            className={`${s.pan} ${zoom === 'fit' ? s.fit : ''}`}
+            className={s.pan}
+            onDoubleClick={(e) => (zoom === 'fit' ? zoomTo(1, e.clientX, e.clientY) : setZoom('fit'))}
             onMouseDown={(e) => {
               const b = box.current
               if (b) drag.current = { x: e.clientX, y: e.clientY, l: b.scrollLeft, t: b.scrollTop }
@@ -298,17 +352,14 @@ export function CloseLook({
             onMouseLeave={() => (drag.current = null)}
             role="presentation"
           >
-            <span
-              className={`${s.frame} ${zoom === 'fit' ? s.fitFrame : ''}`}
-              style={zoom === 2 ? { transform: 'scale(2)', transformOrigin: '0 0' } : undefined}
-            >
+            <span className={s.frame}>
               <img
                 src={src}
                 alt={`${name}${shown ? `, ${shown.label}` : ''} at full resolution`}
                 draggable={false}
                 onLoad={onImgLoad}
-                style={zoom !== 'fit' && dims ? { width: dims.w, height: dims.h } : undefined}
-                className={zoom === 'fit' ? s.fitImg : s.actualImg}
+                style={dims ? { width: dims.w * scale, height: dims.h * scale } : undefined}
+                className={scale >= 2 ? s.actualImg : s.smoothImg}
               />
               {annotate && solvable && <AnnotationOverlay target={solvable} />}
             </span>

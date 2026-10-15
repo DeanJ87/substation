@@ -52,21 +52,14 @@ kbd {
   overflow: auto;
   cursor: grab;
   user-select: none;
+  display: flex; /* with the frame's auto margins: centred when smaller than the window, scrollable when larger */
+  overscroll-behavior: contain;
 }
 .pan:active {
   cursor: grabbing;
 }
-.fit {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.fitImg {
-  max-width: 100%;
-  max-height: 100%;
-}
 .actualImg {
+  display: block;
   max-width: none;
   image-rendering: pixelated;
 }
@@ -103,14 +96,52 @@ kbd {
   position: relative;
   display: inline-block;
   line-height: 0;
+  margin: auto;
+  flex: none;
 }
-.fitFrame {
-  max-width: 100%;
-  max-height: 100%;
-}
-.fitFrame .fitImg {
+.smoothImg {
   display: block;
-  max-height: calc(100vh - 80px);
+  max-width: none;
+}
+.zoom {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel);
+  overflow: hidden;
+}
+.zoom button {
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--sst-line);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  min-width: 34px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.zoom button:first-child {
+  border-left: 0;
+}
+.zoom button:hover {
+  background: var(--sst-panel-2);
+}
+.zoom button[aria-pressed='true'] {
+  color: var(--sst-accent);
+}
+.zoom button:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: -2px;
+}
+.zoomValue {
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  border-left: 1px solid var(--sst-line);
+  padding: 6px 4px;
 }
 /* a master's versions at 100% (owner 2026-10-12): tab through Original and each post-processing step */
 .versions {

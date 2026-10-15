@@ -16,3 +16,6 @@
   shot at that place (`?nights=&at=`, with "Show every session"); each night opens that place's night page
 - [ ] V5 One dataset label (collection · rig · filter) on every page, search and Activity
 - [ ] V6 Hide "Not recorded" rows; a section with nothing recorded says so once
+- [X] V7 (2026-10-15) J previous / K next; key help
+- [X] V8 (2026-10-15) Continuous zoom in the full-size view (wheel, pinch, drag, double click, − % + Fit 100%)
+- [X] V9 (2026-10-15) Clickable pills restyled as buttons site-wide; chips and tags kept
