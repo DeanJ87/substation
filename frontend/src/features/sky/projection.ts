@@ -162,8 +162,8 @@ export const azArc = (az: number) => Array.from({ length: 19 }, (_, i) => [i * 5
 
 // ---- from the drawing back to the sky (the survey behind the dome) ------------------------------------------
 
-/** The sky at a point of the drawing, on the side of the dome facing the viewer; null off the dome, and where that
- * side is below the horizon (looking down at the floor, which hides the far side). The inverse of project3d. */
+/** The sky at a point of the drawing, on the side of the dome facing the viewer; null off the dome and below the horizon.
+ * The inverse of project3d for near-side points. */
 export function unproject(
   x: number,
   y: number,
@@ -176,8 +176,8 @@ export function unproject(
   if (rest < 0) return null
   const tilt = rad(view.tilt)
   const yaw = rad(view.yaw)
-  // inside the horizon's ellipse is the floor: the near wall's lowest part lies over it, seen from outside
-  if (sx * sx + (up / Math.sin(tilt)) ** 2 <= 1) return null
+  // the side of the dome facing the viewer, where the tracks of a target faced from behind also lie, so the sky behind
+  // a track is the sky at that track (2026-10-16); seen from above, the shell covers the floor
   for (const t of [-Math.sqrt(rest)]) {
     const ahead = up * Math.sin(tilt) + t * Math.cos(tilt)
     const u = up * Math.cos(tilt) - t * Math.sin(tilt)
@@ -311,4 +311,26 @@ export function frameOnDome(
     top: polyline([...pts.slice(0, steps), pts[steps]]),
     centre: project3d(c.alt, c.az, view, r),
   }
+}
+
+/** Which way to face to see a target on the far wall, from inside (2026-10-16): its usual azimuth, to the nearest
+ * eighth of a turn. */
+export function facingOf(subs: { az: number }[]): number {
+  if (!subs.length) return DEFAULT_VIEW.yaw
+  const x = subs.reduce((a, u) => a + Math.cos((u.az * Math.PI) / 180), 0)
+  const y = subs.reduce((a, u) => a + Math.sin((u.az * Math.PI) / 180), 0)
+  const az = ((((Math.atan2(y, x) * 180) / Math.PI) % 360) + 360) % 360
+  return (Math.round(az / 45) * 45) % 360
+}
+
+/** Where to start looking from for a target (2026-10-16): facing it, so its track is on the far wall seen from
+ * inside, and from higher up the higher it was, so a track near the zenith sits inside the dome, not on its rim. */
+export function homeFor(subs: { az: number; alt: number }[]): View {
+  if (!subs.length) return DEFAULT_VIEW
+  const alts = subs.map((x) => x.alt).sort((a, b) => a - b)
+  const mid = alts[Math.floor(alts.length / 2)]
+  // on the far wall a point at altitude h shows at height sin(h + tilt): up to 40° the usual 32° view; above that
+  // two degrees higher for each degree, to 62°, so a high track sits inside the dome rather than on its rim
+  const tilt = DEFAULT_VIEW.tilt + Math.max(0, mid - 40) * 2
+  return { yaw: facingOf(subs), tilt: Math.round(Math.min(62, tilt)) }
 }

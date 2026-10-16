@@ -17,6 +17,7 @@ import {
   type View,
   SHAPES,
   at,
+  homeFor,
   azAt,
   frameOnDome,
   hourTicks,
@@ -137,6 +138,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
                 d={polyline(pts)}
                 className={`${s.track} ${dimmed(track) ? s.dim : ''}`}
                 style={{ stroke: colourOf.get(sky.tracks[track].target) }}
+                markerEnd="url(#sky-arrow)"
               />
             )
           })}
@@ -202,6 +204,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
         lon={sky.lon}
         t={skyTime}
         spin={playing}
+        home={homeFor(sky.subs.filter((x) => sky.tracks[x.track]?.target === inFocus))}
         label={(way) =>
           `The sky from where this night was shot, as a dome over the horizon facing ${way}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`
         }

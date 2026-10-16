@@ -21,7 +21,8 @@ export type Box = { x: number; y: number; w: number; h: number }
 export type DomeCtx = { proj: (alt: number, az: number) => Pt3; view: View; k: number; box: Box }
 
 // one fixed frame for every tilt, so the drawing doesn't change height as it turns
-const FRAME = { x: -114, y: -110, w: 228, h: 182 }
+// tall enough for the horizon's near edge at the steepest starting view (62°: R·sin 62° ≈ 88, plus its compass letters)
+const FRAME = { x: -114, y: -110, w: 228, h: 216 }
 const FRAME_CX = FRAME.x + FRAME.w / 2
 const FRAME_CY = FRAME.y + FRAME.h / 2
 function viewBoxFor(z: { k: number; cx: number; cy: number }): Box {
@@ -254,6 +255,21 @@ export function Dome({
         ref={setSvgEl}
         {...handlers}
       >
+        <defs>
+          {/* which way a track went: an arrowhead at its latest end, in the track's own colour */}
+          <marker
+            id="sky-arrow"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M0 0L10 5L0 10z" fill="context-stroke" />
+          </marker>
+        </defs>
         <Grid view={view} proj={proj} />
         {children(ctx)}
       </svg>

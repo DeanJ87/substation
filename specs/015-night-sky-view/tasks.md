@@ -40,3 +40,5 @@
   while playing (015-DR-14, -15); screenshots
 - [X] N12 (2026-10-16) Marks and tracks by filter colour, Filters key with hide/show, collection Sky tab; sky subs
   carry filter and exposure (015-DR-16); tests; screenshots of M81 (464 frames, 11 nights)
+- [X] N13 (2026-10-16) `homeFor` (face the target, higher for high targets), taller frame, survey on the facing
+  shell, arrowheads on tracks (015-DR-17); tests; screenshots of North America Nebula and M81

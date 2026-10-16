@@ -8,6 +8,7 @@ import {
   frameOnDome,
   frameOutline,
   fromTangent,
+  homeFor,
   hourTicks,
   marker,
   polyline,
@@ -135,10 +136,12 @@ describe('back from the drawing to the sky', () => {
       [80, 120],
       [75, 300],
       [60, 0],
+      [30, 180],
+      [50, 150],
     ]) {
       const p = project3d(alt, az)
       const back = unproject(p.x, p.y)
-      // the near side comes back; a point over the floor (the near wall's lower part) is left bare
+      // the side facing the viewer comes back (the far side lies behind it)
       if (p.front && back) {
         checked++
         expect(back.alt).toBeCloseTo(alt, 1)
@@ -147,7 +150,6 @@ describe('back from the drawing to the sky', () => {
     }
     expect(checked).toBeGreaterThanOrEqual(2)
     expect(unproject(0, 200)).toBeNull() // off the dome
-    expect(unproject(0, 10)).toBeNull() // over the floor
   })
   it('puts the zenith at the latitude and the sidereal time', () => {
     const lst = siderealDeg(Date.parse('2026-10-11T22:00:00Z'), -1.66)
@@ -238,5 +240,13 @@ describe('the camera frame on the dome (spec 015 amendment)', () => {
       expect(Math.hypot(+m[1] - c.x, +m[2] - c.y)).toBeLessThan(4)
     // M 42 is below the horizon from Newcastle at 22:00 in October
     expect(frameOnDome({ ...fov, ra_deg: 83.8, dec_deg: -5.4 }, 54.99, -1.66, t)).toBeNull()
+  })
+})
+
+describe('where a dome starts', () => {
+  it('faces the target and looks from higher up for a high one', () => {
+    expect(homeFor([{ az: 10, alt: 30 }])).toEqual({ yaw: 0, tilt: 32 })
+    expect(homeFor([{ az: 260, alt: 75 }])).toEqual({ yaw: 270, tilt: 62 })
+    expect(homeFor([{ az: 180, alt: 45 }]).tilt).toBe(42)
   })
 })

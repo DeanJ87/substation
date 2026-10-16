@@ -11,7 +11,7 @@ import type { components } from '../../api/schema'
 import type { Scope } from '../scope/scope'
 import { integrationText, shortDateText } from '../format'
 import { Dome, type DomeCtx, middle } from './Dome'
-import { type Pt, type Shape, DEFAULT_VIEW, SHAPES, marker, polyline, series } from './projection'
+import { type Pt, type Shape, SHAPES, homeFor, marker, polyline, series } from './projection'
 import s from './sky.module.css'
 import { CameraFrame, fovText, useWidth } from './SkyView'
 
@@ -153,6 +153,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
               key={key}
               d={polyline(seg.pts)}
               className={s.track}
+              markerEnd="url(#sky-arrow)"
               style={{ stroke: filterColour(seg.filter), opacity: opacity(seg.night) }}
             />
           ))}
@@ -197,7 +198,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
         label={(way) =>
           `${sky.name} on every night from one place, as a dome over the horizon facing ${way}: ${sky.subs.length} subs over ${n} night${n === 1 ? '' : 's'}, the latest brightest. The list of nights says the same.`
         }
-        home={{ yaw: facingOf(sky.subs), tilt: DEFAULT_VIEW.tilt }}
+        home={homeFor(sky.subs)}
         zoomTarget={(proj) =>
           middle(sky.subs.filter((x) => x.night === shownNight).map((x) => proj(x.alt, x.az)))
         }
@@ -342,15 +343,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
   )
 }
 
-/** Which way to face to see the target: its usual azimuth, to the nearest eighth of a turn, so a northern target
- * isn't hidden behind the dome's far wall. */
-export function facingOf(subs: { az: number }[]): number {
-  if (!subs.length) return DEFAULT_VIEW.yaw
-  const x = subs.reduce((a, u) => a + Math.cos((u.az * Math.PI) / 180), 0)
-  const y = subs.reduce((a, u) => a + Math.sin((u.az * Math.PI) / 180), 0)
-  const az = ((((Math.atan2(y, x) * 180) / Math.PI) % 360) + 360) % 360
-  return (Math.round(az / 45) * 45) % 360
-}
+export { facingOf } from './projection'
 
 const shapeName = (x: Shape | undefined) =>
   x === 'circle' || !x ? 'Circles' : `${x[0].toUpperCase()}${x.slice(1)}s`

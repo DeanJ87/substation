@@ -164,3 +164,12 @@ dome); live position during a session; video export (a still image export may fo
   others from the series palette), with a Filters key giving each filter's frames and hours that hides or shows
   it, and Play through every night (015-DR-14). The same colours apply on a dataset's Sky tab. Each sub on the
   sky now carries its filter and exposure.
+
+### Amendment 2026-10-16: readable from where you'd stand
+
+- **015-DR-17** Each dome starts facing its target (its usual azimuth) and, the higher the target was, from a higher
+  viewpoint: 32° up for targets around 40° or lower, two degrees more for each degree above, to 62°, so a track
+  near the zenith sits inside the dome rather than along its rim. The drawing's frame is tall enough for that
+  view. The sky survey is painted on the side of the dome facing the viewer, the side the target's track lies on,
+  so the sky behind a track is the sky at it and both turn together; it covers the whole shell (the earlier bare
+  floor is gone). Each track ends in a small arrowhead showing which way it went.
