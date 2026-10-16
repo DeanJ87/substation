@@ -156,3 +156,11 @@ dome); live position during a session; video export (a still image export may fo
   observer, where a target follows the same arc every night and only the time it gets there changes.
 - **015-DR-15** While either dome plays, the view slowly walks round it (six degrees a second), as in a filmed
   sky; a drag takes over, and reduced motion keeps it still.
+
+### Amendment 2026-10-16: the whole target, by filter
+
+- **015-DR-16** A collection has a Sky tab (moved from its Overview): every frame of the target on one dome, each
+  mark and track in its filter's colour (L white, R red, G green, B blue, Hα deep red, OIII teal, SII amber;
+  others from the series palette), with a Filters key giving each filter's frames and hours that hides or shows
+  it, and Play through every night (015-DR-14). The same colours apply on a dataset's Sky tab. Each sub on the
+  sky now carries its filter and exposure.

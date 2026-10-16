@@ -5488,6 +5488,22 @@
       "title": "Dataset Id",
       "type": "integer"
      },
+     "exptime_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exptime S"
+     },
+     "filter": {
+      "default": "",
+      "title": "Filter",
+      "type": "string"
+     },
      "night": {
       "title": "Night",
       "type": "integer"

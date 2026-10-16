@@ -50,6 +50,8 @@ class NightsSub(Schema):
     segment: int  # tracks break at gaps and meridian flips, within a night and dataset
     rig: str  # key into rigs
     verdict: str | None
+    filter: str = ""  # each frame's dot takes its filter's colour (2026-10-16)
+    exptime_s: float | None = None
 
 
 class NightsOut(Schema):
@@ -179,6 +181,8 @@ def _fill(out: NightsOut, frames: list, placed: dict) -> None:
                         segment=seg,
                         rig=rkey,
                         verdict=e.verdict,
+                        filter=f.dataset.filter_norm or "",
+                        exptime_s=f.exptime_s,
                     )
                 )
     out.rigs = [SkyRig(key=k, name=v) for k, v in rigs.items()]

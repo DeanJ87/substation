@@ -61,12 +61,12 @@ const collection = createRoute({
   validateSearch: (
     q: Record<string, unknown>,
   ): Scope & {
-    tab?: 'overview' | 'datasets' | 'sessions' | 'masters'
+    tab?: 'overview' | 'datasets' | 'sessions' | 'masters' | 'sky'
     nights?: string // only these nights (comma-separated): the sessions shot at one place, from the map (spec 012)
     at?: string // "lat,lon" of that place, to name it
   } => ({
     ...readScope(q), // carried from the Library or the map (spec 018)
-    tab: ['overview', 'datasets', 'sessions', 'masters'].includes(String(q.tab))
+    tab: ['overview', 'datasets', 'sessions', 'masters', 'sky'].includes(String(q.tab))
       ? (q.tab as 'overview')
       : undefined,
     nights: typeof q.nights === 'string' && /^[\d,-]+$/.test(q.nights) ? q.nights : undefined,

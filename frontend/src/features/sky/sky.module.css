@@ -547,3 +547,12 @@
 .stripMid {
   fill: var(--sst-text);
 }
+.filterDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.nightRow[aria-pressed='false'] .filterDot {
+  opacity: 0.3;
+}

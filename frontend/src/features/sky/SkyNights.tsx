@@ -5,6 +5,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { locate, sequence } from './sequence'
+import { filterTint } from '../../components/filterTint'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import type { Scope } from '../scope/scope'
@@ -67,6 +68,7 @@ export function TargetSky({
 export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) => void }) {
   const [chosen, setChosen] = useState<number | null>(null)
   const [hover, setHover] = useState<number | null>(null)
+  const [hiddenFilters, setHiddenFilters] = useState<Set<string>>(new Set())
   // Play: the nights end to end, the sky turning with them (owner 2026-10-15); null shows every night at once
   const [pos, setPos] = useState<number | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -115,6 +117,9 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
       </p>
     )
   const colour = series(0)
+  // each frame's dot in its filter's colour (2026-10-16): L white, R, G, B, Hα deep red, OIII teal, SII amber
+  const filters = filtersOf(sky.subs)
+  const filterColour = (f: string) => filterTint(f) ?? series(filters.indexOf(f) + 1)
   const shapeOf = new Map<string, Shape>(sky.rigs.map((r, i) => [r.key, SHAPES[i % SHAPES.length]]))
   const at = pos == null ? null : locate(seq, pos)
   const lit = at ? at.night : (hover ?? chosen) // a night brought forward, else all by age
@@ -124,14 +129,15 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
   const opacity = (i: number) =>
     at ? (i === at.night ? 1 : i < at.night ? 0.18 : 0) : lit == null ? ageOpacity(i, n) : i === lit ? 1 : 0.1
   // while playing, tonight's subs appear as they were shot; nights still to come aren't drawn yet
-  const shownSub = (x: { night: number; time: string }) =>
-    !at || x.night < at.night || (x.night === at.night && Date.parse(x.time) <= at.t)
+  const shownSub = (x: { night: number; time: string; filter?: string }) =>
+    !hiddenFilters.has(x.filter ?? '') &&
+    (!at || x.night < at.night || (x.night === at.night && Date.parse(x.time) <= at.t))
 
   const draw = ({ proj, k, view }: DomeCtx) => {
-    const bySeg = new Map<string, { night: number; pts: Pt[] }>()
+    const bySeg = new Map<string, { night: number; filter: string; pts: Pt[] }>()
     for (const x of sky.subs.filter(shownSub)) {
       const key = `${x.night}:${x.dataset_id}:${x.segment}`
-      const seg = bySeg.get(key) ?? { night: x.night, pts: [] }
+      const seg = bySeg.get(key) ?? { night: x.night, filter: x.filter ?? '', pts: [] }
       seg.pts.push(proj(x.alt, x.az))
       bySeg.set(key, seg)
     }
@@ -147,7 +153,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
               key={key}
               d={polyline(seg.pts)}
               className={s.track}
-              style={{ stroke: colour, opacity: opacity(seg.night) }}
+              style={{ stroke: filterColour(seg.filter), opacity: opacity(seg.night) }}
             />
           ))}
         {sky.subs
@@ -159,8 +165,8 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
               d={marker(shapeOf.get(x.rig) ?? 'circle', proj(x.alt, x.az), 3.2 / k)}
               className={s.mark}
               style={{
-                fill: x.verdict === 'reject' ? 'var(--sst-panel)' : colour,
-                stroke: colour,
+                fill: x.verdict === 'reject' ? 'var(--sst-panel)' : filterColour(x.filter ?? ''),
+                stroke: filterColour(x.filter ?? ''),
                 opacity: opacity(x.night),
                 pointerEvents: 'none',
               }}
@@ -211,6 +217,44 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
               ))}
             </select>
           </label>
+        )}
+        {filters.length > 0 && (
+          <div className={s.key}>
+            <h3 className="label">Filters</h3>
+            <ul className={s.nightKey}>
+              {filters.map((f) => {
+                const mine = sky.subs.filter((x) => (x.filter ?? '') === f)
+                const secs = mine.reduce((a, x) => a + (x.exptime_s ?? 0), 0)
+                return (
+                  <li key={f}>
+                    <button
+                      type="button"
+                      className={s.nightRow}
+                      aria-pressed={!hiddenFilters.has(f)}
+                      onClick={() =>
+                        setHiddenFilters((h) => {
+                          const next = new Set(h)
+                          if (next.has(f)) next.delete(f)
+                          else next.add(f)
+                          return next
+                        })
+                      }
+                    >
+                      <span
+                        className={s.filterDot}
+                        style={{ background: filterColour(f) }}
+                        aria-hidden="true"
+                      />
+                      <span>{f || 'No filter'}</span>
+                      <span className={s.nightCount}>
+                        {mine.length} · {integrationText(secs)}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         )}
         <div className={s.key}>
           <h3 className="label">Nights</h3>
@@ -390,3 +434,14 @@ export function monthTicks(start: number, end: number): number[] {
 }
 
 const clock = (t: number) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+
+const FILTER_ORDER = ['L', 'R', 'G', 'B', 'Hα', 'Ha', 'OIII', 'SII']
+/** The filters a target was shot in, broadband first, then narrowband, then the rest by name. */
+export function filtersOf(subs: { filter?: string }[]): string[] {
+  const all = [...new Set(subs.map((x) => x.filter ?? ''))]
+  const rank = (f: string) => {
+    const i = FILTER_ORDER.indexOf(f)
+    return i < 0 ? FILTER_ORDER.length : i
+  }
+  return all.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+}

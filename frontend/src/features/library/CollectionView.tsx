@@ -21,7 +21,6 @@ import { useProjects } from './Projects'
 import { useSort } from '../../components/sortable'
 import { CloseLook, type LookMode, type LookTarget, Zoomable } from '../../components/CloseLook'
 import { Collapsible } from '../../components/Collapsible'
-import { Tinted } from '../../components/Tinted'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import { TargetSky } from '../sky/SkyNights'
@@ -223,6 +222,7 @@ export function CollectionView() {
             ['datasets', `Datasets ${d.datasets.length}`],
             ['sessions', `Sessions ${card.sessions}`],
             ['masters', `Masters ${d.masters.length}`],
+            ['sky', 'Sky'],
           ] as const
         ).map(([t, label]) => (
           <button key={t} role="tab" aria-selected={tab === t} className={v.tab} onClick={() => setTab(t)}>
@@ -308,16 +308,6 @@ export function CollectionView() {
           </div>
 
           <section className={`${v.card} ${v.cardPad}`}>
-            <Collapsible id="collection-sky" title="On the sky" meta="every night from one place">
-              <TargetSky
-                kind="collection"
-                id={card.id}
-                nights={{ date: scope.date, date_from: scope.date_from, date_to: scope.date_to }}
-              />
-            </Collapsible>
-          </section>
-
-          <section className={`${v.card} ${v.cardPad}`}>
             <Collapsible
               id="collection-sessions"
               title="Sessions"
@@ -384,6 +374,17 @@ export function CollectionView() {
           />
         </>
       )}
+      {tab === 'sky' && (
+        // every frame of the target on the sky, coloured by filter, with Play through all its nights (2026-10-16)
+        <section className={`${v.card} ${v.cardPad}`}>
+          <TargetSky
+            kind="collection"
+            id={card.id}
+            nights={{ date: scope.date, date_from: scope.date_from, date_to: scope.date_to }}
+          />
+        </section>
+      )}
+
       {tab === 'masters' && (
         <>
           {project === null && projects.data?.projects.length ? (
@@ -666,9 +667,7 @@ function MasterList({ masters }: { masters: ColMaster[] }) {
             <div className={c.masterThumb}>
               {m.has_preview && (
                 <Zoomable target={{ kind: 'master', id: m.id }} name={`${m.dataset} v${m.version}`}>
-                  <Tinted filter={m.filter}>
-                    <img src={stackPreviewUrl(m.id)} alt={`${m.dataset} v${m.version}`} loading="lazy" />
-                  </Tinted>
+                  <img src={stackPreviewUrl(m.id)} alt={`${m.dataset} v${m.version}`} loading="lazy" />
                 </Zoomable>
               )}
             </div>
@@ -788,13 +787,11 @@ function Combined({
                       target={{ kind: 'combined', id: m.id }}
                       name={`${m.filter} combined v${m.version}`}
                     >
-                      <Tinted filter={m.filter}>
-                        <img
-                          src={`/api/v1/combined/${m.id}/preview?size=thumb`}
-                          alt={`${m.filter} combined`}
-                          loading="lazy"
-                        />
-                      </Tinted>
+                      <img
+                        src={`/api/v1/combined/${m.id}/preview?size=thumb`}
+                        alt={`${m.filter} combined`}
+                        loading="lazy"
+                      />
                     </Zoomable>
                   )}
                 </div>

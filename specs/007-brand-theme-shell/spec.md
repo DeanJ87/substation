@@ -481,3 +481,7 @@ Taken on the recommendation in the design review (owner may overrule):
   L white, R red, G green, B blue, Hα deep red, OIII teal, SII amber, as `--sst-filter-*` tokens; night vision keeps
   them all red. Colour pictures (OSC, palettes, processed colour) are left as they are. The full-size viewer stays
   grey.
+- **007-DR-36 (2026-10-16, replaces 007-DR-35)** Master thumbnails stay grey: the filter colours belong to the sky
+  dome, where each frame's mark takes its filter's colour (spec 015-DR-16). The `--sst-filter-*` tokens remain for
+  that.
+

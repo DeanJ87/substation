@@ -104,3 +104,4 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
 - [X] B46 (2026-10-15) Bulk choose boxes in phone cards; dataset tabs close up on a phone so Sky fits (007-DR-34)
 - [X] B47 (2026-10-16) Filter tint tokens, `filterTint`, `<Tinted>` on collection, combined and dataset master
   thumbnails; the collection's masters carry their filter (007-DR-35); tests; screenshots
+- [X] B48 (2026-10-16) Thumbnail tints removed (007-DR-36); the filter tokens kept for the sky dome

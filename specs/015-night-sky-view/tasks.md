@@ -38,3 +38,5 @@
   the dome itself moved to `Dome.tsx` for both views (015-DR-12); screenshots zoomed in
 - [X] N11 (2026-10-16) Play across nights (`sequence.ts` joined clock, with tests), frame at the time shown, spin
   while playing (015-DR-14, -15); screenshots
+- [X] N12 (2026-10-16) Marks and tracks by filter colour, Filters key with hide/show, collection Sky tab; sky subs
+  carry filter and exposure (015-DR-16); tests; screenshots of M81 (464 frames, 11 nights)

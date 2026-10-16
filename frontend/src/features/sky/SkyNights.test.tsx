@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../../api/client'
-import { type Nights, SkyNights, TargetSky, ageOpacity, facingOf, monthTicks } from './SkyNights'
+import { type Nights, SkyNights, TargetSky, ageOpacity, facingOf, filtersOf, monthTicks } from './SkyNights'
 
 const at = (d: string, h: number, m = 0) =>
   `${d}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`
@@ -27,6 +27,8 @@ function nights(): Nights {
     segment: 0,
     rig,
     verdict,
+    filter: i % 2 ? 'Hα' : 'OIII',
+    exptime_s: 300,
   })
   return {
     name: 'North America Nebula',
@@ -153,5 +155,27 @@ describe('a target across its nights (spec 015 N7)', () => {
       params: { path: { dataset_id: 10 }, query: { site: undefined } },
     })
     get.mockRestore()
+  })
+})
+
+describe('filters on the sky (2026-10-16)', () => {
+  it('colours each frame by its filter and lets a filter be hidden', () => {
+    const { container } = render(<SkyNights sky={nights()} onSite={() => {}} />)
+    const marks = () => container.querySelectorAll('path[style*="--sst-filter"]').length
+    const before = marks()
+    expect(before).toBeGreaterThan(0)
+    const ha = screen.getByRole('button', { name: /^Hα/ })
+    expect(ha).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(ha)
+    expect(ha).toHaveAttribute('aria-pressed', 'false')
+    expect(marks()).toBeLessThan(before)
+  })
+  it('orders broadband before narrowband', () => {
+    expect(filtersOf([{ filter: 'OIII' }, { filter: 'L' }, { filter: 'Hα' }, { filter: 'R' }])).toEqual([
+      'L',
+      'R',
+      'Hα',
+      'OIII',
+    ])
   })
 })

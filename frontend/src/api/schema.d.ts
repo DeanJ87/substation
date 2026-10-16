@@ -4702,6 +4702,13 @@ export interface components {
             az: number;
             /** Dataset Id */
             dataset_id: number;
+            /** Exptime S */
+            exptime_s?: number | null;
+            /**
+             * Filter
+             * @default
+             */
+            filter: string;
             /** Night */
             night: number;
             /** Rig */
