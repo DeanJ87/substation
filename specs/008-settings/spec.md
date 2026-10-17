@@ -81,3 +81,10 @@ each machine mounts the share, e.g. a Windows drive letter) lets them open it in
   masters and every processed version (GraXpert, BlurXTerminator, NoiseXTerminator) offer both; a file no mapping
   reaches from this browser downloads even when opening in place is chosen, since a path the machine can't reach is
   of no use. Processed versions gained their own download (`/stacks/{id}/post/{run}/{stage}/download`).
+
+### Amendment 2026-10-17: libraries' access and roles
+
+- **008-DR-15**: Settings → Library → Folders says whether each library is mounted read-write or read-only, and
+  holds each library's archive role and an active library's archive (spec 013), plus how many days without new subs
+  before a collection is suggested for archiving (`processing.archive.suggest_after_days`, 0–3,650, default 60). A
+  control a read-only library can't use stays visible, disabled, with the reason beside it.

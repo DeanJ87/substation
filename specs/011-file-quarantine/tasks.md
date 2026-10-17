@@ -14,3 +14,5 @@ deleted subs, with a `binned` total. Libraries report `writable`; "may delete" c
 mount is writable. Tests: `tests/unit/test_binning.py` (move, hide-only, restore, purge, auto-bin, API, history).
 - [X] T20 (2026-10-14) `/bin` page (readouts, tidy, reason filter, multi-restore), menu item; settings section slimmed;
   glance falls back to a hidden copy (011-DR-07)
+- [X] T21 (2026-10-17) The bin's delete switch disabled with the read-only reason beside it; `PATCH /libraries/{id}`
+  refuses `allow_delete` on a read-only library with the reason (011-DR-08); tests

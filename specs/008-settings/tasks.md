@@ -74,3 +74,5 @@ requirement they close. G57 and G58 refer to `docs/design/design-review.md` sect
   Settings → Notifications fields; tests (008-DR-13)
 - [X] T29 (2026-10-15) File mode setting (per browser), Download in `FilePath` with fallback when unmapped,
   processed-version download endpoint (008-DR-14); test
+- [X] T30 (2026-10-17) Folders: mount mode, role and archive controls with the read-only reason, archive suggestion
+  days; `archive` settings section validated (008-DR-15); tests

@@ -1,5 +1,9 @@
 <!--
-Sync Impact Report (2.1.0, 2026-10-12): IV expanded with a second adapter boundary for optional external
+Sync Impact Report (2.2.0, 2026-10-17): I expanded: owner-chosen file operations (the bin, spec 011; archiving
+collections, spec 013) are allowed only in libraries mounted read-write, and never change or overwrite content.
+MINOR.
+
+Earlier report (2.1.0, 2026-10-12): IV expanded with a second adapter boundary for optional external
 finishing tools (spec 010). MINOR.
 
 Earlier report:
@@ -30,8 +34,11 @@ GNU General Public License v3.0.
 
 ### I. Originals Are Read-Only
 
-- SubStation MUST NOT modify, move, rename or delete any file in a source folder. Source mounts MUST
-  work read-only.
+- SubStation MUST NOT modify, move, rename or delete any file in a source folder on its own initiative. Source
+  mounts MUST work read-only. The only exceptions are actions the owner chooses, in a library the owner has mounted
+  read-write: the bin (spec 011: quarantine, then deletion where allowed) and archiving a collection or bringing it
+  back (spec 013: a verified copy to the same relative path in another library, then removal of the original). A
+  file's content is never changed, and a different file is never overwritten.
 - Users and other software may move, rename, copy, duplicate or reorganise source files at any time.
   SubStation MUST keep tracking them by content (Principle II) and MUST NOT treat a move as a loss.
 - All derived data (catalogue, converted and calibrated frames, previews, stacks, masters) MUST live
@@ -182,4 +189,4 @@ Report, a semantic version bump (MAJOR: principle removed or redefined; MINOR: p
 added or materially expanded; PATCH: wording) and the dated reason. Spike reports in `docs/spikes/` are
 the evidence base. All code is licensed GPL-3.0; dependencies MUST be GPL-3.0-compatible.
 
-**Version**: 2.1.0 | **Ratified**: 2026-10-09 | **Last Amended**: 2026-10-12
+**Version**: 2.2.0 | **Ratified**: 2026-10-09 | **Last Amended**: 2026-10-17

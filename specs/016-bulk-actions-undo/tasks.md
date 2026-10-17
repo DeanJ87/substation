@@ -20,3 +20,4 @@
   - [X] U6f Backend tests for every endpoint and undo (read-only refused, limits); frontend tests for each bar;
     screenshots (desktop and phone)
 - [X] U7 (2026-10-15) Undoing a move after its collection or project was removed (016-DR-01); test
+- [X] U8 (2026-10-17) Change kind `archive` and its undo (016-DR-02); tests in `tests/unit/test_archive.py`

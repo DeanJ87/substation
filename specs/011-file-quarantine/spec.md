@@ -79,3 +79,10 @@ Stats count every frame ever catalogued, including binned and deleted ones: fram
   why and by whom, when binned and when they go, filterable by reason, with a multi-select Restore. How long things
   wait and which libraries may be deleted from stay in Settings → Library → Bin, which links to the page. A binned
   file in a read-only library is only hidden, so its preview is still drawn from the file.
+
+## Amendment 2026-10-17: a disabled switch says why
+
+- **011-DR-08**: Settings → Library → Bin keeps "SubStation may delete files here" in view for a library mounted
+  read-only, disabled, with the reason beside it and the compose setting that mounts that library read-write (spec
+  013, 013-DR-02). The API refuses switching it on for a read-only library with the same reason. As in spec 013, a
+  library mounted read-write is writable for the bin and for archiving alike.

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `poc-substation`
 **Created**: 2026-10-14
-**Status**: Proposed 2026-10-14; not built
+**Status**: Proposed 2026-10-14; built 2026-10-17 (see the amendment)
 **Input**: Owner request, 2026-10-14: keep the subs being shot and edited on fast storage, and move a collection's
 files to large, slower storage once it is older or finished, from inside SubStation.
 
@@ -69,3 +69,51 @@ scan that runs mid-move can see files as missing; a move SubStation makes itself
 - The two libraries are mounted in the same containers (they are bind mounts on one NAS), so a move is a copy and a
   delete, not a network transfer.
 - The capture machines keep writing into the active library (NINA's Robocopy target, Seestar imports).
+
+## Amendment 2026-10-17: built; which libraries may take part
+
+The station's storage is now in place: a fast NVMe share is where the capture machines' new deep-sky subs land,
+and the existing organised library on the hard disks (later moving to the large disk) holds finished work. In
+SubStation the NVMe share is the *active* library and the organised library its *archive*. A further existing
+library stays as it is, with no role.
+
+- **013-DR-01 Writable means writable for everything.** A library mounted read-write is writable for every file
+  operation SubStation makes: archiving to it, bringing collections back from it, and the bin's permanent deleting
+  (where Settings also allows that, spec 011). A library mounted read-only can do none of them. FR-001's and FR-011's
+  "only libraries SubStation may write to" means mounted read-write; there is no separate per-library switch for
+  archiving.
+- **013-DR-02 Disabled controls say why.** A control that can't be used because its library is read-only stays in
+  view, disabled, with the reason beside it and the setting that changes it ("Mounted read-only. Mount it
+  read-write (SUBSTATION_LIBRARY_2_MODE=rw) to allow this."). The containers learn which compose slot each library
+  is from `SUBSTATION_LIBRARY_NAMES`; a library mounted by an override file gets a generic reason.
+- **013-DR-03 Per-library mount modes.** The reference compose file has three library slots, each with its own
+  mode: `SUBSTATION_LIBRARY_MODE` (the first), `SUBSTATION_LIBRARY_2_MODE` and `SUBSTATION_LIBRARY_3_MODE`, the
+  last two defaulting to the first's so existing installs are unchanged. An unset slot mounts its own empty hidden
+  folder (`.no-library`, `.no-library-3`), since two mounts at one path clash.
+- **013-DR-04 Roles.** Settings → Library → Folders sets each library's role (active, archive, neither) and an active
+  library's archive. Only a read-write library takes a role; an archive library that loses its role is cleared as
+  any active library's archive. Several active libraries may each name an archive.
+- **013-DR-05 The move.** A move is one job on the bulk priority (`ingest.move_collection`), with a row per file
+  copy. Its files are chosen when it first runs. Each file is copied beside its destination under a hidden name,
+  read back and checked against its catalogue hash, linked into place (never replacing a file that appeared there
+  meanwhile), recorded as the frame's copy in the destination, then removed from the source. A failure on one file
+  is recorded against that file and the move carries on. A restart resumes from the files not yet done; a file
+  already at the destination with the same hash is not copied again. Cancel stops between chunks and removes the
+  hidden copy, so the file being copied stays untouched.
+- **013-DR-06 Calibration.** Archiving moves the calibration frames the collection's lights use (the masters matched
+  to them, what built those masters, and the raw frames of their sets) unless lights still in the active library,
+  of any other collection or none, use them too. Bringing back moves every calibration frame the collection uses
+  that is in the archive. Masters SubStation built live in its own folder and never move.
+- **013-DR-07 Where a collection is.** The collection's Overview shows its files by library (active, archive, both,
+  with sizes), the move under way or the last one (progress, files left where they were and why, Cancel), and
+  Archive or Bring back with a confirm step naming the file count, bytes, source and destination. The Library's
+  collections can be filtered by where their files are, or to those worth archiving, and cards say "Archived",
+  "Partly archived" or "Worth archiving".
+- **013-DR-08 Suggestions.** A collection is worth archiving when it has files in an active library that has an
+  archive, its newest sub was shot more than the set number of days ago (Settings → Library → Folders, default 60,
+  0 turns suggestions off), it has a current master, and no move of it is waiting or running. "Not now" dismisses
+  it until a newer sub is shot.
+- **013-DR-09 Undo.** Archive and Bring back are recorded as changes (spec 016). Undoing one that hasn't started
+  cancels it; undoing one under way or finished queues the move back, which waits for the first to stop.
+- **013-DR-10 Who.** Read-only accounts can't archive, bring back, cancel a move or dismiss a suggestion; library
+  roles are for admins.

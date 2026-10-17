@@ -80,3 +80,9 @@ Built for calibration sets and frames, datasets and failed jobs. Archiving colle
 
 - **016-DR-01** Undoing a move whose original collection (or project) has since been removed puts those datasets in
   no collection (or no project) instead of failing.
+
+### Amendment 2026-10-17: archiving
+
+- **016-DR-02** Archiving a collection or bringing it back (spec 013) is recorded as a change of kind `archive`.
+  Undoing one that hasn't started cancels it; otherwise the files are moved back the other way once the first move
+  stops.
