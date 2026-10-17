@@ -24,9 +24,16 @@ from .grouping import CalibrationSet, Dataset, DatasetNight, DatasetState, Night
 from .ignore import IgnoreKind, IgnoreRule
 from .library import Collection, Project, Rig
 from .metadata import ContentCorrection, HeaderConflict, MetadataField, MetadataSource, MetadataValue
+from .moves import ACTIVE_MOVE_STATES, CollectionMove, MoveDirection, MoveItem, MoveItemState, MoveState
 from .patterns import PathPattern, PatternKind
 
 __all__ = [
+    "ACTIVE_MOVE_STATES",
+    "CollectionMove",
+    "MoveDirection",
+    "MoveItem",
+    "MoveItemState",
+    "MoveState",
     "Change",
     "CALIBRATION_TYPES",
     "MASTER_TYPES",

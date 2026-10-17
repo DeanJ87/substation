@@ -1,4 +1,4 @@
-"""Libraries (read-only mounts under /data/library) and installation-wide settings."""
+"""Libraries (mounts under /data/library, read-only unless mounted read-write) and installation-wide settings."""
 
 from __future__ import annotations
 
@@ -12,6 +12,15 @@ class LibraryStatus(models.TextChoices):
     SCANNING = "scanning"
 
 
+class LibraryRole(models.TextChoices):
+    """Spec 013: where a library's collections live. Active: new subs and work in progress (fast storage); archive:
+    finished work (large, slower storage); neither (blank): today's behaviour, nothing moves."""
+
+    NONE = "", "Neither"
+    ACTIVE = "active", "Active"
+    ARCHIVE = "archive", "Archive"
+
+
 class Library(models.Model):
     name = models.CharField(max_length=200, unique=True, help_text="directory name under /data/library")
     mount_path = models.CharField(max_length=1000)
@@ -19,6 +28,15 @@ class Library(models.Model):
     allow_delete = models.BooleanField(
         default=False,
         help_text="SubStation may move binned files to quarantine here and delete them (spec 011)",
+    )
+    role = models.CharField(max_length=10, choices=LibraryRole.choices, blank=True, default=LibraryRole.NONE)
+    archive_to = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="an active library's archive: where Archive moves its collections' files (spec 013)",
     )
     site_name = models.CharField(max_length=200, null=True, blank=True)
     site_lat = models.FloatField(null=True, blank=True)

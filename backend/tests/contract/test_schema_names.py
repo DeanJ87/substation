@@ -15,6 +15,7 @@ MODULES = [
     "apps.catalogue.api_calibration",
     "apps.catalogue.api_nights",
     "apps.catalogue.api_library",
+    "apps.catalogue.api_archive",
     "apps.processing.api",
     "apps.processing.api_masters",
     "substation.tasks.activity",

@@ -135,14 +135,17 @@ def sweep_library(lib: Library) -> SweepResult:
 def _reconcile_disappearances(lib: Library, known: dict[str, Copy], result: SweepResult, started) -> None:
     """T065: copies not seen in this complete sweep are missing; frames whose copies were all already missing
     before it began are missing too. Paths are re-read, as a move during the sweep changes them."""
+    from apps.catalogue.services.archive import moving_frames
     from apps.catalogue.services.binning import in_quarantine
 
     # the bin's quarantine folder is never walked (dot folders are skipped): its files aren't missing
-    candidates = [
-        c.pk
-        for rel, c in known.items()
-        if c.present and rel not in result.seen_paths and not in_quarantine(rel)
+    unseen = [
+        c for rel, c in known.items() if c.present and rel not in result.seen_paths and not in_quarantine(rel)
     ]
+    if unseen:  # a file SubStation is archiving or bringing back isn't missing (spec 013 FR-007)
+        moving = set(moving_frames().values_list("frame_id", flat=True))
+        unseen = [c for c in unseen if c.frame_id not in moving]
+    candidates = [c.pk for c in unseen]
     gone = [
         c for c in Copy.objects.filter(pk__in=candidates, present=True) if c.rel_path not in result.seen_paths
     ]

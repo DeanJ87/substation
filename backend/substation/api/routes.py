@@ -25,6 +25,7 @@ from apps.accounts.api import router as users_router  # noqa: E402
 
 register_router("/users", users_router)
 
+import apps.catalogue.api_archive  # noqa: E402,F401  (archiving collections and bringing them back, spec 013)
 import apps.catalogue.api_bin  # noqa: E402,F401  (the bin: binning and restoring files, spec 011)
 import apps.catalogue.api_calibration  # noqa: E402,F401  (calibration library, on the catalogue router)
 import apps.catalogue.api_changes  # noqa: E402,F401  (your recent changes and undo, spec 016)

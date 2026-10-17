@@ -580,6 +580,26 @@ export interface paths {
         patch: operations["apps_catalogue_api_library_patch_collection"];
         trace?: never;
     };
+    "/collections/{id}/archive-suggestion/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Suggestion
+         * @description Stop suggesting this collection, until a newer sub of it is shot (FR-010).
+         */
+        post: operations["apps_catalogue_api_archive_dismiss_suggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/collections/{id}/candidates": {
         parameters: {
             query?: never;
@@ -657,6 +677,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/collections/{id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Collection Files
+         * @description Where the collection's files are (active, archive, both; FR-009), whether it can be archived or brought back
+         *     and why not, and its move under way.
+         */
+        get: operations["apps_catalogue_api_archive_collection_files"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/collections/{id}/framing": {
         parameters: {
             query?: never;
@@ -694,6 +735,46 @@ export interface paths {
          *     their subs share datasets and stack together. Every filter follows. Nothing on disk changes.
          */
         post: operations["apps_catalogue_api_library_merge_names"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collections/{id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Move
+         * @description Archive the collection, or bring it back: a job on the bulk queue, followed in Activity (FR-006).
+         */
+        post: operations["apps_catalogue_api_archive_start_move"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collections/{id}/move-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Move Preview
+         * @description What Archive or Bring back would move: how many files and bytes, from which library to which.
+         */
+        get: operations["apps_catalogue_api_archive_move_preview"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1752,6 +1833,26 @@ export interface paths {
          */
         put: operations["apps_catalogue_api_calibration_set_window"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moves/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Move
+         * @description Stop a move: every file is left either fully moved or untouched (FR-006).
+         */
+        post: operations["apps_catalogue_api_archive_cancel_move"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3260,12 +3361,22 @@ export interface components {
             /** Accepted Integration S */
             accepted_integration_s: number;
             /**
+             * Archive Suggested
+             * @default false
+             */
+            archive_suggested: boolean;
+            /**
              * Constellation
              * @default
              */
             constellation: string;
             /** Datasets */
             datasets: number;
+            /**
+             * Files Where
+             * @default
+             */
+            files_where: string;
             /**
              * Filter Time
              * @default {}
@@ -3308,6 +3419,29 @@ export interface components {
             /** States */
             states: string[];
         };
+        /** CollectionFilesOut */
+        CollectionFilesOut: {
+            /** Active Bytes */
+            active_bytes: number;
+            archive: components["schemas"]["MoveChoice"];
+            /** Archive Bytes */
+            archive_bytes: number;
+            bring_back: components["schemas"]["MoveChoice"];
+            /** Can Move */
+            can_move: boolean;
+            /** Libraries */
+            libraries: components["schemas"]["LibraryShare"][];
+            /**
+             * Location
+             * @enum {string}
+             */
+            location: "" | "active" | "archive" | "both";
+            move: components["schemas"]["CollectionMoveOut"] | null;
+            /** Suggest After Days */
+            suggest_after_days: number;
+            /** Suggested */
+            suggested: boolean;
+        };
         /** CollectionIn */
         CollectionIn: {
             /**
@@ -3343,6 +3477,55 @@ export interface components {
             sub_count: number;
             /** Version */
             version: number;
+        };
+        /** CollectionMoveIn */
+        CollectionMoveIn: {
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "archive" | "bring_back";
+        };
+        /** CollectionMoveOut */
+        CollectionMoveOut: {
+            /** By */
+            by: string;
+            /** Bytes Done */
+            bytes_done: number;
+            /** Bytes Total */
+            bytes_total: number;
+            /** Change Id */
+            change_id?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Direction */
+            direction: string;
+            /** Error */
+            error: string;
+            /** Files Done */
+            files_done: number;
+            /** Files Total */
+            files_total: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** From Library */
+            from_library: string;
+            /** Id */
+            id: number;
+            /**
+             * Problem Files
+             * @default []
+             */
+            problem_files: components["schemas"]["MoveProblemOut"][];
+            /** Problems */
+            problems: number;
+            /** State */
+            state: string;
+            /** To Library */
+            to_library: string;
         };
         /** CollectionOut */
         CollectionOut: {
@@ -4187,8 +4370,12 @@ export interface components {
         LibraryIn: {
             /** Allow Delete */
             allow_delete?: boolean | null;
+            /** Archive To */
+            archive_to?: number | null;
             /** Enabled */
             enabled?: boolean | null;
+            /** Role */
+            role?: ("" | "active" | "archive") | null;
             site?: components["schemas"]["SiteSchema"] | null;
             /** Sweep Interval Active S */
             sweep_interval_active_s?: number | null;
@@ -4202,6 +4389,8 @@ export interface components {
              * @default false
              */
             allow_delete: boolean;
+            /** Archive To */
+            archive_to?: number | null;
             /** Enabled */
             enabled: boolean;
             /** Frame Count */
@@ -4214,6 +4403,14 @@ export interface components {
             mount_path: string;
             /** Name */
             name: string;
+            /** Read Only Reason */
+            read_only_reason?: string | null;
+            /**
+             * Role
+             * @default
+             * @enum {string}
+             */
+            role: "" | "active" | "archive";
             site: components["schemas"]["SiteSchema"];
             /** Status */
             status: string;
@@ -4226,6 +4423,19 @@ export interface components {
              * @default false
              */
             writable: boolean;
+        };
+        /** LibraryShare */
+        LibraryShare: {
+            /** Bytes */
+            bytes: number;
+            /** Files */
+            files: number;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
         };
         /** LibraryStatsOut */
         LibraryStatsOut: {
@@ -4517,12 +4727,49 @@ export interface components {
             /** Up During Lights */
             up_during_lights: boolean | null;
         };
+        /** MoveChoice */
+        MoveChoice: {
+            /** From Library */
+            from_library?: string | null;
+            /** Possible */
+            possible: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** To Library */
+            to_library?: string | null;
+        };
         /** MoveIn */
         MoveIn: {
             /** After */
             after?: string | null;
             /** Before */
             before?: string | null;
+        };
+        /** MovePreviewOut */
+        MovePreviewOut: {
+            /** Bytes */
+            bytes: number;
+            /** Calibration */
+            calibration: number;
+            /** Calibration Kept */
+            calibration_kept: number;
+            /** Direction */
+            direction: string;
+            /** Files */
+            files: number;
+            /** From Library */
+            from_library: string;
+            /** Lights */
+            lights: number;
+            /** To Library */
+            to_library: string;
+        };
+        /** MoveProblemOut */
+        MoveProblemOut: {
+            /** Path */
+            path: string;
+            /** Reason */
+            reason: string;
         };
         /** NeedOut */
         NeedOut: {
@@ -7403,6 +7650,26 @@ export interface operations {
             };
         };
     };
+    apps_catalogue_api_archive_dismiss_suggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     apps_catalogue_api_library_candidates: {
         parameters: {
             query?: never;
@@ -7522,6 +7789,28 @@ export interface operations {
             };
         };
     };
+    apps_catalogue_api_archive_collection_files: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionFilesOut"];
+                };
+            };
+        };
+    };
     apps_catalogue_api_library_collection_framing: {
         parameters: {
             query?: {
@@ -7569,6 +7858,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_archive_start_move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectionMoveIn"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionMoveOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_archive_move_preview: {
+        parameters: {
+            query: {
+                direction: "archive" | "bring_back";
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovePreviewOut"];
                 };
             };
         };
@@ -9204,6 +9543,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MasterWindowOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_archive_cancel_move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionMoveOut"];
                 };
             };
         };

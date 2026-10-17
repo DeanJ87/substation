@@ -52,6 +52,7 @@ KIND = {
     "check_tools": "Check finishing tools",
     "redraw_post_views": "Redraw post-processed views",
     "activate_rc_astro": "Activate RC-Astro",
+    "move_collection": "Move collection files",
 }
 
 
@@ -111,6 +112,12 @@ _OUTCOMES: dict[str, Callable[[dict, str], str]] = {
     "reresolve_targets": _reresolved,
     "hash_file": lambda r, t: f"{'New' if r.get('result') == 'new' else 'Known'} file · {t}",
     "catalogue_frame": _catalogued,
+    "move_collection": lambda r, t: (
+        f"Moved {_n(r, 'files')} files · {t}"
+        + (f"; {_n(r, 'problems')} left where they were" if r.get("problems") else "")
+        if r.get("result") == "done"
+        else f"Move {r.get('result', 'ended')} · {t}" + (f": {r['reason']}" if r.get("reason") else "")
+    ),
 }
 
 
@@ -134,6 +141,14 @@ def _object_label(ds) -> str:  # noqa: ANN001
     col = ds.collection.name if ds.collection_id and ds.collection else ""
     name = col.split(" - ", 1)[1] if " - " in col else (col or ds.target or "")
     return " · ".join(p for p in (name, label(ds)) if p)
+
+
+def _move_target(move_id: int) -> str:
+    """ "Archive · M 31 · active → archive" (spec 013)."""
+    from apps.catalogue.models import CollectionMove
+
+    m = CollectionMove.objects.select_related("collection", "from_library", "to_library").get(pk=move_id)
+    return f"{m.get_direction_display()} · {m.collection.name} · {m.from_library.name} → {m.to_library.name}"
 
 
 def _target(t: Task) -> tuple[str, int | None, dict]:
@@ -184,6 +199,8 @@ def _target(t: Task) -> tuple[str, int | None, dict]:
                     "why": why,  # who or what started it, and with which subs (owner 2026-10-13)
                 },
             )
+        if short == "move_collection":
+            return _move_target(int(args[0])), None, {}
         if short == "postprocess_master":
             from apps.processing.models import Master
 

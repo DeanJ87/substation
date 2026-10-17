@@ -4,6 +4,7 @@ import os
 import re
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Literal
 
 from django.conf import settings
 from django.db.models import Count, Q
@@ -16,7 +17,8 @@ from substation.api import ApiError, Router, Schema, Status, admin_required, is_
 from substation.tasks import enqueue
 from substation.tasks.models import Worker, WorkerState
 
-from .models import InstallationSettings, Library
+from .access import is_writable, read_only_reason
+from .models import InstallationSettings, Library, LibraryRole
 
 settings_router = Router(tags=["settings"])
 libraries_router = Router(tags=["libraries"])
@@ -41,11 +43,17 @@ class LibraryOut(Schema):
     sweep_interval_idle_s: int
     allow_delete: bool = False  # SubStation may move binned files to quarantine and delete them (spec 011)
     writable: bool = False  # the library is mounted so SubStation can write to it
+    # why not, naming the setting that mounts it read-write; none when it is writable (specs 011, 013)
+    read_only_reason: str | None = None
+    role: Literal["", "active", "archive"] = ""  # spec 013: where its collections live
+    archive_to: int | None = None  # an active library's archive library
 
 
 class LibraryIn(Schema):
     enabled: bool | None = None
     allow_delete: bool | None = None
+    role: Literal["", "active", "archive"] | None = None
+    archive_to: int | None = None  # sent as null: no archive library
     site: SiteSchema | None = None
     sweep_interval_active_s: int | None = None
     sweep_interval_idle_s: int | None = None
@@ -64,7 +72,10 @@ def _library_out(lib: Library, count: int) -> LibraryOut:
         sweep_interval_active_s=lib.sweep_interval_active_s,
         sweep_interval_idle_s=lib.sweep_interval_idle_s,
         allow_delete=lib.allow_delete,
-        writable=os.access(lib.mount_path, os.W_OK),
+        writable=is_writable(lib),
+        read_only_reason=read_only_reason(lib),
+        role=lib.role or "",  # type: ignore[arg-type]
+        archive_to=lib.archive_to_id,
     )
 
 
@@ -79,6 +90,34 @@ def list_libraries(request):
     return [_library_out(lib, lib.n) for lib in _counted()]
 
 
+def _apply_roles(lib: Library, data: dict) -> None:
+    """Spec 013: a library's role and an active library's archive. Only libraries mounted read-write take part, as
+    the owner set out: a read-only one can't be archived to or brought back from."""
+    if data.get("role") is not None and data["role"] != lib.role:
+        if data["role"] and (why := read_only_reason(lib)):
+            raise ApiError(422, "read_only", why)
+        if lib.role == LibraryRole.ARCHIVE:  # no longer an archive: active libraries stop pointing at it
+            Library.objects.filter(archive_to=lib).update(archive_to=None)
+        lib.role = data["role"]
+        if lib.role != LibraryRole.ACTIVE:
+            lib.archive_to = None
+    if "archive_to" in data:
+        lib.archive_to = _archive_target(lib, data["archive_to"])
+
+
+def _archive_target(lib: Library, target_id: int | None) -> Library | None:
+    if target_id is None:
+        return None
+    if lib.role != LibraryRole.ACTIVE:
+        raise ApiError(422, "invalid", "Only an active library has an archive library.")
+    target = Library.objects.filter(pk=target_id).first()
+    if target is None or target.pk == lib.pk or target.role != LibraryRole.ARCHIVE:
+        raise ApiError(422, "invalid", "Choose a library set as an archive.")
+    if why := read_only_reason(target):
+        raise ApiError(422, "read_only", f"{target.name}: {why}")
+    return target
+
+
 @libraries_router.patch("/{id}", response=LibraryOut)
 @admin_required
 def patch_library(request, id: int, body: LibraryIn):  # noqa: A002
@@ -87,7 +126,10 @@ def patch_library(request, id: int, body: LibraryIn):  # noqa: A002
     if "enabled" in data and data["enabled"] is not None:
         lib.enabled = data["enabled"]
     if data.get("allow_delete") is not None:
+        if data["allow_delete"] and (why := read_only_reason(lib)):
+            raise ApiError(422, "read_only", why)
         lib.allow_delete = data["allow_delete"]
+    _apply_roles(lib, data)
     if data.get("site") is not None:
         site = data["site"]
         if site.get("lat") is not None and not -90 <= site["lat"] <= 90:
@@ -160,7 +202,18 @@ class RegradePreviewOut(Schema):
     by_change: dict[str, int]
 
 
-EDITABLE = {"calibration", "grading", "stacking", "notifications", "queue", "post", "paths", "bin", "backup"}
+EDITABLE = {
+    "calibration",
+    "grading",
+    "stacking",
+    "notifications",
+    "queue",
+    "post",
+    "paths",
+    "bin",
+    "backup",
+    "archive",
+}
 CHOICES = {
     ("stacking", "rejection"): {"winsorized", "sigma", "linear"},
     ("stacking", "weighting"): {"grade", "snr", "equal"},
@@ -252,10 +305,19 @@ _RANGES: dict[tuple[str, str], tuple[Callable[[object], bool], str]] = {
         "Sigma low and high must be 0.5–10.",
     ),
 }
+
+
+def _check_archive(values: dict) -> None:
+    for k, v in values.items():
+        if k != "suggest_after_days" or not isinstance(v, int) or not 0 <= v <= 3650:
+            raise _invalid("Days without new subs must be a whole number from 0 to 3,650.")
+
+
 _SECTION_CHECKS: dict[str, Callable[[dict], None]] = {
     "notifications": _check_notifications,
     "backup": _check_backup,
     "bin": _check_bin,
+    "archive": _check_archive,
 }
 
 

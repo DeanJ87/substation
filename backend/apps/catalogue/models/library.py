@@ -1,5 +1,6 @@
 """Rigs and collections (spec 006). A rig is one telescope, camera and focal length; a collection groups the
-datasets of one object across rigs, filters, framings and years. Catalogue-only: nothing moves on disk."""
+datasets of one object across rigs, filters, framings and years. Grouping is catalogue-only: nothing moves on disk
+unless the owner archives a collection or brings one back (spec 013, models in moves.py)."""
 
 from __future__ import annotations
 
@@ -78,6 +79,9 @@ class Collection(models.Model):
         max_length=40, blank=True, default="", help_text="from the datasets' pointing"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    archive_dismissed_at = models.DateTimeField(
+        null=True, blank=True, help_text="the owner said not to suggest archiving it (spec 013 FR-010)"
+    )
 
     def __str__(self) -> str:
         return self.name

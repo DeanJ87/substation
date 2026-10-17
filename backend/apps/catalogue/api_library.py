@@ -86,6 +86,10 @@ class CollectionCard(Schema):
     constellation: str = ""
     nights: list[date] = []  # every session's date, for the Library's date filter
     goals: dict[str, float] = {}  # spec 019: every project's goals added up, per filter
+    # spec 013, on the Library's list: where its files are (active, archive, both; blank where no library has a
+    # role) and whether it is worth archiving
+    files_where: str = ""
+    archive_suggested: bool = False
 
 
 class LibraryHomeOut(Schema):
@@ -345,6 +349,17 @@ def _home_readouts() -> dict:
     }
 
 
+def _add_storage(cards: list[CollectionCard]) -> None:
+    """Where each collection's files are, and which are worth archiving (spec 013 FR-009, FR-010)."""
+    from .services.archive import locations, suggested
+
+    where = locations()
+    worth = suggested(where)
+    for c in cards:
+        c.files_where = where.get(c.id, "")
+        c.archive_suggested = c.id in worth
+
+
 @router.get("/library", response=LibraryHomeOut)
 def library(request, scope: Query[Scope]):
     """Collections and ungrouped datasets, narrowed by the shared scope (spec 018) on the server: a collection is
@@ -355,6 +370,7 @@ def library(request, scope: Query[Scope]):
     if scoped:
         collections = collections.filter(pk__in=in_scope.values("collection_id"))
     cols = [_card(c, scope if scoped else None) for c in collections]
+    _add_storage(cols)
     # each suggestion compares one dataset's pointing with every grouped dataset's: work each out once
     centres = {d.pk: centre(d) for d in Dataset.objects.filter(collection__isnull=False)}
     ungrouped = [

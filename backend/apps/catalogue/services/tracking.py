@@ -136,6 +136,8 @@ def mark_copies_missing(copies: list[Copy]) -> None:
 def mark_frames_missing(library_id: int, before: datetime) -> int:
     """Frames whose every copy has been missing since before this sweep began, i.e. for at least one further
     complete sweep, are missing: the dataset needs reconciliation until they come back or are dealt with."""
+    from .archive import moving_frames
+
     frames = (
         Frame.objects.filter(
             copies__library_id=library_id, copies__present=False, copies__missing_since__lt=before
@@ -144,6 +146,7 @@ def mark_frames_missing(library_id: int, before: datetime) -> int:
         .exclude(
             status__in=[FrameStatus.MISSING, FrameStatus.IGNORED, FrameStatus.BINNED, FrameStatus.DELETED]
         )
+        .exclude(pk__in=moving_frames())  # being archived or brought back (spec 013 FR-007)
         .distinct()
     )
     n = 0

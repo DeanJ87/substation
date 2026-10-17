@@ -30,7 +30,9 @@ def bin_settings() -> dict:
 
 def writable(lib) -> bool:  # noqa: ANN001
     """Moves and deletes happen only where the owner allowed them and the library is mounted writable."""
-    return bool(lib.allow_delete) and os.access(lib.mount_path, os.W_OK)
+    from apps.libraries.access import is_writable
+
+    return bool(lib.allow_delete) and is_writable(lib)
 
 
 def in_quarantine(rel_path: str) -> bool:

@@ -19,6 +19,9 @@ def env(name: str, default: str | None = None) -> str | None:
 # --- Filesystem layout (constitution VII) ---------------------------------------------------------
 DATA_DIR = Path(env("DATA_DIR", "/data") or "/data")
 LIBRARY_ROOT = DATA_DIR / "library"  # read-only mounts, one subdirectory per library
+# the reference compose file's library slots, by folder name in order (spec 013): which variable mounts each one
+# read-write, for the reason Settings gives when it's read-only
+LIBRARY_NAMES = env("LIBRARY_NAMES", "") or ""
 STATION_ROOT = DATA_DIR / "substation"  # SubStation's writable area (local disk)
 WORK_DIR = STATION_ROOT / "work"
 PREVIEWS_DIR = STATION_ROOT / "previews"

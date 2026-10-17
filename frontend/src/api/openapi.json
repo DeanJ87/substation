@@ -1028,6 +1028,11 @@
       "title": "Accepted Integration S",
       "type": "number"
      },
+     "archive_suggested": {
+      "default": false,
+      "title": "Archive Suggested",
+      "type": "boolean"
+     },
      "constellation": {
       "default": "",
       "title": "Constellation",
@@ -1036,6 +1041,11 @@
      "datasets": {
       "title": "Datasets",
       "type": "integer"
+     },
+     "files_where": {
+      "default": "",
+      "title": "Files Where",
+      "type": "string"
      },
      "filter_time": {
       "additionalProperties": {
@@ -1152,6 +1162,77 @@
     "title": "CollectionCard",
     "type": "object"
    },
+   "CollectionFilesOut": {
+    "properties": {
+     "active_bytes": {
+      "title": "Active Bytes",
+      "type": "integer"
+     },
+     "archive": {
+      "$ref": "#/components/schemas/MoveChoice"
+     },
+     "archive_bytes": {
+      "title": "Archive Bytes",
+      "type": "integer"
+     },
+     "bring_back": {
+      "$ref": "#/components/schemas/MoveChoice"
+     },
+     "can_move": {
+      "title": "Can Move",
+      "type": "boolean"
+     },
+     "libraries": {
+      "items": {
+       "$ref": "#/components/schemas/LibraryShare"
+      },
+      "title": "Libraries",
+      "type": "array"
+     },
+     "location": {
+      "enum": [
+       "",
+       "active",
+       "archive",
+       "both"
+      ],
+      "title": "Location",
+      "type": "string"
+     },
+     "move": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CollectionMoveOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "suggest_after_days": {
+      "title": "Suggest After Days",
+      "type": "integer"
+     },
+     "suggested": {
+      "title": "Suggested",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "location",
+     "libraries",
+     "active_bytes",
+     "archive_bytes",
+     "move",
+     "archive",
+     "bring_back",
+     "suggested",
+     "suggest_after_days",
+     "can_move"
+    ],
+    "title": "CollectionFilesOut",
+    "type": "object"
+   },
    "CollectionIn": {
     "properties": {
      "dataset_ids": {
@@ -1237,6 +1318,129 @@
      "has_preview"
     ],
     "title": "CollectionMasterOut",
+    "type": "object"
+   },
+   "CollectionMoveIn": {
+    "properties": {
+     "direction": {
+      "enum": [
+       "archive",
+       "bring_back"
+      ],
+      "title": "Direction",
+      "type": "string"
+     }
+    },
+    "required": [
+     "direction"
+    ],
+    "title": "CollectionMoveIn",
+    "type": "object"
+   },
+   "CollectionMoveOut": {
+    "properties": {
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "bytes_done": {
+      "title": "Bytes Done",
+      "type": "integer"
+     },
+     "bytes_total": {
+      "title": "Bytes Total",
+      "type": "integer"
+     },
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "direction": {
+      "title": "Direction",
+      "type": "string"
+     },
+     "error": {
+      "title": "Error",
+      "type": "string"
+     },
+     "files_done": {
+      "title": "Files Done",
+      "type": "integer"
+     },
+     "files_total": {
+      "title": "Files Total",
+      "type": "integer"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "from_library": {
+      "title": "From Library",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "problem_files": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/MoveProblemOut"
+      },
+      "title": "Problem Files",
+      "type": "array"
+     },
+     "problems": {
+      "title": "Problems",
+      "type": "integer"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "to_library": {
+      "title": "To Library",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "direction",
+     "state",
+     "from_library",
+     "to_library",
+     "files_total",
+     "bytes_total",
+     "files_done",
+     "bytes_done",
+     "problems",
+     "error",
+     "by",
+     "created_at",
+     "finished_at"
+    ],
+    "title": "CollectionMoveOut",
     "type": "object"
    },
    "CollectionOut": {
@@ -3780,6 +3984,17 @@
       ],
       "title": "Allow Delete"
      },
+     "archive_to": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Archive To"
+     },
      "enabled": {
       "anyOf": [
        {
@@ -3790,6 +4005,22 @@
        }
       ],
       "title": "Enabled"
+     },
+     "role": {
+      "anyOf": [
+       {
+        "enum": [
+         "",
+         "active",
+         "archive"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Role"
      },
      "site": {
       "anyOf": [
@@ -3834,6 +4065,17 @@
       "title": "Allow Delete",
       "type": "boolean"
      },
+     "archive_to": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Archive To"
+     },
      "enabled": {
       "title": "Enabled",
       "type": "boolean"
@@ -3864,6 +4106,27 @@
      },
      "name": {
       "title": "Name",
+      "type": "string"
+     },
+     "read_only_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Read Only Reason"
+     },
+     "role": {
+      "default": "",
+      "enum": [
+       "",
+       "active",
+       "archive"
+      ],
+      "title": "Role",
       "type": "string"
      },
      "site": {
@@ -3900,6 +4163,39 @@
      "sweep_interval_idle_s"
     ],
     "title": "LibraryOut",
+    "type": "object"
+   },
+   "LibraryShare": {
+    "properties": {
+     "bytes": {
+      "title": "Bytes",
+      "type": "integer"
+     },
+     "files": {
+      "title": "Files",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "role": {
+      "title": "Role",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "role",
+     "files",
+     "bytes"
+    ],
+    "title": "LibraryShare",
     "type": "object"
    },
    "LibraryStatsOut": {
@@ -4860,6 +5156,52 @@
     "title": "MoonOut",
     "type": "object"
    },
+   "MoveChoice": {
+    "properties": {
+     "from_library": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "From Library"
+     },
+     "possible": {
+      "title": "Possible",
+      "type": "boolean"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "to_library": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "To Library"
+     }
+    },
+    "required": [
+     "possible"
+    ],
+    "title": "MoveChoice",
+    "type": "object"
+   },
    "MoveIn": {
     "properties": {
      "after": {
@@ -4886,6 +5228,72 @@
      }
     },
     "title": "MoveIn",
+    "type": "object"
+   },
+   "MovePreviewOut": {
+    "properties": {
+     "bytes": {
+      "title": "Bytes",
+      "type": "integer"
+     },
+     "calibration": {
+      "title": "Calibration",
+      "type": "integer"
+     },
+     "calibration_kept": {
+      "title": "Calibration Kept",
+      "type": "integer"
+     },
+     "direction": {
+      "title": "Direction",
+      "type": "string"
+     },
+     "files": {
+      "title": "Files",
+      "type": "integer"
+     },
+     "from_library": {
+      "title": "From Library",
+      "type": "string"
+     },
+     "lights": {
+      "title": "Lights",
+      "type": "integer"
+     },
+     "to_library": {
+      "title": "To Library",
+      "type": "string"
+     }
+    },
+    "required": [
+     "direction",
+     "from_library",
+     "to_library",
+     "files",
+     "bytes",
+     "lights",
+     "calibration",
+     "calibration_kept"
+    ],
+    "title": "MovePreviewOut",
+    "type": "object"
+   },
+   "MoveProblemOut": {
+    "properties": {
+     "path": {
+      "title": "Path",
+      "type": "string"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path",
+     "reason"
+    ],
+    "title": "MoveProblemOut",
     "type": "object"
    },
    "NeedOut": {
@@ -14220,6 +14628,37 @@
     ]
    }
   },
+  "/collections/{id}/archive-suggestion/dismiss": {
+   "post": {
+    "description": "Stop suggesting this collection, until a newer sub of it is shot (FR-010).",
+    "operationId": "apps_catalogue_api_archive_dismiss_suggestion",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "No Content"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Dismiss Suggestion",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/collections/{id}/candidates": {
    "get": {
     "description": "Datasets that could join this collection (006-DR-05). Where both sides are plate solved (009 P11) the\nranking is by how much of the reference field they cover, then rotation difference; otherwise by the\ndistance between median header pointings.",
@@ -14464,6 +14903,44 @@
     ]
    }
   },
+  "/collections/{id}/files": {
+   "get": {
+    "description": "Where the collection's files are (active, archive, both; FR-009), whether it can be archived or brought back\nand why not, and its move under way.",
+    "operationId": "apps_catalogue_api_archive_collection_files",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CollectionFilesOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Collection Files",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/collections/{id}/framing": {
    "get": {
     "description": "Every dataset's solved field over the reference framing, north up (009 P10/P12, 006-DR-09), each with a\nsub's preview placed exactly where it sits on the sky. The reference is the one asked for, else the solved\ndataset with the most accepted integration. Mosaic panels come back side by side.",
@@ -14581,6 +15058,105 @@
      }
     ],
     "summary": "Merge Names",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/collections/{id}/move": {
+   "post": {
+    "description": "Archive the collection, or bring it back: a job on the bulk queue, followed in Activity (FR-006).",
+    "operationId": "apps_catalogue_api_archive_start_move",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CollectionMoveIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CollectionMoveOut"
+        }
+       }
+      },
+      "description": "Accepted"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Start Move",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/collections/{id}/move-preview": {
+   "get": {
+    "description": "What Archive or Bring back would move: how many files and bytes, from which library to which.",
+    "operationId": "apps_catalogue_api_archive_move_preview",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "direction",
+      "required": true,
+      "schema": {
+       "enum": [
+        "archive",
+        "bring_back"
+       ],
+       "title": "Direction",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MovePreviewOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Move Preview",
     "tags": [
      "catalogue"
     ]
@@ -19226,6 +19802,44 @@
      }
     ],
     "summary": "Set Window",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/moves/{id}/cancel": {
+   "post": {
+    "description": "Stop a move: every file is left either fully moved or untouched (FR-006).",
+    "operationId": "apps_catalogue_api_archive_cancel_move",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CollectionMoveOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Cancel Move",
     "tags": [
      "catalogue"
     ]

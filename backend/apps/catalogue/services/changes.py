@@ -116,6 +116,16 @@ def _undo_qa(change: Change) -> str:
     return f"Put back the QA choice on {_plural(back, 'frame')}"
 
 
+def _undo_archive(change: Change) -> str:
+    """Spec 013: a move that hasn't started is cancelled; otherwise the files go back the other way."""
+    from apps.catalogue.services.archive import CantMove, undo
+
+    try:
+        return undo(int(change.data.get("move_id", 0)), change.user)
+    except CantMove as e:
+        raise CantUndo(str(e)) from None
+
+
 UNDOERS: dict[str, Callable[[Change], str]] = {
     Change.Kind.VERDICT: _undo_verdicts,
     Change.Kind.AGREE: _undo_verdicts,
@@ -123,6 +133,7 @@ UNDOERS: dict[str, Callable[[Change], str]] = {
     Change.Kind.MOVE: _undo_move,
     Change.Kind.DISMISS: _undo_dismiss,
     Change.Kind.QA: _undo_qa,
+    Change.Kind.ARCHIVE: _undo_archive,
 }
 
 
