@@ -32,12 +32,23 @@ Pick one with `SUBSTATION_VERSION`. Run all four containers on the same version.
 SUBSTATION_DATA/station      read-write: work files, previews, masters
 SUBSTATION_DATA/postgres     read-write: the database
 SUBSTATION_DATA/catalogues   Siril's star catalogues, for plate solving
-your libraries               read-only: one folder per library (capture folder, archive, …)
+your libraries               read-only unless you choose: one folder per library (capture folder, archive, …)
 ```
 
-Each library is mounted at `/data/library/<name>` and shows in SubStation under that name. Mount libraries
-read-only; SubStation never writes there unless you switch on the bin's deleting (Settings → Bin) and mount
-that library read-write.
+Each library is mounted at `/data/library/<name>` and shows in SubStation under that name. The reference compose
+file has three slots:
+
+| Variable | What |
+| --- | --- |
+| `SUBSTATION_LIBRARY`, `_NAME`, `_MODE` | the first library (required); mode `ro` (default) or `rw` |
+| `SUBSTATION_LIBRARY_2`, `_2_NAME`, `_2_MODE` | a second, optional; its mode defaults to the first's |
+| `SUBSTATION_LIBRARY_3`, `_3_NAME`, `_3_MODE` | a third, optional; its mode defaults to the first's |
+
+Mount libraries read-only unless SubStation should write there. A library mounted read-write is writable for
+everything SubStation does with files: the bin can delete there (once you allow it in Settings → Library → Bin),
+and it can be an *active* or *archive* library, so collections can be archived to it or brought back from it
+(Settings → Library → Folders). A read-only library can do none of these; Settings shows which variable to set.
+More than three libraries: add a volume line per folder in an override file, under `/data/library/<name>`.
 
 Put `SUBSTATION_DATA` on fast local storage (an SSD). Libraries can be anywhere, including network shares.
 

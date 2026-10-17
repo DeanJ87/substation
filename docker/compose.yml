@@ -13,17 +13,25 @@ x-base: &base
   restart: unless-stopped
   networks: [internal]
 
+# the slots' folder names in order, so Settings can say which mode variable makes a read-only library writable
+x-library-names: &library_names ${SUBSTATION_LIBRARY_NAME:-library},${SUBSTATION_LIBRARY_2_NAME:-.no-library},${SUBSTATION_LIBRARY_3_NAME:-.no-library-3}
+
 x-env: &env
   SUBSTATION_DATABASE_URL: postgres://substation@postgres:5432/substation
   SUBSTATION_DATABASE_PASSWORD: ${SUBSTATION_DB_PASSWORD:?set SUBSTATION_DB_PASSWORD}
+  SUBSTATION_LIBRARY_NAMES: *library_names
 
 x-station: &station ${SUBSTATION_DATA:?set SUBSTATION_DATA}/station:/data/substation
 x-catalogues: &catalogues ${SUBSTATION_DATA:?set SUBSTATION_DATA}/catalogues:/home/substation/.local/share/kstars:ro
-# your images, read-only unless SUBSTATION_LIBRARY_MODE=rw (only the bin writes, and only where Settings allows);
-# more than two: add a line per folder in an override file, each under /data/library/<name>
+# your images: up to three libraries, each under /data/library/<name>. Each is mounted read-only unless its mode is
+# rw. A library mounted read-write is one SubStation may write to: the bin may delete there (where Settings allows),
+# and it can take part in archiving collections (spec 013: an active library and its archive); read-only, it can't.
+# More than three: add a line per folder in an override file, each under /data/library/<name>.
 x-library: &library ${SUBSTATION_LIBRARY:?set SUBSTATION_LIBRARY}:/data/library/${SUBSTATION_LIBRARY_NAME:-library}:${SUBSTATION_LIBRARY_MODE:-ro}
-# an optional second library (an archive); unset, it is an empty hidden folder SubStation ignores
-x-library-2: &library2 ${SUBSTATION_LIBRARY_2:-${SUBSTATION_DATA}/station/.no-library}:/data/library/${SUBSTATION_LIBRARY_2_NAME:-.no-library}:${SUBSTATION_LIBRARY_MODE:-ro}
+# optional second and third libraries; unset, each is its own empty hidden folder SubStation ignores (two mounts at
+# one path would clash). Their modes default to the first library's, so an existing install is unchanged.
+x-library-2: &library2 ${SUBSTATION_LIBRARY_2:-${SUBSTATION_DATA}/station/.no-library}:/data/library/${SUBSTATION_LIBRARY_2_NAME:-.no-library}:${SUBSTATION_LIBRARY_2_MODE:-${SUBSTATION_LIBRARY_MODE:-ro}}
+x-library-3: &library3 ${SUBSTATION_LIBRARY_3:-${SUBSTATION_DATA}/station/.no-library-3}:/data/library/${SUBSTATION_LIBRARY_3_NAME:-.no-library-3}:${SUBSTATION_LIBRARY_3_MODE:-${SUBSTATION_LIBRARY_MODE:-ro}}
 
 services:
   postgres:
@@ -66,6 +74,7 @@ services:
       - *catalogues
       - *library  # so previews can be drawn from frames not processed yet
       - *library2
+      - *library3
     depends_on:
       postgres: { condition: service_healthy }
 
@@ -87,6 +96,7 @@ services:
       - *catalogues
       - *library
       - *library2
+      - *library3
     depends_on:
       api: { condition: service_healthy }
     deploy:
