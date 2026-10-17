@@ -226,3 +226,21 @@
 .ungroupedName > input {
   margin-top: 3px;
 }
+
+/* the Library's filter by where a collection's files are (spec 013) */
+.whereFilter {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--sst-muted);
+}
+.whereFilter select {
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  padding: 5px 8px;
+  font: inherit;
+}

@@ -195,14 +195,47 @@ export function Library() {
   )
 }
 
-function CollectionCards({ cards, scope, resetKey }: { cards: Card[]; scope: Scope; resetKey: string }) {
+// where a collection's files are (spec 013 FR-009): the Library's own filter, shown once libraries have roles
+const WHERE: [string, string][] = [
+  ['', 'Anywhere'],
+  ['active', 'In the active library'],
+  ['archive', 'In the archive'],
+  ['both', 'Split across both'],
+  ['suggested', 'Worth archiving'],
+]
+const WHERE_PILL: Record<string, string> = { archive: 'Archived', both: 'Partly archived' }
+
+export function byWhere(cards: Card[], where: string): Card[] {
+  if (!where) return cards
+  if (where === 'suggested') return cards.filter((c) => c.archive_suggested)
+  return cards.filter((c) => c.files_where === where)
+}
+
+function CollectionCards({ cards: all, scope, resetKey }: { cards: Card[]; scope: Scope; resetKey: string }) {
   const navigate = useNavigate()
+  const [where, setWhere] = useState('')
   // a collection opens with the Library's filters, so its links (the map, a night) carry them on (spec 018)
   const carry = scopeQuery(scope)
-  const { visible, hasMore, more } = useProgressive(cards, 24, resetKey)
-  if (!cards.length) return null
+  const cards = byWhere(all, where)
+  const { visible, hasMore, more } = useProgressive(cards, 24, `${resetKey}|${where}`)
+  const roles = all.some((c) => c.files_where)
+  if (!all.length) return null
   return (
     <Collapsible id="library-collections" title="Collections" meta={cards.length}>
+      {roles && (
+        <label className={s.whereFilter}>
+          Files{' '}
+          <select value={where} onChange={(e) => setWhere(e.target.value)}>
+            {WHERE.map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+                {k === 'suggested' ? ` (${all.filter((c) => c.archive_suggested).length})` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!cards.length && <p className={v.muted}>No collection matches.</p>}
       <div className={s.cards}>
         {visible.map((c) => (
           <CollectionCardView
@@ -372,8 +405,12 @@ function CollectionCardView({
             )}
           </span>
         </div>
-        {c.states.length > 0 && (
+        {(c.states.length > 0 || WHERE_PILL[c.files_where ?? ''] || c.archive_suggested) && (
           <div className={v.pills}>
+            {WHERE_PILL[c.files_where ?? ''] && (
+              <span className={v.pill}>{WHERE_PILL[c.files_where ?? '']}</span>
+            )}
+            {c.archive_suggested && <span className={v.pill}>Worth archiving</span>}
             {c.states.map(
               (st) =>
                 STATE_LABEL[st] && (

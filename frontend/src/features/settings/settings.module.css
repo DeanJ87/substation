@@ -532,3 +532,48 @@
     max-width: 100%;
   }
 }
+
+/* Library access (specs 011, 013): read-write or read-only, and the reason beside a control it disables. */
+.libraryRow {
+  align-items: flex-start;
+}
+.mountRw {
+  color: var(--sst-ok);
+}
+.mountRo {
+  color: var(--sst-warn);
+}
+.reason {
+  font-size: 13px;
+  color: var(--sst-warn);
+  max-width: 46ch;
+}
+.withReason {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.roleControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.roleControls select {
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  padding: 5px 8px;
+  font: inherit;
+}
+.roleControls select:disabled {
+  opacity: 0.6;
+}
+@media (max-width: 640px) {
+  .withReason {
+    align-items: flex-start;
+  }
+}

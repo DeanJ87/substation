@@ -21,6 +21,7 @@ import { tempId } from '../metadata/queries'
 import { useDraft, useSaveSettings, useSettings, type Processing } from './draft'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
+import { MountMode, RoleControls } from './LibraryAccess'
 
 const when = (iso: string | null | undefined) =>
   iso
@@ -48,12 +49,19 @@ export function Folders() {
   const free = bytes(h?.disk_free_bytes)
   const total = bytes(h?.disk_total_bytes)
   const folders = (libs.data ?? []).filter((l) => l.enabled)
+  const { draft, set, readOnly } = useDraft()
+  const days = draft?.archive?.suggest_after_days ?? 60
   return (
     <SettingsSection id="folders" title="Folders" meta={libs.isSuccess ? folders.length : undefined}>
-      <p className="muted">Read-only. Mount new folders under /data/library and restart the container.</p>
+      <p className="muted">
+        Mount new folders under /data/library and restart the container. SubStation writes only to a library
+        mounted read-write: the bin can delete there, and it can be an active library (new subs and work in
+        progress) or an archive (finished collections move there from a collection's page, and can be brought
+        back).
+      </p>
       <ul className={s.patternList}>
         {folders.map((l) => (
-          <li key={l.id} className={s.patternRow}>
+          <li key={l.id} className={`${s.patternRow} ${s.libraryRow}`}>
             <div>
               <strong className={s.mono}>{l.mount_path}</strong>
               <div className="muted">
@@ -63,8 +71,9 @@ export function Folders() {
                   : l.status === 'unreachable'
                     ? 'Unreachable'
                     : l.status} · {l.frame_count.toLocaleString('en-GB')} files · last full scan{' '}
-                {when(l.last_full_sweep_at)}
+                {when(l.last_full_sweep_at)} · <MountMode lib={l} />
               </div>
+              <RoleControls lib={l} all={folders} readOnly={readOnly} />
             </div>
             <div className={s.rowActions}>
               <Button
@@ -77,6 +86,26 @@ export function Folders() {
           </li>
         ))}
       </ul>
+      {draft && (
+        <div className={s.inline}>
+          <label>
+            Suggest archiving a collection after{' '}
+            <input
+              className={s.num}
+              type="number"
+              min={0}
+              step={1}
+              value={days}
+              disabled={readOnly}
+              aria-label="Suggest archiving after (days without new subs)"
+              onChange={(e) =>
+                e.target.value !== '' && set('archive', 'suggest_after_days', Number(e.target.value))
+              }
+            />{' '}
+            days without new subs <span className="muted">(and a current master; 0: never)</span>
+          </label>
+        </div>
+      )}
       <p className="muted">
         Output: <span className={s.mono}>/data/substation</span> · {free.value} {free.unit} free of{' '}
         {total.value} {total.unit}

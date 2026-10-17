@@ -302,3 +302,80 @@
   width: 28px;
   padding-right: 0;
 }
+
+/* Where its files are, and Archive / Bring back (spec 013) */
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.files p {
+  margin: 0;
+}
+.filesTitle {
+  margin: 0;
+  font-size: var(--sst-fs-body);
+}
+.filesList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--sst-fs-small);
+  font-variant-numeric: tabular-nums;
+}
+.filesActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+}
+.choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: var(--sst-fs-small);
+}
+.reason {
+  font-size: var(--sst-fs-small);
+  color: var(--sst-warn);
+  max-width: 60ch;
+}
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--sst-accent-line);
+  border-radius: var(--sst-radius-sm);
+  font-size: var(--sst-fs-small);
+}
+.move {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: var(--sst-fs-small);
+  font-variant-numeric: tabular-nums;
+}
+.moveBar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sst-line);
+  overflow: hidden;
+}
+.moveBar span {
+  display: block;
+  height: 100%;
+  background: var(--sst-accent);
+}
+.suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px dashed var(--sst-accent-line);
+  border-radius: var(--sst-radius-sm);
+  font-size: var(--sst-fs-small);
+}

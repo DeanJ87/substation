@@ -30,6 +30,7 @@ import { ProjectCards } from './ProjectCards'
 import { inNights, omit, readScope, scopeQuery } from '../scope/scope'
 import { ChooseBox, useChosen } from '../../components/BulkBar'
 import { DatasetBulkBar } from './DatasetBulkBar'
+import { CollectionFiles } from './CollectionFiles'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -316,6 +317,8 @@ export function CollectionView() {
               <Timeline sessions={d.sessions} rigs={rigs} range={range} onRange={setRange} />
             </Collapsible>
           </section>
+
+          <CollectionFiles id={card.id} name={card.name} />
 
           <DatasetTable
             resetKey={`${range?.join('-')}|${project}`}

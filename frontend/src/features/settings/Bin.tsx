@@ -7,6 +7,7 @@ import { offerUndo } from '../changes/changes'
 import { useDraft } from './draft'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
+import { ReadOnlyReason } from './LibraryAccess'
 
 export function Bin() {
   const qc = useQueryClient()
@@ -73,22 +74,25 @@ export function Bin() {
                 <strong className={s.mono}>{l.mount_path}</strong>
                 <div className="muted">
                   {!l.writable
-                    ? 'Mounted read-only: binned files are hidden, never moved or deleted.'
+                    ? 'Binned files are only hidden here, never moved or deleted.'
                     : l.allow_delete
                       ? 'Binned files move to quarantine here, then are deleted.'
                       : 'Binned files are only hidden here.'}
                 </div>
               </div>
-              <div className={s.rowActions}>
+              <div className={`${s.rowActions} ${s.withReason}`}>
                 <label>
                   <input
                     type="checkbox"
                     checked={l.allow_delete}
                     disabled={readOnly || !l.writable || allow.isPending}
+                    aria-describedby={l.writable ? undefined : `bin-ro-${l.id}`}
                     onChange={(e) => allow.mutate({ id: l.id, on: e.target.checked })}
                   />{' '}
                   SubStation may delete files here
                 </label>
+                {/* disabled for a reason: say it, and how to change it (2026-10-17) */}
+                <ReadOnlyReason lib={l} id={`bin-ro-${l.id}`} />
               </div>
             </li>
           ))}
