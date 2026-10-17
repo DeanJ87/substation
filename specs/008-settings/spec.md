@@ -88,3 +88,11 @@ each machine mounts the share, e.g. a Windows drive letter) lets them open it in
   holds each library's archive role and an active library's archive (spec 013), plus how many days without new subs
   before a collection is suggested for archiving (`processing.archive.suggest_after_days`, 0–3,650, default 60). A
   control a read-only library can't use stays visible, disabled, with the reason beside it.
+
+### Amendment 2026-10-17: open in Finder
+
+- **008-DR-16**: Where a file's server path is mapped to a network share (`\\host\share\…`, for everyone or for
+  this browser), a browser on a Mac also shows **Open in Finder**: an `smb://host/share/…/` link to the folder holding
+  the file, which Finder opens directly. A web page can't open a file on the viewer's machine itself, so the file
+  stays one click away in its folder; Copy path remains for every machine. Other systems don't open `smb://` links
+  from a browser, so they keep Copy path only.

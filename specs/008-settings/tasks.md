@@ -76,3 +76,5 @@ requirement they close. G57 and G58 refer to `docs/design/design-review.md` sect
   processed-version download endpoint (008-DR-14); test
 - [X] T30 (2026-10-17) Folders: mount mode, role and archive controls with the read-only reason, archive suggestion
   days; `archive` settings section validated (008-DR-15); tests
+- [X] T31 (2026-10-17) `shareFolderUrl` and the Open in Finder link in `FilePath` on a Mac where a share mapping
+  reaches the file (008-DR-16); tests

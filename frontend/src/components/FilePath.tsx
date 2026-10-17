@@ -58,6 +58,19 @@ export function mapPath(path: string, maps: PathMap[]): string {
   return joined
 }
 
+/** The folder holding a file as an smb:// link, from a mapping to a network share (\\host\share\…), so a Mac can open
+ * it in Finder with one click (2026-10-17). A browser may not open a file on the machine itself; Finder can. */
+export function shareFolderUrl(path: string, maps: PathMap[]): string | null {
+  const unc = maps.filter((m) => /^\\\\[^\\]+\\/.test(m.to))
+  const mapped = mapPath(path, unc)
+  if (mapped === path) return null
+  const parts = mapped.replace(/^\\\\/, '').split('\\').filter(Boolean)
+  if (parts.length < 3) return null // host, share and the file at least
+  return 'smb://' + parts.slice(0, -1).map(encodeURIComponent).join('/') + '/'
+}
+
+const isMac = () => typeof navigator !== 'undefined' && /Mac/i.test(navigator.userAgent)
+
 export function useSitePathMap(): PathMap[] {
   const q = useQuery({ queryKey: ['settings'], queryFn: async () => unwrap(await api.GET('/settings')) })
   const p = (q.data?.processing as { paths?: { map?: PathMap[] } } | undefined)?.paths?.map
@@ -80,6 +93,7 @@ export function FilePath({
   const maps = [...shown, ...site.filter((s) => !shown.some((l) => l.from === s.from))]
   const local = mapPath(path, maps)
   const name = path.split('/').pop() ?? 'file'
+  const finder = isMac() ? shareFolderUrl(path, [...site, ...shown]) : null
   if (download && (mode === 'download' || local === path)) {
     // set to download, or no mapping reaches this folder from here: a path the machine can't open is no use
     return (
@@ -97,8 +111,12 @@ export function FilePath({
     )
   }
   return (
-    <span className={className} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-      <code style={{ overflowWrap: 'anywhere', fontSize: 12 }} title={path}>
+    <span
+      className={className}
+      style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', minWidth: 0 }}
+    >
+      {/* in a narrow column the path takes its own line and the buttons wrap below it */}
+      <code style={{ overflowWrap: 'anywhere', fontSize: 12, flex: '1 1 16em' }} title={path}>
         {local}
       </code>
       <button
@@ -113,6 +131,11 @@ export function FilePath({
       >
         Copy path
       </button>
+      {finder && (
+        <a className={v.pill} href={finder} title="Open the folder holding this file in Finder">
+          Open in Finder
+        </a>
+      )}
     </span>
   )
 }
