@@ -78,3 +78,7 @@ requirement they close. G57 and G58 refer to `docs/design/design-review.md` sect
   days; `archive` settings section validated (008-DR-15); tests
 - [X] T31 (2026-10-17) `shareFolderUrl` and the Open in Finder link in `FilePath` on a Mac where a share mapping
   reaches the file (008-DR-16); tests
+- [ ] T32 (2026-10-18, open) Saving one section of the processing settings (e.g. only `paths`) must not touch the
+  others: a PATCH carrying the whole `processing` object today bumps the grading thresholds version and starts a
+  calibration re-match even when those values are unchanged. Compare against the stored values and act only on
+  sections that actually changed; test

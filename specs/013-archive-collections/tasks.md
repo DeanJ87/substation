@@ -25,3 +25,6 @@ the Library's filter checked.
   disabled with the reason when read-only, the suggestion days setting (013-DR-01, 013-DR-04, 013-DR-08)
 - [X] A10 (2026-10-17) Archive and bring back recorded as undoable changes (013-DR-09); Activity names the job and
   its result
+- [ ] A11 (2026-10-18, open) First run on the real library: Bring back the smallest collection from `organised`
+  (archive) to `active`, verify every file by hash at the destination, the originals gone, frame/master counts and
+  no files reported missing; then Archive it back and verify again. Record the result here
