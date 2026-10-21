@@ -48,6 +48,15 @@ class FinishedProject(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     wrote_project_json_sha256 = models.CharField(max_length=64, blank=True, default="")
+    data_fingerprint = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="020-DR-11: hash of everything that feeds the render data",
+    )
+    data_changed_at = models.DateTimeField(
+        null=True, blank=True, help_text="when that fingerprint last changed"
+    )
 
     class Meta:
         ordering = ["kind", "subject", "name"]

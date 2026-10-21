@@ -34,6 +34,8 @@
   (2026-10-21: live; list, render data, final and thumbnail served, refused without a token)
 - [X] F15 (2026-10-21) Several sites per master: `capture.sites` with ids, site id on timeline rows and quality
   entries, tracks per site, catalogue-first target names (020-DR-07); tests
+- [X] F16 (2026-10-21) `updated_at` follows a fingerprint of the render data's inputs, so moved datasets and a
+  changed project kind show up in `since` polling (020-DR-11); test
 - [ ] F12 (later) Link suggestions by plate-solve overlap once finished images are solved; annotations from that
   solve (FR-004, FR-007)
 - [ ] F13 (later) Target type, distance and angular size from the catalogue data (FR-007)

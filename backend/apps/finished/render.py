@@ -59,24 +59,90 @@ def role_files(proj: FinishedProject) -> dict[str, Any]:
     return out
 
 
-def changed_at(proj: FinishedProject):  # noqa: ANN201
-    """When anything in the render data last changed: the folder's files, links, roles and processing, and the
-    linked projects' subs, grades and verdicts (so `since` polling sees regrades too). Never in the future."""
-    from django.db.models import Max
-    from django.utils import timezone
+def _fingerprint(proj: FinishedProject) -> str:
+    """Everything the render data is built from (020-DR-11), cheaply: the folder's files and settings, the linked
+    projects (kind, panels), their collections, the datasets in them with their counts, and aggregates over their
+    subs (count, newest catalogued, graded, verdict, measured and solved, and site sums so a corrected location
+    shows), plus the site descriptions. Any change here can change the render data, so it moves updated_at."""
+    import hashlib
+    import json
+
+    from django.db.models import Count, Max, Sum
 
     from apps.catalogue.models import UserVerdict
 
-    linked = proj.linked_projects.all()
-    times = [proj.changed_at]
-    times.append(Frame.objects.filter(dataset__project__in=linked).aggregate(t=Max("catalogued_at"))["t"])
-    times.append(
-        MachineGrade.objects.filter(frame__dataset__project__in=linked).aggregate(t=Max("graded_at"))["t"]
+    linked = list(proj.linked_projects.select_related("collection").order_by("pk"))
+    dss = list(
+        Dataset.objects.filter(project__in=linked)
+        .order_by("pk")
+        .values_list(
+            "pk",
+            "project_id",
+            "panel",
+            "filter_norm",
+            "target",
+            "telescope",
+            "camera",
+            "rig_id",
+            "accepted_count",
+            "down_count",
+            "rejected_count",
+            "accepted_integration_s",
+        )
     )
-    times.append(
-        UserVerdict.objects.filter(frame__dataset__project__in=linked).aggregate(t=Max("created_at"))["t"]
+    frames = Frame.objects.filter(dataset__project__in=linked, frame_type=FrameType.LIGHT)
+    agg = frames.aggregate(
+        n=Count("pk"),
+        cat=Max("catalogued_at"),
+        lat=Sum("site_lat"),
+        lon=Sum("site_lon"),
     )
-    return min(max(t for t in times if t is not None), timezone.now())
+    parts = {
+        "proj": [proj.name, proj.kind, proj.subject, proj.missing, proj.processing],
+        "files": list(
+            proj.files.order_by("rel_path").values_list(
+                "rel_path", "size_bytes", "mtime", "missing", "role", "role_filter", "role_order"
+            )
+        ),
+        "linked": [(p.pk, p.kind, p.planned_panels, p.collection_id) for p in linked],
+        "collections": sorted(
+            {
+                (p.collection.pk, p.collection.name, p.collection.objects_text, p.collection.constellation)
+                for p in linked
+            }
+        ),
+        "datasets": dss,
+        "frames": agg,
+        "graded": MachineGrade.objects.filter(frame__in=frames).aggregate(t=Max("graded_at"), n=Count("pk")),
+        "verdicts": UserVerdict.objects.filter(frame__in=frames).aggregate(
+            t=Max("created_at"), n=Count("pk")
+        ),
+        "measured": SubMeasurement.objects.filter(frame__in=frames).aggregate(t=Max("measured_at")),
+        "solved": PlateSolve.objects.filter(frame__in=frames).aggregate(t=Max("solved_at"), n=Count("pk")),
+        "sites": list(
+            Library.objects.order_by("pk").values_list(
+                "pk", "site_lat", "site_lon", "site_region", "site_bortle"
+            )
+        ),
+        "install": [
+            (s.site_lat, s.site_lon, s.site_region, s.site_bortle) for s in [InstallationSettings.load()]
+        ],
+    }
+    return hashlib.sha256(json.dumps(parts, default=str, sort_keys=True).encode()).hexdigest()
+
+
+def changed_at(proj: FinishedProject):  # noqa: ANN201
+    """When the render data last changed (020-DR-11): the moment its fingerprint last differed. Moving a dataset
+    into a linked project, changing a project's kind, a regrade, a new sub, a relink, a role or a replaced file all
+    move it, so `since` polling never misses a change. Never in the future."""
+    from django.utils import timezone
+
+    now = timezone.now()
+    fp = _fingerprint(proj)
+    if fp != proj.data_fingerprint or proj.data_changed_at is None:
+        FinishedProject.objects.filter(pk=proj.pk).update(data_fingerprint=fp, data_changed_at=now)
+        proj.data_fingerprint, proj.data_changed_at = fp, now
+    return min(proj.data_changed_at, now)
 
 
 def offered(proj: FinishedProject) -> tuple[bool, str]:

@@ -22,8 +22,11 @@ paths:
           required: false
           schema: { type: string, format: date-time }
           description: >
-            Projects whose render data changed after this time: their files, links, roles or processing, or the
-            linked projects' subs, grades and verdicts. Pass the newest updated_at you have seen.
+            Projects whose render data may have changed after this time (020-DR-11): their files, links, roles or
+            processing; the linked projects' kind, panels and collection; datasets moved in or out of them and
+            those datasets' counts; their subs, grades, verdicts, measurements and plate solves; site
+            descriptions. updated_at moves only when one of those changes. Pass the newest updated_at you have
+            seen; it is the same moment in the list and in the render data.
         - name: kind
           in: query
           required: false

@@ -415,3 +415,39 @@ def test_a_single_field_project_is_never_a_mosaic_whatever_the_subs_say(complete
     assert "mosaic" not in data["capture"]
     assert all("panel" not in r for r in data["timeline"])
     assert data["capture"]["subs_accepted"] == 12  # every panel's subs still count
+
+
+def test_updated_at_moves_whenever_the_render_data_can_change_and_only_then(completed, heart, token):
+    """A dataset moved into the linked project or a new project kind moves updated_at; nothing else does (020-DR-11)."""
+    p = _linked(heart)
+    c = bearer(token)
+
+    def stamp() -> str:
+        return c.get(f"/api/v1/render/projects/{p.pk}").json()["project"]["updated_at"]
+
+    first = stamp()
+    assert stamp() == first  # nothing changed, so neither does the time
+    listed = c.get("/api/v1/render/projects").json()["projects"][0]["updated_at"]
+    assert abs(datetime.fromisoformat(listed) - datetime.fromisoformat(first)) < timedelta(milliseconds=1)
+
+    elsewhere = Project.objects.create(collection=heart.collection, name="Elsewhere", kind="single")
+    ds = Dataset.objects.create(
+        group_key="heart-extra",
+        target="IC 1805",
+        panel=1,
+        filter_norm="OIII",
+        display_name="extra",
+        collection=heart.collection,
+        project=elsewhere,
+        accepted_count=4,
+        accepted_integration_s=1200,
+    )
+    assert stamp() == first  # not in the linked project yet
+    ds.project = heart
+    ds.save()
+    moved = stamp()
+    assert moved > first
+
+    heart.kind, heart.planned_panels = "single", None
+    heart.save()
+    assert stamp() > moved

@@ -247,3 +247,9 @@ the action is disabled with the reason.
   (the owner's word), not from the subs' panel numbers, which capture software can set on what is really one field
   (a mosaic template, a reframe between nights). A single-field project has no `mosaic` and its timeline rows
   aren't split by panel; every panel's subs still count.
+- **020-DR-11** (2026-10-21) A project's `updated_at` follows a fingerprint of everything its render data is built
+  from: the folder's files, roles, links and processing; the linked projects' kind, planned panels and collection;
+  the datasets in them and their counts; their subs, grades, verdicts, measurements and plate solves; and the site
+  descriptions. When the fingerprint changes, `updated_at` becomes that moment; otherwise it stays put. Moving a
+  dataset into a linked project or changing a project's kind therefore shows up in `since` polling, which a
+  newest-timestamp rule missed.
