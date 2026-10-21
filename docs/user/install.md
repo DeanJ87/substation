@@ -43,6 +43,7 @@ file has three slots:
 | `SUBSTATION_LIBRARY`, `_NAME`, `_MODE` | the first library (required); mode `ro` (default) or `rw` |
 | `SUBSTATION_LIBRARY_2`, `_2_NAME`, `_2_MODE` | a second, optional; its mode defaults to the first's |
 | `SUBSTATION_LIBRARY_3`, `_3_NAME`, `_3_MODE` | a third, optional; its mode defaults to the first's |
+| `SUBSTATION_LIBRARY_4`, `_4_NAME`, `_4_MODE` | a fourth, optional, read-only by default; name it `completed` for finished work (spec 020) |
 
 Mount libraries read-only unless SubStation should write there. A library mounted read-write is writable for
 everything SubStation does with files: the bin can delete there (once you allow it in Settings → Library → Bin),

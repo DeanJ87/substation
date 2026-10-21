@@ -46,9 +46,12 @@ const ROLE_HELP: Record<string, string> = {
   '': 'Neither: its files stay where they are.',
   active: 'Active: new subs and work in progress. Archive moves its collections to its archive library.',
   archive: 'Archive: finished collections move here, and can be brought back.',
+  completed:
+    'Completed: your finished work, one folder per project, listed under Finished. It may be read-only.',
 }
 
-/** A library's role in archiving (spec 013) and, for an active one, its archive library. */
+/** A library's role in archiving (spec 013) or for finished work (spec 020) and, for an active one, its archive
+ * library. Active and Archive move files, so they need the library mounted read-write; Completed is only read. */
 export function RoleControls({ lib, all, readOnly }: { lib: Lib; all: Lib[]; readOnly: boolean }) {
   const patch = usePatchLibrary()
   const reasonId = useId()
@@ -60,15 +63,18 @@ export function RoleControls({ lib, all, readOnly }: { lib: Lib; all: Lib[]; rea
         Role{' '}
         <select
           value={lib.role ?? ''}
-          disabled={locked}
+          disabled={readOnly || patch.isPending}
           aria-describedby={lib.writable ? undefined : reasonId}
-          onChange={(e) =>
-            patch.mutate({ id: lib.id, body: { role: e.target.value as 'active' | 'archive' | '' } })
-          }
+          onChange={(e) => patch.mutate({ id: lib.id, body: { role: e.target.value as Lib['role'] } })}
         >
           <option value="">Neither</option>
-          <option value="active">Active</option>
-          <option value="archive">Archive</option>
+          <option value="active" disabled={!lib.writable && lib.role !== 'active'}>
+            Active{lib.writable ? '' : ' (needs read-write)'}
+          </option>
+          <option value="archive" disabled={!lib.writable && lib.role !== 'archive'}>
+            Archive{lib.writable ? '' : ' (needs read-write)'}
+          </option>
+          <option value="completed">Completed</option>
         </select>
       </label>
       {lib.role === 'active' && (
@@ -95,7 +101,7 @@ export function RoleControls({ lib, all, readOnly }: { lib: Lib; all: Lib[]; rea
         </label>
       )}
       <ReadOnlyReason lib={lib} id={reasonId} />
-      {lib.writable && (
+      {(lib.writable || lib.role === 'completed') && (
         <span className="muted">
           {ROLE_HELP[lib.role ?? '']}
           {lib.role === 'active' && !archives.length ? ' Set another library as an archive first.' : ''}

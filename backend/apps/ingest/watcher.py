@@ -26,7 +26,7 @@ from watchdog.observers.api import BaseObserver
 from apps.catalogue.models import Copy
 from apps.catalogue.services.ignore import PathRules
 from apps.libraries.discovery import discover_libraries
-from apps.libraries.models import Library
+from apps.libraries.models import Library, LibraryRole
 from substation.tasks.lease import acquire, release
 
 from .headers import is_image_name
@@ -118,7 +118,7 @@ class Watcher:
             if (lib_id, abs_path) in handled:
                 continue
             handled.add((lib_id, abs_path))
-            lib = Library.objects.filter(pk=lib_id, enabled=True).first()
+            lib = Library.objects.filter(pk=lib_id, enabled=True).exclude(role=LibraryRole.COMPLETED).first()
             if lib is None:
                 continue
             target = _event_file(lib, abs_path)
@@ -196,7 +196,11 @@ class Watcher:
                     self.stop.wait(0.5)
                     continue
                 try:
-                    libs = [lib for lib in discover_libraries() if lib.enabled]
+                    libs = [
+                        lib
+                        for lib in discover_libraries()
+                        if lib.enabled and lib.role != LibraryRole.COMPLETED
+                    ]
                     self._start_observers(libs)
                     self._drain_events()
                     self._due_sweeps(libs)

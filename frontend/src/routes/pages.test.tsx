@@ -26,6 +26,8 @@ const PAGES: [string, string][] = [
   ['/calibration/sets/1', 'calibration set'],
   ['/settings', 'settings'],
   ['/bin', 'bin'],
+  ['/finished', 'finished'],
+  ['/finished/1', 'finished project'],
   ['/reconcile', 'reconcile'],
   ['/review', 'review'],
 ]

@@ -14,7 +14,7 @@ x-base: &base
   networks: [internal]
 
 # the slots' folder names in order, so Settings can say which mode variable makes a read-only library writable
-x-library-names: &library_names ${SUBSTATION_LIBRARY_NAME:-library},${SUBSTATION_LIBRARY_2_NAME:-.no-library},${SUBSTATION_LIBRARY_3_NAME:-.no-library-3}
+x-library-names: &library_names ${SUBSTATION_LIBRARY_NAME:-library},${SUBSTATION_LIBRARY_2_NAME:-.no-library},${SUBSTATION_LIBRARY_3_NAME:-.no-library-3},${SUBSTATION_LIBRARY_4_NAME:-.no-library-4}
 
 x-env: &env
   SUBSTATION_DATABASE_URL: postgres://substation@postgres:5432/substation
@@ -32,6 +32,10 @@ x-library: &library ${SUBSTATION_LIBRARY:?set SUBSTATION_LIBRARY}:/data/library/
 # one path would clash). Their modes default to the first library's, so an existing install is unchanged.
 x-library-2: &library2 ${SUBSTATION_LIBRARY_2:-${SUBSTATION_DATA}/station/.no-library}:/data/library/${SUBSTATION_LIBRARY_2_NAME:-.no-library}:${SUBSTATION_LIBRARY_2_MODE:-${SUBSTATION_LIBRARY_MODE:-ro}}
 x-library-3: &library3 ${SUBSTATION_LIBRARY_3:-${SUBSTATION_DATA}/station/.no-library-3}:/data/library/${SUBSTATION_LIBRARY_3_NAME:-.no-library-3}:${SUBSTATION_LIBRARY_3_MODE:-${SUBSTATION_LIBRARY_MODE:-ro}}
+# optional fourth library, read-only unless its mode says rw. Spec 020: point it at your finished work (one folder per
+# project: <Astro|Nightscapes|Videos>/<subject>/<name>/exports …) and name it `completed`; a library folder named
+# completed starts with the Completed role, so it's listed under Finished and never swept for subs.
+x-library-4: &library4 ${SUBSTATION_LIBRARY_4:-${SUBSTATION_DATA}/station/.no-library-4}:/data/library/${SUBSTATION_LIBRARY_4_NAME:-.no-library-4}:${SUBSTATION_LIBRARY_4_MODE:-ro}
 
 services:
   postgres:
@@ -75,6 +79,7 @@ services:
       - *library  # so previews can be drawn from frames not processed yet
       - *library2
       - *library3
+      - *library4
     depends_on:
       postgres: { condition: service_healthy }
 
@@ -97,6 +102,7 @@ services:
       - *library
       - *library2
       - *library3
+      - *library4
     depends_on:
       api: { condition: service_healthy }
     deploy:

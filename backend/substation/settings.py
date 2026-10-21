@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "apps.catalogue",
     "apps.ingest",
     "apps.processing",
+    "apps.finished",
 ]
 
 MIDDLEWARE = [

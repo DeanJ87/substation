@@ -15,6 +15,7 @@ import s from './frame.module.css'
 
 const NAV = [
   { to: '/', label: 'Library' },
+  { to: '/finished', label: 'Finished' },
   { to: '/calibration', label: 'Calibration' },
   { to: '/map', label: 'Map' },
   { to: '/activity', label: 'Activity' },

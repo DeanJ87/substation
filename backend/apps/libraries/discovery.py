@@ -8,7 +8,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from .models import InstallationSettings, Library, LibraryStatus
+from .models import InstallationSettings, Library, LibraryRole, LibraryStatus
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,10 @@ def discover_libraries() -> list[Library]:
             if entry.name.startswith(".") or not entry.is_dir(follow_symlinks=True):
                 continue
             names.add(entry.name)
-            lib, created = Library.objects.get_or_create(name=entry.name, defaults={"mount_path": entry.path})
+            defaults: dict[str, str] = {"mount_path": entry.path}
+            if entry.name.lower() == "completed":  # spec 020: finished work, never swept for subs
+                defaults["role"] = LibraryRole.COMPLETED
+            lib, created = Library.objects.get_or_create(name=entry.name, defaults=defaults)
             if not created and lib.mount_path != entry.path:
                 lib.mount_path = entry.path
                 lib.save(update_fields=["mount_path"])

@@ -1219,6 +1219,186 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finished": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Finished */
+        get: operations["apps_finished_api_manage_list_finished"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/defaults/processing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Default Processing */
+        put: operations["apps_finished_api_manage_set_default_processing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Finished */
+        get: operations["apps_finished_api_manage_get_finished"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Links */
+        put: operations["apps_finished_api_manage_set_links"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/processing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Processing */
+        put: operations["apps_finished_api_manage_set_processing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/project-json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Write Project Json
+         * @description 020-FR-014: only in a read-write library; never over a project.json SubStation didn't write.
+         */
+        post: operations["apps_finished_api_manage_write_project_json"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/render-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Render Data Preview
+         * @description What the renderer would get, for checking in the app.
+         */
+        get: operations["apps_finished_api_manage_render_data_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Roles */
+        put: operations["apps_finished_api_manage_set_roles"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/roles/guess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reguess Roles */
+        post: operations["apps_finished_api_manage_reguess_roles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggestions
+         * @description Ranked SubStation projects to link (020-FR-004): catalogue numbers and names in common.
+         *     TODO(020 T018): add plate-solve field overlap once finished images are solved.
+         */
+        get: operations["apps_finished_api_manage_suggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/frames": {
         parameters: {
             query?: never;
@@ -2150,6 +2330,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/render/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Projects */
+        get: operations["apps_finished_api_render_list_projects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/render/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project */
+        get: operations["apps_finished_api_render_get_project"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/render/projects/{id}/files/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get File */
+        get: operations["apps_finished_api_render_get_file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/review": {
         parameters: {
             query?: never;
@@ -2713,6 +2944,41 @@ export interface paths {
         get: operations["apps_processing_api_masters_master_look_file"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tokens */
+        get: operations["apps_finished_api_manage_list_tokens"];
+        put?: never;
+        /** Create Token */
+        post: operations["apps_finished_api_manage_create_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tokens/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Token */
+        post: operations["apps_finished_api_manage_revoke_token"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3798,6 +4064,11 @@ export interface components {
             /** Moved */
             moved: number;
         };
+        /** DefaultsIn */
+        DefaultsIn: {
+            /** Steps */
+            steps: string[];
+        };
         /** Field */
         Field: {
             /** Label */
@@ -3806,6 +4077,29 @@ export interface components {
             source: string;
             /** Value */
             value: string | null;
+        };
+        /** FileOut */
+        FileOut: {
+            /** Id */
+            id: number;
+            /** Key */
+            key: string | null;
+            /** Missing */
+            missing: boolean;
+            /** Rel Path */
+            rel_path: string;
+            /** Role */
+            role: string;
+            /** Role Filter */
+            role_filter: string;
+            /** Role Order */
+            role_order: number | null;
+            /** Section */
+            section: string;
+            /** Servable */
+            servable: boolean;
+            /** Size Bytes */
+            size_bytes: number;
         };
         /**
          * FilterTime
@@ -3819,6 +4113,51 @@ export interface components {
             rejected_s: number;
             /** Total S */
             total_s: number;
+        };
+        /** FinishedListOut */
+        FinishedListOut: {
+            /** Libraries */
+            libraries: string[];
+            /** Not Projects */
+            not_projects: string[][];
+            /** Projects */
+            projects: components["schemas"]["FinishedOut"][];
+        };
+        /** FinishedOut */
+        FinishedOut: {
+            /** Can Write Project Json */
+            can_write_project_json: boolean;
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+            /** Files */
+            files: components["schemas"]["FileOut"][];
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Library */
+            library: string;
+            /** Links */
+            links: components["schemas"]["LinkOut"][];
+            /** Missing */
+            missing: boolean;
+            /** Name */
+            name: string;
+            /** Offered */
+            offered: boolean;
+            /** Processing */
+            processing: string[];
+            /** Project Json Reason */
+            project_json_reason: string;
+            /** Reason */
+            reason: string;
+            /** Rel Path */
+            rel_path: string;
+            /** Subject */
+            subject: string;
         };
         /** FlatSetChoice */
         FlatSetChoice: {
@@ -4375,7 +4714,7 @@ export interface components {
             /** Enabled */
             enabled?: boolean | null;
             /** Role */
-            role?: ("" | "active" | "archive") | null;
+            role?: ("" | "active" | "archive" | "completed") | null;
             site?: components["schemas"]["SiteSchema"] | null;
             /** Sweep Interval Active S */
             sweep_interval_active_s?: number | null;
@@ -4410,7 +4749,7 @@ export interface components {
              * @default
              * @enum {string}
              */
-            role: "" | "active" | "archive";
+            role: "" | "active" | "archive" | "completed";
             site: components["schemas"]["SiteSchema"];
             /** Status */
             status: string;
@@ -4470,6 +4809,22 @@ export interface components {
             sqm_subs: number;
             /** Success Rate */
             success_rate: number | null;
+        };
+        /** LinkIn */
+        LinkIn: {
+            /** Project Ids */
+            project_ids: number[];
+        };
+        /** LinkOut */
+        LinkOut: {
+            /** Collection Id */
+            collection_id: number;
+            /** Collection Name */
+            collection_name: string;
+            /** Project Id */
+            project_id: number;
+            /** Project Name */
+            project_name: string;
         };
         /** LookOut */
         LookOut: {
@@ -5300,6 +5655,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** ProcessingIn */
+        ProcessingIn: {
+            /** Steps */
+            steps: string[];
+        };
         /** ProcessingOut */
         ProcessingOut: {
             /** Calibration */
@@ -5414,6 +5774,31 @@ export interface components {
             name?: string | null;
             /** Planned Panels */
             planned_panels?: number | null;
+        };
+        /** ProjectSummary */
+        ProjectSummary: {
+            /**
+             * Collection Ids
+             * @default []
+             */
+            collection_ids: number[];
+            /** Common Name */
+            common_name?: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Target */
+            target: string;
+            /** Thumb Url */
+            thumb_url: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ProjectsOut */
         ProjectsOut: {
@@ -5753,6 +6138,25 @@ export interface components {
             /** Why */
             why: string;
         };
+        /** RoleIn */
+        RoleIn: {
+            /** File Id */
+            file_id: number;
+            /** Role */
+            role: string;
+            /**
+             * Role Filter
+             * @default
+             */
+            role_filter: string;
+            /** Role Order */
+            role_order?: number | null;
+        };
+        /** RolesIn */
+        RolesIn: {
+            /** Roles */
+            roles: components["schemas"]["RoleIn"][];
+        };
         /** Scope */
         Scope: {
             /** Camera */
@@ -6041,12 +6445,16 @@ export interface components {
             siril_mem_ratio?: number | null;
             /** Siril Threads */
             siril_threads?: number | null;
+            /** Site Bortle */
+            site_bortle?: number | null;
             /** Site Lat */
             site_lat?: number | null;
             /** Site Lon */
             site_lon?: number | null;
             /** Site Name */
             site_name?: string | null;
+            /** Site Region */
+            site_region?: string | null;
             /** Stack Mem Ratio */
             stack_mem_ratio?: number | null;
             /** Stack Threads */
@@ -6070,6 +6478,11 @@ export interface components {
             cores: number;
             /** Cpu Threads */
             cpu_threads: number;
+            /**
+             * Default Processing
+             * @default []
+             */
+            default_processing: string[];
             /** Filter Aliases */
             filter_aliases: {
                 [key: string]: string;
@@ -6086,12 +6499,19 @@ export interface components {
             siril_mem_ratio?: number | null;
             /** Siril Threads */
             siril_threads?: number | null;
+            /** Site Bortle */
+            site_bortle?: number | null;
             /** Site Lat */
             site_lat: number | null;
             /** Site Lon */
             site_lon: number | null;
             /** Site Name */
             site_name: string | null;
+            /**
+             * Site Region
+             * @default
+             */
+            site_region: string;
             /** Stack Mem Ratio */
             stack_mem_ratio?: number | null;
             /** Stack Threads */
@@ -6126,12 +6546,19 @@ export interface components {
         };
         /** SiteSchema */
         SiteSchema: {
+            /** Bortle */
+            bortle?: number | null;
             /** Lat */
             lat?: number | null;
             /** Lon */
             lon?: number | null;
             /** Name */
             name?: string | null;
+            /**
+             * Region
+             * @default
+             */
+            region: string;
         };
         /** Skipped */
         Skipped: {
@@ -6594,6 +7021,58 @@ export interface components {
             verdict: string | null;
             /** Weight */
             weight: number;
+        };
+        /** SuggestionOut */
+        SuggestionOut: {
+            /** Collection Id */
+            collection_id: number;
+            /** Collection Name */
+            collection_name: string;
+            /** Project Id */
+            project_id: number;
+            /** Project Name */
+            project_name: string;
+            /** Reasons */
+            reasons: string[];
+            /** Score */
+            score: number;
+        };
+        /** TokenCreatedOut */
+        TokenCreatedOut: {
+            /** Secret */
+            secret: string;
+            token: components["schemas"]["TokenOut"];
+        };
+        /** TokenIn */
+        TokenIn: {
+            /** Expires At */
+            expires_at?: string | null;
+            /** Name */
+            name: string;
+        };
+        /** TokenOut */
+        TokenOut: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Expires At */
+            expires_at: string | null;
+            /** Hint */
+            hint: string;
+            /** Id */
+            id: number;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Name */
+            name: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Scope */
+            scope: string;
         };
         /** UndoneOut */
         UndoneOut: {
@@ -8651,6 +9130,242 @@ export interface operations {
             };
         };
     };
+    apps_finished_api_manage_list_finished: {
+        parameters: {
+            query?: {
+                rescan?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedListOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_set_default_processing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefaultsIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_get_finished: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_set_links: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_set_processing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessingIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_write_project_json: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_render_data_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_set_roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RolesIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_reguess_roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_suggestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionOut"][];
+                };
+            };
+        };
+    };
     apps_catalogue_api_list_frames: {
         parameters: {
             query?: {
@@ -10012,6 +10727,88 @@ export interface operations {
             };
         };
     };
+    apps_finished_api_render_list_projects: {
+        parameters: {
+            query?: {
+                since?: string | null;
+                kind?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectsOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_render_get_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    apps_finished_api_render_get_file: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Modified */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     apps_processing_api_review: {
         parameters: {
             query?: {
@@ -10825,6 +11622,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    apps_finished_api_manage_list_tokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenOut"][];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_create_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenCreatedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_revoke_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenOut"];
+                };
             };
         };
     };

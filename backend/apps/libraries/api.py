@@ -28,6 +28,8 @@ class SiteSchema(Schema):
     name: str | None = None
     lat: float | None = None
     lon: float | None = None
+    region: str = ""  # spec 020: the only place name the render API shares
+    bortle: int | None = None  # spec 020: 1-9
 
 
 class LibraryOut(Schema):
@@ -45,14 +47,14 @@ class LibraryOut(Schema):
     writable: bool = False  # the library is mounted so SubStation can write to it
     # why not, naming the setting that mounts it read-write; none when it is writable (specs 011, 013)
     read_only_reason: str | None = None
-    role: Literal["", "active", "archive"] = ""  # spec 013: where its collections live
+    role: Literal["", "active", "archive", "completed"] = ""  # spec 013/020: where its collections live
     archive_to: int | None = None  # an active library's archive library
 
 
 class LibraryIn(Schema):
     enabled: bool | None = None
     allow_delete: bool | None = None
-    role: Literal["", "active", "archive"] | None = None
+    role: Literal["", "active", "archive", "completed"] | None = None
     archive_to: int | None = None  # sent as null: no archive library
     site: SiteSchema | None = None
     sweep_interval_active_s: int | None = None
@@ -66,7 +68,13 @@ def _library_out(lib: Library, count: int) -> LibraryOut:
         mount_path=lib.mount_path,
         enabled=lib.enabled,
         status=lib.status,
-        site=SiteSchema(name=lib.site_name, lat=lib.site_lat, lon=lib.site_lon),
+        site=SiteSchema(
+            name=lib.site_name,
+            lat=lib.site_lat,
+            lon=lib.site_lon,
+            region=lib.site_region,
+            bortle=lib.site_bortle,
+        ),
         last_full_sweep_at=lib.last_full_sweep_at,
         frame_count=count,
         sweep_interval_active_s=lib.sweep_interval_active_s,
@@ -90,11 +98,23 @@ def list_libraries(request):
     return [_library_out(lib, lib.n) for lib in _counted()]
 
 
+def _apply_site(lib: Library, site: dict) -> None:
+    if site.get("lat") is not None and not -90 <= site["lat"] <= 90:
+        raise ApiError(422, "invalid", "Latitude must be between −90 and 90 degrees.")
+    if site.get("lon") is not None and not -180 <= site["lon"] <= 180:
+        raise ApiError(422, "invalid", "Longitude must be between −180 and 180 degrees.")
+    if site.get("bortle") is not None and not 1 <= site["bortle"] <= 9:
+        raise ApiError(422, "invalid", "Bortle class must be 1–9.")
+    lib.site_name, lib.site_lat, lib.site_lon = site.get("name"), site.get("lat"), site.get("lon")
+    lib.site_region, lib.site_bortle = (site.get("region") or "").strip()[:100], site.get("bortle")
+
+
 def _apply_roles(lib: Library, data: dict) -> None:
     """Spec 013: a library's role and an active library's archive. Only libraries mounted read-write take part, as
     the owner set out: a read-only one can't be archived to or brought back from."""
     if data.get("role") is not None and data["role"] != lib.role:
-        if data["role"] and (why := read_only_reason(lib)):
+        # spec 020: a Completed library is only read (and maybe given project.json files), so read-only is fine
+        if data["role"] not in ("", LibraryRole.COMPLETED) and (why := read_only_reason(lib)):
             raise ApiError(422, "read_only", why)
         if lib.role == LibraryRole.ARCHIVE:  # no longer an archive: active libraries stop pointing at it
             Library.objects.filter(archive_to=lib).update(archive_to=None)
@@ -131,12 +151,7 @@ def patch_library(request, id: int, body: LibraryIn):  # noqa: A002
         lib.allow_delete = data["allow_delete"]
     _apply_roles(lib, data)
     if data.get("site") is not None:
-        site = data["site"]
-        if site.get("lat") is not None and not -90 <= site["lat"] <= 90:
-            raise ApiError(422, "invalid", "Latitude must be between −90 and 90 degrees.")
-        if site.get("lon") is not None and not -180 <= site["lon"] <= 180:
-            raise ApiError(422, "invalid", "Longitude must be between −180 and 180 degrees.")
-        lib.site_name, lib.site_lat, lib.site_lon = site.get("name"), site.get("lat"), site.get("lon")
+        _apply_site(lib, data["site"])
     for k in ("sweep_interval_active_s", "sweep_interval_idle_s"):
         if data.get(k) is not None:
             if data[k] < 10:
@@ -157,6 +172,9 @@ class SettingsOut(Schema):
     site_name: str | None
     site_lat: float | None
     site_lon: float | None
+    site_region: str = ""  # spec 020
+    site_bortle: int | None = None  # spec 020
+    default_processing: list[str] = []  # spec 020: a new finished project's processing steps
     filter_aliases: dict[str, str]
     worker_count: int | None
     siril_heavy_slots: int
@@ -178,6 +196,8 @@ class SettingsIn(Schema):
     site_name: str | None = None
     site_lat: float | None = None
     site_lon: float | None = None
+    site_region: str | None = None
+    site_bortle: int | None = None
     filter_aliases: dict[str, str] | None = None
     # calibration, grading and stacking, partial (spec 008); other processing keys are managed elsewhere
     processing: dict | None = None
@@ -358,6 +378,9 @@ def _mem_effective() -> float | None:
 def _out(s: InstallationSettings) -> SettingsOut:
     return SettingsOut(
         site_name=s.site_name,
+        site_region=s.site_region,
+        site_bortle=s.site_bortle,
+        default_processing=list(s.default_processing or []),
         site_lat=s.site_lat,
         site_lon=s.site_lon,
         filter_aliases=s.filter_aliases or {},
@@ -395,6 +418,7 @@ def get_settings(request):  # type: ignore[no-untyped-def]
 _INSTALL_RANGES: dict[str, tuple[float, float, str]] = {
     "site_lat": (-90, 90, "Latitude must be between −90 and 90 degrees."),
     "site_lon": (-180, 180, "Longitude must be between −180 and 180 degrees."),
+    "site_bortle": (1, 9, "Bortle class must be 1–9."),
     "worker_count": (1, 16, "Workers must be between 1 and 16."),
     "siril_mem_ratio": (0.05, 0.9, "Memory share must be 5–90%."),
     "stack_threads": (1, 256, "Stacking threads must be 1–256."),
@@ -425,6 +449,8 @@ def patch_settings(request, body: SettingsIn):  # type: ignore[no-untyped-def]
     _check_installation(data, s)
     if "filter_aliases" in data and data["filter_aliases"] is not None:
         data["filter_aliases"] = {k.strip().casefold(): v.strip() for k, v in data["filter_aliases"].items()}
+    if "site_region" in data:  # spec 020: blank, never null
+        data["site_region"] = (data["site_region"] or "").strip()[:100]
     regrade = data.pop("regrade", False)
     change = _clean_processing(data.pop("processing", None) or {})
     affected = (

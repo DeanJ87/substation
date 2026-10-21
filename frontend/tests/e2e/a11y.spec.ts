@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test'
 import { signIn } from './helpers'
 
 const THEMES = ['dark', 'light', 'night'] as const
-const SCREENS = ['/', '/reconcile', '/calibration', '/settings', '/activity', '/map', '/bin']
+const SCREENS = ['/', '/reconcile', '/calibration', '/settings', '/activity', '/map', '/bin', '/finished']
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 for (const theme of THEMES) {

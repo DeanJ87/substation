@@ -19,6 +19,7 @@ class LibraryRole(models.TextChoices):
     NONE = "", "Neither"
     ACTIVE = "active", "Active"
     ARCHIVE = "archive", "Archive"
+    COMPLETED = "completed", "Completed"  # spec 020: finished projects; never swept for subs
 
 
 class Library(models.Model):
@@ -41,6 +42,13 @@ class Library(models.Model):
     site_name = models.CharField(max_length=200, null=True, blank=True)
     site_lat = models.FloatField(null=True, blank=True)
     site_lon = models.FloatField(null=True, blank=True)
+    site_region = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="spec 020: the only place name shared outside SubStation",
+    )
+    site_bortle = models.PositiveSmallIntegerField(null=True, blank=True, help_text="spec 020: 1-9")
     status = models.CharField(max_length=20, choices=LibraryStatus.choices, default=LibraryStatus.OK)
     last_full_sweep_at = models.DateTimeField(null=True, blank=True)
     sweep_interval_active_s = models.PositiveIntegerField(default=60)
@@ -60,6 +68,11 @@ class InstallationSettings(models.Model):
     site_name = models.CharField(max_length=200, null=True, blank=True)
     site_lat = models.FloatField(null=True, blank=True)
     site_lon = models.FloatField(null=True, blank=True)
+    site_region = models.CharField(max_length=100, blank=True, default="", help_text="spec 020")
+    site_bortle = models.PositiveSmallIntegerField(null=True, blank=True, help_text="spec 020: 1-9")
+    default_processing = models.JSONField(
+        default=list, blank=True, help_text="spec 020: processing steps a new finished project starts with"
+    )
     filter_aliases = models.JSONField(default=dict, blank=True, help_text='e.g. {"ha": "Hα"}')
     worker_count = models.PositiveSmallIntegerField(
         null=True, blank=True, help_text="null = SUBSTATION_WORKERS"

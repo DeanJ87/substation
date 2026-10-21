@@ -1,0 +1,224 @@
+openapi: 3.1.0
+info:
+  title: SubStation render API
+  version: "1"
+  description: >
+    Read-only API for a renderer app (spec 020). Bearer token created in Settings with the render scope.
+    Unknown fields are omitted, never zero-filled (020-FR-008). No site coordinates (020-FR-010).
+    All URLs in responses are root-relative (e.g. /api/v1/render/projects/7/files/final): join them with the
+    SubStation address you call. Times without a zone are read as UTC.
+servers:
+  - url: /api/v1/render
+security:
+  - bearerAuth: []
+paths:
+  /projects:
+    get:
+      operationId: listProjects
+      summary: Finished projects that are linked and have a final image, changed since a time
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+          description: >
+            Projects whose render data changed after this time: their files, links, roles or processing, or the
+            linked projects' subs, grades and verdicts. Pass the newest updated_at you have seen.
+        - name: kind
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/ProjectKind" }
+      responses:
+        "200":
+          description: Oldest change first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projects, library_reachable]
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProjectSummary" }
+                  library_reachable: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+  /projects/{id}:
+    get:
+      operationId: getProject
+      summary: One project's render data
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Render data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RenderData" }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "404": { description: Not found or not offered (unlinked, no final image) }
+  /projects/{id}/files/{key}:
+    get:
+      operationId: getProjectFile
+      summary: A project file by role key
+      description: >
+        Keys: final, starless, stars, thumb, per_filter/<filter name, URL-encoded, e.g. H%CE%B1>,
+        progressive/<n> (1-based). PNG, JPEG or TIFF only.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The file
+          headers:
+            ETag: { schema: { type: string }, description: "content tag; send it back as If-None-Match for a 304" }
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/tiff: { schema: { type: string, format: binary } }
+        "401": { $ref: "#/components/responses/Unauthorised" }
+        "404": { description: No file with that role }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  responses:
+    Unauthorised:
+      description: Missing, wrong, expired or revoked token
+  schemas:
+    ProjectKind: { type: string, enum: [astro, nightscapes, videos] }
+    ProjectSummary:
+      type: object
+      required: [id, name, kind, target, updated_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        kind: { $ref: "#/components/schemas/ProjectKind" }
+        target: { type: string }
+        common_name: { type: string }
+        collection_ids: { type: array, items: { type: integer } }
+        updated_at: { type: string, format: date-time }
+        thumb_url: { type: string, description: root-relative }
+    Verdict: { type: string, enum: [accept, down, reject] }
+    RenderData:
+      type: object
+      required: [schema_version, project, target, frames]
+      properties:
+        schema_version: { type: integer, const: 1 }
+        project:
+          type: object
+          required: [id, name, kind, updated_at]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            kind: { $ref: "#/components/schemas/ProjectKind" }
+            subject: { type: string }
+            updated_at: { type: string, format: date-time }
+        target:
+          type: object
+          required: [name]
+          properties:
+            name: { type: string }
+            common_name: { type: string }
+            type: { type: string }
+            constellation: { type: string }
+            ra_deg: { type: number }
+            dec_deg: { type: number }
+            distance_ly: { type: number }
+            size_arcmin: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
+        capture:
+          type: object
+          properties:
+            total_integration_s: { type: number }
+            subs_total: { type: integer }
+            subs_accepted: { type: integer }
+            subs_down_weighted: { type: integer }
+            subs_rejected: { type: integer }
+            nights: { type: integer }
+            first_night: { type: string, format: date, description: observing night (local evening date) }
+            last_night: { type: string, format: date }
+            mosaic:
+              type: object
+              required: [panels]
+              properties:
+                panels: { type: integer }
+                layout: { type: string, example: 1x2 }
+            filters:
+              type: array
+              items:
+                type: object
+                required: [name]
+                properties:
+                  name:
+                    type: string
+                    description: "SubStation's normalised name, e.g. Hα (Greek alpha), OIII, Duo NB; absent for data with no filter"
+                  subs: { type: integer }
+                  exptime_s: { type: number }
+                  integration_s: { type: number }
+            rigs:
+              type: array
+              items:
+                type: object
+                properties:
+                  telescope: { type: string }
+                  camera: { type: string }
+                  pixel_scale_arcsec: { type: number }
+                  fov_deg: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
+            site:
+              type: object
+              description: Never coordinates. Latitude rounded to whole degrees at most.
+              properties:
+                region: { type: string }
+                bortle: { type: integer, minimum: 1, maximum: 9 }
+                lat_1deg: { type: integer, minimum: -90, maximum: 90 }
+        timeline:
+          type: array
+          items:
+            type: object
+            required: [night]
+            properties:
+              night: { type: string, format: date }
+              filter: { type: string }
+              panel: { type: integer }
+              subs: { type: integer }
+              integration_s: { type: number }
+              track:
+                type: array
+                description: >
+                  [azimuth_deg, altitude_deg] of the target at up to 48 sub times that night, worked out for the site
+                  rounded to whole degrees (so they can't be used to find the site). Absent when unsolved.
+                items: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
+        quality:
+          type: array
+          items:
+            type: object
+            required: [t]
+            properties:
+              t: { type: string, format: date-time }
+              filter: { type: string }
+              fwhm_arcsec: { type: number }
+              fwhm_px: { type: number }
+              stars: { type: integer }
+              snr: { type: number }
+              verdict: { $ref: "#/components/schemas/Verdict" }
+        frames:
+          type: object
+          required: [final]
+          description: Root-relative file URLs
+          properties:
+            final: { type: string }
+            starless: { type: string }
+            stars: { type: string }
+            thumb: { type: string }
+            per_filter: { type: object, additionalProperties: { type: string } }
+            progressive: { type: array, items: { type: string } }
+        annotations:
+          type: array
+          items:
+            type: object
+            required: [label, x, y]
+            properties:
+              label: { type: string }
+              kind: { type: string, enum: [star, nebula, galaxy, cluster, other] }
+              x: { type: number, minimum: 0, maximum: 1 }
+              y: { type: number, minimum: 0, maximum: 1 }
+              mag: { type: number }
+        processing: { type: array, items: { type: string } }

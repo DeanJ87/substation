@@ -22,6 +22,7 @@ import { useDraft, useSaveSettings, useSettings, type Processing } from './draft
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
 import { MountMode, RoleControls } from './LibraryAccess'
+import { LibrarySite, SiteRenderFields } from './LibrarySite'
 
 const when = (iso: string | null | undefined) =>
   iso
@@ -74,6 +75,7 @@ export function Folders() {
                 {when(l.last_full_sweep_at)} · <MountMode lib={l} />
               </div>
               <RoleControls lib={l} all={folders} readOnly={readOnly} />
+              <LibrarySite lib={l} readOnly={readOnly} />
             </div>
             <div className={s.rowActions}>
               <Button
@@ -585,7 +587,13 @@ export function PostProcessing() {
 
 export function MetadataSources() {
   const q = useSettings()
-  const [site, setSite] = useState<{ name: string; lat: string; lon: string } | null>(null)
+  const [site, setSite] = useState<{
+    name: string
+    lat: string
+    lon: string
+    region: string
+    bortle: string
+  } | null>(null)
   const save = useSaveSettings("Couldn't save the site")
   const d = q.data
   if (!d) return null
@@ -593,13 +601,16 @@ export function MetadataSources() {
     name: d.site_name ?? '',
     lat: d.site_lat?.toString() ?? '',
     lon: d.site_lon?.toString() ?? '',
+    region: d.site_region ?? '',
+    bortle: d.site_bortle?.toString() ?? '',
   }
   const aliases = Object.entries(d.filter_aliases ?? {})
   return (
     <SettingsSection id="sources" title="Metadata sources">
       <p className="muted">
         Order: headers, path patterns, then these defaults. Site sets night boundaries when a sub has no
-        position.
+        position. Region and Bortle class are what the renderer may show about where you shot: never the
+        site's name or position.
       </p>
       <form
         className={s.formGrid}
@@ -612,6 +623,8 @@ export function MetadataSources() {
               site_name: cur.name || null,
               site_lat: cur.lat === '' ? null : Number(cur.lat),
               site_lon: cur.lon === '' ? null : Number(cur.lon),
+              site_region: cur.region.trim(),
+              site_bortle: cur.bortle === '' ? null : Number(cur.bortle),
             },
             { onError: () => setSite(was) },
           )
@@ -644,6 +657,11 @@ export function MetadataSources() {
             aria-label="Longitude"
           />
         </label>
+        <SiteRenderFields
+          region={cur.region}
+          bortle={cur.bortle}
+          onChange={(next) => setSite({ ...cur, ...next })}
+        />
         {site && (
           <Button type="submit" variant="primary">
             Save site

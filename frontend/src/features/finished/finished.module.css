@@ -1,0 +1,218 @@
+/* Finished projects (spec 020): the list, one project's page, and the processing-steps editor. */
+.scroll {
+  overflow-x: auto;
+}
+.name {
+  font-weight: 600;
+  color: var(--sst-text);
+}
+.path {
+  font-family: var(--sst-font-mono);
+  font-size: 12px;
+  color: var(--sst-muted);
+  overflow-wrap: anywhere;
+}
+.status {
+  font-size: 13px;
+}
+.roles {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.roles li {
+  overflow-wrap: anywhere;
+}
+.links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.layout {
+  font-family: var(--sst-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  white-space: pre;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.notList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.suggestion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px dashed var(--sst-accent-line);
+  border-radius: var(--sst-radius-sm);
+  font-size: 14px;
+}
+.linked {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  font-size: 14px;
+}
+.input,
+.select {
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 14px;
+  max-width: 100%;
+}
+.input:disabled,
+.select:disabled {
+  opacity: 0.6;
+}
+.small {
+  width: 72px;
+  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.roleCell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.unservable td {
+  color: var(--sst-muted);
+}
+.reason {
+  font-size: 13px;
+  color: var(--sst-warn);
+}
+.error {
+  font-size: 14px;
+  color: var(--sst-bad);
+  margin: 0;
+}
+.json {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+  white-space: pre;
+  font-family: var(--sst-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stepList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stepRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.stepNo {
+  width: 1.6em;
+  text-align: right;
+  font-family: var(--sst-font-mono);
+  color: var(--sst-muted);
+}
+.stepActions {
+  display: inline-flex;
+  gap: 6px;
+}
+.stepAdd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.saveRow {
+  display: flex;
+  gap: 8px;
+}
+.secret {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--sst-accent-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-accent-tint);
+}
+.secretValue {
+  flex: 1 1 28em;
+  font-family: var(--sst-font-mono);
+  font-size: 13px;
+}
+.code {
+  font-family: var(--sst-font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+}

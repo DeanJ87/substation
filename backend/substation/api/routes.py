@@ -47,7 +47,13 @@ from apps.libraries.api import libraries_router  # noqa: E402
 
 register_router("/libraries", libraries_router)
 
+from apps.finished.api_manage import router as finished_router  # noqa: E402
+from apps.finished.api_manage import tokens_router  # noqa: E402
+from apps.finished.api_render import router as render_router  # noqa: E402
 from apps.processing.api_helper import router as helper_router  # noqa: E402
 
+register_router("/finished", finished_router)  # finished projects, for the owner (spec 020)
+register_router("/tokens", tokens_router)  # personal API tokens (spec 020)
+register_router("/render", render_router)  # the render read API: render tokens only (spec 020)
 register_router("/helper", helper_router)  # post-processing helpers on faster machines (token, not a session)
 register_router("", catalogue_router)

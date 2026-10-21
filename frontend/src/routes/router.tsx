@@ -22,6 +22,8 @@ import { readScope, type Scope } from '../features/scope/scope'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { BinPage } from '../features/bin/BinPage'
 import { MapView } from '../features/map/MapView'
+import { FinishedPage } from '../features/finished/FinishedPage'
+import { FinishedProject } from '../features/finished/FinishedProject'
 import { mapSearch } from '../features/map/search'
 import { AppFrame } from './AppFrame'
 import { SignIn } from './SignIn'
@@ -72,6 +74,13 @@ const collection = createRoute({
     nights: typeof q.nights === 'string' && /^[\d,-]+$/.test(q.nights) ? q.nights : undefined,
     at: typeof q.at === 'string' && /^-?[\d.]+,-?[\d.]+$/.test(q.at) ? q.at : undefined,
   }),
+})
+// finished projects in the Completed library, linked to their data for the renderer (spec 020)
+const finished = createRoute({ getParentRoute: () => app, path: '/finished', component: FinishedPage })
+const finishedProject = createRoute({
+  getParentRoute: () => app,
+  path: '/finished/$id',
+  component: FinishedProject,
 })
 const binRoute = createRoute({ getParentRoute: () => app, path: '/bin', component: BinPage })
 const mapRoute = createRoute({
@@ -159,6 +168,8 @@ export const routeTree = root.addChildren([
     binRoute,
     datasets,
     collection,
+    finished,
+    finishedProject,
     dataset,
     sub,
     nightRoute,

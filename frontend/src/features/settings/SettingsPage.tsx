@@ -3,10 +3,12 @@
 // (/settings#workers) open its tab.
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, type ReactNode } from 'react'
+import { ApiTokens } from './ApiTokens'
 import { Appearance } from './Appearance'
 import { Backups } from './Backups'
 import { Bin } from './Bin'
 import { DraftProvider, useSettings } from './draft'
+import { FinishedDefaults } from './FinishedDefaults'
 import { IgnoreRules } from './IgnoreRules'
 import { PathPatterns } from './PathPatterns'
 import { Rigs } from './Rigs'
@@ -31,12 +33,13 @@ const TABS: Tab[] = [
   {
     id: 'library',
     label: 'Library',
-    sections: ['folders', 'paths', 'sources', 'patterns', 'ignored', 'bin'],
+    sections: ['folders', 'paths', 'sources', 'finished', 'patterns', 'ignored', 'bin'],
     body: (
       <>
         <Folders />
         <FilePaths />
         <MetadataSources />
+        <FinishedDefaults />
         <PathPatterns />
         <IgnoreRules />
         <Bin />
@@ -62,6 +65,7 @@ const TABS: Tab[] = [
   { id: 'backups', label: 'Backups', sections: ['backups'], body: <Backups /> },
   { id: 'notifications', label: 'Notifications', sections: ['notifications'], body: <Notifications /> },
   { id: 'users', label: 'Users', sections: ['users'], body: <Users /> },
+  { id: 'api', label: 'API tokens', sections: ['tokens'], body: <ApiTokens /> },
   { id: 'appearance', label: 'Appearance', sections: ['appearance'], body: <Appearance /> },
 ]
 

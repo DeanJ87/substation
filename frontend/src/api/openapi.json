@@ -2303,6 +2303,22 @@
     "title": "DatasetsMoveOut",
     "type": "object"
    },
+   "DefaultsIn": {
+    "properties": {
+     "steps": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Steps",
+      "type": "array"
+     }
+    },
+    "required": [
+     "steps"
+    ],
+    "title": "DefaultsIn",
+    "type": "object"
+   },
    "Field": {
     "properties": {
      "label": {
@@ -2333,6 +2349,78 @@
     "title": "Field",
     "type": "object"
    },
+   "FileOut": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Key"
+     },
+     "missing": {
+      "title": "Missing",
+      "type": "boolean"
+     },
+     "rel_path": {
+      "title": "Rel Path",
+      "type": "string"
+     },
+     "role": {
+      "title": "Role",
+      "type": "string"
+     },
+     "role_filter": {
+      "title": "Role Filter",
+      "type": "string"
+     },
+     "role_order": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Role Order"
+     },
+     "section": {
+      "title": "Section",
+      "type": "string"
+     },
+     "servable": {
+      "title": "Servable",
+      "type": "boolean"
+     },
+     "size_bytes": {
+      "title": "Size Bytes",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "rel_path",
+     "section",
+     "size_bytes",
+     "missing",
+     "servable",
+     "role",
+     "role_filter",
+     "role_order",
+     "key"
+    ],
+    "title": "FileOut",
+    "type": "object"
+   },
    "FilterTime": {
     "description": "A filter's exposure: everything captured, and how much of it is usable or rejected so far. The rest is\nstill waiting (for calibration or grading).",
     "properties": {
@@ -2355,6 +2443,134 @@
      "rejected_s"
     ],
     "title": "FilterTime",
+    "type": "object"
+   },
+   "FinishedListOut": {
+    "properties": {
+     "libraries": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Libraries",
+      "type": "array"
+     },
+     "not_projects": {
+      "items": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      "title": "Not Projects",
+      "type": "array"
+     },
+     "projects": {
+      "items": {
+       "$ref": "#/components/schemas/FinishedOut"
+      },
+      "title": "Projects",
+      "type": "array"
+     }
+    },
+    "required": [
+     "projects",
+     "libraries",
+     "not_projects"
+    ],
+    "title": "FinishedListOut",
+    "type": "object"
+   },
+   "FinishedOut": {
+    "properties": {
+     "can_write_project_json": {
+      "title": "Can Write Project Json",
+      "type": "boolean"
+     },
+     "changed_at": {
+      "format": "date-time",
+      "title": "Changed At",
+      "type": "string"
+     },
+     "files": {
+      "items": {
+       "$ref": "#/components/schemas/FileOut"
+      },
+      "title": "Files",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "library": {
+      "title": "Library",
+      "type": "string"
+     },
+     "links": {
+      "items": {
+       "$ref": "#/components/schemas/LinkOut"
+      },
+      "title": "Links",
+      "type": "array"
+     },
+     "missing": {
+      "title": "Missing",
+      "type": "boolean"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "offered": {
+      "title": "Offered",
+      "type": "boolean"
+     },
+     "processing": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Processing",
+      "type": "array"
+     },
+     "project_json_reason": {
+      "title": "Project Json Reason",
+      "type": "string"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "rel_path": {
+      "title": "Rel Path",
+      "type": "string"
+     },
+     "subject": {
+      "title": "Subject",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "library",
+     "rel_path",
+     "kind",
+     "subject",
+     "name",
+     "missing",
+     "offered",
+     "reason",
+     "links",
+     "processing",
+     "files",
+     "changed_at",
+     "can_write_project_json",
+     "project_json_reason"
+    ],
+    "title": "FinishedOut",
     "type": "object"
    },
    "FlatSetChoice": {
@@ -4012,7 +4228,8 @@
         "enum": [
          "",
          "active",
-         "archive"
+         "archive",
+         "completed"
         ],
         "type": "string"
        },
@@ -4124,7 +4341,8 @@
       "enum": [
        "",
        "active",
-       "archive"
+       "archive",
+       "completed"
       ],
       "title": "Role",
       "type": "string"
@@ -4291,6 +4509,50 @@
      "nights"
     ],
     "title": "LibraryStatsOut",
+    "type": "object"
+   },
+   "LinkIn": {
+    "properties": {
+     "project_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Project Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "project_ids"
+    ],
+    "title": "LinkIn",
+    "type": "object"
+   },
+   "LinkOut": {
+    "properties": {
+     "collection_id": {
+      "title": "Collection Id",
+      "type": "integer"
+     },
+     "collection_name": {
+      "title": "Collection Name",
+      "type": "string"
+     },
+     "project_id": {
+      "title": "Project Id",
+      "type": "integer"
+     },
+     "project_name": {
+      "title": "Project Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "project_id",
+     "project_name",
+     "collection_id",
+     "collection_name"
+    ],
+    "title": "LinkOut",
     "type": "object"
    },
    "LookOut": {
@@ -6738,6 +7000,22 @@
     "title": "PreviewSample",
     "type": "object"
    },
+   "ProcessingIn": {
+    "properties": {
+     "steps": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Steps",
+      "type": "array"
+     }
+    },
+    "required": [
+     "steps"
+    ],
+    "title": "ProcessingIn",
+    "type": "object"
+   },
    "ProcessingOut": {
     "properties": {
      "calibration": {
@@ -7086,6 +7364,64 @@
      }
     },
     "title": "ProjectPatch",
+    "type": "object"
+   },
+   "ProjectSummary": {
+    "properties": {
+     "collection_ids": {
+      "default": [],
+      "items": {
+       "type": "integer"
+      },
+      "title": "Collection Ids",
+      "type": "array"
+     },
+     "common_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Common Name"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "target": {
+      "title": "Target",
+      "type": "string"
+     },
+     "thumb_url": {
+      "title": "Thumb Url",
+      "type": "string"
+     },
+     "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "kind",
+     "target",
+     "updated_at",
+     "thumb_url"
+    ],
+    "title": "ProjectSummary",
     "type": "object"
    },
    "ProjectsOut": {
@@ -8142,6 +8478,56 @@
     "title": "RigSuggestion",
     "type": "object"
    },
+   "RoleIn": {
+    "properties": {
+     "file_id": {
+      "title": "File Id",
+      "type": "integer"
+     },
+     "role": {
+      "title": "Role",
+      "type": "string"
+     },
+     "role_filter": {
+      "default": "",
+      "title": "Role Filter",
+      "type": "string"
+     },
+     "role_order": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Role Order"
+     }
+    },
+    "required": [
+     "file_id",
+     "role"
+    ],
+    "title": "RoleIn",
+    "type": "object"
+   },
+   "RolesIn": {
+    "properties": {
+     "roles": {
+      "items": {
+       "$ref": "#/components/schemas/RoleIn"
+      },
+      "title": "Roles",
+      "type": "array"
+     }
+    },
+    "required": [
+     "roles"
+    ],
+    "title": "RolesIn",
+    "type": "object"
+   },
    "Scope": {
     "properties": {
      "camera": {
@@ -9111,6 +9497,17 @@
       ],
       "title": "Siril Threads"
      },
+     "site_bortle": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Bortle"
+     },
      "site_lat": {
       "anyOf": [
        {
@@ -9143,6 +9540,17 @@
        }
       ],
       "title": "Site Name"
+     },
+     "site_region": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Region"
      },
      "stack_mem_ratio": {
       "anyOf": [
@@ -9208,6 +9616,14 @@
       "title": "Cpu Threads",
       "type": "integer"
      },
+     "default_processing": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Default Processing",
+      "type": "array"
+     },
      "filter_aliases": {
       "additionalProperties": {
        "type": "string"
@@ -9257,6 +9673,17 @@
       ],
       "title": "Siril Threads"
      },
+     "site_bortle": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Site Bortle"
+     },
      "site_lat": {
       "anyOf": [
        {
@@ -9289,6 +9716,11 @@
        }
       ],
       "title": "Site Name"
+     },
+     "site_region": {
+      "default": "",
+      "title": "Site Region",
+      "type": "string"
      },
      "stack_mem_ratio": {
       "anyOf": [
@@ -9404,6 +9836,17 @@
    },
    "SiteSchema": {
     "properties": {
+     "bortle": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bortle"
+     },
      "lat": {
       "anyOf": [
        {
@@ -9436,6 +9879,11 @@
        }
       ],
       "title": "Name"
+     },
+     "region": {
+      "default": "",
+      "title": "Region",
+      "type": "string"
      }
     },
     "title": "SiteSchema",
@@ -11091,6 +11539,167 @@
     "title": "SubOut",
     "type": "object"
    },
+   "SuggestionOut": {
+    "properties": {
+     "collection_id": {
+      "title": "Collection Id",
+      "type": "integer"
+     },
+     "collection_name": {
+      "title": "Collection Name",
+      "type": "string"
+     },
+     "project_id": {
+      "title": "Project Id",
+      "type": "integer"
+     },
+     "project_name": {
+      "title": "Project Name",
+      "type": "string"
+     },
+     "reasons": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+     },
+     "score": {
+      "title": "Score",
+      "type": "number"
+     }
+    },
+    "required": [
+     "project_id",
+     "project_name",
+     "collection_id",
+     "collection_name",
+     "score",
+     "reasons"
+    ],
+    "title": "SuggestionOut",
+    "type": "object"
+   },
+   "TokenCreatedOut": {
+    "properties": {
+     "secret": {
+      "title": "Secret",
+      "type": "string"
+     },
+     "token": {
+      "$ref": "#/components/schemas/TokenOut"
+     }
+    },
+    "required": [
+     "token",
+     "secret"
+    ],
+    "title": "TokenCreatedOut",
+    "type": "object"
+   },
+   "TokenIn": {
+    "properties": {
+     "expires_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires At"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "TokenIn",
+    "type": "object"
+   },
+   "TokenOut": {
+    "properties": {
+     "active": {
+      "title": "Active",
+      "type": "boolean"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "expires_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires At"
+     },
+     "hint": {
+      "title": "Hint",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "last_used_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Used At"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "revoked_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revoked At"
+     },
+     "scope": {
+      "title": "Scope",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "scope",
+     "hint",
+     "created_at",
+     "expires_at",
+     "last_used_at",
+     "revoked_at",
+     "active"
+    ],
+    "title": "TokenOut",
+    "type": "object"
+   },
    "UndoneOut": {
     "properties": {
      "change": {
@@ -11517,6 +12126,10 @@
     "in": "header",
     "name": "X-Helper-Token",
     "type": "apiKey"
+   },
+   "RenderToken": {
+    "scheme": "bearer",
+    "type": "http"
    },
    "SessionAuth": {
     "in": "cookie",
@@ -17043,6 +17656,420 @@
     ]
    }
   },
+  "/finished": {
+   "get": {
+    "operationId": "apps_finished_api_manage_list_finished",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "rescan",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Rescan",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedListOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "List Finished",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/defaults/processing": {
+   "put": {
+    "operationId": "apps_finished_api_manage_set_default_processing",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DefaultsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "type": "string"
+         },
+         "title": "Response",
+         "type": "array"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Set Default Processing",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}": {
+   "get": {
+    "operationId": "apps_finished_api_manage_get_finished",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Get Finished",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/links": {
+   "put": {
+    "operationId": "apps_finished_api_manage_set_links",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LinkIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Set Links",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/processing": {
+   "put": {
+    "operationId": "apps_finished_api_manage_set_processing",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProcessingIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Set Processing",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/project-json": {
+   "post": {
+    "description": "020-FR-014: only in a read-write library; never over a project.json SubStation didn't write.",
+    "operationId": "apps_finished_api_manage_write_project_json",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Write Project Json",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/render-data": {
+   "get": {
+    "description": "What the renderer would get, for checking in the app.",
+    "operationId": "apps_finished_api_manage_render_data_preview",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response",
+         "type": "object"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Render Data Preview",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/roles": {
+   "put": {
+    "operationId": "apps_finished_api_manage_set_roles",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RolesIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Set Roles",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/roles/guess": {
+   "post": {
+    "operationId": "apps_finished_api_manage_reguess_roles",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Reguess Roles",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/suggestions": {
+   "get": {
+    "description": "Ranked SubStation projects to link (020-FR-004): catalogue numbers and names in common.\nTODO(020 T018): add plate-solve field overlap once finished images are solved.",
+    "operationId": "apps_finished_api_manage_suggestions",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SuggestionOut"
+         },
+         "title": "Response",
+         "type": "array"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Suggestions",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
   "/frames": {
    "get": {
     "description": "Frames in the shared scope (spec 018); `night` is the older name for `date` (FR-005). Free text also finds\na frame by its OBJECT header or its file's path.",
@@ -20726,6 +21753,151 @@
     ]
    }
   },
+  "/render/projects": {
+   "get": {
+    "operationId": "apps_finished_api_render_list_projects",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "since",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date-time",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Since"
+      }
+     },
+     {
+      "in": "query",
+      "name": "kind",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Kind"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProjectsOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "RenderToken": []
+     }
+    ],
+    "summary": "List Projects",
+    "tags": [
+     "render"
+    ]
+   }
+  },
+  "/render/projects/{id}": {
+   "get": {
+    "operationId": "apps_finished_api_render_get_project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response",
+         "type": "object"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "RenderToken": []
+     }
+    ],
+    "summary": "Get Project",
+    "tags": [
+     "render"
+    ]
+   }
+  },
+  "/render/projects/{id}/files/{key}": {
+   "get": {
+    "operationId": "apps_finished_api_render_get_file",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "key",
+      "required": true,
+      "schema": {
+       "title": "Key",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "304": {
+      "description": "Not Modified"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "RenderToken": []
+     }
+    ],
+    "summary": "Get File",
+    "tags": [
+     "render"
+    ]
+   }
+  },
   "/review": {
    "get": {
     "description": "Flagged subs (spec 003 A2): rejected, down-weighted or near a threshold, grouped by dataset and night,\nnewest first. Subs the user already decided are left out.",
@@ -22290,6 +23462,109 @@
     "summary": "Master Look File",
     "tags": [
      "catalogue"
+    ]
+   }
+  },
+  "/tokens": {
+   "get": {
+    "operationId": "apps_finished_api_manage_list_tokens",
+    "parameters": [],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/TokenOut"
+         },
+         "title": "Response",
+         "type": "array"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "List Tokens",
+    "tags": [
+     "tokens"
+    ]
+   },
+   "post": {
+    "operationId": "apps_finished_api_manage_create_token",
+    "parameters": [],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TokenIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenCreatedOut"
+        }
+       }
+      },
+      "description": "Created"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Create Token",
+    "tags": [
+     "tokens"
+    ]
+   }
+  },
+  "/tokens/{id}/revoke": {
+   "post": {
+    "operationId": "apps_finished_api_manage_revoke_token",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Revoke Token",
+    "tags": [
+     "tokens"
     ]
    }
   },
