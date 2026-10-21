@@ -13,4 +13,8 @@ FROM caddy:2.11.4-alpine
 RUN apk upgrade --no-cache
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /src/frontend/dist /srv
+# run unprivileged: Caddy listens on 8080 and only needs to write its /data and /config dirs
+RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app app \
+ && mkdir -p /data /config && chown -R app:app /data /config
+USER app
 EXPOSE 8080
