@@ -205,7 +205,7 @@ export function Activity() {
         {d.running.length === 0 ? (
           <p className={v.muted}>Nothing running.</p>
         ) : (
-          <div className={s.pane}>
+          <div className={s.pane} tabIndex={0} role="region" aria-label="Running jobs">
             {d.running.map((j) => (
               <RunningJob key={j.id} j={j} />
             ))}
@@ -241,76 +241,77 @@ export function Activity() {
                   </button>
                 ))}
             </div>
-            <div
-              className={s.pane}
-              onDragOver={(e) => dragged && e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault()
-                const over = (e.target as HTMLElement).closest('li')?.dataset.job
-                if (dragged && over && over !== dragged) move.mutate({ id: dragged, before: over })
-                setDragged(null)
-              }}
-            >
-              <ol className={s.queue}>
-                {queue.map((j, i) => (
-                  <li key={j.id} className={dragged === j.id ? s.dragging : undefined} data-job={j.id}>
-                    <button
-                      type="button"
-                      className={`${v.mono} ${v.muted} ${s.handle}`}
-                      aria-label={`Position ${i + 1}: ${j.name} ${j.target}. Drag, or Alt+↑/↓ to move`}
-                      title="Drag, or Alt+↑/↓"
-                      draggable
-                      onDragStart={(e) => {
-                        setDragged(j.id)
-                        e.dataTransfer.effectAllowed = 'move'
-                      }}
-                      onDragEnd={() => setDragged(null)}
-                      onKeyDown={(e) => {
-                        if (!e.altKey) return
-                        if (e.key === 'ArrowUp' && i > 0) move.mutate({ id: j.id, before: queue[i - 1].id })
-                        else if (e.key === 'ArrowDown' && i < queue.length - 1)
-                          move.mutate({ id: j.id, after: queue[i + 1].id })
-                        else return
-                        e.preventDefault()
-                      }}
-                    >
-                      {i + 1}
-                    </button>
-                    <div className={s.rowText} title={`${j.name} · ${j.target}\n${j.wait_reason ?? ''}`}>
-                      <strong>{j.name}</strong> <span className={v.muted}>{j.target}</span>
-                    </div>
-                    <div className={s.rowActions}>
+            <div className={s.pane} tabIndex={0} role="region" aria-label="Queued jobs">
+              <div
+                onDragOver={(e) => dragged && e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const over = (e.target as HTMLElement).closest('li')?.dataset.job
+                  if (dragged && over && over !== dragged) move.mutate({ id: dragged, before: over })
+                  setDragged(null)
+                }}
+              >
+                <ol className={s.queue}>
+                  {queue.map((j, i) => (
+                    <li key={j.id} className={dragged === j.id ? s.dragging : undefined} data-job={j.id}>
                       <button
-                        className={v.pill}
-                        onClick={() =>
-                          act.mutate(
-                            { id: j.id, action: 'bump' },
-                            // a short job then runs and leaves the queue at once: say so
-                            { onSuccess: () => toast(`${j.name} runs next.`) },
-                          )
-                        }
-                        title="Run next"
-                        aria-label={`Run ${j.name} next`}
+                        type="button"
+                        className={`${v.mono} ${v.muted} ${s.handle}`}
+                        aria-label={`Position ${i + 1}: ${j.name} ${j.target}. Drag, or Alt+↑/↓ to move`}
+                        title="Drag, or Alt+↑/↓"
+                        draggable
+                        onDragStart={(e) => {
+                          setDragged(j.id)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        onDragEnd={() => setDragged(null)}
+                        onKeyDown={(e) => {
+                          if (!e.altKey) return
+                          if (e.key === 'ArrowUp' && i > 0) move.mutate({ id: j.id, before: queue[i - 1].id })
+                          else if (e.key === 'ArrowDown' && i < queue.length - 1)
+                            move.mutate({ id: j.id, after: queue[i + 1].id })
+                          else return
+                          e.preventDefault()
+                        }}
                       >
-                        Run next
+                        {i + 1}
                       </button>
-                      <button
-                        className={v.pill}
-                        onClick={() => act.mutate({ id: j.id, action: 'cancel' })}
-                        aria-label={`Cancel ${j.name}`}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              {queueQ.isPending && <Skeleton height={120} />}
-              <LoadMore
-                hasMore={!!queueQ.hasNextPage}
-                loading={queueQ.isFetchingNextPage}
-                onMore={() => void queueQ.fetchNextPage()}
-              />
+                      <div className={s.rowText} title={`${j.name} · ${j.target}\n${j.wait_reason ?? ''}`}>
+                        <strong>{j.name}</strong> <span className={v.muted}>{j.target}</span>
+                      </div>
+                      <div className={s.rowActions}>
+                        <button
+                          className={v.pill}
+                          onClick={() =>
+                            act.mutate(
+                              { id: j.id, action: 'bump' },
+                              // a short job then runs and leaves the queue at once: say so
+                              { onSuccess: () => toast(`${j.name} runs next.`) },
+                            )
+                          }
+                          title="Run next"
+                          aria-label={`Run ${j.name} next`}
+                        >
+                          Run next
+                        </button>
+                        <button
+                          className={v.pill}
+                          onClick={() => act.mutate({ id: j.id, action: 'cancel' })}
+                          aria-label={`Cancel ${j.name}`}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                {queueQ.isPending && <Skeleton height={120} />}
+                <LoadMore
+                  hasMore={!!queueQ.hasNextPage}
+                  loading={queueQ.isFetchingNextPage}
+                  onMore={() => void queueQ.fetchNextPage()}
+                />
+              </div>
             </div>
           </Collapsible>
         </section>
@@ -368,7 +369,7 @@ export function Activity() {
                 dismiss={(ids) => bulk.dismiss.mutate(ids)}
               />
             ))}
-            <div className={s.pane}>
+            <div className={s.pane} tabIndex={0} role="region" aria-label="Recent results">
               <ul className={s.recent}>
                 {recent.map((j) => (
                   <li key={j.id}>
