@@ -17,7 +17,7 @@ dependencies = [
   "psutil>=6.0",
   "uvicorn[standard]>=0.30",
   "whitenoise>=6.7",
-  "pillow>=11",
+  "pillow>=13",
   "scipy>=1.14",
   "psycopg[binary]>=3.2",
 ]

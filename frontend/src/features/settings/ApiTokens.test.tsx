@@ -16,7 +16,7 @@ const TOKEN = {
   revoked_at: null,
   active: true,
 }
-const SECRET = 'sst_render_0123456789abcdef0123456789abcd'
+const SECRET = 'sst_not-a-real-token'
 const ADMIN = { ...fakeFor('GET', '/settings'), can_edit: true }
 
 async function open(settings: object = ADMIN) {
