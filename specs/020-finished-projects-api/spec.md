@@ -231,3 +231,9 @@ the action is disabled with the reason.
 - **020-DR-06** A Completed library that looks empty is treated as unreachable (a dropped share leaves an empty
   folder): the last known projects stay listed. A renamed export keeps its role. Web and social crops are never
   guessed as the final. Only display-ready outputs can be given a role.
+- **020-DR-07** (2026-10-21) A master can mix data from several places (home and a remote observatory), so the render
+  data lists every site, not one: `capture.sites` has one entry per site rounded to whole degrees, with an id
+  (s1, s2 … by integration), subs and integration, and region and Bortle only where a library or the installation
+  settings describe that same place. Every timeline row and per-sub quality entry carries its site's id, and each
+  sky track is worked out from its own site. The target's name prefers a catalogue designation (IC 434 over a
+  nickname); the collection's name stays the common name.

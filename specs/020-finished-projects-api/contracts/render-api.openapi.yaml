@@ -162,13 +162,22 @@ components:
                   camera: { type: string }
                   pixel_scale_arcsec: { type: number }
                   fov_deg: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
-            site:
-              type: object
-              description: Never coordinates. Latitude rounded to whole degrees at most.
-              properties:
-                region: { type: string }
-                bortle: { type: integer, minimum: 1, maximum: 9 }
-                lat_1deg: { type: integer, minimum: -90, maximum: 90 }
+            sites:
+              type: array
+              description: >
+                Every place the subs were shot, one entry per site rounded to whole degrees (a master mixing home
+                and remote data is several sites, never an average). Ids s1, s2 … by integration, most first.
+                Timeline rows and quality entries carry the id of their site. Never coordinates.
+              items:
+                type: object
+                required: [id, lat_1deg]
+                properties:
+                  id: { type: string, example: s1 }
+                  region: { type: string, description: only when a library or the installation describes this place }
+                  bortle: { type: integer, minimum: 1, maximum: 9 }
+                  lat_1deg: { type: integer, minimum: -90, maximum: 90 }
+                  subs: { type: integer, description: subs used (accepted and down-weighted) from this site }
+                  integration_s: { type: number }
         timeline:
           type: array
           items:
@@ -178,13 +187,14 @@ components:
               night: { type: string, format: date }
               filter: { type: string }
               panel: { type: integer }
+              site: { type: string, description: id of the site in capture.sites }
               subs: { type: integer }
               integration_s: { type: number }
               track:
                 type: array
                 description: >
                   [azimuth_deg, altitude_deg] of the target at up to 48 sub times that night, worked out for the site
-                  rounded to whole degrees (so they can't be used to find the site). Absent when unsolved.
+                  rounded to whole degrees, for that row's own site (so they can't be used to find it). Absent when unsolved.
                 items: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
         quality:
           type: array
@@ -194,6 +204,7 @@ components:
             properties:
               t: { type: string, format: date-time }
               filter: { type: string }
+              site: { type: string, description: id of the site in capture.sites }
               fwhm_arcsec: { type: number }
               fwhm_px: { type: number }
               stars: { type: integer }

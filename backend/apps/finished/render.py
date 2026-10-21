@@ -7,6 +7,7 @@ coordinates never leave this module: only a region name, Bortle class and latitu
 
 from __future__ import annotations
 
+import re
 import statistics
 from collections import Counter, defaultdict
 from typing import Any
@@ -104,13 +105,16 @@ def _lights(dss: list[Dataset]) -> list[Frame]:
     )
 
 
+_CATALOGUE = re.compile(r"^(NGC|IC|M|Sh ?2|SH2|Sh2|vdB|LDN|LBN|B|C|Abell|Arp|Mel|Cr|Caldwell)[ -]?\d+", re.I)
+
+
 def _target(proj: FinishedProject, dss: list[Dataset], solves: list[PlateSolve]) -> dict[str, Any]:
     cols = [c for c in {d.collection for d in dss} if c is not None]
     col = cols[0] if cols else None
     names = [n.strip() for n in (col.objects_text if col else "").split("·") if n.strip()]
-    name = (
-        names[0] if names else (Counter(d.target for d in dss).most_common(1)[0][0] if dss else proj.subject)
-    )
+    names += [t for t, _ in Counter(d.target for d in dss).most_common()]
+    catalogued = [n for n in names if _CATALOGUE.match(n)]  # IC 434 rather than "FlameNebula"
+    name = catalogued[0] if catalogued else (names[0] if names else proj.subject)
     common = col.name if col and col.name != name else (proj.subject if proj.subject != name else None)
     t: dict[str, Any] = {
         "name": name,
@@ -126,24 +130,77 @@ def _target(proj: FinishedProject, dss: list[Dataset], solves: list[PlateSolve])
     return t
 
 
-def _site(lights: list[Frame]) -> dict[str, Any] | None:
+SiteKey = tuple[int, int]  # latitude and longitude rounded to whole degrees: the finest a site is ever shown
+
+
+def _site_key(f: Frame) -> SiteKey | None:
+    if f.site_lat is None or f.site_lon is None:
+        return None
+    return round(f.site_lat), round(f.site_lon)
+
+
+def _site_totals(used: list[Frame]) -> tuple[Counter[SiteKey], dict[SiteKey, float]]:
+    counts: Counter[SiteKey] = Counter()
+    time: dict[SiteKey, float] = defaultdict(float)
+    for f in used:
+        k = _site_key(f)
+        if k:
+            counts[k] += 1
+            time[k] += f.exptime_s or 0
+    return counts, time
+
+
+def _site_sources(used: list[Frame]) -> dict[SiteKey, list[Library]]:
+    """Where each site's region and Bortle may come from: its subs' libraries, most subs first."""
     from apps.catalogue.models import Copy
 
-    lib_ids = Counter(
-        Copy.objects.filter(frame__in=[f.pk for f in lights[:500]]).values_list("library_id", flat=True)
-    )
-    lib = Library.objects.filter(pk=lib_ids.most_common(1)[0][0]).first() if lib_ids else None
+    by_frame = {f.pk: _site_key(f) for f in used}
+    libs_by_site: dict[SiteKey, Counter[int]] = defaultdict(Counter)
+    pairs = Copy.objects.filter(frame__in=list(by_frame)).values_list("frame_id", "library_id")
+    for frame_id, lib_id in pairs:
+        k = by_frame.get(frame_id)
+        if k:
+            libs_by_site[k][lib_id] += 1
+    libs = {
+        lib.pk: lib for lib in Library.objects.filter(pk__in={i for c in libs_by_site.values() for i in c})
+    }
+    return {k: [libs[i] for i, _ in c.most_common() if i in libs] for k, c in libs_by_site.items()}
+
+
+def _describe(k: SiteKey, sources: list[Library | InstallationSettings]) -> tuple[str | None, int | None]:
+    """A region and Bortle only from a source whose own site is this place (020-DR-07)."""
+    for src in sources:
+        if src.site_lat is None or src.site_lon is None:
+            continue
+        if (round(src.site_lat), round(src.site_lon)) == k and (src.site_region or src.site_bortle):
+            return src.site_region or None, src.site_bortle
+    return None, None
+
+
+def _sites(used: list[Frame]) -> tuple[list[dict[str, Any]], dict[SiteKey, str]]:
+    """Every place the subs were shot (020-DR-07): one entry per whole-degree site, ids s1, s2 … by integration.
+    A master made from home and remote data is several truths, not one average."""
+    counts, time = _site_totals(used)
+    if not counts:
+        return [], {}
+    sources = _site_sources(used)
     inst = InstallationSettings.load()
-    region = (lib.site_region if lib else "") or inst.site_region or None
-    bortle = (lib.site_bortle if lib else None) or inst.site_bortle
-    lats = [f.site_lat for f in lights if f.site_lat is not None]
-    lat = (
-        statistics.median(lats)
-        if lats
-        else (lib.site_lat if lib and lib.site_lat is not None else inst.site_lat)
-    )
-    site = {"region": region, "bortle": bortle, "lat_1deg": round(lat) if lat is not None else None}
-    return site if any(v is not None for v in site.values()) else None
+    ids: dict[SiteKey, str] = {}
+    out = []
+    for n, (k, subs) in enumerate(sorted(counts.items(), key=lambda kv: -time[kv[0]]), start=1):
+        ids[k] = f"s{n}"
+        region, bortle = _describe(k, [*sources.get(k, []), inst])
+        out.append(
+            {
+                "id": ids[k],
+                "region": region,
+                "bortle": bortle,
+                "lat_1deg": k[0],
+                "subs": subs,
+                "integration_s": _r(time[k], 1),
+            }
+        )
+    return out, ids
 
 
 def _decimate(points: list[Any], n: int) -> list[Any]:
@@ -197,39 +254,37 @@ def _rigs(dss: list[Dataset], solves: list[PlateSolve]) -> list[dict[str, Any]]:
     return out
 
 
-def _coarse_site(lights: list[Frame]) -> tuple[float, float] | None:
-    """The site rounded to whole degrees, for drawing tracks only. Real alt/az at real times would give the site
-    away to about a kilometre (020-FR-010), so tracks are worked out again from here."""
-    lats = [f.site_lat for f in lights if f.site_lat is not None]
-    lons = [f.site_lon for f in lights if f.site_lon is not None]
-    if not lats or not lons:
-        return None
-    return float(round(statistics.median(lats))), float(round(statistics.median(lons)))
-
-
 def _timeline(
-    used: list[Frame], target: dict[str, Any], site: tuple[float, float] | None
+    used: list[Frame], target: dict[str, Any], site_ids: dict[SiteKey, str]
 ) -> list[dict[str, Any]]:
-    """Per observing night, filter and panel: the subs used and the target's track that night (020-FR-007)."""
-    rows: dict[tuple[Any, str, int | None], list[Frame]] = defaultdict(list)
+    """Per observing night, filter, panel and site: the subs used and the target's track that night, worked out
+    from that site rounded to whole degrees, never from stored positions (020-FR-007, 020-DR-01, 020-DR-07)."""
+    rows: dict[tuple[Any, str, int | None, SiteKey | None], list[Frame]] = defaultdict(list)
     for f in used:
         if f.night is not None:
-            rows[(f.night.date, f.filter_norm or "", f.panel)].append(f)
+            rows[(f.night.date, f.filter_norm or "", f.panel, _site_key(f))].append(f)
     ra, dec = target.get("ra_deg"), target.get("dec_deg")
     out = []
-    for (night, flt, panel), fs in sorted(rows.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2] or 0)):
+    order = sorted(
+        rows.items(),
+        key=lambda kv: (kv[0][0], kv[0][1], kv[0][2] or 0, site_ids.get(kv[0][3], "") if kv[0][3] else ""),
+    )
+    for (night, flt, panel, site), fs in order:
         times = _decimate([f.date_obs_utc for f in fs if f.date_obs_utc], TRACK_POINTS)
         track = None
         if site and ra is not None and dec is not None and times:
             from apps.processing.sky import alt_az
 
-            alts, azs, _ = alt_az([ra] * len(times), [dec] * len(times), times, site[0], site[1])
+            alts, azs, _ = alt_az(
+                [ra] * len(times), [dec] * len(times), times, float(site[0]), float(site[1])
+            )
             track = [[_r(az, 1), _r(alt, 1)] for az, alt in zip(azs, alts, strict=True)]
         out.append(
             {
                 "night": night.isoformat(),
                 "filter": flt or None,
                 "panel": panel,
+                "site": site_ids.get(site) if site else None,
                 "subs": len(fs),
                 "integration_s": _r(sum(f.exptime_s or 0 for f in fs), 1),
                 "track": track,
@@ -239,7 +294,7 @@ def _timeline(
 
 
 def _quality(
-    lights: list[Frame], eff: dict[str, Any], meas: dict[str, SubMeasurement]
+    lights: list[Frame], eff: dict[str, Any], meas: dict[str, SubMeasurement], site_ids: dict[SiteKey, str]
 ) -> list[dict[str, Any]]:
     out = []
     for f in lights:
@@ -251,6 +306,7 @@ def _quality(
             {
                 "t": f.date_obs_utc.isoformat().replace("+00:00", "Z"),
                 "filter": f.filter_norm or None,
+                "site": site_ids.get(k) if (k := _site_key(f)) else None,
                 "fwhm_arcsec": _r(m.fwhm_arcsec, 2) if m else None,
                 "fwhm_px": _r(m.fwhm_px, 2) if m else None,
                 "stars": m.stars if m else None,
@@ -282,8 +338,12 @@ def _frames(proj: FinishedProject) -> dict[str, Any]:
 
 
 def _capture(
-    proj: FinishedProject, dss: list[Dataset], lights: list[Frame], used: list[Frame], solves
-) -> dict:  # noqa: ANN001
+    proj: FinishedProject,
+    dss: list[Dataset],
+    used: list[Frame],
+    solves,
+    sites: list[dict[str, Any]],  # noqa: ANN001
+) -> dict:
     """Totals from the datasets' own counts, as on screen (020-FR-009)."""
     if not dss:
         return {}
@@ -310,7 +370,7 @@ def _capture(
         "mosaic": mosaic,
         "filters": _filters(dss, used),
         "rigs": _rigs(dss, solves),
-        "site": _site(lights),
+        "sites": sites,
     }
 
 
@@ -324,6 +384,7 @@ def build(proj: FinishedProject) -> dict[str, Any]:
     eff = {f.pk: effective(f, list(f.verdicts.all()), grades.get(f.pk)) for f in lights}
     used = [f for f in lights if eff[f.pk].verdict in ("accept", "down")]
     target = _target(proj, dss, solves)
+    sites, site_ids = _sites(used)
     data = {
         "schema_version": SCHEMA_VERSION,
         "project": {
@@ -334,9 +395,9 @@ def build(proj: FinishedProject) -> dict[str, Any]:
             "updated_at": changed_at(proj).isoformat(),
         },
         "target": target,
-        "capture": _capture(proj, dss, lights, used, solves),
-        "timeline": _timeline(used, target, _coarse_site(lights)),
-        "quality": _quality(lights, eff, meas),
+        "capture": _capture(proj, dss, used, solves, sites),
+        "timeline": _timeline(used, target, site_ids),
+        "quality": _quality(lights, eff, meas, site_ids),
         "frames": _frames(proj),
         "processing": list(proj.processing or []),
     }

@@ -29,8 +29,11 @@
   Completed role and region/Bortle/default processing in Settings; tests and accessibility check
   (`frontend/src/features/finished/`, `settings/ApiTokens.tsx`, `FinishedDefaults.tsx`, `LibrarySite.tsx`;
   `/finished` added to the a11y e2e screens)
-- [ ] F11 Deploy: set `SUBSTATION_LIBRARY_4` and `_4_NAME=completed` on the stack, check the library appears with
+- [X] F11 Deploy: set `SUBSTATION_LIBRARY_4` and `_4_NAME=completed` on the stack, check the library appears with
   the Completed role, create a render token, put one project folder in place and query it end to end
+  (2026-10-21: live; list, render data, final and thumbnail served, refused without a token)
+- [X] F15 (2026-10-21) Several sites per master: `capture.sites` with ids, site id on timeline rows and quality
+  entries, tracks per site, catalogue-first target names (020-DR-07); tests
 - [ ] F12 (later) Link suggestions by plate-solve overlap once finished images are solved; annotations from that
   solve (FR-004, FR-007)
 - [ ] F13 (later) Target type, distance and angular size from the catalogue data (FR-007)

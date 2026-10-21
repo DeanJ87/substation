@@ -42,7 +42,9 @@ def completed(tmp_path):
 @pytest.fixture
 def heart():
     """A Heart Nebula project: two Hα/OIII panels over two nights, graded."""
-    col = Collection.objects.create(name="Heart Nebula", objects_text="IC 1805", constellation="Cassiopeia")
+    col = Collection.objects.create(
+        name="Heart Nebula", objects_text="Heart · IC 1805", constellation="Cassiopeia"
+    )
     project = Project.objects.create(collection=col, name="Mosaic 2026", kind="mosaic", planned_panels=2)
     n1 = Night.objects.create(site_key="48,9", date=date(2026, 9, 14), site_lat=47.62, site_lon=8.71)
     n2 = Night.objects.create(site_key="48,9", date=date(2026, 9, 15), site_lat=47.62, site_lon=8.71)
@@ -208,12 +210,22 @@ def test_render_data_matches_the_app_totals_and_omits_what_isnt_known(completed,
 
 def test_no_coordinates_leave_substation(completed, heart, token):
     s = InstallationSettings.load()
-    s.site_region, s.site_bortle = "Example Valley", 5
+    s.site_region, s.site_bortle, s.site_lat, s.site_lon = "Example Valley", 5, 47.6, 8.7
     s.save()
     p = _linked(heart)
     body = bearer(token).get(f"/api/v1/render/projects/{p.pk}").content.decode()
     data = json.loads(body)
-    assert data["capture"]["site"] == {"region": "Example Valley", "bortle": 5, "lat_1deg": 48}
+    assert data["capture"]["sites"] == [
+        {
+            "id": "s1",
+            "region": "Example Valley",
+            "bortle": 5,
+            "lat_1deg": 48,
+            "subs": 16,
+            "integration_s": 4800.0,
+        }
+    ]
+    assert {r["site"] for r in data["timeline"]} == {"s1"} and {q["site"] for q in data["quality"]} == {"s1"}
     for leak in ("47.62", "8.71", "site_lon", "site_lat", '"lon'):
         assert leak not in body
 
@@ -343,3 +355,28 @@ def test_a_social_crop_never_becomes_the_final(completed):
     p = FinishedProject.objects.get()
     assert p.files.get(rel_path="exports/heart-final.png").role == "final"
     assert p.files.get(rel_path="social/heart-final-4x5.jpg").role == ""
+
+
+def test_a_master_from_two_sites_lists_both_and_tags_each_sub(completed, heart, token):
+    """A remote observatory's subs mixed with home ones: two sites, never an average (020-DR-07)."""
+    remote = Frame.objects.filter(dataset__panel=2)
+    remote.update(site_lat=-31.27, site_lon=149.06)
+    p = _linked(heart)
+    data = bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()
+    sites = data["capture"]["sites"]
+    assert [(x["id"], x["lat_1deg"], x["subs"]) for x in sites] == [("s1", 48, 8), ("s2", -31, 8)]
+    assert all("region" not in x for x in sites)  # no settings describe these places: nothing invented
+    by_site = {r["site"] for r in data["timeline"]}
+    assert by_site == {"s1", "s2"}
+    remote_rows = [r for r in data["timeline"] if r["site"] == "s2"]
+    home_rows = [r for r in data["timeline"] if r["site"] == "s1"]
+    # each track is drawn from its own site: the same target sits very differently in the two skies
+    assert remote_rows[0]["track"][0] != home_rows[0]["track"][0]
+    assert {q["site"] for q in data["quality"] if q["verdict"] != "reject"} == {"s1", "s2"}
+
+
+def test_the_target_name_prefers_a_catalogue_designation(completed, heart, token):
+    p = _linked(heart)
+    data = bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()
+    assert data["target"]["name"] == "IC 1805"
+    assert data["target"]["common_name"] == "Heart Nebula"
