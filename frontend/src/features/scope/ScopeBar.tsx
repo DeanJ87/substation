@@ -21,6 +21,17 @@ const CHIPS: [keyof Scope, string][] = [
 const nightLabel = (d: string) =>
   new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
+/** The filters to offer: the page's, narrowed to the rig's when a rig is chosen (all of the rig's when the page
+ * names none), plus the current choice so it stays visible. */
+export function filterChoices(
+  page: string[],
+  rig: string[] | undefined,
+  current: string | undefined,
+): string[] {
+  const base = rig ? (page.length ? page.filter((f) => rig.includes(f)) : rig) : page
+  return [...new Set([...base, ...(current ? [current] : [])])].sort()
+}
+
 export function ScopeBar({
   scope,
   onChange,
@@ -35,6 +46,14 @@ export function ScopeBar({
 }) {
   const rigs = useQuery({ queryKey: ['rigs'], queryFn: async () => unwrap(await api.GET('/rigs')) })
   const set = (patch: Partial<Scope>) => onChange({ ...scope, ...patch })
+  const rig = (rigs.data ?? []).find((r) => r.id === scope.rig)
+  // filters follow the rig: only what it shot through (and the page has), so no choice leads nowhere
+  const offered = filterChoices(filters, rig?.filters, scope.filter)
+  const pickRig = (id: number | undefined) => {
+    const next = (rigs.data ?? []).find((r) => r.id === id)
+    const keep = !scope.filter || !next || next.filters.includes(scope.filter)
+    set({ rig: id, filter: keep ? scope.filter : undefined })
+  }
   const q = scope.q ?? ''
   const [text, setText] = useState(q)
   const [seen, setSeen] = useState(q)
@@ -66,7 +85,7 @@ export function ScopeBar({
       <select
         aria-label="Rig"
         value={scope.rig ?? ''}
-        onChange={(e) => set({ rig: e.target.value ? Number(e.target.value) : undefined })}
+        onChange={(e) => pickRig(e.target.value ? Number(e.target.value) : undefined)}
       >
         <option value="">Rig: All</option>
         {(rigs.data ?? []).map((r) => (
@@ -81,7 +100,7 @@ export function ScopeBar({
         onChange={(e) => set({ filter: e.target.value || undefined })}
       >
         <option value="">Filter: All</option>
-        {[...new Set([...filters, ...(scope.filter ? [scope.filter] : [])])].sort().map((f) => (
+        {offered.map((f) => (
           <option key={f}>{f}</option>
         ))}
       </select>

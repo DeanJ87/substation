@@ -16,6 +16,7 @@ const file = (id: number, rel_path: string, more: Partial<Finished['files'][numb
   role: '',
   role_filter: '',
   role_order: null,
+  role_label: '',
   key: null,
   ...more,
 })
@@ -31,16 +32,17 @@ const PROJECT: Finished = {
   offered: false,
   reason: 'needs a final image',
   links: [{ project_id: 3, project_name: 'Heart Nebula', collection_id: 4, collection_name: 'Heart Nebula' }],
-  processing: ['GraXpert', 'BlurXTerminator'],
+  path: '/data/completed/Astro/IC 1805/2026 Heart Nebula',
+  distance_ly: null,
+  distance_source: '',
   files: [
     file(1, 'exports/heart-final.png'),
     file(2, 'exports/heart-starless.png', { role: 'starless', key: 'starless' }),
     file(3, 'exports/heart-ha.tif'),
+    file(5, 'web/heart-step1.jpg', { role: 'step', role_order: 1, role_label: 'Master' }),
     file(4, 'project/heart.xisf', { servable: false }),
   ],
   changed_at: '2026-10-20T21:30:00Z',
-  can_write_project_json: false,
-  project_json_reason: 'Mounted read-only. Mount it read-write (SUBSTATION_LIBRARY_4_MODE=rw) to allow this.',
 }
 
 const LIST = {
@@ -51,15 +53,16 @@ const LIST = {
 const ADMIN = { ...fakeFor('GET', '/settings'), can_edit: true }
 
 describe('Finished (spec 020)', () => {
-  it('lists each project with its status, links, roles, processing and changed time', async () => {
-    await renderRoute('/finished', { 'GET /finished': LIST })
-    const row = (await screen.findByRole('link', { name: '2026 Heart Nebula' })).closest('tr')!
+  it('lists each project with its final image, links and status', async () => {
+    const final = { ...PROJECT, files: [file(1, 'exports/heart-final.png', { role: 'final' })] }
+    await renderRoute('/finished', { 'GET /finished': { ...LIST, projects: [final] } })
+    const row = (await screen.findByRole('link', { name: '2026 Heart Nebula' })).closest('li')!
     expect(row).toHaveTextContent('Astro · IC 1805')
-    expect(row).toHaveTextContent('Not offered: needs a final image')
+    expect(row).toHaveTextContent('Not offered')
+    expect(within(row).getByRole('button', { name: 'Help: Why not offered' })).toBeInTheDocument()
     expect(within(row).getByRole('link', { name: 'Heart Nebula' })).toHaveAttribute('href', '/collections/4')
-    expect(row).toHaveTextContent('4 files')
-    expect(row).toHaveTextContent('Starless: heart-starless.png')
-    expect(row).toHaveTextContent('GraXpert → BlurXTerminator')
+    expect(row.querySelector('img')).toHaveAttribute('src', '/api/v1/finished/7/files/1/image?size=thumb')
+    expect(row).not.toHaveTextContent('heart-final.png')
     expect(screen.getByRole('link', { name: 'Finished' })).toBeInTheDocument()
   })
 
@@ -112,7 +115,11 @@ async function openProject(overrides: Record<string, unknown> = {}) {
     ],
     'PUT /finished/7/roles': PROJECT,
     'PUT /finished/7/links': PROJECT,
-    'PUT /finished/7/processing': PROJECT,
+    'PUT /finished/7/distance': (b: unknown) => ({
+      ...PROJECT,
+      distance_ly: (b as { distance_ly: number | null }).distance_ly,
+      distance_source: 'manual',
+    }),
     'POST /finished/7/roles/guess': PROJECT,
     ...overrides,
   })
@@ -121,11 +128,16 @@ async function openProject(overrides: Record<string, unknown> = {}) {
 }
 
 describe('a finished project (spec 020)', () => {
-  it('says why it is not offered to the renderer', async () => {
+  it('says why it is not offered to the renderer behind a help button', async () => {
     await openProject()
-    expect(screen.getByText(/^Not offered to the renderer yet/)).toHaveTextContent(
-      'Not offered to the renderer yet: needs a final image.',
-    )
+    expect(screen.getByText('Not offered')).toBeInTheDocument()
+    const help = screen.getByRole('button', { name: 'Help: Why not offered' })
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    fireEvent.click(help)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('needs a final image')
+    expect(help).toHaveAccessibleDescription('needs a final image')
+    fireEvent.keyDown(help, { key: 'Escape' })
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
   it('links a suggested project, with the reasons shown', async () => {
@@ -166,9 +178,9 @@ describe('a finished project (spec 020)', () => {
         path: '/finished/7/roles',
         body: {
           roles: [
-            { file_id: 1, role: 'starless', role_filter: '', role_order: null },
-            { file_id: 2, role: '', role_filter: '', role_order: null },
-            { file_id: 3, role: 'per_filter', role_filter: 'Hα', role_order: null },
+            { file_id: 1, role: 'starless', role_filter: '', role_order: null, role_label: '' },
+            { file_id: 2, role: '', role_filter: '', role_order: null, role_label: '' },
+            { file_id: 3, role: 'per_filter', role_filter: 'Hα', role_order: null, role_label: '' },
           ],
         },
       }),
@@ -188,70 +200,107 @@ describe('a finished project (spec 020)', () => {
       expect(api.calls).toContainEqual({
         method: 'PUT',
         path: '/finished/7/roles',
-        body: { roles: [{ file_id: 3, role: 'progressive', role_filter: '', role_order: 2 }] },
+        body: {
+          roles: [{ file_id: 3, role: 'progressive', role_filter: '', role_order: 2, role_label: '' }],
+        },
       }),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Guess again from file names' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guess again' }))
     await waitFor(() =>
       expect(api.calls.some((c) => c.method === 'POST' && c.path === '/finished/7/roles/guess')).toBe(true),
     )
   })
 
-  it('lists working files greyed, without a role', async () => {
+  it('shows images as cards with a preview, and working files in a folded list without a role', async () => {
     await openProject()
-    const row = screen.getByText('project/heart.xisf').closest('tr')!
-    expect(row).toHaveTextContent('Not offered to the renderer')
-    expect(within(row).queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Role of project/heart.xisf' })).not.toBeInTheDocument()
+    expect(screen.getByText('Working files')).toBeInTheDocument()
+    expect(screen.getByText('project/heart.xisf')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview exports/heart-ha.tif' }))
+    const dialog = screen.getByRole('dialog', { name: 'heart-ha.tif' })
+    expect(within(dialog).getByRole('img')).toHaveAttribute(
+      'src',
+      '/api/v1/finished/7/files/3/image?size=preview',
+    )
   })
 
-  it('edits the processing steps in order', async () => {
+  it('gives a processing step its position and label, and shows the steps in order', async () => {
     const { api } = await openProject()
-    fireEvent.click(screen.getByRole('button', { name: 'Move step 2 up' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'New step' }), {
-      target: { value: 'StarXTerminator' },
+    const section = screen.getByRole('heading', { name: /Processing steps/ }).closest('section')!
+    expect(section).toHaveTextContent('1 · Master')
+    fireEvent.change(screen.getByRole('combobox', { name: 'Role of exports/heart-ha.tif' }), {
+      target: { value: 'step' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Add step' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save steps' }))
+    expect(screen.getByRole('spinbutton', { name: 'Order of exports/heart-ha.tif' })).toHaveValue(2)
+    expect(screen.getByRole('button', { name: 'Save roles' })).toBeDisabled()
+    expect(screen.getByText('A processing step needs a label.')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Step label of exports/heart-ha.tif' }), {
+      target: { value: 'GraXpert + NoiseXTerminator' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save roles' }))
     await waitFor(() =>
       expect(api.calls).toContainEqual({
         method: 'PUT',
-        path: '/finished/7/processing',
-        body: { steps: ['BlurXTerminator', 'GraXpert', 'StarXTerminator'] },
+        path: '/finished/7/roles',
+        body: {
+          roles: [
+            {
+              file_id: 3,
+              role: 'step',
+              role_filter: '',
+              role_order: 2,
+              role_label: 'GraXpert + NoiseXTerminator',
+            },
+          ],
+        },
       }),
     )
   })
 
-  it('keeps Write project.json disabled with the reason on a read-only library', async () => {
-    await openProject()
-    const write = screen.getByRole('button', { name: 'Write project.json' })
-    expect(write).toBeDisabled()
-    expect(write).toHaveAccessibleDescription(PROJECT.project_json_reason)
+  it('saves a distance typed in, and clears it', async () => {
+    const { api } = await openProject()
+    const input = screen.getByRole('textbox', { name: 'Distance in light years' })
+    fireEvent.change(input, { target: { value: '7,500' } })
+    fireEvent.blur(input)
+    await waitFor(() =>
+      expect(api.calls).toContainEqual({
+        method: 'PUT',
+        path: '/finished/7/distance',
+        body: { distance_ly: 7500 },
+      }),
+    )
+    expect(await screen.findByText('Set by hand')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Look up' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Look up' })).toHaveAccessibleDescription(
+      'Clear it to look it up.',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    await waitFor(() =>
+      expect(api.calls).toContainEqual({
+        method: 'PUT',
+        path: '/finished/7/distance',
+        body: { distance_ly: null },
+      }),
+    )
   })
 
-  it('shows why the server refused to write project.json', async () => {
-    await renderRoute('/finished/7', {
-      'GET /settings': ADMIN,
-      'GET /finished/7': { ...PROJECT, can_write_project_json: true, project_json_reason: '' },
-    })
-    // the fake API only answers 2xx: this one call is refused as the server would
+  it("shows the server's reason when a distance can't be looked up", async () => {
+    await openProject()
     const fetch = (globalThis as { testFetch?: typeof globalThis.fetch }).testFetch!
     ;(globalThis as { testFetch?: typeof globalThis.fetch }).testFetch = (async (
       input: RequestInfo | URL,
       init?: RequestInit,
     ) => {
       const req = input instanceof Request ? input : new Request(String(input), init)
-      if (req.method === 'POST' && req.url.endsWith('/finished/7/project-json'))
+      if (req.method === 'POST' && req.url.endsWith('/finished/7/distance/lookup'))
         return new Response(
-          JSON.stringify({
-            code: 'not_ours',
-            message: "There's a project.json here that SubStation didn't write; it won't overwrite it.",
-          }),
-          { status: 409, headers: { 'Content-Type': 'application/json' } },
+          JSON.stringify({ code: 'not_found', message: 'SIMBAD has no distance for IC 1805.' }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } },
         )
       return fetch(input, init)
     }) as typeof globalThis.fetch
-    fireEvent.click(await screen.findByRole('button', { name: 'Write project.json' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent("didn't write; it won't overwrite it.")
+    fireEvent.click(screen.getByRole('button', { name: 'Look up' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('SIMBAD has no distance for IC 1805.')
   })
 
   it('previews the render data when opened', async () => {
@@ -264,9 +313,11 @@ describe('a finished project (spec 020)', () => {
 
   it('shows changes as read-only to someone who is not an admin', async () => {
     await openProject({ 'GET /settings': { ...ADMIN, can_edit: false } })
-    expect(await screen.findByText('Only an admin can change finished projects.')).toBeInTheDocument()
+    expect(await screen.findByText('· Read only')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Role of exports/heart-final.png' })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Guess again from file names' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Guess again' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Link / })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Look up' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Distance in light years' })).toBeDisabled()
   })
 })

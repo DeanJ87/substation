@@ -1236,23 +1236,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finished/defaults/processing": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Set Default Processing */
-        put: operations["apps_finished_api_manage_set_default_processing"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/finished/{id}": {
         parameters: {
             query?: never;
@@ -1262,6 +1245,67 @@ export interface paths {
         };
         /** Get Finished */
         get: operations["apps_finished_api_manage_get_finished"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/distance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Distance
+         * @description The owner's own figure (020-DR-13); it wins over a look-up until cleared.
+         */
+        put: operations["apps_finished_api_manage_set_distance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/distance/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lookup Distance
+         * @description Ask SIMBAD (020-DR-13). Never replaces a figure the owner typed.
+         */
+        post: operations["apps_finished_api_manage_lookup_distance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/files/{file_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * File Image
+         * @description A JPEG of one output file for the app: `thumb` for the grid, `preview` to look closer. Never the original,
+         *     which can be a 300 MB TIFF.
+         */
+        get: operations["apps_finished_api_manage_file_image"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1281,43 +1325,6 @@ export interface paths {
         /** Set Links */
         put: operations["apps_finished_api_manage_set_links"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/finished/{id}/processing": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Set Processing */
-        put: operations["apps_finished_api_manage_set_processing"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/finished/{id}/project-json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Write Project Json
-         * @description 020-FR-014: only in a read-write library; never over a project.json SubStation didn't write.
-         */
-        post: operations["apps_finished_api_manage_write_project_json"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1387,8 +1394,8 @@ export interface paths {
         };
         /**
          * Suggestions
-         * @description Ranked SubStation projects to link (020-FR-004): catalogue numbers and names in common.
-         *     TODO(020 T018): add plate-solve field overlap once finished images are solved.
+         * @description SubStation projects to link (020-FR-004): only those sharing a catalogue number or the name; the year only
+         *     ranks them. TODO(020 T018): add plate-solve field overlap once finished images are solved.
          */
         get: operations["apps_finished_api_manage_suggestions"];
         put?: never;
@@ -4064,10 +4071,10 @@ export interface components {
             /** Moved */
             moved: number;
         };
-        /** DefaultsIn */
-        DefaultsIn: {
-            /** Steps */
-            steps: string[];
+        /** DistanceIn */
+        DistanceIn: {
+            /** Distance Ly */
+            distance_ly: number | null;
         };
         /** Field */
         Field: {
@@ -4092,6 +4099,8 @@ export interface components {
             role: string;
             /** Role Filter */
             role_filter: string;
+            /** Role Label */
+            role_label: string;
             /** Role Order */
             role_order: number | null;
             /** Section */
@@ -4125,13 +4134,15 @@ export interface components {
         };
         /** FinishedOut */
         FinishedOut: {
-            /** Can Write Project Json */
-            can_write_project_json: boolean;
             /**
              * Changed At
              * Format: date-time
              */
             changed_at: string;
+            /** Distance Ly */
+            distance_ly: number | null;
+            /** Distance Source */
+            distance_source: string;
             /** Files */
             files: components["schemas"]["FileOut"][];
             /** Id */
@@ -4148,10 +4159,8 @@ export interface components {
             name: string;
             /** Offered */
             offered: boolean;
-            /** Processing */
-            processing: string[];
-            /** Project Json Reason */
-            project_json_reason: string;
+            /** Path */
+            path: string;
             /** Reason */
             reason: string;
             /** Rel Path */
@@ -5655,11 +5664,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** ProcessingIn */
-        ProcessingIn: {
-            /** Steps */
-            steps: string[];
-        };
         /** ProcessingOut */
         ProcessingOut: {
             /** Calibration */
@@ -6102,6 +6106,11 @@ export interface components {
             camera: string;
             /** Datasets */
             datasets: number;
+            /**
+             * Filters
+             * @default []
+             */
+            filters: string[];
             /** Focal Mm */
             focal_mm: number | null;
             /** Id */
@@ -6149,6 +6158,11 @@ export interface components {
              * @default
              */
             role_filter: string;
+            /**
+             * Role Label
+             * @default
+             */
+            role_label: string;
             /** Role Order */
             role_order?: number | null;
         };
@@ -6478,11 +6492,6 @@ export interface components {
             cores: number;
             /** Cpu Threads */
             cpu_threads: number;
-            /**
-             * Default Processing
-             * @default []
-             */
-            default_processing: string[];
             /** Filter Aliases */
             filter_aliases: {
                 [key: string]: string;
@@ -9152,30 +9161,6 @@ export interface operations {
             };
         };
     };
-    apps_finished_api_manage_set_default_processing: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefaultsIn"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string[];
-                };
-            };
-        };
-    };
     apps_finished_api_manage_get_finished: {
         parameters: {
             query?: never;
@@ -9198,6 +9183,84 @@ export interface operations {
             };
         };
     };
+    apps_finished_api_manage_set_distance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DistanceIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_lookup_distance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_file_image: {
+        parameters: {
+            query?: {
+                size?: string;
+            };
+            header?: never;
+            path: {
+                id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     apps_finished_api_manage_set_links: {
         parameters: {
             query?: never;
@@ -9212,54 +9275,6 @@ export interface operations {
                 "application/json": components["schemas"]["LinkIn"];
             };
         };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FinishedOut"];
-                };
-            };
-        };
-    };
-    apps_finished_api_manage_set_processing: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProcessingIn"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FinishedOut"];
-                };
-            };
-        };
-    };
-    apps_finished_api_manage_write_project_json: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

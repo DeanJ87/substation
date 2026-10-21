@@ -1,12 +1,14 @@
-// One finished project (spec 020): link it to the SubStation projects whose subs made it (suggested by name, with
-// the reasons, or picked by hand), say which file is the final image and which are starless, stars only, single
-// filters or progressive stacks, list the processing steps, preview what the renderer receives, and write it as
-// project.json into the folder when the library allows it. Changes are for admins; everyone else can look.
+// One finished project (spec 020): its files as pictures with their roles (final, starless, stars only, single
+// filters, progressive stacks and processing steps), the SubStation projects whose subs made it, its distance, and a
+// preview of what the renderer receives. Changes are for admins; everyone else can look.
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { api, ApiError, unwrap } from '../../api/client'
 import { Collapsible } from '../../components/Collapsible'
+import { FilePath } from '../../components/FilePath'
+import { Help } from '../../components/Help'
+import { Modal } from '../../components/Modal'
 import { toast } from '../../components/Toasts'
 import { Button, ErrorState, PageLoading, Spinner } from '../../components/ui'
 import { bytes } from '../format'
@@ -15,6 +17,7 @@ import { useLibrary } from '../v2/hooks'
 import v from '../v2/v2.module.css'
 import f from './finished.module.css'
 import {
+  imageUrl,
   KIND,
   ROLE,
   SINGLE_ROLES,
@@ -26,13 +29,35 @@ import {
   type FinishedFile,
   type RoleChange,
 } from './queries'
-import { StepList } from './StepList'
 
 const route = getRouteApi('/app/finished/$id')
 
 const size = (n: number) => {
   const b = bytes(n)
   return `${b.value} ${b.unit}`
+}
+const baseName = (path: string) => path.split('/').pop() ?? path
+const when = (iso: string) =>
+  new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+/** "Offered to renderer", or "Not offered" with the reason behind a "?". */
+export function StatusChip({ p }: { p: Pick<Finished, 'offered' | 'reason'> }) {
+  return p.offered ? (
+    <span className={`${f.chip} ${f.chipOk}`}>Offered to renderer</span>
+  ) : (
+    <span className={f.chipWrap}>
+      <span className={`${f.chip} ${f.chipWarn}`} title={p.reason}>
+        Not offered
+      </span>
+      <Help topic="Why not offered">{p.reason}</Help>
+    </span>
+  )
 }
 
 export function FinishedProject() {
@@ -51,67 +76,29 @@ export function FinishedProject() {
   if (!p) return <PageLoading />
   return (
     <div className={v.page}>
-      <header className={v.head}>
-        <div>
-          <div className={v.crumbs}>
-            <Link to="/finished">Finished</Link> / {KIND[p.kind] ?? p.kind} / {p.subject}
-          </div>
+      <header className={f.head}>
+        <div className={v.crumbs}>
+          <Link to="/finished">Finished</Link> / {KIND[p.kind] ?? p.kind} / {p.subject}
+        </div>
+        <div className={f.titleRow}>
           <h1>{p.name}</h1>
-          <div className={v.sub}>
-            <span className={v.mono}>
-              {p.library}/{p.rel_path}
-            </span>{' '}
-            · changed{' '}
-            {new Date(p.changed_at).toLocaleString('en-GB', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </div>
+          <StatusChip p={p} />
+        </div>
+        <div className={f.meta}>
+          <FilePath path={p.path} className={f.metaPath} />
+          <span className="muted">Changed {when(p.changed_at)}</span>
+          {!admin && settings.isSuccess && <span className="muted">· Read only</span>}
         </div>
       </header>
 
-      {p.offered ? (
-        <p className={v.ok}>Offered to the renderer.</p>
-      ) : (
-        <div className={v.banner} role="status">
-          Not offered to the renderer yet: {p.reason}.
-        </div>
-      )}
-      {!admin && settings.isSuccess && <p className="muted">Only an admin can change finished projects.</p>}
-
-      <Links p={p} admin={admin} links={act.links} />
       <Files p={p} admin={admin} roles={act.roles} guess={act.guess} />
-
-      <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="processing-h">
-        <h2 id="processing-h">Processing steps</h2>
-        <p className="muted">
-          What you did to finish it, in order, as short labels (GraXpert, BlurXTerminator …). The renderer can
-          show them.
-        </p>
-        <StepList
-          steps={p.processing}
-          disabled={!admin}
-          saving={act.processing.isPending}
-          onSave={(steps) =>
-            act.processing.mutate(steps, { onSuccess: () => toast('Processing steps saved.') })
-          }
-        />
-      </section>
-
-      <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="json-h">
-        <h2 id="json-h">project.json</h2>
-        <p className="muted">
-          Writes what the renderer receives into the project folder as <code>project.json</code>, so the
-          folder describes itself. SubStation writes only that one file, and never over one it didn't write.
-        </p>
-        <ProjectJson p={p} admin={admin} write={act.projectJson} />
-      </section>
+      <Steps p={p} />
+      <div className={f.pair}>
+        <Links p={p} admin={admin} links={act.links} />
+        <Distance p={p} admin={admin} set={act.distance} lookup={act.lookup} />
+      </div>
 
       <Collapsible id="finished-render-data" title="Preview render data" defaultOpen={false}>
-        <p className="muted">This is what the renderer receives for this project.</p>
         <RenderData id={p.id} />
       </Collapsible>
     </div>
@@ -120,6 +107,28 @@ export function FinishedProject() {
 
 type Actions = ReturnType<typeof useFinishedActions>
 
+function SectionHead({
+  id,
+  title,
+  help,
+  children,
+}: {
+  id: string
+  title: string
+  help?: string
+  children?: ReactNode
+}) {
+  return (
+    <div className={f.sectionHead}>
+      <h2 id={id}>
+        {title}
+        {help && <Help topic={title}>{help}</Help>}
+      </h2>
+      {children}
+    </div>
+  )
+}
+
 function Links({ p, admin, links }: { p: Finished; admin: boolean; links: Actions['links'] }) {
   const sug = useSuggestions(p.id)
   const linked = new Set(p.links.map((l) => l.project_id))
@@ -127,60 +136,66 @@ function Links({ p, admin, links }: { p: Finished; admin: boolean; links: Action
   const offers = (sug.data ?? []).filter((s) => !linked.has(s.project_id))
   return (
     <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="links-h">
-      <h2 id="links-h">SubStation projects</h2>
-      <p className="muted">
-        The projects whose subs made this image. Their capture data (integration, nights, filters, quality)
-        goes to the renderer. Link more than one when it was shot across several, e.g. two seasons.
-      </p>
+      <SectionHead
+        id="links-h"
+        title="Linked projects"
+        help="The SubStation projects whose subs made this image. Their capture data goes to the renderer."
+      />
       {p.links.length ? (
-        p.links.map((l) => (
-          <div key={l.project_id} className={f.linked}>
-            <span>
-              <Link to="/collections/$id" params={{ id: String(l.collection_id) }}>
-                {l.collection_name}
-              </Link>
-              {l.project_name !== l.collection_name && <span className="muted"> · {l.project_name}</span>}
-            </span>
-            {admin && (
-              <Button
-                disabled={links.isPending}
-                aria-label={`Unlink ${l.project_name}`}
-                onClick={() => links.mutate(ids.filter((x) => x !== l.project_id))}
-              >
-                Unlink
-              </Button>
-            )}
-          </div>
-        ))
-      ) : (
-        <p>Not linked yet.</p>
-      )}
-      {sug.isPending ? (
-        <Spinner label="Finding suggestions" />
-      ) : offers.length ? (
-        <>
-          <strong>Suggested</strong>
-          {offers.map((s) => (
-            <div key={s.project_id} className={f.suggestion}>
-              <span>
-                <strong>{s.collection_name}</strong>
-                {s.project_name !== s.collection_name && <span className="muted"> · {s.project_name}</span>}
-                <span className="muted"> · {s.reasons.join(', ')}</span>
+        <ul className={f.list}>
+          {p.links.map((l) => (
+            <li key={l.project_id} className={f.item}>
+              <span className={f.itemName}>
+                <Link to="/collections/$id" params={{ id: String(l.collection_id) }}>
+                  {l.collection_name}
+                </Link>
+                {l.project_name !== l.collection_name && <span className="muted"> · {l.project_name}</span>}
               </span>
               {admin && (
                 <Button
                   disabled={links.isPending}
-                  aria-label={`Link ${s.project_name}`}
-                  onClick={() => links.mutate([...ids, s.project_id])}
+                  aria-label={`Unlink ${l.project_name}`}
+                  onClick={() => links.mutate(ids.filter((x) => x !== l.project_id))}
                 >
-                  Link
+                  Unlink
                 </Button>
               )}
-            </div>
+            </li>
           ))}
-        </>
+        </ul>
       ) : (
-        sug.isSuccess && <p className="muted">No suggestions: nothing shares its target or name.</p>
+        <p className="muted">Not linked.</p>
+      )}
+      {sug.isPending ? (
+        <Spinner label="Finding suggestions" />
+      ) : (
+        offers.length > 0 && (
+          <div className={f.suggested}>
+            <div className={f.label}>Suggested</div>
+            <ul className={f.list}>
+              {offers.slice(0, 5).map((s) => (
+                <li key={s.project_id} className={f.item}>
+                  <span className={f.itemName}>
+                    {s.collection_name}
+                    {s.project_name !== s.collection_name && (
+                      <span className="muted"> · {s.project_name}</span>
+                    )}
+                    <span className={f.why}>{s.reasons.join(', ')}</span>
+                  </span>
+                  {admin && (
+                    <Button
+                      disabled={links.isPending}
+                      aria-label={`Link ${s.project_name}`}
+                      onClick={() => links.mutate([...ids, s.project_id])}
+                    >
+                      Link
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
       )}
       {admin && (
         <PickProject linked={linked} busy={links.isPending} onPick={(id) => links.mutate([...ids, id])} />
@@ -189,7 +204,7 @@ function Links({ p, admin, links }: { p: Finished; admin: boolean; links: Action
   )
 }
 
-/** Any SubStation project: choose its collection, then the project. */
+/** Any SubStation project: choose its collection, then one of that collection's projects. */
 function PickProject({
   linked,
   busy,
@@ -212,7 +227,8 @@ function PickProject({
   const choices = (projects.data?.projects ?? []).filter((x) => !linked.has(x.id))
   return (
     <form
-      className={f.row}
+      className={f.pick}
+      aria-label="Link another project"
       onSubmit={(e) => {
         e.preventDefault()
         if (project == null) return
@@ -220,43 +236,38 @@ function PickProject({
         setProject(null)
       }}
     >
-      <strong>Link another</strong>
-      <label className={f.row}>
-        Collection
-        <select
-          className={f.select}
-          value={collection ?? ''}
-          onChange={(e) => {
-            setCollection(e.target.value ? Number(e.target.value) : null)
-            setProject(null)
-          }}
-        >
-          <option value="">Choose…</option>
-          {collections.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={f.row}>
-        Project
-        <select
-          className={f.select}
-          value={project ?? ''}
-          disabled={collection == null || !choices.length}
-          onChange={(e) => setProject(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">
-            {collection != null && projects.isSuccess && !choices.length ? 'None left to link' : 'Choose…'}
+      <select
+        className={f.select}
+        aria-label="Collection"
+        value={collection ?? ''}
+        onChange={(e) => {
+          setCollection(e.target.value ? Number(e.target.value) : null)
+          setProject(null)
+        }}
+      >
+        <option value="">Collection…</option>
+        {collections.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
           </option>
-          {choices.map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        ))}
+      </select>
+      <select
+        className={f.select}
+        aria-label="Project"
+        value={project ?? ''}
+        disabled={collection == null || !choices.length}
+        onChange={(e) => setProject(e.target.value ? Number(e.target.value) : null)}
+      >
+        <option value="">
+          {collection != null && projects.isSuccess && !choices.length ? 'None left' : 'Project…'}
+        </option>
+        {choices.map((x) => (
+          <option key={x.id} value={x.id}>
+            {x.name}
+          </option>
+        ))}
+      </select>
       <Button type="submit" disabled={project == null || busy}>
         Link
       </Button>
@@ -264,7 +275,9 @@ function PickProject({
   )
 }
 
-type Draft = Record<number, Pick<RoleChange, 'role' | 'role_filter' | 'role_order'>>
+type Cur = Pick<RoleChange, 'role' | 'role_filter' | 'role_order' | 'role_label'>
+type Draft = Record<number, Cur>
+const ORDERED = new Set(['progressive', 'step'])
 
 function Files({
   p,
@@ -278,8 +291,14 @@ function Files({
   guess: Actions['guess']
 }) {
   const [draft, setDraft] = useState<Draft>({})
-  const current = (file: FinishedFile) =>
-    draft[file.id] ?? { role: file.role, role_filter: file.role_filter, role_order: file.role_order }
+  const [shown, setShown] = useState<FinishedFile | null>(null)
+  const current = (file: FinishedFile): Cur =>
+    draft[file.id] ?? {
+      role: file.role,
+      role_filter: file.role_filter,
+      role_order: file.role_order,
+      role_label: file.role_label,
+    }
   const changes: RoleChange[] = p.files
     .filter((file) => {
       const d = draft[file.id]
@@ -287,62 +306,87 @@ function Files({
       return (
         d.role !== file.role ||
         (d.role === 'per_filter' && d.role_filter !== file.role_filter) ||
-        (d.role === 'progressive' && d.role_order !== file.role_order)
+        (ORDERED.has(d.role) && d.role_order !== file.role_order) ||
+        (d.role === 'step' && d.role_label !== file.role_label)
       )
     })
     .map((file) => ({ file_id: file.id, ...current(file) }))
   const problem = changes.find(
-    (c) => (c.role === 'per_filter' && !c.role_filter?.trim()) || (c.role === 'progressive' && !c.role_order),
+    (c) =>
+      (c.role === 'per_filter' && !c.role_filter?.trim()) ||
+      (ORDERED.has(c.role) && !c.role_order) ||
+      (c.role === 'step' && !c.role_label?.trim()),
   )
-  const set = (file: FinishedFile, next: Partial<Draft[number]>) => {
+  const set = (file: FinishedFile, next: Partial<Cur>) => {
     const d = { ...draft, [file.id]: { ...current(file), ...next } }
     // final, starless and stars only belong to one file each: choosing one takes it from the others
     if (next.role && SINGLE_ROLES.has(next.role))
       for (const other of p.files)
         if (other.id !== file.id && current(other).role === next.role)
-          d[other.id] = { role: '', role_filter: '', role_order: null }
+          d[other.id] = { role: '', role_filter: '', role_order: null, role_label: '' }
     setDraft(d)
   }
+  const nextOrder = (role: string) =>
+    Math.max(
+      0,
+      ...p.files
+        .map((x) => current(x))
+        .filter((c) => c.role === role)
+        .map((c) => c.role_order ?? 0),
+    ) + 1
+  const cards = p.files.filter((x) => x.servable)
+  const working = p.files.filter((x) => !x.servable)
   return (
     <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="files-h">
-      <div className={f.sectionHead}>
-        <h2 id="files-h">Files</h2>
+      <SectionHead
+        id="files-h"
+        title="Files"
+        help="The renderer needs a final image; every other role is optional. Files named …final, …starless, …stars or after a filter are picked up for you. Only PNG, JPEG and TIFF outside project/ are offered."
+      >
         {admin && (
           <Button
             disabled={guess.isPending}
             onClick={() => guess.mutate(undefined, { onSuccess: () => setDraft({}) })}
           >
-            Guess again from file names
+            Guess again
           </Button>
         )}
-      </div>
-      <p className="muted">
-        The renderer needs a final image; the others are optional. Names ending in -final, -starless, -stars
-        or a filter name are picked up for you. Only PNG, JPEG and TIFF outside the project folder are offered
-        to the renderer.
-      </p>
-      {p.files.length ? (
-        <div className={f.scroll}>
-          <table className={v.table}>
-            <thead>
-              <tr>
-                <th>File</th>
-                <th>Size</th>
-                <th>Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              {p.files.map((file) => (
-                <FileRow key={file.id} file={file} cur={current(file)} admin={admin} onChange={set} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+      </SectionHead>
+      {cards.length ? (
+        <ul className={f.grid}>
+          {cards.map((file) => (
+            <FileCard
+              key={file.id}
+              p={p}
+              file={file}
+              cur={current(file)}
+              admin={admin}
+              onChange={set}
+              onOpen={() => setShown(file)}
+              nextOrder={nextOrder}
+            />
+          ))}
+        </ul>
       ) : (
-        <p className="muted">No files in its exports, web, social or project folders yet.</p>
+        <p className="muted">No images in exports, web or social yet.</p>
+      )}
+      {working.length > 0 && (
+        <details className={f.working}>
+          <summary>
+            Working files <span className={f.count}>{working.length}</span>
+          </summary>
+          <ul className={f.workingList}>
+            {working.map((file) => (
+              <li key={file.id}>
+                <span className={f.path}>{file.rel_path}</span>
+                <span className={v.mono}>{size(file.size_bytes)}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {changes.length > 0 && (
-        <div className={f.row}>
+        <div className={f.saveBar}>
           <Button
             variant="primary"
             disabled={!!problem || roles.isPending}
@@ -351,7 +395,8 @@ function Files({
                 changes.map((c) => ({
                   ...c,
                   role_filter: c.role === 'per_filter' ? (c.role_filter ?? '').trim() : '',
-                  role_order: c.role === 'progressive' ? c.role_order : null,
+                  role_order: ORDERED.has(c.role) ? c.role_order : null,
+                  role_label: c.role === 'step' ? (c.role_label ?? '').trim() : '',
                 })),
                 {
                   onSuccess: () => {
@@ -369,67 +414,88 @@ function Files({
             <span className={f.reason} role="status">
               {problem.role === 'per_filter'
                 ? 'A single-filter image needs its filter.'
-                : 'A progressive stack needs its position (1, 2, 3 …).'}
+                : problem.role === 'step' && problem.role_order
+                  ? 'A processing step needs a label.'
+                  : 'Give it a position (1, 2, 3 …).'}
             </span>
           )}
         </div>
+      )}
+      {shown && (
+        <Modal label={baseName(shown.rel_path)} onClose={() => setShown(null)}>
+          <h2 className={f.previewName}>{baseName(shown.rel_path)}</h2>
+          <img className={f.preview} src={imageUrl(p.id, shown.id, 'preview')} alt={shown.rel_path} />
+        </Modal>
       )}
     </section>
   )
 }
 
-function FileRow({
+function Thumb({ p, file, onOpen }: { p: Finished; file: FinishedFile; onOpen: () => void }) {
+  const [failed, setFailed] = useState(false)
+  if (file.missing || failed)
+    return (
+      <div className={f.thumb} aria-hidden="true">
+        <span className={f.thumbNone}>{file.missing ? 'Missing' : 'No preview'}</span>
+      </div>
+    )
+  return (
+    <button type="button" className={f.thumb} aria-label={`Preview ${file.rel_path}`} onClick={onOpen}>
+      <img src={imageUrl(p.id, file.id)} alt="" loading="lazy" onError={() => setFailed(true)} />
+    </button>
+  )
+}
+
+function FileCard({
+  p,
   file,
   cur,
   admin,
   onChange,
+  onOpen,
+  nextOrder,
 }: {
+  p: Finished
   file: FinishedFile
-  cur: Draft[number]
+  cur: Cur
   admin: boolean
-  onChange: (file: FinishedFile, next: Partial<Draft[number]>) => void
+  onChange: (file: FinishedFile, next: Partial<Cur>) => void
+  onOpen: () => void
+  nextOrder: (role: string) => number
 }) {
   const name = file.rel_path
   return (
-    <tr className={file.servable ? undefined : f.unservable}>
-      <td>
-        <span className={f.path}>{name}</span>
-        {file.missing && <div className={f.reason}>Missing</div>}
-      </td>
-      <td className={v.mono}>{size(file.size_bytes)}</td>
-      <td>
-        {file.servable ? (
-          <div className={f.roleCell}>
-            <select
-              className={f.select}
-              value={cur.role}
-              disabled={!admin}
-              aria-label={`Role of ${name}`}
-              onChange={(e) =>
-                onChange(file, {
-                  role: e.target.value,
-                  role_order: e.target.value === 'progressive' ? (cur.role_order ?? 1) : cur.role_order,
-                })
-              }
-            >
-              {Object.entries(ROLE).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            {cur.role === 'per_filter' && (
-              <input
-                className={f.input}
-                value={cur.role_filter ?? ''}
-                disabled={!admin}
-                maxLength={100}
-                placeholder="e.g. Hα"
-                aria-label={`Filter of ${name}`}
-                onChange={(e) => onChange(file, { role_filter: e.target.value })}
-              />
-            )}
-            {cur.role === 'progressive' && (
+    <li className={f.fileCard}>
+      <Thumb p={p} file={file} onOpen={onOpen} />
+      <div className={f.fileBody}>
+        <div className={f.fileName} title={name}>
+          {baseName(name)}
+        </div>
+        <div className={f.fileMeta}>
+          {file.section} · <span className={v.mono}>{size(file.size_bytes)}</span>
+        </div>
+        <select
+          className={f.select}
+          value={cur.role}
+          disabled={!admin}
+          aria-label={`Role of ${name}`}
+          onChange={(e) => {
+            const role = e.target.value
+            onChange(file, {
+              role,
+              role_order: ORDERED.has(role) && role !== cur.role ? nextOrder(role) : cur.role_order,
+            })
+          }}
+        >
+          {Object.entries(ROLE).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        {(cur.role === 'per_filter' || ORDERED.has(cur.role)) && (
+          <div className={f.roleExtra}>
+            {ORDERED.has(cur.role) && (
               <input
                 className={`${f.input} ${f.small}`}
                 type="number"
@@ -443,42 +509,168 @@ function FileRow({
                 }
               />
             )}
+            {cur.role === 'step' && (
+              <input
+                className={f.input}
+                value={cur.role_label ?? ''}
+                disabled={!admin}
+                maxLength={100}
+                placeholder="e.g. GraXpert"
+                aria-label={`Step label of ${name}`}
+                onChange={(e) => onChange(file, { role_label: e.target.value })}
+              />
+            )}
+            {cur.role === 'per_filter' && (
+              <input
+                className={f.input}
+                value={cur.role_filter ?? ''}
+                disabled={!admin}
+                maxLength={100}
+                placeholder="e.g. Hα"
+                aria-label={`Filter of ${name}`}
+                onChange={(e) => onChange(file, { role_filter: e.target.value })}
+              />
+            )}
           </div>
-        ) : (
-          <span>Not offered to the renderer</span>
         )}
-      </td>
-    </tr>
+      </div>
+    </li>
   )
 }
 
-function ProjectJson({ p, admin, write }: { p: Finished; admin: boolean; write: Actions['projectJson'] }) {
-  const reasonId = useId()
-  const why = !p.can_write_project_json
-    ? p.project_json_reason || 'This library is mounted read-only.'
-    : !p.links.length
-      ? 'Link this project to a SubStation project first.'
-      : ''
+/** The files given the Processing step role, in order: what the image looked like after each step. */
+function Steps({ p }: { p: Finished }) {
+  const steps = p.files
+    .filter((x) => x.role === 'step')
+    .sort((a, b) => (a.role_order ?? 0) - (b.role_order ?? 0))
   return (
-    <div className={f.row}>
-      <Button
-        disabled={!admin || !!why || write.isPending}
-        aria-describedby={why ? reasonId : undefined}
-        onClick={() => write.mutate(undefined, { onSuccess: () => toast('Wrote project.json.') })}
-      >
-        Write project.json
-      </Button>
-      {why && (
-        <span id={reasonId} className={f.reason}>
-          {why}
-        </span>
+    <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="steps-h">
+      <SectionHead
+        id="steps-h"
+        title="Processing steps"
+        help="Give a file the Processing step role, with its position and what you did, to show the image after each step."
+      />
+      {steps.length ? (
+        <ol className={f.steps}>
+          {steps.map((s) => (
+            <li key={s.id} className={f.step}>
+              <span className={f.stepThumb}>
+                {!s.missing && <img src={imageUrl(p.id, s.id)} alt="" loading="lazy" />}
+              </span>
+              <span className={f.stepText}>
+                <span className={v.mono}>{s.role_order ?? '?'}</span> · {s.role_label || baseName(s.rel_path)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="muted">None yet.</p>
       )}
-      {write.error && (
+    </section>
+  )
+}
+
+function Distance({
+  p,
+  admin,
+  set,
+  lookup,
+}: {
+  p: Finished
+  admin: boolean
+  set: Actions['distance']
+  lookup: Actions['lookup']
+}) {
+  const hintId = useId()
+  const manual = p.distance_source === 'manual'
+  const error = lookup.data?.error
+  return (
+    <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="distance-h">
+      <SectionHead
+        id="distance-h"
+        title="Distance"
+        help="Looked up from SIMBAD by the subject's name, or typed in. A distance you type is kept: clear it to look it up again."
+      />
+      <div className={f.distance}>
+        <DistanceInput
+          key={p.distance_ly ?? 'none'}
+          value={p.distance_ly}
+          disabled={!admin || set.isPending}
+          onSave={(n) => set.mutate(n)}
+        />
+        <span className="muted">ly</span>
+        {admin && (
+          <>
+            <Button
+              disabled={manual || lookup.isPending}
+              aria-describedby={manual ? hintId : undefined}
+              onClick={() => lookup.mutate()}
+            >
+              {lookup.isPending ? 'Looking up…' : 'Look up'}
+            </Button>
+            {p.distance_ly != null && (
+              <Button disabled={set.isPending} onClick={() => set.mutate(null)}>
+                Clear
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+      {p.distance_source && <div className={f.source}>{manual ? 'Set by hand' : p.distance_source}</div>}
+      {admin && manual && (
+        <div id={hintId} className={f.hint}>
+          Clear it to look it up.
+        </div>
+      )}
+      {error && (
         <p className={f.error} role="alert">
-          {write.error.message}
+          {error}
         </p>
       )}
-    </div>
+    </section>
+  )
+}
+
+function DistanceInput({
+  value,
+  disabled,
+  onSave,
+}: {
+  value: number | null
+  disabled: boolean
+  onSave: (n: number | null) => void
+}) {
+  const [text, setText] = useState(value == null ? '' : String(value))
+  const commit = () => {
+    const t = text.replace(/[,\s]/g, '')
+    if (t === '') {
+      if (value != null) onSave(null)
+      return
+    }
+    const n = Number(t)
+    if (!Number.isFinite(n) || n <= 0) {
+      setText(value == null ? '' : String(value))
+      return
+    }
+    if (n !== value) onSave(n)
+  }
+  return (
+    <input
+      className={`${f.input} ${f.distanceInput}`}
+      inputMode="decimal"
+      value={text}
+      disabled={disabled}
+      placeholder="—"
+      aria-label="Distance in light years"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          e.currentTarget.blur() // blurring saves it
+        }
+      }}
+    />
   )
 }
 

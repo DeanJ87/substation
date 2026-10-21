@@ -119,25 +119,4 @@ describe('Settings → Library: finished work and the site (spec 020)', () => {
       ),
     )
   })
-
-  it('edits the default processing steps', async () => {
-    const { api } = await renderRoute('/settings#finished', {
-      'GET /settings': { ...ADMIN, default_processing: ['GraXpert'] },
-      'PUT /finished/defaults/processing': (b: unknown) => (b as { steps: string[] }).steps,
-    })
-    const list = await screen.findByRole('list', { name: 'Default processing steps' })
-    expect(within(list).getByRole('textbox', { name: 'Step 1' })).toHaveValue('GraXpert')
-    fireEvent.change(screen.getByRole('textbox', { name: 'New step' }), {
-      target: { value: 'NoiseXTerminator' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Add step' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save steps' }))
-    await waitFor(() =>
-      expect(api.calls).toContainEqual({
-        method: 'PUT',
-        path: '/finished/defaults/processing',
-        body: { steps: ['GraXpert', 'NoiseXTerminator'] },
-      }),
-    )
-  })
 })

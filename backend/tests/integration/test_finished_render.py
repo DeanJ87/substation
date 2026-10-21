@@ -178,8 +178,6 @@ def _linked(heart) -> FinishedProject:
     scan_all()
     p = FinishedProject.objects.get()
     p.linked_projects.set([heart])
-    p.processing = ["GraXpert", "BlurXTerminator"]
-    p.save()
     return p
 
 
@@ -202,8 +200,9 @@ def test_render_data_matches_the_app_totals_and_omits_what_isnt_known(completed,
     assert data["quality"][0]["fwhm_arcsec"] == 2.1 and "fwhm" not in data["quality"][0]
     assert data["target"]["ra_deg"] == 38.2
     assert data["capture"]["rigs"][0]["pixel_scale_arcsec"] == 1.55
-    assert data["frames"]["final"].startswith("/api/v1/render/projects/")  # root-relative, like project.json
-    assert data["processing"] == ["GraXpert", "BlurXTerminator"]
+    assert data["frames"]["final"].startswith("/api/v1/render/projects/")  # root-relative
+    assert "processing" not in data and "steps" not in data["frames"]  # no step images: left out
+    assert "distance_ly" not in data["target"]
     assert "annotations" not in data  # unsolved: left out, not faked
     assert set(data["frames"]) >= {"final", "starless", "stars", "thumb"}
 
@@ -256,24 +255,6 @@ def test_tokens_are_shown_once_and_revocable(admin_client):
     assert bearer(secret).get("/api/v1/render/projects").status_code == 401
 
 
-def test_project_json_needs_a_writable_library_and_never_overwrites_a_foreign_one(
-    completed, heart, admin_client, monkeypatch
-):
-    lib, folder = completed
-    p = _linked(heart)
-    monkeypatch.setattr("apps.libraries.access.is_writable", lambda lib: False)
-    r = admin_client.post(f"/api/v1/finished/{p.pk}/project-json")
-    assert r.status_code == 409
-    monkeypatch.setattr("apps.libraries.access.is_writable", lambda lib: True)
-    r = admin_client.post(f"/api/v1/finished/{p.pk}/project-json")
-    assert r.status_code == 200, r.content
-    written = json.loads((folder / "project.json").read_text())
-    assert written["project"]["name"] == "2026 Heart Nebula"
-    assert admin_client.post(f"/api/v1/finished/{p.pk}/project-json").status_code == 200  # ours: rewrite ok
-    (folder / "project.json").write_text("{}")
-    assert admin_client.post(f"/api/v1/finished/{p.pk}/project-json").status_code == 409
-
-
 def _lat_lon_from_track(data) -> tuple[float, float]:
     """Brute-force the site that best explains the track points at the sub times (what an attacker would do)."""
     from apps.processing.sky import alt_az
@@ -310,16 +291,6 @@ def test_a_time_without_a_zone_is_read_as_utc(completed, heart, token):
     _linked(heart)
     r = bearer(token).get("/api/v1/render/projects", {"since": "2000-01-01T00:00:00"})
     assert r.status_code == 200 and len(r.json()["projects"]) == 1
-
-
-def test_default_processing_can_be_set(admin_client):
-    r = admin_client.put(
-        "/api/v1/finished/defaults/processing",
-        data=json.dumps({"steps": ["GraXpert", " ", "NoiseXTerminator"]}),
-        content_type="application/json",
-    )
-    assert r.status_code == 200, r.content
-    assert r.json() == ["GraXpert", "NoiseXTerminator"]
 
 
 def test_an_empty_mount_keeps_the_last_known_projects(completed, heart, token, tmp_path):
@@ -392,20 +363,6 @@ def test_a_site_with_only_rejected_subs_still_has_an_id(completed, heart, token)
     assert all("site" in q for q in data["quality"])
 
 
-def test_a_folder_substation_cant_write_gives_a_reason_not_a_500(completed, heart, admin_client, monkeypatch):
-    lib, folder = completed
-    p = _linked(heart)
-    monkeypatch.setattr("apps.libraries.access.is_writable", lambda lib: True)
-
-    def denied(self, data):  # noqa: ANN001
-        raise PermissionError(13, "Permission denied")
-
-    monkeypatch.setattr("pathlib.Path.write_bytes", denied)
-    r = admin_client.post(f"/api/v1/finished/{p.pk}/project-json")
-    assert r.status_code == 409
-    assert r.json()["code"] == "no_permission"
-
-
 def test_a_single_field_project_is_never_a_mosaic_whatever_the_subs_say(completed, heart, token):
     """Subs carry panels 1 and 2, but the owner says the project is one field (020-DR-10)."""
     heart.kind, heart.planned_panels = "single", None
@@ -451,3 +408,106 @@ def test_updated_at_moves_whenever_the_render_data_can_change_and_only_then(comp
     heart.kind, heart.planned_panels = "single", None
     heart.save()
     assert stamp() > moved
+
+
+def test_step_images_are_ordered_and_labelled_from_their_names(completed, heart, token, admin_client):
+    """020-DR-14: heart-step-<n>-<what>.png become frames.steps; processing lists their labels."""
+    lib, folder = completed
+    _png(folder / "exports" / "heart-step-2-graxpert+nxt.png")
+    _png(folder / "exports" / "heart-step-1-master.png")
+    _png(folder / "exports" / "heart-step-3-graxpert+nxt+bxt.png")
+    p = _linked(heart)
+    c = bearer(token)
+    data = c.get(f"/api/v1/render/projects/{p.pk}").json()
+    steps = data["frames"]["steps"]
+    assert [s["order"] for s in steps] == [1, 2, 3]
+    assert [s["label"] for s in steps] == [
+        "Master",
+        "GraXpert + NoiseXTerminator",
+        "GraXpert + NoiseXTerminator + BlurXTerminator",
+    ]
+    assert data["processing"] == [s["label"] for s in steps]
+    assert data["frames"]["final"] != steps[0]["url"]
+    assert c.get(steps[1]["url"]).status_code == 200
+
+    f = p.files.get(rel_path="exports/heart-step-2-graxpert+nxt.png")
+    r = admin_client.put(
+        f"/api/v1/finished/{p.pk}/roles",
+        data=json.dumps(
+            {"roles": [{"file_id": f.pk, "role": "step", "role_order": 2, "role_label": "GraXpert"}]}
+        ),
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.content
+    scan_all()  # a rescan never undoes the owner's label
+    data = c.get(f"/api/v1/render/projects/{p.pk}").json()
+    assert data["frames"]["steps"][1]["label"] == "GraXpert"
+
+
+def test_distance_is_the_owners_figure_or_a_simbad_look_up_and_the_owners_wins(
+    completed, heart, token, admin_client, monkeypatch
+):
+    """020-DR-13."""
+    p = _linked(heart)
+    calls = []
+
+    def fake(names):  # noqa: ANN001
+        calls.append(names)
+        return 6900.4, "SIMBAD: IC 1805, median of 9 measurements"
+
+    monkeypatch.setattr("apps.finished.distance.lookup", fake)
+    r = admin_client.post(f"/api/v1/finished/{p.pk}/distance/lookup")
+    assert r.status_code == 200, r.content
+    assert calls[0][0] == "IC 1805"  # catalogue designations first
+    t = bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()["target"]
+    assert t["distance_ly"] == 6900 and t["distance_source"].startswith("SIMBAD")
+
+    r = admin_client.put(
+        f"/api/v1/finished/{p.pk}/distance",
+        data=json.dumps({"distance_ly": 7500}),
+        content_type="application/json",
+    )
+    assert r.json()["distance_source"] == "manual"
+    assert (
+        admin_client.post(f"/api/v1/finished/{p.pk}/distance/lookup").status_code == 409
+    )  # never over yours
+    t = bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()["target"]
+    assert (t["distance_ly"], t["distance_source"]) == (7500, "manual")
+
+    admin_client.put(
+        f"/api/v1/finished/{p.pk}/distance",
+        data=json.dumps({"distance_ly": None}),
+        content_type="application/json",
+    )
+    assert "distance_ly" not in bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()["target"]
+
+
+def test_simbad_distances_are_the_median_in_light_years(monkeypatch):
+    from apps.finished import distance
+
+    rows = {"IC 434": [], "B 33": [[400, "pc  "], [0.5, "kpc "], [430, "pc"]]}
+    monkeypatch.setattr(distance, "_fetch", lambda name: rows.get(name, []))
+    found = distance.lookup(["IC 434", "B 33"])
+    assert found is not None
+    ly, source = found
+    assert round(ly) == round(430 * distance.LY_PER_PC)
+    assert source == "SIMBAD: B 33, median of 3 measurements"
+    assert distance.lookup(["IC 434"]) is None
+
+
+def test_the_app_gets_thumbnails_of_output_files_and_only_relevant_suggestions(
+    completed, heart, admin_client
+):
+    scan_all()
+    p = FinishedProject.objects.get()
+    f = p.files.get(rel_path="exports/heart-final.png")
+    r = admin_client.get(f"/api/v1/finished/{p.pk}/files/{f.pk}/image")
+    assert r.status_code == 200 and r["Content-Type"] == "image/jpeg"
+    assert admin_client.get(f"/api/v1/finished/{p.pk}/files/{f.pk}/image?size=preview").status_code == 200
+    working = p.files.get(rel_path="project/heart.xisf")
+    assert admin_client.get(f"/api/v1/finished/{p.pk}/files/{working.pk}/image").status_code == 404
+
+    other = Collection.objects.create(name="North America Nebula", objects_text="NGC 7000")
+    Project.objects.create(collection=other, name="2026", kind="single")
+    names = [s["collection_name"] for s in admin_client.get(f"/api/v1/finished/{p.pk}/suggestions").json()]
+    assert names == ["Heart Nebula"]  # same target; a shared year alone isn't a reason

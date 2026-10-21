@@ -92,22 +92,9 @@ panel, and no field carries site coordinates.
 3. **Given** subs shot at a site, **When** the render data is built, **Then** it carries only the site's region
    name, Bortle class and latitude rounded to whole degrees.
 
-### User Story 5 - Write project.json into the project folder (Priority: P3)
+### User Story 5 - Write project.json into the project folder (withdrawn 2026-10-21, 020-DR-12)
 
-The owner can ask SubStation to write the render data as `project.json` in the project folder, so the folder
-carries its own description. Only when the library is read-write, and only that one file.
-
-**Why this priority**: useful for archives and other tools; the API already covers the renderer.
-
-**Independent Test**: on a read-write Completed library, "Write project.json" creates the file; on a read-only one
-the action is disabled with the reason.
-
-**Acceptance Scenarios**:
-
-1. **Given** a read-write Completed library, **When** the owner writes project.json, **Then** the file appears with
-   the same content the API returns, and no other file is touched.
-2. **Given** an existing project.json that SubStation didn't write, **When** the owner writes it, **Then**
-   SubStation refuses and says why, rather than overwriting it.
+The renderer reads the live render API; SubStation no longer writes into the project folder.
 
 ### Edge Cases
 
@@ -129,7 +116,7 @@ the action is disabled with the reason.
 ### Functional Requirements
 
 - **020-FR-001** A library can have the Completed role (alongside Active and Archive, spec 013). It is scanned
-  read-only; SubStation never changes files in it except writing `project.json` when the owner asks (FR-014).
+  read-only; SubStation never writes into it (020-DR-12).
 - **020-FR-002** In a Completed library, a folder at `<kind>/<subject>/<name>/` is a finished project when `<kind>` is
   Astro, Nightscapes or Videos. Files under its `exports/`, `web/` and `social/` are its outputs; `project/` holds
   working files and is listed but never served.
@@ -169,9 +156,8 @@ the action is disabled with the reason.
 - **020-FR-013** The render API offers: list finished projects (linked, with a final image) changed since a given
   time; one project's render data; and each of its files by role, plus a thumbnail. Only display-ready image formats
   (PNG, JPEG, TIFF) are offered as files.
-- **020-FR-014** On a read-write Completed library, the owner can write the render data as `project.json` in the
-  project folder. SubStation refuses if a `project.json` exists that it didn't write, and never writes any other
-  file there.
+- **020-FR-014** *(Withdrawn 2026-10-21, 020-DR-12.)* SubStation no longer writes `project.json`; the renderer reads
+  the live render API.
 - **020-FR-015** The render API is described by a versioned contract published in this spec
   (`contracts/render-api.openapi.yaml`) and in the app's API schema; the renderer generates its client from it.
   Changing a field's meaning or removing a field needs a new schema version; adding optional fields doesn't.
@@ -185,7 +171,7 @@ the action is disabled with the reason.
   starless, stars, per-filter + filter name, progressive + order).
 - **Project link**: a finished project ↔ SubStation project, with how it was suggested.
 - **API token**: name, hashed secret, scope (render read), created, expires, last used, revoked.
-- **Render data**: the versioned description built on request (and optionally written as project.json).
+- **Render data**: the versioned description built on request.
 
 ## Success Criteria
 
@@ -253,3 +239,20 @@ the action is disabled with the reason.
   descriptions. When the fingerprint changes, `updated_at` becomes that moment; otherwise it stays put. Moving a
   dataset into a linked project or changing a project's kind therefore shows up in `since` polling, which a
   newest-timestamp rule missed.
+- **020-DR-12** (2026-10-21) Writing `project.json` is withdrawn (FR-014 and User Story 5). The renderer reads only
+  the live render API with its token, and a file in the folder was a stale snapshot that disagreed with it. The
+  button, the route and the stored hash are gone, and SubStation never writes into a Completed library. The two files
+  it had written were removed after checking each still matched the hash SubStation recorded.
+- **020-DR-13** (2026-10-21) The render data's `target` carries `distance_ly` (whole light years) and
+  `distance_source`. The owner types the distance on the finished project's page (source "manual"), or presses Look
+  up, which asks SIMBAD for the median of the published measurements of the first of the target's designations it
+  knows (catalogue numbers first). The result is stored with where it came from. A manual figure is never replaced
+  by a look-up until the owner clears it. Nothing is looked up while rendering.
+- **020-DR-14** (2026-10-21) Processing steps come from images, not typed labels. A new file role, Processing step,
+  is guessed from export names `<name>-step-<n>-<what>` (`heart-step-2-graxpert+nxt.png`): `n` is the order and the
+  rest is the label, with common tools spelled out (GraXpert, NoiseXTerminator, BlurXTerminator, StarXTerminator,
+  SPCC …). The owner can change a step's order and label; a rescan never undoes that. The render data lists them as
+  `frames.steps: [{order, label, url}]` (file key `step/<n>`), and `processing` becomes those labels in order. The
+  typed processing list and the default steps in Settings are gone. Link suggestions now need a shared catalogue
+  number or name (a shared year only ranks them), at most five. The app shows each output file as a thumbnail with
+  a larger preview.

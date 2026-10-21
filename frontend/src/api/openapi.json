@@ -2303,20 +2303,24 @@
     "title": "DatasetsMoveOut",
     "type": "object"
    },
-   "DefaultsIn": {
+   "DistanceIn": {
     "properties": {
-     "steps": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Steps",
-      "type": "array"
+     "distance_ly": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Distance Ly"
      }
     },
     "required": [
-     "steps"
+     "distance_ly"
     ],
-    "title": "DefaultsIn",
+    "title": "DistanceIn",
     "type": "object"
    },
    "Field": {
@@ -2382,6 +2386,10 @@
       "title": "Role Filter",
       "type": "string"
      },
+     "role_label": {
+      "title": "Role Label",
+      "type": "string"
+     },
      "role_order": {
       "anyOf": [
        {
@@ -2416,6 +2424,7 @@
      "role",
      "role_filter",
      "role_order",
+     "role_label",
      "key"
     ],
     "title": "FileOut",
@@ -2482,13 +2491,24 @@
    },
    "FinishedOut": {
     "properties": {
-     "can_write_project_json": {
-      "title": "Can Write Project Json",
-      "type": "boolean"
-     },
      "changed_at": {
       "format": "date-time",
       "title": "Changed At",
+      "type": "string"
+     },
+     "distance_ly": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Distance Ly"
+     },
+     "distance_source": {
+      "title": "Distance Source",
       "type": "string"
      },
      "files": {
@@ -2529,15 +2549,8 @@
       "title": "Offered",
       "type": "boolean"
      },
-     "processing": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Processing",
-      "type": "array"
-     },
-     "project_json_reason": {
-      "title": "Project Json Reason",
+     "path": {
+      "title": "Path",
       "type": "string"
      },
      "reason": {
@@ -2564,11 +2577,11 @@
      "offered",
      "reason",
      "links",
-     "processing",
      "files",
      "changed_at",
-     "can_write_project_json",
-     "project_json_reason"
+     "distance_ly",
+     "distance_source",
+     "path"
     ],
     "title": "FinishedOut",
     "type": "object"
@@ -7000,22 +7013,6 @@
     "title": "PreviewSample",
     "type": "object"
    },
-   "ProcessingIn": {
-    "properties": {
-     "steps": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Steps",
-      "type": "array"
-     }
-    },
-    "required": [
-     "steps"
-    ],
-    "title": "ProcessingIn",
-    "type": "object"
-   },
    "ProcessingOut": {
     "properties": {
      "calibration": {
@@ -8346,6 +8343,14 @@
       "title": "Datasets",
       "type": "integer"
      },
+     "filters": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Filters",
+      "type": "array"
+     },
      "focal_mm": {
       "anyOf": [
        {
@@ -8491,6 +8496,11 @@
      "role_filter": {
       "default": "",
       "title": "Role Filter",
+      "type": "string"
+     },
+     "role_label": {
+      "default": "",
+      "title": "Role Label",
       "type": "string"
      },
      "role_order": {
@@ -9615,14 +9625,6 @@
      "cpu_threads": {
       "title": "Cpu Threads",
       "type": "integer"
-     },
-     "default_processing": {
-      "default": [],
-      "items": {
-       "type": "string"
-      },
-      "title": "Default Processing",
-      "type": "array"
      },
      "filter_aliases": {
       "additionalProperties": {
@@ -17694,47 +17696,6 @@
     ]
    }
   },
-  "/finished/defaults/processing": {
-   "put": {
-    "operationId": "apps_finished_api_manage_set_default_processing",
-    "parameters": [],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/DefaultsIn"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "type": "string"
-         },
-         "title": "Response",
-         "type": "array"
-        }
-       }
-      },
-      "description": "OK"
-     }
-    },
-    "security": [
-     {
-      "SessionAuth": []
-     }
-    ],
-    "summary": "Set Default Processing",
-    "tags": [
-     "finished"
-    ]
-   }
-  },
   "/finished/{id}": {
    "get": {
     "operationId": "apps_finished_api_manage_get_finished",
@@ -17767,6 +17728,145 @@
      }
     ],
     "summary": "Get Finished",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/distance": {
+   "put": {
+    "description": "The owner's own figure (020-DR-13); it wins over a look-up until cleared.",
+    "operationId": "apps_finished_api_manage_set_distance",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DistanceIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Set Distance",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/distance/lookup": {
+   "post": {
+    "description": "Ask SIMBAD (020-DR-13). Never replaces a figure the owner typed.",
+    "operationId": "apps_finished_api_manage_lookup_distance",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Lookup Distance",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/files/{file_id}/image": {
+   "get": {
+    "description": "A JPEG of one output file for the app: `thumb` for the grid, `preview` to look closer. Never the original,\nwhich can be a 300 MB TIFF.",
+    "operationId": "apps_finished_api_manage_file_image",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "file_id",
+      "required": true,
+      "schema": {
+       "title": "File Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "size",
+      "required": false,
+      "schema": {
+       "default": "thumb",
+       "title": "Size",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "File Image",
     "tags": [
      "finished"
     ]
@@ -17814,91 +17914,6 @@
      }
     ],
     "summary": "Set Links",
-    "tags": [
-     "finished"
-    ]
-   }
-  },
-  "/finished/{id}/processing": {
-   "put": {
-    "operationId": "apps_finished_api_manage_set_processing",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "id",
-      "required": true,
-      "schema": {
-       "title": "Id",
-       "type": "integer"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ProcessingIn"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/FinishedOut"
-        }
-       }
-      },
-      "description": "OK"
-     }
-    },
-    "security": [
-     {
-      "SessionAuth": []
-     }
-    ],
-    "summary": "Set Processing",
-    "tags": [
-     "finished"
-    ]
-   }
-  },
-  "/finished/{id}/project-json": {
-   "post": {
-    "description": "020-FR-014: only in a read-write library; never over a project.json SubStation didn't write.",
-    "operationId": "apps_finished_api_manage_write_project_json",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "id",
-      "required": true,
-      "schema": {
-       "title": "Id",
-       "type": "integer"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/FinishedOut"
-        }
-       }
-      },
-      "description": "OK"
-     }
-    },
-    "security": [
-     {
-      "SessionAuth": []
-     }
-    ],
-    "summary": "Write Project Json",
     "tags": [
      "finished"
     ]
@@ -18030,7 +18045,7 @@
   },
   "/finished/{id}/suggestions": {
    "get": {
-    "description": "Ranked SubStation projects to link (020-FR-004): catalogue numbers and names in common.\nTODO(020 T018): add plate-solve field overlap once finished images are solved.",
+    "description": "SubStation projects to link (020-FR-004): only those sharing a catalogue number or the name; the year only\nranks them. TODO(020 T018): add plate-solve field overlap once finished images are solved.",
     "operationId": "apps_finished_api_manage_suggestions",
     "parameters": [
      {

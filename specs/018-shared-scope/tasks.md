@@ -22,3 +22,4 @@
   passes the scope's nights; selection bars on scoped lists keep only rows still shown (018-DR-11, 018-DR-12); tests
 - [X] SC8 (2026-10-15) Review fixes: scoped card hours from the subs, rig names shared by several rigs, empty state and
   picker from the whole library (018-DR-13..15); tests
+- [X] SC9 (2026-10-22) Rigs list their filters; the filter bar narrows filters to the chosen rig (018-DR-16); tests

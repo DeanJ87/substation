@@ -174,7 +174,6 @@ class SettingsOut(Schema):
     site_lon: float | None
     site_region: str = ""  # spec 020
     site_bortle: int | None = None  # spec 020
-    default_processing: list[str] = []  # spec 020: a new finished project's processing steps
     filter_aliases: dict[str, str]
     worker_count: int | None
     siril_heavy_slots: int
@@ -380,7 +379,6 @@ def _out(s: InstallationSettings) -> SettingsOut:
         site_name=s.site_name,
         site_region=s.site_region,
         site_bortle=s.site_bortle,
-        default_processing=list(s.default_processing or []),
         site_lat=s.site_lat,
         site_lon=s.site_lon,
         filter_aliases=s.filter_aliases or {},

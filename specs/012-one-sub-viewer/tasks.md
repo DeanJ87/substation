@@ -26,3 +26,4 @@
   at any window shape (they drifted into the dead space of a fixed 3:2 box)
 - [X] V12 (2026-10-15) Sub tiles show the capture time and exposure, FWHM, stars and guiding RMS; the file name on
   hover (they showed "…_026" or a cut-off name)
+- [X] V13 (2026-10-22) Night page: the viewer follows the strips' order (012-DR-06)

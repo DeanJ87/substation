@@ -22,8 +22,8 @@ paths:
           required: false
           schema: { type: string, format: date-time }
           description: >
-            Projects whose render data may have changed after this time (020-DR-11): their files, links, roles or
-            processing; the linked projects' kind, panels and collection; datasets moved in or out of them and
+            Projects whose render data may have changed after this time (020-DR-11): their files, links, roles,
+            step labels or distance; the linked projects' kind, panels and collection; datasets moved in or out of them and
             those datasets' counts; their subs, grades, verdicts, measurements and plate solves; site
             descriptions. updated_at moves only when one of those changes. Pass the newest updated_at you have
             seen; it is the same moment in the list and in the render data.
@@ -65,7 +65,7 @@ paths:
       summary: A project file by role key
       description: >
         Keys: final, starless, stars, thumb, per_filter/<filter name, URL-encoded, e.g. H%CE%B1>,
-        progressive/<n> (1-based). PNG, JPEG or TIFF only.
+        progressive/<n> (1-based), step/<n> (1-based, 020-DR-14). PNG, JPEG or TIFF only.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: key, in: path, required: true, schema: { type: string } }
@@ -125,7 +125,10 @@ components:
             constellation: { type: string }
             ra_deg: { type: number }
             dec_deg: { type: number }
-            distance_ly: { type: number }
+            distance_ly: { type: number, description: "020-DR-13: whole light years; left out when unknown" }
+            distance_source:
+              type: string
+              description: '"manual" when the owner typed it, otherwise where a look-up found it, e.g. "SIMBAD: IC 1805, median of 9 measurements"'
             size_arcmin: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
         capture:
           type: object
@@ -234,6 +237,16 @@ components:
             thumb: { type: string }
             per_filter: { type: object, additionalProperties: { type: string } }
             progressive: { type: array, items: { type: string } }
+            steps:
+              type: array
+              description: 020-DR-14 processing step images in order (export files named <name>-step-<n>-<what>)
+              items:
+                type: object
+                required: [order, url]
+                properties:
+                  order: { type: integer, minimum: 1 }
+                  label: { type: string, description: 'e.g. "GraXpert + NoiseXTerminator"' }
+                  url: { type: string }
         annotations:
           type: array
           items:
@@ -245,4 +258,7 @@ components:
               x: { type: number, minimum: 0, maximum: 1 }
               y: { type: number, minimum: 0, maximum: 1 }
               mag: { type: number }
-        processing: { type: array, items: { type: string } }
+        processing:
+          type: array
+          items: { type: string }
+          description: The step labels from frames.steps, in order (020-DR-14); left out when there are no step images

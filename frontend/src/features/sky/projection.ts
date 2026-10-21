@@ -102,9 +102,14 @@ export function hourTicks(start: number, end: number): number[] {
   return out
 }
 
-// ---- the dome seen from the side (owner 2026-10-15) ---------------------------------------------------------
-// The sky as a wireframe dome over a horizon ellipse, seen from a little above and to one side: the viewer faces
-// `yaw` (an azimuth; 180 faces south, where most targets cross the meridian) and looks down by `tilt` degrees.
+// ---- the dome seen from outside (owner 2026-10-15; viewpoint settled 2026-10-22) ----------------------------
+// The sky as a see-through wireframe dome standing on a horizon disc, seen from outside and above: the viewer stands
+// on the far side from `yaw` (an azimuth; 180 looks south, where most targets cross the meridian), looks towards it,
+// and looks down by `tilt` degrees. The half of the dome facing the viewer (`front`) is a faint shell to look
+// through; the far half is seen from inside, so a target on it shows as it did from the ground facing `yaw`: looking
+// south, east on the left. From straight above, north at the top, east is on the right (the 2D view, from below
+// looking up, has it on the left: the same sky, mirrored by where you stand). Turning the view (yaw up) carries the
+// near shell to the right, as a globe turns under a finger dragged right.
 
 export type View = { yaw: number; tilt: number }
 export const DEFAULT_VIEW: View = { yaw: 180, tilt: 32 }
@@ -112,7 +117,8 @@ export type Pt3 = Pt & { front: boolean }
 
 const rad = (d: number) => (d * Math.PI) / 180
 
-/** Where (altitude, azimuth) lands on the drawing; `front` is true on the half of the dome facing the viewer. */
+/** Where (altitude, azimuth) lands on the drawing; `front` is true on the near half, the shell between the viewer
+ * and the far wall. */
 export function project3d(alt: number, az: number, view: View = DEFAULT_VIEW, r = R): Pt3 {
   const e = Math.sin(rad(az)) * Math.cos(rad(alt))
   const n = Math.cos(rad(az)) * Math.cos(rad(alt))
@@ -125,7 +131,17 @@ export function project3d(alt: number, az: number, view: View = DEFAULT_VIEW, r 
   return {
     x: round(right * r),
     y: round(-up * r),
-    front: -ahead * Math.cos(tilt) + u * Math.sin(tilt) >= -1e-9,
+    front: -ahead * Math.cos(tilt) + u * Math.sin(tilt) > 1e-9,
+  }
+}
+
+/** The view after dragging `dx`, `dy` pixels from `from`: the near shell follows the pointer (right turns the
+ * view's yaw up, carrying the near side right), and dragging down looks from higher up, tipping the top towards you. */
+export function dragView(from: View, dx: number, dy: number): View {
+  const yaw = from.yaw + dx * 0.4
+  return {
+    yaw: ((yaw % 360) + 360) % 360,
+    tilt: Math.min(85, Math.max(8, from.tilt + dy * 0.3)),
   }
 }
 
@@ -136,14 +152,14 @@ export function domeBox(view: View = DEFAULT_VIEW, r = R) {
   return { x: -r - 14, y: top, w: 2 * r + 28, h: bottom - top }
 }
 
-/** A line along the sky (a ring or a meridian), as front and back pieces so the far side can be drawn fainter. */
-export function skyLine(points: [alt: number, az: number][], view: View = DEFAULT_VIEW, r = R) {
+/** Points along the sky in pieces on the far wall (`back`) and the near shell (`front`), so each half can be drawn
+ * in its own layer and weight; a piece crossing the dome's outline ends on it. */
+export function splitSides(points: Pt3[]): { front: Pt[][]; back: Pt[][] } {
   const front: Pt[][] = []
   const back: Pt[][] = []
   let run: Pt[] = []
   let side: boolean | null = null
-  for (const [alt, az] of points) {
-    const p = project3d(alt, az, view, r)
+  for (const p of points) {
     if (side !== null && p.front !== side) {
       run.push(p)
       ;(side ? front : back).push(run)
@@ -152,6 +168,12 @@ export function skyLine(points: [alt: number, az: number][], view: View = DEFAUL
     side = p.front
   }
   if (run.length > 1 && side !== null) (side ? front : back).push(run)
+  return { front, back }
+}
+
+/** A line along the sky (a ring or a meridian), as near and far paths so each half can be drawn in its own way. */
+export function skyLine(points: [alt: number, az: number][], view: View = DEFAULT_VIEW, r = R) {
+  const { front, back } = splitSides(points.map(([alt, az]) => project3d(alt, az, view, r)))
   return { front: front.map(polyline).join(' '), back: back.map(polyline).join(' ') }
 }
 
@@ -162,13 +184,15 @@ export const azArc = (az: number) => Array.from({ length: 19 }, (_, i) => [i * 5
 
 // ---- from the drawing back to the sky (the survey behind the dome) ------------------------------------------
 
-/** The sky at a point of the drawing, on the side of the dome facing the viewer; null off the dome and below the horizon.
- * The inverse of project3d for near-side points. */
+/** The sky at a point of the drawing: on the far wall (seen from inside, through the near shell) or, with `side`
+ * 'front', on the near shell itself; null off the dome, and on the far wall where the line of sight reaches the floor
+ * first. The inverse of project3d for points on that side. */
 export function unproject(
   x: number,
   y: number,
   view: View = DEFAULT_VIEW,
   r = R,
+  side: 'back' | 'front' = 'back',
 ): { alt: number; az: number } | null {
   const sx = x / r
   const up = -y / r
@@ -176,18 +200,14 @@ export function unproject(
   if (rest < 0) return null
   const tilt = rad(view.tilt)
   const yaw = rad(view.yaw)
-  // the side of the dome facing the viewer, where the tracks of a target faced from behind also lie, so the sky behind
-  // a track is the sky at that track (2026-10-16); seen from above, the shell covers the floor
-  for (const t of [-Math.sqrt(rest)]) {
-    const ahead = up * Math.sin(tilt) + t * Math.cos(tilt)
-    const u = up * Math.cos(tilt) - t * Math.sin(tilt)
-    if (u < 0) return null
-    const e = sx * Math.cos(yaw) + ahead * Math.sin(yaw)
-    const n = -sx * Math.sin(yaw) + ahead * Math.cos(yaw)
-    const az = (Math.atan2(e, n) * 180) / Math.PI
-    return { alt: (Math.asin(Math.min(1, u)) * 180) / Math.PI, az: (az + 360) % 360 }
-  }
-  return null
+  const t = (side === 'back' ? 1 : -1) * Math.sqrt(rest) // depth away from the viewer
+  const ahead = up * Math.sin(tilt) + t * Math.cos(tilt)
+  const u = up * Math.cos(tilt) - t * Math.sin(tilt)
+  if (u < 0) return null
+  const e = sx * Math.cos(yaw) + ahead * Math.sin(yaw)
+  const n = -sx * Math.sin(yaw) + ahead * Math.cos(yaw)
+  const az = (Math.atan2(e, n) * 180) / Math.PI
+  return { alt: (Math.asin(Math.min(1, u)) * 180) / Math.PI, az: (az + 360) % 360 }
 }
 
 /** Local sidereal time in degrees at `t` (ms since 1970) and east longitude `lon`. */
@@ -313,8 +333,8 @@ export function frameOnDome(
   }
 }
 
-/** Which way to face to see a target on the far wall, from inside (2026-10-16): its usual azimuth, to the nearest
- * eighth of a turn. */
+/** Which way to look to see a target on the far wall (2026-10-16): its usual azimuth, to the nearest eighth of a
+ * turn. */
 export function facingOf(subs: { az: number }[]): number {
   if (!subs.length) return DEFAULT_VIEW.yaw
   const x = subs.reduce((a, u) => a + Math.cos((u.az * Math.PI) / 180), 0)
@@ -323,8 +343,8 @@ export function facingOf(subs: { az: number }[]): number {
   return (Math.round(az / 45) * 45) % 360
 }
 
-/** Where to start looking from for a target (2026-10-16): facing it, so its track is on the far wall seen from
- * inside, and from higher up the higher it was, so a track near the zenith sits inside the dome, not on its rim. */
+/** Where to start looking from for a target (2026-10-16): looking towards it, so its track is on the far wall,
+ * seen through the near shell, and from higher up the higher it was, so a track near the zenith sits inside the dome, not on its rim. */
 export function homeFor(subs: { az: number; alt: number }[]): View {
   if (!subs.length) return DEFAULT_VIEW
   const alts = subs.map((x) => x.alt).sort((a, b) => a - b)

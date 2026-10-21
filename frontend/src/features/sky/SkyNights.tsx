@@ -11,7 +11,7 @@ import type { components } from '../../api/schema'
 import type { Scope } from '../scope/scope'
 import { integrationText, shortDateText } from '../format'
 import { Dome, type DomeCtx, middle } from './Dome'
-import { type Pt, type Shape, SHAPES, homeFor, marker, polyline, series } from './projection'
+import { type Pt3, type Shape, SHAPES, homeFor, marker, series } from './projection'
 import s from './sky.module.css'
 import { CameraFrame, fovText, useWidth } from './SkyView'
 
@@ -133,8 +133,9 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
     !hiddenFilters.has(x.filter ?? '') &&
     (!at || x.night < at.night || (x.night === at.night && Date.parse(x.time) <= at.t))
 
-  const draw = ({ proj, k, view }: DomeCtx) => {
-    const bySeg = new Map<string, { night: number; filter: string; pts: Pt[] }>()
+  // drawn once for the far wall and again for the near shell in front of it
+  const draw = ({ proj, k, view, here, line }: DomeCtx) => {
+    const bySeg = new Map<string, { night: number; filter: string; pts: Pt3[] }>()
     for (const x of sky.subs.filter(shownSub)) {
       const key = `${x.night}:${x.dataset_id}:${x.segment}`
       const seg = bySeg.get(key) ?? { night: x.night, filter: x.filter ?? '', pts: [] }
@@ -148,17 +149,22 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
         {[...bySeg]
           .filter(([, seg]) => seg.pts.length > 1)
           .sort((a, b) => order(a[1].night) - order(b[1].night))
-          .map(([key, seg]) => (
-            <path
-              key={key}
-              d={polyline(seg.pts)}
-              className={s.track}
-              markerEnd="url(#sky-arrow)"
-              style={{ stroke: filterColour(seg.filter), opacity: opacity(seg.night) }}
-            />
-          ))}
+          .map(([key, seg]) => {
+            const d = line(seg.pts)
+            if (!d) return null
+            return (
+              <path
+                key={key}
+                d={d}
+                className={s.track}
+                markerEnd={here(seg.pts[seg.pts.length - 1]) ? 'url(#sky-arrow)' : undefined}
+                style={{ stroke: filterColour(seg.filter), opacity: opacity(seg.night) }}
+              />
+            )
+          })}
         {sky.subs
           .filter(shownSub)
+          .filter((x) => here(proj(x.alt, x.az)))
           .sort((a, b) => order(a.night) - order(b.night))
           .map((x) => (
             <path
@@ -180,6 +186,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
             lon={sky.lon}
             t={t}
             view={view}
+            here={here}
             colour={colour}
             label={`The camera’s frame, ${fovText(sky.fov)}`}
           />
@@ -196,7 +203,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
         t={t}
         spin={playing}
         label={(way) =>
-          `${sky.name} on every night from one place, as a dome over the horizon facing ${way}: ${sky.subs.length} subs over ${n} night${n === 1 ? '' : 's'}, the latest brightest. The list of nights says the same.`
+          `${sky.name} on every night from one place, as a dome seen from outside looking ${way}: ${sky.subs.length} subs over ${n} night${n === 1 ? '' : 's'}, the latest brightest. The list of nights says the same.`
         }
         home={homeFor(sky.subs)}
         zoomTarget={(proj) =>

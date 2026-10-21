@@ -1,6 +1,6 @@
 // Finished (spec 020): the owner's hand-finished work, one folder per project in a library with the Completed role.
-// Each project shows what it is, whether the renderer is offered it (or why not), the SubStation projects it's linked
-// to, its files with their roles, its processing steps and when it last changed. Folders that don't fit the layout
+// Each project shows its final image, what it is, the SubStation projects it's linked to, whether the renderer is
+// offered it (or why not) and when it last changed. Folders that don't fit the layout
 // are listed with the reason, never guessed into a project.
 import { Link } from '@tanstack/react-router'
 import { Collapsible } from '../../components/Collapsible'
@@ -8,7 +8,8 @@ import { Button, EmptyState, ErrorState, PageLoading } from '../../components/ui
 import { agoText } from '../format'
 import v from '../v2/v2.module.css'
 import f from './finished.module.css'
-import { KIND, roleText, useFinishedList, useRescanFinished, type Finished } from './queries'
+import { StatusChip } from './FinishedProject'
+import { imageUrl, KIND, useFinishedList, useRescanFinished, type Finished } from './queries'
 
 /** The folder layout a Completed library is read with. */
 export function FolderLayout() {
@@ -53,12 +54,11 @@ export function FinishedPage() {
       <header className={v.head}>
         <div>
           <h1>Finished</h1>
-          <div className={v.sub}>
-            Your hand-finished images, one folder per project. Link each to the SubStation project its subs
-            came from and pick its final image, and the renderer can use it.
-            {d.libraries.length > 0 &&
-              ` From ${d.libraries.join(', ')}${projects.length ? `: ${offered} of ${projects.length} offered to the renderer` : ''}.`}
-          </div>
+          {d.libraries.length > 0 && projects.length > 0 && (
+            <div className={v.sub}>
+              {offered} of {projects.length} offered to the renderer
+            </div>
+          )}
         </div>
         {d.libraries.length > 0 && (
           <div className={v.actions}>
@@ -92,25 +92,11 @@ export function FinishedPage() {
         </EmptyState>
       ) : (
         <section className={v.card} aria-label="Finished projects">
-          <div className={f.scroll}>
-            <table className={v.table}>
-              <thead>
-                <tr>
-                  <th>Project</th>
-                  <th>Renderer</th>
-                  <th>Linked to</th>
-                  <th>Files</th>
-                  <th>Processing</th>
-                  <th>Changed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((p) => (
-                  <Row key={p.id} p={p} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className={f.projects}>
+            {projects.map((p) => (
+              <Row key={p.id} p={p} />
+            ))}
+          </ul>
         </section>
       )}
 
@@ -136,61 +122,47 @@ export function FinishedPage() {
 }
 
 function Row({ p }: { p: Finished }) {
-  const roled = p.files.filter((x) => x.role)
+  const final = p.files.find((x) => x.role === 'final' && !x.missing)
   return (
-    <tr>
-      <td>
+    <li className={f.project}>
+      <Link
+        to="/finished/$id"
+        params={{ id: String(p.id) }}
+        className={f.projectThumb}
+        tabIndex={-1}
+        aria-hidden
+      >
+        {final ? <img src={imageUrl(p.id, final.id)} alt="" loading="lazy" /> : 'No final'}
+      </Link>
+      <div className={f.projectText}>
         <Link to="/finished/$id" params={{ id: String(p.id) }} className={f.name}>
           {p.name}
         </Link>
-        <div className="muted">
+        <span className="muted">
           {KIND[p.kind] ?? p.kind} · {p.subject}
-        </div>
-        {p.missing && <div className={f.reason}>The folder is missing</div>}
-      </td>
-      <td className={f.status}>
-        {p.offered ? (
-          <span className={v.ok}>Offered</span>
-        ) : (
-          <span className={f.reason}>Not offered: {p.reason}</span>
-        )}
-      </td>
-      <td>
-        {p.links.length ? (
-          <ul className={f.links}>
-            {p.links.map((l) => (
-              <li key={l.project_id}>
+        </span>
+        <span className={f.projectLinks}>
+          {p.links.length ? (
+            p.links.map((l, i) => (
+              <span key={l.project_id}>
+                {i > 0 && ', '}
                 <Link to="/collections/$id" params={{ id: String(l.collection_id) }}>
-                  {l.collection_name}
+                  {l.project_name}
                 </Link>
-                {l.project_name !== l.collection_name && <span className="muted"> · {l.project_name}</span>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="muted">Not linked</span>
-        )}
-      </td>
-      <td>
-        <div>
-          {p.files.length} file{p.files.length === 1 ? '' : 's'}
-        </div>
-        {roled.length > 0 && (
-          <ul className={f.roles}>
-            {roled.map((x) => (
-              <li key={x.id}>
-                <span className="muted">{roleText(x)}:</span> {x.rel_path.split('/').pop()}
-              </li>
-            ))}
-          </ul>
-        )}
-      </td>
-      <td className={f.status}>
-        {p.processing.length ? p.processing.join(' → ') : <span className="muted">None yet</span>}
-      </td>
-      <td className={f.status} title={changed(p.changed_at)}>
-        {agoText(p.changed_at)}
-      </td>
-    </tr>
+              </span>
+            ))
+          ) : (
+            <span className="muted">Not linked</span>
+          )}
+        </span>
+        {p.missing && <span className={f.reason}>The folder is missing</span>}
+      </div>
+      <div className={f.projectSide}>
+        <StatusChip p={p} />
+        <span className="muted" title={changed(p.changed_at)}>
+          {agoText(p.changed_at)}
+        </span>
+      </div>
+    </li>
   )
 }

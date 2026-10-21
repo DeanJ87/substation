@@ -8,7 +8,6 @@ import { Appearance } from './Appearance'
 import { Backups } from './Backups'
 import { Bin } from './Bin'
 import { DraftProvider, useSettings } from './draft'
-import { FinishedDefaults } from './FinishedDefaults'
 import { IgnoreRules } from './IgnoreRules'
 import { PathPatterns } from './PathPatterns'
 import { Rigs } from './Rigs'
@@ -33,13 +32,12 @@ const TABS: Tab[] = [
   {
     id: 'library',
     label: 'Library',
-    sections: ['folders', 'paths', 'sources', 'finished', 'patterns', 'ignored', 'bin'],
+    sections: ['folders', 'paths', 'sources', 'patterns', 'ignored', 'bin'],
     body: (
       <>
         <Folders />
         <FilePaths />
         <MetadataSources />
-        <FinishedDefaults />
         <PathPatterns />
         <IgnoreRules />
         <Bin />

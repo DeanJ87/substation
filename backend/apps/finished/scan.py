@@ -16,7 +16,7 @@ from pathlib import Path
 from django.db import transaction
 from django.utils import timezone
 
-from apps.libraries.models import InstallationSettings, Library, LibraryRole
+from apps.libraries.models import Library, LibraryRole
 
 from .models import KIND_FOLDERS, SECTIONS, FileRole, FinishedFile, FinishedProject
 
@@ -106,12 +106,7 @@ def _sync_project(lib: Library, rel: str, kind: str, subject: str, name: str, pa
     proj, created = FinishedProject.objects.get_or_create(
         library=lib,
         rel_path=rel,
-        defaults={
-            "kind": kind,
-            "subject": subject,
-            "name": name,
-            "processing": list(InstallationSettings.load().default_processing or []),
-        },
+        defaults={"kind": kind, "subject": subject, "name": name},
     )
     if proj.missing:
         proj.missing = False
@@ -167,10 +162,10 @@ def _carry_roles(proj: FinishedProject, gone: list[FinishedFile]) -> None:
         if new is None:
             continue
         new.role, new.role_filter, new.role_order = old.role, old.role_filter, old.role_order
-        new.role_set_by_owner = old.role_set_by_owner
-        new.save(update_fields=["role", "role_filter", "role_order", "role_set_by_owner"])
-        old.role, old.role_filter, old.role_order = "", "", None
-        old.save(update_fields=["role", "role_filter", "role_order"])
+        new.role_label, new.role_set_by_owner = old.role_label, old.role_set_by_owner
+        new.save(update_fields=["role", "role_filter", "role_order", "role_label", "role_set_by_owner"])
+        old.role, old.role_filter, old.role_order, old.role_label = "", "", None, ""
+        old.save(update_fields=["role", "role_filter", "role_order", "role_label"])
 
 
 _ROLE_PATTERNS = (
@@ -179,6 +174,41 @@ _ROLE_PATTERNS = (
     (FileRole.FINAL, re.compile(r"(^|[-_ .])(final)([-_ .]|$)", re.I)),
 )
 _PROGRESSIVE = re.compile(r"(?:progress(?:ive)?|stack)[-_ ]?(\d{1,3})(?!\d)", re.I)
+_STEP = re.compile(r"(?:^|[-_ .])step[-_ ]?(\d{1,3})(?:[-_ .]+(.+))?$", re.I)
+# How a step's tools read on screen (020-DR-14); anything else keeps the owner's spelling.
+STEP_ALIASES = {
+    "master": "Master",
+    "graxpert": "GraXpert",
+    "nxt": "NoiseXTerminator",
+    "noisexterminator": "NoiseXTerminator",
+    "bxt": "BlurXTerminator",
+    "blurxterminator": "BlurXTerminator",
+    "sxt": "StarXTerminator",
+    "starxterminator": "StarXTerminator",
+    "spcc": "SPCC",
+    "pcc": "PCC",
+    "abe": "ABE",
+    "dbe": "DBE",
+    "ghs": "GHS",
+    "stretch": "Stretch",
+    "curves": "Curves",
+    "starless": "Starless",
+    "stars": "Stars",
+    "final": "Final",
+}
+
+
+def step_label(raw: str) -> str:
+    """'graxpert+nxt' → 'GraXpert + NoiseXTerminator'."""
+    parts = [p.strip() for p in re.split(r"\+", raw.replace("_", " ")) if p.strip()]
+    return " + ".join(STEP_ALIASES.get(p.lower().replace(" ", ""), p) for p in parts)
+
+
+def _step(stem: str) -> tuple[int, str] | None:
+    m = _STEP.search(stem)
+    if not m:
+        return None
+    return int(m.group(1)), step_label(m.group(2) or "")
 
 
 def _filter_names() -> list[str]:
@@ -202,7 +232,10 @@ def _per_filter(stem: str, names: list[str]) -> str | None:
 
 
 def _role_for(stem: str, names: list[str]) -> tuple[str, str, int | None]:
-    """(role, filter, order) from a file name: final/starless/stars, then progressive stacks, then a filter."""
+    """(role, filter, order) from a file name: a processing step, final/starless/stars, then progressive stacks,
+    then a filter. A step's label comes from `_step`."""
+    if _step(stem):
+        return FileRole.STEP, "", _step(stem)[0]  # type: ignore[index]
     for r, pat in _ROLE_PATTERNS:
         if pat.search(stem):
             return r, "", None
@@ -236,12 +269,14 @@ def guess_roles(proj: FinishedProject) -> None:
         return
     names = _filter_names()
     for f in files:
-        role, flt, order = _role_for(Path(f.rel_path).stem, names)
+        stem = Path(f.rel_path).stem
+        role, flt, order = _role_for(stem, names)
         if role == FileRole.FINAL and f.section != "exports":  # web and social crops are never the final
             role = ""
-        if (f.role, f.role_filter, f.role_order) != (role, flt, order):
-            f.role, f.role_filter, f.role_order = role, flt, order
-            f.save(update_fields=["role", "role_filter", "role_order"])
+        label = _step(stem)[1] if role == FileRole.STEP else ""  # type: ignore[index]
+        if (f.role, f.role_filter, f.role_order, f.role_label) != (role, flt, order, label):
+            f.role, f.role_filter, f.role_order, f.role_label = role, flt, order, label
+            f.save(update_fields=["role", "role_filter", "role_order", "role_label"])
     _one_final(files)
 
 

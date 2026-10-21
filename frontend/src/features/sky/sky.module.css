@@ -34,13 +34,15 @@
 }
 .alt {
   fill: none;
-  stroke: var(--sst-line);
-  stroke-width: 0.4;
+  stroke: var(--sst-dim);
+  stroke-width: 0.45;
+  opacity: 0.6;
 }
 .meridian {
-  stroke: var(--sst-line);
+  stroke: var(--sst-dim);
   stroke-width: 0.5;
   stroke-dasharray: 2 2;
+  opacity: 0.7;
 }
 .ringLabel {
   font-size: 5px;
@@ -318,6 +320,8 @@
 .dome {
   touch-action: pan-y; /* a sideways drag turns the dome; the page still scrolls up and down */
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .dome:active {
   cursor: grabbing;
@@ -326,25 +330,38 @@
   outline: 2px solid var(--sst-focus);
   outline-offset: 4px;
 }
+/* the dome seen from outside (2026-10-22): the floor under the sky, the far wall drawn plainly, the near shell
+   faint and dashed so everything behind it reads through */
+.floor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  pointer-events: none;
+}
 .ground {
-  fill: color-mix(in srgb, var(--sst-panel-3) 70%, transparent);
+  fill: color-mix(in srgb, var(--sst-panel-3) 55%, transparent);
   stroke: none;
 }
-.gridBack {
+.gridNear {
   fill: none;
-  stroke: var(--sst-line);
+  stroke: var(--sst-dim);
   stroke-width: 0.35;
-  stroke-dasharray: 1.2 1.6;
-  opacity: 0.7;
+  stroke-dasharray: 1 2.4;
+  opacity: 0.4;
 }
-.horizonBack {
-  fill: none;
-  stroke: var(--sst-muted);
-  stroke-width: 0.5;
-  opacity: 0.6;
+/* tracks and marks on the near shell: lighter and thinner than those on the far wall behind them */
+.nearSide .track {
+  stroke-width: 0.55;
+  stroke-dasharray: 2.4 1.4;
 }
-.compassBack {
-  opacity: 0.55;
+.nearSide .mark {
+  fill-opacity: 0.45;
+}
+.nearSide {
+  opacity: 0.8;
 }
 .keyOn {
   background: var(--sst-panel-2);
@@ -404,8 +421,7 @@
 .alt,
 .meridian,
 .horizon,
-.gridBack,
-.horizonBack,
+.gridNear,
 .limb,
 .track {
   fill: none;

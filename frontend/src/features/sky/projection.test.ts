@@ -5,6 +5,7 @@ import {
   at,
   azAt,
   compass,
+  dragView,
   frameOnDome,
   frameOutline,
   fromTangent,
@@ -18,6 +19,7 @@ import {
   series,
   siderealDeg,
   skyLine,
+  splitSides,
   surveyPixel,
   toEquatorial,
   toHorizontal,
@@ -100,7 +102,7 @@ describe('interpolating through the night', () => {
   })
 })
 
-describe('the dome from the side', () => {
+describe('the dome seen from outside', () => {
   it('stands behind you looking south: the zenith on top, the north rim nearest, the south rim far', () => {
     const z = project3d(90, 0)
     expect(z.x).toBeCloseTo(0)
@@ -125,10 +127,99 @@ describe('the dome from the side', () => {
     expect(thirty.front).toMatch(/^M/)
     expect(thirty.back).toMatch(/^M/)
   })
+  it('puts what you look towards on the far wall and what is behind you on the near shell', () => {
+    for (const yaw of [0, 90, 180, 270, 33]) {
+      const view = { yaw, tilt: 32 }
+      expect(project3d(20, yaw, view).front).toBe(false) // ahead, low: the far wall
+      expect(project3d(20, yaw + 180, view).front).toBe(true) // behind the dome's middle: the near shell
+    }
+    // seen from high above, the zenith faces you; from low down it's on the far wall
+    expect(project3d(90, 0, { yaw: 180, tilt: 60 }).front).toBe(true)
+    expect(project3d(60, 180, { yaw: 180, tilt: 10 }).front).toBe(false)
+  })
+  it('has the compass where it stands, seen from outside: looking north, east is on the right', () => {
+    const north = { yaw: 0, tilt: 32 }
+    expect(project3d(0, 90, north).x).toBeGreaterThan(project3d(0, 270, north).x)
+    expect(project3d(0, 0, north).y).toBeLessThan(project3d(0, 180, north).y) // north at the back, higher up
+    // looking south, east is on the left, as it is standing on the ground looking south
+    const south = { yaw: 180, tilt: 32 }
+    expect(project3d(0, 90, south).x).toBeLessThan(project3d(0, 270, south).x)
+    // looking east, north is on the left
+    const east = { yaw: 90, tilt: 32 }
+    expect(project3d(0, 0, east).x).toBeLessThan(project3d(0, 180, east).x)
+  })
+  it('from straight above is the 2D view seen from the other side: every bearing the same, east and west swapped', () => {
+    const above = { yaw: 0, tilt: 90 }
+    for (const [alt, az] of [
+      [10, 0],
+      [30, 90],
+      [50, 135],
+      [70, 222],
+      [20, 300],
+    ]) {
+      const flat = project(alt, az)
+      const dome = project3d(alt, az, above)
+      // the 2D view (from below) puts east on the left; from above it's on the right: x mirrors, y stays
+      expect(Math.sign(dome.x)).toBe(-Math.sign(flat.x) || 0)
+      expect(Math.sign(Math.round(dome.y))).toBe(Math.sign(Math.round(flat.y)))
+      // the bearing from the zenith, measured to the matching compass letter, agrees in both
+      const bearing = (p: { x: number; y: number }, mirror: number) =>
+        ((((Math.atan2(mirror * p.x, -p.y) * 180) / Math.PI) % 360) + 360) % 360
+      expect(bearing(dome, 1)).toBeCloseTo(az, 0)
+      expect(bearing(flat, -1)).toBeCloseTo(az, 0)
+    }
+  })
+  it('turns as a globe under the finger: dragging right carries the near side right', () => {
+    const from = { yaw: 180, tilt: 32 }
+    const to = dragView(from, 50, 0)
+    const near = project3d(10, 0, from) // the north rim, nearest you
+    expect(near.front).toBe(true)
+    expect(project3d(10, 0, to).x).toBeGreaterThan(near.x)
+    // and the other way
+    expect(project3d(10, 0, dragView(from, -50, 0)).x).toBeLessThan(near.x)
+    // dragging down looks from higher up, tipping the top towards you: the zenith comes down the drawing
+    const lower = dragView(from, 0, 40)
+    expect(lower.tilt).toBeGreaterThan(from.tilt)
+    expect(project3d(90, 0, lower).y).toBeGreaterThan(project3d(90, 0, from).y)
+    // yaw wraps; tilt stays between 8° and 85°
+    expect(dragView({ yaw: 350, tilt: 32 }, 50, 0).yaw).toBeCloseTo(10)
+    expect(dragView(from, 0, 1000).tilt).toBe(85)
+    expect(dragView(from, 0, -1000).tilt).toBe(8)
+  })
+  it('splits a track where it crosses from the far wall to the near shell', () => {
+    const view = { yaw: 180, tilt: 32 }
+    const pts = [10, 30, 50, 70, 90, 70, 50].map((alt, i) => project3d(alt, i < 5 ? 180 : 0, view))
+    const { front, back } = splitSides(pts)
+    expect(back.length).toBe(1)
+    expect(front.length).toBe(1)
+    // the two pieces meet: the far piece ends where the near one starts
+    expect(back[0][back[0].length - 1]).toEqual(front[0][0])
+    expect(splitSides(pts.slice(0, 2))).toEqual({ front: [], back: [pts.slice(0, 2)] })
+  })
 })
 
 describe('back from the drawing to the sky', () => {
-  it('undoes project3d on both halves of the dome', () => {
+  it('finds the sky on the far wall, and on the near shell when asked', () => {
+    let checked = 0
+    for (const [alt, az] of [
+      [20, 180],
+      [45, 150],
+      [40, 220],
+      [10, 120],
+    ]) {
+      const p = project3d(alt, az)
+      expect(p.front).toBe(false)
+      const back = unproject(p.x, p.y)!
+      expect(back.alt).toBeCloseTo(alt, 1)
+      expect(back.az).toBeCloseTo(az, 1)
+      checked++
+    }
+    expect(checked).toBe(4)
+    // under the near rim the line of sight meets the floor before any wall: no sky
+    const rim = project3d(5, 0)
+    expect(unproject(rim.x, rim.y - 2)).toBeNull()
+  })
+  it('undoes project3d on the near shell', () => {
     let checked = 0
     for (const [alt, az] of [
       [10, 200],
@@ -140,8 +231,8 @@ describe('back from the drawing to the sky', () => {
       [50, 150],
     ]) {
       const p = project3d(alt, az)
-      const back = unproject(p.x, p.y)
-      // the side facing the viewer comes back (the far side lies behind it)
+      const back = unproject(p.x, p.y, undefined, undefined, 'front')
+      // the side facing the viewer comes back
       if (p.front && back) {
         checked++
         expect(back.alt).toBeCloseTo(alt, 1)
@@ -244,7 +335,7 @@ describe('the camera frame on the dome (spec 015 amendment)', () => {
 })
 
 describe('where a dome starts', () => {
-  it('faces the target and looks from higher up for a high one', () => {
+  it('looks towards the target, and from higher up for a high one', () => {
     expect(homeFor([{ az: 10, alt: 30 }])).toEqual({ yaw: 0, tilt: 32 })
     expect(homeFor([{ az: 260, alt: 75 }])).toEqual({ yaw: 270, tilt: 62 })
     expect(homeFor([{ az: 180, alt: 45 }]).tilt).toBe(42)

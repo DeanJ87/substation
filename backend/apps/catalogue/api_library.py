@@ -31,6 +31,7 @@ class RigOut(Schema):
     datasets: int
     calibration: str
     mount: str = ""
+    filters: list[str] = []  # the filters its datasets were shot through, so filter choices follow the rig
 
 
 class LibDatasetOut(Schema):
@@ -456,6 +457,7 @@ def _rig_out(r: Rig) -> RigOut:
         datasets=r.datasets.count(),
         calibration=r.calibration,
         mount=r.mount,
+        filters=sorted({f for f in r.datasets.values_list("filter_norm", flat=True) if f}),
     )
 
 

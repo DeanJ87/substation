@@ -42,3 +42,5 @@
   carry filter and exposure (015-DR-16); tests; screenshots of M81 (464 frames, 11 nights)
 - [X] N13 (2026-10-16) `homeFor` (face the target, higher for high targets), taller frame, survey on the facing
   shell, arrowheads on tracks (015-DR-17); tests; screenshots of North America Nebula and M81
+- [X] N14 (2026-10-22) Far-wall sky, back-to-front layers, near side faint, globe-style drag, viewpoint hint
+  (015-DR-18); orientation and drag tests; screenshots before and after

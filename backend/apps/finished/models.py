@@ -42,12 +42,14 @@ class FinishedProject(models.Model):
     subject = models.CharField(max_length=300)
     name = models.CharField(max_length=300)
     linked_projects = models.ManyToManyField("catalogue.Project", blank=True, related_name="finished")
-    processing = models.JSONField(default=list, blank=True, help_text="ordered processing step labels")
+    distance_ly = models.FloatField(null=True, blank=True, help_text="020-DR-13: the target's distance")
+    distance_source = models.CharField(
+        max_length=200, blank=True, default="", help_text='"manual", or where a look-up found it'
+    )
     missing = models.BooleanField(default=False, help_text="the folder was not found on the last scan")
     files_changed_at = models.DateTimeField(null=True, blank=True, help_text="newest change to its files")
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    wrote_project_json_sha256 = models.CharField(max_length=64, blank=True, default="")
     data_fingerprint = models.CharField(
         max_length=64,
         blank=True,
@@ -69,7 +71,7 @@ class FinishedProject(models.Model):
 
     @property
     def changed_at(self):  # noqa: ANN201
-        """When anything a renderer cares about last changed: its files, links, roles or processing."""
+        """When anything a renderer cares about last changed: its files, links, roles or distance."""
         return max(t for t in (self.files_changed_at, self.updated_at) if t is not None)
 
 
@@ -80,6 +82,7 @@ class FileRole(models.TextChoices):
     STARS = "stars", "Stars only"
     PER_FILTER = "per_filter", "Single filter"
     PROGRESSIVE = "progressive", "Progressive stack"
+    STEP = "step", "Processing step"
 
 
 class FinishedFile(models.Model):
@@ -94,7 +97,10 @@ class FinishedFile(models.Model):
     missing = models.BooleanField(default=False)
     role = models.CharField(max_length=12, choices=FileRole.choices, blank=True, default=FileRole.NONE)
     role_filter = models.CharField(max_length=100, blank=True, default="", help_text="per_filter: the filter")
-    role_order = models.PositiveIntegerField(null=True, blank=True, help_text="progressive: 1, 2, 3 ...")
+    role_order = models.PositiveIntegerField(
+        null=True, blank=True, help_text="progressive and step: 1, 2, 3 ..."
+    )
+    role_label = models.CharField(max_length=100, blank=True, default="", help_text="step: what was done")
     role_set_by_owner = models.BooleanField(default=False)
 
     class Meta:

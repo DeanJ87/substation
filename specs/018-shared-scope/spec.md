@@ -125,3 +125,6 @@ and one place in the backend that turns it into a query for each kind of record.
 - **018-DR-14** A rig by name on Library stats (the older parameter) means every rig of that name.
 - **018-DR-15** The Library tells "nothing matches these filters" from an empty library by the unfiltered count; the
   collection picker on a dataset and the filter list always offer everything, whatever is filtered now.
+- **018-DR-16** (2026-10-22) Choices follow their parent. With a rig chosen, the filter list offers only filters that
+  rig shot through (each rig lists its filters); choosing a rig that lacks the current filter clears it. No choice
+  leads to an empty page.

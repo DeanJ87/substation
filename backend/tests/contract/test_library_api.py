@@ -226,3 +226,18 @@ def test_stats_read_sky_quality_from_either_header_form():
     HeaderSnapshot.objects.create(frame=a, keywords={"MPSAS": {"value": 21.3, "comment": ""}})
     HeaderSnapshot.objects.create(frame=b, keywords={"SQM": "20.1"})
     assert _sqm_by_frame([a.pk, b.pk], ("MPSAS", "SQM", "SKYQUAL")) == {a.pk: 21.3, b.pk: 20.1}
+
+
+def test_each_rig_lists_the_filters_it_shot_through(admin_client):
+    """So a filter choice can follow the chosen rig: a rig only offers filters its datasets used."""
+    mono = Rig.objects.create(name="Askar + ATR", key="a", telescope="Askar 71F", camera="ATR2600M")
+    osc = Rig.objects.create(name="Sony", key="b", telescope="TTArtisan", camera="Sony A73")
+    for flt in ("Hα", "OIII", "Hα"):
+        d = ds(f"m-{flt}-{Dataset.objects.count()}", "IC 1805", flt)
+        d.rig = mono
+        d.save()
+    d = ds("o", "IC 1805", "OSC")
+    d.rig = osc
+    d.save()
+    rigs = {r["name"]: r["filters"] for r in admin_client.get("/api/v1/rigs").json()}
+    assert rigs == {"Askar + ATR": ["Hα", "OIII"], "Sony": ["OSC"]}

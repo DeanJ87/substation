@@ -36,6 +36,13 @@
   entries, tracks per site, catalogue-first target names (020-DR-07); tests
 - [X] F16 (2026-10-21) `updated_at` follows a fingerprint of the render data's inputs, so moved datasets and a
   changed project kind show up in `since` polling (020-DR-11); test
+- [X] F17 (2026-10-21) Withdraw project.json: route, button, stored hash and tests removed; the two written files
+  removed after a hash check (020-DR-12)
+- [X] F18 (2026-10-21) Target distance: owner entry and SIMBAD look-up, manual wins; `target.distance_ly` and
+  `distance_source` (020-DR-13); tests
+- [X] F19 (2026-10-21) Processing step images: `step` role guessed from `-step-<n>-<what>` names with editable
+  labels, `frames.steps`, `processing` from the labels; typed steps and Settings defaults removed; owner thumbnail
+  and preview route; relevant-only link suggestions (020-DR-14); tests
 - [ ] F12 (later) Link suggestions by plate-solve overlap once finished images are solved; annotations from that
   solve (FR-004, FR-007)
 - [ ] F13 (later) Target type, distance and angular size from the catalogue data (FR-007)

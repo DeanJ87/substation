@@ -44,6 +44,8 @@ def file_key(f) -> str | None:  # noqa: ANN001
         return f"per_filter/{f.role_filter}"
     if f.role == FileRole.PROGRESSIVE and f.role_order:
         return f"progressive/{f.role_order}"
+    if f.role == FileRole.STEP and f.role_order:
+        return f"step/{f.role_order}"
     return f.role or None
 
 
@@ -98,10 +100,17 @@ def _fingerprint(proj: FinishedProject) -> str:
         lon=Sum("site_lon"),
     )
     parts = {
-        "proj": [proj.name, proj.kind, proj.subject, proj.missing, proj.processing],
+        "proj": [proj.name, proj.kind, proj.subject, proj.missing, proj.distance_ly, proj.distance_source],
         "files": list(
             proj.files.order_by("rel_path").values_list(
-                "rel_path", "size_bytes", "mtime", "missing", "role", "role_filter", "role_order"
+                "rel_path",
+                "size_bytes",
+                "mtime",
+                "missing",
+                "role",
+                "role_filter",
+                "role_order",
+                "role_label",
             )
         ),
         "linked": [(p.pk, p.kind, p.planned_panels, p.collection_id) for p in linked],
@@ -186,6 +195,8 @@ def _target(proj: FinishedProject, dss: list[Dataset], solves: list[PlateSolve])
         "name": name,
         "common_name": common,
         "constellation": (col.constellation if col else None) or None,
+        "distance_ly": _r(proj.distance_ly, 0) if proj.distance_ly else None,  # 020-DR-13
+        "distance_source": (proj.distance_source or None) if proj.distance_ly else None,
     }
     ok = [s for s in solves if s.ra_deg is not None and s.dec_deg is not None]
     if ok:
@@ -392,19 +403,24 @@ def _quality(
 
 
 def files_url(proj: FinishedProject) -> str:
-    """Root-relative, so the renderer joins them with the SubStation address it already uses (and project.json
-    carries the same links as the API)."""
+    """Root-relative, so the renderer joins them with the SubStation address it already uses."""
     return f"/api/v1/render/projects/{proj.pk}/files"
 
 
 def _frames(proj: FinishedProject) -> dict[str, Any]:
     url = files_url(proj)
-    frames: dict[str, Any] = {"per_filter": {}, "progressive": []}
-    for key in sorted(role_files(proj), key=lambda k: (k.count("/"), k.split("/")[-1].zfill(6))):
+    frames: dict[str, Any] = {"per_filter": {}, "progressive": [], "steps": []}
+    files = role_files(proj)
+    for key in sorted(files, key=lambda k: (k.count("/"), k.split("/")[-1].zfill(6))):
         if key.startswith("per_filter/"):
             frames["per_filter"][key.split("/", 1)[1]] = f"{url}/{quote(key, safe='/')}"
         elif key.startswith("progressive/"):
             frames["progressive"].append(f"{url}/{key}")
+        elif key.startswith("step/"):
+            f = files[key]
+            frames["steps"].append(
+                {"order": f.role_order, "label": f.role_label or None, "url": f"{url}/{key}"}
+            )
         else:
             frames[key] = f"{url}/{key}"
     frames["thumb"] = f"{url}/thumb"
@@ -460,6 +476,7 @@ def build(proj: FinishedProject) -> dict[str, Any]:
     target = _target(proj, dss, solves)
     graded = [f for f in lights if eff[f.pk].verdict is not None]
     sites, site_ids = _sites(graded, used)
+    frames = _frames(proj)
     data = {
         "schema_version": SCHEMA_VERSION,
         "project": {
@@ -473,7 +490,7 @@ def build(proj: FinishedProject) -> dict[str, Any]:
         "capture": _capture(proj, dss, used, solves, sites),
         "timeline": _timeline(used, target, site_ids, _is_mosaic(proj)),
         "quality": _quality(lights, eff, meas, site_ids),
-        "frames": _frames(proj),
-        "processing": list(proj.processing or []),
+        "frames": frames,
+        "processing": [s["label"] for s in frames["steps"] if s.get("label")],
     }
     return _clean(data)

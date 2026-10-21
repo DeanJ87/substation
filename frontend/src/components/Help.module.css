@@ -1,0 +1,53 @@
+.help {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.button {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--sst-line);
+  border-radius: 50%;
+  background: var(--sst-panel-2);
+  color: var(--sst-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: help;
+}
+.button:hover,
+.button[aria-expanded='true'] {
+  border-color: var(--sst-accent-line);
+  color: var(--sst-text);
+}
+.button:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 2px;
+}
+.tip {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 8px 11px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+  box-shadow: var(--sst-shadow);
+  color: var(--sst-text);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  white-space: normal;
+}

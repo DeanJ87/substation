@@ -1,4 +1,4 @@
-// The sky as it was shot (spec 015): a wireframe dome over the horizon, seen from the side, every sub a mark where
+// The sky as it was shot (spec 015): a see-through dome over the horizon, seen from outside, every sub a mark where
 // its target stood at the middle of its exposure, joined into a track per target; a colour per target and a shape
 // per rig. One target is in focus at a time; the others stay faint for context. Drag the dome to orbit it, scroll
 // or pinch to zoom; the focused target's camera frame is drawn where it pointed. A slider replays the night; under
@@ -13,6 +13,7 @@ import { Dome, type DomeCtx, middle } from './Dome'
 import {
   type Fov,
   type Pt,
+  type Pt3,
   type Shape,
   type View,
   SHAPES,
@@ -22,7 +23,6 @@ import {
   frameOnDome,
   hourTicks,
   marker,
-  polyline,
   series,
 } from './projection'
 import s from './sky.module.css'
@@ -113,9 +113,10 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
     if (tr.target === lit && tr.fov && !hidden.has(tr.rig) && !hidden.has(tr.target) && !frames.has(tr.rig))
       frames.set(tr.rig, tr.fov)
 
-  const draw = ({ proj, k, view }: DomeCtx) => {
+  // drawn once for the far wall and again for the near shell in front of it
+  const draw = ({ proj, k, view, here, line }: DomeCtx) => {
     // one line per track segment, through the subs shown so far
-    const bySeg = new Map<string, Pt[]>()
+    const bySeg = new Map<string, Pt3[]>()
     for (const x of sky.subs) {
       if (!shown(x)) continue
       const key = `${x.track}:${x.segment}`
@@ -125,25 +126,26 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
     const moonNow = now != null && sky.moon ? moonAt(sky.moon.points, now, proj) : null
     return (
       <>
-        {moonUp.length > 1 && (
-          <path d={polyline(moonUp.map((p) => proj(p.alt, p.az)))} className={s.moonTrack} />
-        )}
+        {moonUp.length > 1 && <path d={line(moonUp.map((p) => proj(p.alt, p.az)))} className={s.moonTrack} />}
         {[...bySeg]
           .filter(([, pts]) => pts.length > 1)
           .map(([key, pts]) => {
             const track = +key.split(':')[0]
+            const d = line(pts)
+            if (!d) return null
             return (
               <path
                 key={key}
-                d={polyline(pts)}
+                d={d}
                 className={`${s.track} ${dimmed(track) ? s.dim : ''}`}
                 style={{ stroke: colourOf.get(sky.tracks[track].target) }}
-                markerEnd="url(#sky-arrow)"
+                markerEnd={here(pts[pts.length - 1]) ? 'url(#sky-arrow)' : undefined}
               />
             )
           })}
         {sky.subs.filter(shown).map((x) => {
           const p = proj(x.alt, x.az)
+          if (!here(p)) return null
           const tr = sky.tracks[x.track]
           const colour = colourOf.get(tr.target)
           const reject = x.verdict === 'reject'
@@ -169,6 +171,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
               lon={sky.lon!}
               t={skyTime}
               view={view}
+              here={here}
               colour={colourOf.get(lit ?? '')}
               label={`${sky.rigs.find((r) => r.key === rig)?.name ?? 'The rig'}’s frame, ${fovText(fov)}`}
             />
@@ -181,6 +184,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
               const az = azAt(t.curve, now)
               if (alt == null || az == null || alt < 0) return null
               const p = proj(alt, az)
+              if (!here(p)) return null
               return (
                 <circle
                   key={t.key}
@@ -192,7 +196,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
                 />
               )
             })}
-        {moonNow && <circle cx={moonNow.x} cy={moonNow.y} r={4.5 / k} className={s.moon} />}
+        {moonNow && here(moonNow) && <circle cx={moonNow.x} cy={moonNow.y} r={4.5 / k} className={s.moon} />}
       </>
     )
   }
@@ -206,7 +210,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
         spin={playing}
         home={homeFor(sky.subs.filter((x) => sky.tracks[x.track]?.target === inFocus))}
         label={(way) =>
-          `The sky from where this night was shot, as a dome over the horizon facing ${way}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`
+          `The sky from where this night was shot, as a dome seen from outside looking ${way}: ${sky.subs.length} subs of ${sky.targets.length} target${sky.targets.length === 1 ? '' : 's'}. The tracks and the table below list the same.`
         }
         zoomTarget={(proj) =>
           middle(
@@ -336,6 +340,7 @@ export function CameraFrame({
   lon,
   t,
   view,
+  here,
   colour,
   label,
 }: {
@@ -344,11 +349,12 @@ export function CameraFrame({
   lon: number
   t: number
   view: View
+  here?: (p: Pt3) => boolean // drawn only in the dome's layer its centre lies on
   colour?: string
   label: string
 }) {
   const f = frameOnDome(fov, lat, lon, t, view)
-  if (!f) return null
+  if (!f || (here && !here(f.centre))) return null
   return (
     <g className={s.frame} style={{ stroke: colour }}>
       <title>{label}</title>

@@ -142,3 +142,6 @@ experience; propose something better. Also asked for: a map on the sub page.
 - **012-DR-05 Clickable pills are buttons.** A button or link drawn as a pill has the main buttons' height, radius,
   type, a filled face and hover, pressed and focus states; toggles in a group stay rounded chips; static tags stay
   small capsules.
+- **012-DR-06 (2026-10-22) The viewer steps in the order shown.** On a night page the subs are shown dataset by
+  dataset; the viewer's Next and Previous now follow that same order, built from the strips themselves, instead of
+  one time order across every dataset (which jumped between strips).

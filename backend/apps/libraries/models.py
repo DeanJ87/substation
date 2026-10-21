@@ -70,9 +70,6 @@ class InstallationSettings(models.Model):
     site_lon = models.FloatField(null=True, blank=True)
     site_region = models.CharField(max_length=100, blank=True, default="", help_text="spec 020")
     site_bortle = models.PositiveSmallIntegerField(null=True, blank=True, help_text="spec 020: 1-9")
-    default_processing = models.JSONField(
-        default=list, blank=True, help_text="spec 020: processing steps a new finished project starts with"
-    )
     filter_aliases = models.JSONField(default=dict, blank=True, help_text='e.g. {"ha": "Hα"}')
     worker_count = models.PositiveSmallIntegerField(
         null=True, blank=True, help_text="null = SUBSTATION_WORKERS"

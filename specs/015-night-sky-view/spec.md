@@ -173,3 +173,9 @@ dome); live position during a session; video export (a still image export may fo
   view. The sky survey is painted on the side of the dome facing the viewer, the side the target's track lies on,
   so the sky behind a track is the sky at it and both turn together; it covers the whole shell (the earlier bare
   floor is gone). Each track ends in a small arrowhead showing which way it went.
+- **015-DR-18** (2026-10-22) The dome is seen from outside, and reads that way. The sky survey is painted on the far
+  wall (the inside you look at), with only a faint copy on the near shell, so the near side no longer hides
+  everything. Grid, tracks and marks are drawn back to front: the far wall plainly, the near shell faint, dashed and
+  thinner, so in front and behind are told apart. Dragging turns the dome like a globe under the finger (the near
+  surface follows the pointer), matching the turn buttons; dragging down raises the view. The hint says which way
+  you are looking ("Seen from outside, looking south · 32° above").

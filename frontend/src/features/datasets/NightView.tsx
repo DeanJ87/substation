@@ -1,6 +1,6 @@
 // One observing night at one place (T101, spec 012): where it was shot, the Moon, the sky as it was shot (spec 015:
 // every sub where its target stood, with a slider through the night), every sub that night as thumbnails per dataset
-// (they open in the viewer, stepping through the night in time order), and the calibration frames taken.
+// (they open in the viewer, stepping through them in the order the strips show), and the calibration frames taken.
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
@@ -82,7 +82,8 @@ export function NightView() {
   if (!n) return <PageLoading />
   const subs = n.datasets.reduce((a, d) => a + d.sub_count, 0)
   const integ = n.datasets.reduce((a, d) => a + d.integration_s, 0)
-  const order = (subsQ.data ?? []).map((x) => x.sha256)
+  // One order for the grid and the viewer: dataset by dataset, as the strips show them, so Next is the sub to the right
+  const order = n.datasets.flatMap((d) => (byDataset.get(d.dataset.id) ?? []).map((x) => x.sha256))
   return (
     <div className={v.page}>
       <header className={v.head}>

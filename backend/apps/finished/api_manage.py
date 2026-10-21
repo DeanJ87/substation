@@ -1,20 +1,17 @@
-"""Finished projects and API tokens, for the owner (spec 020): list, link, file roles, processing, rescan,
-project.json; create and revoke render tokens. Session routes like the rest of the app; changes are admin-only.
+"""Finished projects and API tokens, for the owner (spec 020): list, link, file roles and step labels, distance,
+rescan; create and revoke render tokens. SubStation never writes into a Completed library (020-DR-12). Session routes like the rest of the app; changes are admin-only.
 No `from __future__ import annotations` here: see substation.api."""
 
-import hashlib
-import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
 
 from django.db import transaction
-from django.http import HttpRequest
+from django.http import FileResponse, HttpRequest
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from apps.catalogue.models import Project
-from apps.libraries.models import InstallationSettings
 from substation.api import ApiError, Router, Schema, Status, admin_required
 
 from .models import ApiToken, FileRole, FinishedFile, FinishedProject, TokenScope
@@ -35,6 +32,7 @@ class FileOut(Schema):
     role: str
     role_filter: str
     role_order: int | None
+    role_label: str
     key: str | None
 
 
@@ -56,11 +54,11 @@ class FinishedOut(Schema):
     offered: bool
     reason: str
     links: list[LinkOut]
-    processing: list[str]
     files: list[FileOut]
     changed_at: datetime
-    can_write_project_json: bool
-    project_json_reason: str
+    distance_ly: float | None
+    distance_source: str
+    path: str  # where the folder is, as the library's own path shows it
 
 
 class FinishedListOut(Schema):
@@ -69,17 +67,8 @@ class FinishedListOut(Schema):
     not_projects: list[list[str]]
 
 
-def _write_state(p: FinishedProject) -> tuple[bool, str]:
-    from apps.libraries.access import is_writable, read_only_reason
-
-    if is_writable(p.library):
-        return True, ""
-    return False, read_only_reason(p.library) or "This library is mounted read-only."
-
-
 def _out(p: FinishedProject) -> FinishedOut:
     ok, reason = offered(p)
-    w_ok, w_reason = _write_state(p)
     return FinishedOut(
         id=p.pk,
         library=p.library.name,
@@ -99,7 +88,6 @@ def _out(p: FinishedProject) -> FinishedOut:
             )
             for lp in p.linked_projects.select_related("collection")
         ],
-        processing=list(p.processing or []),
         files=[
             FileOut(
                 id=f.pk,
@@ -111,13 +99,15 @@ def _out(p: FinishedProject) -> FinishedOut:
                 role=f.role,
                 role_filter=f.role_filter,
                 role_order=f.role_order,
+                role_label=f.role_label,
                 key=file_key(f) if f.role else None,
             )
             for f in p.files.all()
         ],
         changed_at=changed_at(p),
-        can_write_project_json=w_ok,
-        project_json_reason=w_reason,
+        distance_ly=p.distance_ly,
+        distance_source=p.distance_source,
+        path=f"{p.library.mount_path.rstrip('/')}/{p.rel_path}",
     )
 
 
@@ -135,22 +125,30 @@ def list_finished(request: HttpRequest, rescan: bool = False) -> FinishedListOut
     )
 
 
-class DefaultsIn(Schema):
-    steps: list[str]
-
-
-@router.put("/defaults/processing", response=list[str])
-@admin_required
-def set_default_processing(request: HttpRequest, body: DefaultsIn) -> list[str]:
-    s = InstallationSettings.load()
-    s.default_processing = [x.strip()[:60] for x in body.steps if x.strip()][:30]
-    s.save(update_fields=["default_processing"])
-    return s.default_processing
-
-
 @router.get("/{id}", response=FinishedOut)
 def get_finished(request: HttpRequest, id: int) -> FinishedOut:
     return _out(get_object_or_404(FinishedProject, pk=id))
+
+
+PREVIEW_PX = 1600
+
+
+@router.get("/{id}/files/{file_id}/image", response={200: None, 404: None})
+def file_image(request: HttpRequest, id: int, file_id: int, size: str = "thumb") -> FileResponse:
+    """A JPEG of one output file for the app: `thumb` for the grid, `preview` to look closer. Never the original,
+    which can be a 300 MB TIFF."""
+    from .api_render import THUMB_PX, _fingerprint, _inside, _thumb
+
+    p = get_object_or_404(FinishedProject, pk=id)
+    f = get_object_or_404(FinishedFile, pk=file_id, project=p)
+    folder = Path(p.library.mount_path) / p.rel_path
+    path = folder / f.rel_path
+    if f.section == "project" or f.ext not in IMAGE_EXTS or not path.is_file() or not _inside(path, folder):
+        raise ApiError(404, "no_file", "That file can't be shown.")
+    out = _thumb(p, path, _fingerprint(f), PREVIEW_PX if size == "preview" else THUMB_PX)
+    resp = FileResponse(out.open("rb"), content_type="image/jpeg")
+    resp["Cache-Control"] = "private, max-age=3600"
+    return resp
 
 
 class SuggestionOut(Schema):
@@ -176,8 +174,8 @@ def _catalogue_ids(s: str) -> set[str]:
 
 @router.get("/{id}/suggestions", response=list[SuggestionOut])
 def suggestions(request: HttpRequest, id: int) -> list[SuggestionOut]:
-    """Ranked SubStation projects to link (020-FR-004): catalogue numbers and names in common.
-    TODO(020 T018): add plate-solve field overlap once finished images are solved."""
+    """SubStation projects to link (020-FR-004): only those sharing a catalogue number or the name; the year only
+    ranks them. TODO(020 T018): add plate-solve field overlap once finished images are solved."""
     p = get_object_or_404(FinishedProject, pk=id)
     words = f"{p.subject} {p.name}"
     ids, norm = _catalogue_ids(words), _norm(words)
@@ -194,6 +192,8 @@ def suggestions(request: HttpRequest, id: int) -> list[SuggestionOut]:
         if n and (n in norm or norm in n):
             score += 1
             reasons.append("same name")
+        if not score:  # a shared year alone is no reason to link (020-DR-14 review)
+            continue
         years = set(re.findall(r"\b(20\d\d)\b", p.name))
         if years and any(y in proj.name for y in years):
             score += 0.5
@@ -210,7 +210,7 @@ def suggestions(request: HttpRequest, id: int) -> list[SuggestionOut]:
                 )
             )
     out.sort(key=lambda s: -s.score)
-    return out[:10]
+    return out[:5]
 
 
 class LinkIn(Schema):
@@ -231,9 +231,10 @@ def set_links(request: HttpRequest, id: int, body: LinkIn) -> FinishedOut:
 
 class RoleIn(Schema):
     file_id: int
-    role: str  # "", final, starless, stars, per_filter, progressive
+    role: str  # "", final, starless, stars, per_filter, progressive, step
     role_filter: str = ""
     role_order: int | None = None
+    role_label: str = ""
 
 
 class RolesIn(Schema):
@@ -251,10 +252,9 @@ def set_roles(request: HttpRequest, id: int, body: RolesIn) -> FinishedOut:
                 raise ApiError(400, "bad_role", f"“{r.role}” isn't a file role.")
             if r.role == FileRole.PER_FILTER and not r.role_filter:
                 raise ApiError(400, "needs_filter", "A single-filter image needs its filter.")
-            if r.role == FileRole.PROGRESSIVE and not r.role_order:
-                raise ApiError(400, "needs_order", "A progressive stack needs its position (1, 2, 3 …).")
-            if r.role == FileRole.PROGRESSIVE and r.role_order is not None and r.role_order < 1:
-                raise ApiError(400, "needs_order", "A progressive stack's position starts at 1.")
+            ordered = r.role in (FileRole.PROGRESSIVE, FileRole.STEP)
+            if ordered and (not r.role_order or r.role_order < 1):
+                raise ApiError(400, "needs_order", "Give it a position: 1, 2, 3 …")
             f = get_object_or_404(FinishedFile, pk=r.file_id, project=p)
             if r.role and (f.missing or f.section == "project" or f.ext not in IMAGE_EXTS):
                 raise ApiError(
@@ -266,9 +266,10 @@ def set_roles(request: HttpRequest, id: int, body: RolesIn) -> FinishedOut:
                 p.files.filter(role=r.role).exclude(pk=f.pk).update(role="")
             f.role = r.role
             f.role_filter = r.role_filter if r.role == FileRole.PER_FILTER else ""
-            f.role_order = r.role_order if r.role == FileRole.PROGRESSIVE else None
+            f.role_order = r.role_order if ordered else None
+            f.role_label = r.role_label.strip()[:100] if r.role == FileRole.STEP else ""
             f.role_set_by_owner = True
-            f.save(update_fields=["role", "role_filter", "role_order", "role_set_by_owner"])
+            f.save(update_fields=["role", "role_filter", "role_order", "role_label", "role_set_by_owner"])
         p.save(update_fields=["updated_at"])
     return _out(p)
 
@@ -283,16 +284,50 @@ def reguess_roles(request: HttpRequest, id: int) -> FinishedOut:
     return _out(p)
 
 
-class ProcessingIn(Schema):
-    steps: list[str]
+class DistanceIn(Schema):
+    distance_ly: float | None  # None clears it
 
 
-@router.put("/{id}/processing", response=FinishedOut)
+@router.put("/{id}/distance", response=FinishedOut)
 @admin_required
-def set_processing(request: HttpRequest, id: int, body: ProcessingIn) -> FinishedOut:
+def set_distance(request: HttpRequest, id: int, body: DistanceIn) -> FinishedOut:
+    """The owner's own figure (020-DR-13); it wins over a look-up until cleared."""
     p = get_object_or_404(FinishedProject, pk=id)
-    p.processing = [s.strip()[:60] for s in body.steps if s.strip()][:30]
-    p.save(update_fields=["processing", "updated_at"])
+    if body.distance_ly is not None and not 0 < body.distance_ly < 2e10:
+        raise ApiError(400, "bad_distance", "A distance is a positive number of light years.")
+    p.distance_ly = body.distance_ly
+    p.distance_source = "manual" if body.distance_ly is not None else ""
+    p.save(update_fields=["distance_ly", "distance_source", "updated_at"])
+    return _out(p)
+
+
+def _designations(p: FinishedProject) -> list[str]:
+    names: list[str] = []
+    for lp in p.linked_projects.select_related("collection"):
+        names += [n.strip() for n in lp.collection.objects_text.split("·") if n.strip()]
+        names.append(lp.collection.name)
+    names += [p.subject]
+    catalogued = [n for n in names if _catalogue_ids(n)]
+    return list(dict.fromkeys(catalogued + names))[:8]
+
+
+@router.post("/{id}/distance/lookup", response=FinishedOut)
+@admin_required
+def lookup_distance(request: HttpRequest, id: int) -> FinishedOut:
+    """Ask SIMBAD (020-DR-13). Never replaces a figure the owner typed."""
+    from .distance import LookupFailed, lookup
+
+    p = get_object_or_404(FinishedProject, pk=id)
+    if p.distance_source == "manual":
+        raise ApiError(409, "manual", "You've set this distance yourself; clear it first to look it up.")
+    try:
+        found = lookup(_designations(p))
+    except LookupFailed as e:
+        raise ApiError(502, "unreachable", str(e)) from e
+    if found is None:
+        raise ApiError(404, "not_found", "SIMBAD has no distance for this target. Type it in instead.")
+    p.distance_ly, p.distance_source = round(found[0]), found[1][:200]
+    p.save(update_fields=["distance_ly", "distance_source", "updated_at"])
     return _out(p)
 
 
@@ -303,43 +338,6 @@ def render_data_preview(request: HttpRequest, id: int) -> dict:
     if not p.linked_projects.exists():
         raise ApiError(409, "not_linked", "Link this project to a SubStation project first.")
     return build(p)
-
-
-@router.post("/{id}/project-json", response=FinishedOut)
-@admin_required
-def write_project_json(request: HttpRequest, id: int) -> FinishedOut:
-    """020-FR-014: only in a read-write library; never over a project.json SubStation didn't write."""
-    p = get_object_or_404(FinishedProject, pk=id)
-    ok, reason = _write_state(p)
-    if not ok:
-        raise ApiError(409, "read_only", reason or "This library is mounted read-only.")
-    if not p.linked_projects.exists():
-        raise ApiError(409, "not_linked", "Link this project to a SubStation project first.")
-    target = Path(p.library.mount_path) / p.rel_path / "project.json"
-    if target.exists():
-        current = hashlib.sha256(target.read_bytes()).hexdigest()
-        if current != p.wrote_project_json_sha256:
-            raise ApiError(
-                409,
-                "not_ours",
-                "There's a project.json here that SubStation didn't write; it won't overwrite it.",
-            )
-    data = build(p)
-    body = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode()
-    try:
-        target.write_bytes(body)  # only project.json is ever written there (020-FR-014)
-    except PermissionError as e:
-        raise ApiError(
-            409,
-            "no_permission",
-            "SubStation can't write in this project folder: the folder's permissions don't let it, even though the "
-            "library is mounted read-write. Give SubStation's user write access to the Completed folder.",
-        ) from e
-    except OSError as e:
-        raise ApiError(409, "write_failed", f"Couldn't write project.json: {e.strerror or e}.") from e
-    p.wrote_project_json_sha256 = hashlib.sha256(body).hexdigest()
-    p.save(update_fields=["wrote_project_json_sha256", "updated_at"])
-    return _out(p)
 
 
 # -- API tokens (020-FR-011) -------------------------------------------------------------------------------

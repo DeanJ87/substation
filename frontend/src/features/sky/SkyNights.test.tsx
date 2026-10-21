@@ -129,7 +129,7 @@ describe('a target across its nights (spec 015 N7)', () => {
     expect(facingOf([])).toBe(180)
     render(<SkyNights sky={nights()} onSite={() => {}} />)
     // the fixture's subs sit at 60–70° up, so the view starts higher than the usual 32°
-    expect(screen.getByText(/Facing south · 62° up/)).toBeInTheDocument()
+    expect(screen.getByText(/looking south · 62° above/)).toBeInTheDocument()
   })
 
   it('fades older nights evenly and marks the months', () => {

@@ -1,6 +1,9 @@
-// The dome itself (spec 015): a wireframe hemisphere over the horizon seen from the side, the real sky behind it,
-// orbited by dragging (sideways turns, up and down tilts), zoomed by the wheel or a pinch, with buttons for keyboards.
-// The night view and the across-nights view draw their tracks into it (015-DR-05, -07, -08, N7).
+// The dome itself (spec 015): a see-through wireframe hemisphere on a horizon disc, seen from outside and above
+// (2026-10-22). The far half is drawn as from inside, with the real sky on it; the near half is a faint shell in
+// front. Drawn back to front: the floor, the sky, the far wall's grid and whatever lies on it, then the near shell
+// and whatever lies on that, lighter. Dragging turns it as a globe under the finger (sideways) and tips it (up and
+// down); the wheel or a pinch zooms; buttons do the same for keyboards. The night view and the across-nights view
+// draw their tracks into it (015-DR-05, -07, -08, N7).
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import {
   type Pt,
@@ -10,15 +13,28 @@ import {
   R,
   altRing,
   azArc,
+  dragView,
   polyline,
   project3d,
   skyLine,
+  splitSides,
 } from './projection'
 import { CREDIT, SkySurvey, type Survey } from './SkySurvey'
 import s from './sky.module.css'
 
 export type Box = { x: number; y: number; w: number; h: number }
-export type DomeCtx = { proj: (alt: number, az: number) => Pt3; view: View; k: number; box: Box }
+/** What a layer of the drawing is given. The dome draws its children twice, the far wall (`side` 'back') first and
+ * the near shell ('front') over it: `here` says whether a point belongs to this layer, `line` is the part of a line
+ * through points that lies on it. */
+export type DomeCtx = {
+  proj: (alt: number, az: number) => Pt3
+  view: View
+  k: number
+  box: Box
+  side: 'back' | 'front'
+  here: (p: Pt3) => boolean
+  line: (pts: Pt3[]) => string
+}
 
 // one fixed frame for every tilt, so the drawing doesn't change height as it turns
 // tall enough for the horizon's near edge at the steepest starting view (62°: R·sin 62° ≈ 88, plus its compass letters)
@@ -121,9 +137,7 @@ function useOrbit(svgEl: SVGSVGElement | null, home: View) {
         return
       }
       if (!drag.current) return
-      const yaw = drag.current.yaw - (e.clientX - drag.current.x) * 0.4
-      const tilt = Math.min(85, Math.max(8, drag.current.tilt + (e.clientY - drag.current.y) * 0.3))
-      setView({ yaw: ((yaw % 360) + 360) % 360, tilt })
+      setView(dragView(drag.current, e.clientX - drag.current.x, e.clientY - drag.current.y))
     },
     onPointerUp: (e: PointerEvent<SVGSVGElement>) => {
       pointers.current.delete(e.pointerId)
@@ -141,60 +155,63 @@ function useOrbit(svgEl: SVGSVGElement | null, home: View) {
   return { view, setView, zoom, box, moving, zoomAt, handlers, reset }
 }
 
-function Grid({ view, proj }: { view: View; proj: (alt: number, az: number) => Pt3 }) {
-  const meridians = [0, 45, 90, 135, 180, 225, 270, 315]
+const MERIDIANS = [0, 45, 90, 135, 180, 225, 270, 315]
+const POINTS = [
+  ['N', 0],
+  ['E', 90],
+  ['S', 180],
+  ['W', 270],
+] as const
+
+/** The horizon disc, under everything (the sky survey is painted over it, on the far wall). */
+function Floor({ proj }: { proj: (alt: number, az: number) => Pt3 }) {
+  return <path d={polyline(altRing(0).map(([a, z]) => proj(a, z))) + 'Z'} className={s.ground} />
+}
+
+/** The far wall's grid, seen from inside: the rings, the meridians (north–south dashed), the horizon's rim, the
+ * compass on the floor. */
+function BackGrid({ view, proj }: { view: View; proj: (alt: number, az: number) => Pt3 }) {
   return (
     <>
-      <path d={polyline(altRing(0).map(([a, z]) => proj(a, z))) + 'Z'} className={s.ground} />
+      <path d={polyline(altRing(0).map(([a, z]) => proj(a, z))) + 'Z'} className={s.horizon} />
       {[30, 60].map((a) => (
-        <path key={`b${a}`} d={skyLine(altRing(a), view).back} className={s.gridBack} />
+        <path key={a} d={skyLine(altRing(a), view).back} className={s.alt} />
       ))}
-      {meridians.map((az) => (
-        <path key={`mb${az}`} d={skyLine(azArc(az), view).back} className={s.gridBack} />
-      ))}
-      <path d={skyLine(altRing(0), view).back} className={s.horizonBack} />
-      {/* the dome's outline, seen side on: half a circle from the horizon's east end to its west end */}
-      <path d={`M${-R} 0A${R} ${R} 0 0 1 ${R} 0`} className={s.limb} />
-      <path d={skyLine(altRing(0), view).front} className={s.horizon} />
-      {[30, 60].map((a) => (
-        <path key={`f${a}`} d={skyLine(altRing(a), view).front} className={s.alt} />
-      ))}
-      {meridians.map((az) => (
-        <path
-          key={`mf${az}`}
-          d={skyLine(azArc(az), view).front}
-          className={az % 180 === 0 ? s.meridian : s.alt}
-        />
+      {MERIDIANS.map((az) => (
+        <path key={az} d={skyLine(azArc(az), view).back} className={az % 180 === 0 ? s.meridian : s.alt} />
       ))}
       {[30, 60].map((a) => {
-        const p = proj(a, view.yaw + 200) // on the near side, just off the near meridian
+        const p = proj(a, view.yaw + 40) // on the far wall, a little right of where you look
         return (
-          <text key={a} x={p.x + 2} y={p.y - 2} className={s.ringLabel}>
+          <text key={a} x={p.x + 1.5} y={p.y - 1.5} className={s.ringLabel}>
             {a}°
           </text>
         )
       })}
-      {(
-        [
-          ['N', 0],
-          ['E', 90],
-          ['S', 180],
-          ['W', 270],
-        ] as const
-      ).map(([label, az]) => {
+      {POINTS.map(([label, az]) => {
         const p = proj(-7, az)
         return (
-          <text
-            key={label}
-            x={p.x}
-            y={p.y + 3}
-            className={`${s.compass} ${p.front ? '' : s.compassBack}`}
-            textAnchor="middle"
-          >
+          <text key={label} x={p.x} y={p.y + 2.5} className={s.compass} textAnchor="middle">
             {label}
           </text>
         )
       })}
+    </>
+  )
+}
+
+/** The near shell: its outline and a faint dashed grid, to look through. */
+function FrontGrid({ view }: { view: View }) {
+  return (
+    <>
+      {/* the dome's outline: half a circle over the two points of the horizon level with its middle */}
+      <path d={`M${-R} 0A${R} ${R} 0 0 1 ${R} 0`} className={s.limb} />
+      {[30, 60].map((a) => (
+        <path key={a} d={skyLine(altRing(a), view).front} className={s.gridNear} />
+      ))}
+      {MERIDIANS.map((az) => (
+        <path key={az} d={skyLine(azArc(az), view).front} className={s.gridNear} />
+      ))}
     </>
   )
 }
@@ -240,10 +257,25 @@ export function Dome({
     return () => cancelAnimationFrame(raf)
   }, [spin, moving, setView])
   const proj = (alt: number, az: number) => project3d(alt, az, view)
-  const ctx: DomeCtx = { proj, view, k: zoom.k, box }
+  const layer = (side: DomeCtx['side']): DomeCtx => {
+    const front = side === 'front'
+    return {
+      proj,
+      view,
+      k: zoom.k,
+      box,
+      side,
+      here: (p) => p.front === front,
+      line: (pts) => (front ? splitSides(pts).front : splitSides(pts).back).map(polyline).join(' '),
+    }
+  }
+  const ctx = layer('front')
   const towards = () => zoomTarget(proj) ?? proj(90, 0)
   return (
     <div className={s.domeWrap}>
+      <svg className={s.floor} viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} aria-hidden="true">
+        <Floor proj={proj} />
+      </svg>
       {lat != null && lon != null && (
         <SkySurvey survey={survey} box={box} view={view} fast={moving || spin} lat={lat} lon={lon} t={t} />
       )}
@@ -270,13 +302,15 @@ export function Dome({
             <path d="M0 0L10 5L0 10z" fill="context-stroke" />
           </marker>
         </defs>
-        <Grid view={view} proj={proj} />
-        {children(ctx)}
+        <BackGrid view={view} proj={proj} />
+        <g>{children(layer('back'))}</g>
+        <FrontGrid view={view} />
+        <g className={s.nearSide}>{children(layer('front'))}</g>
       </svg>
       {renderOverlay?.(ctx)}
       <p className={s.turnHint}>
         <span>
-          Facing {facing(view.yaw)} · {Math.round(view.tilt)}° up · drag to turn, scroll to zoom
+          Seen from outside, looking {facing(view.yaw)} · {Math.round(view.tilt)}° above · drag to turn
         </span>
         <span className={s.surveyPick} role="group" aria-label="View">
           <button
@@ -284,6 +318,7 @@ export function Dome({
             className={s.turn}
             onClick={() => setView((v) => ({ ...v, yaw: (v.yaw + 315) % 360 }))}
             aria-label="Turn left"
+            title="Turn the dome left"
           >
             ←
           </button>
@@ -292,6 +327,7 @@ export function Dome({
             className={s.turn}
             onClick={() => setView((v) => ({ ...v, yaw: (v.yaw + 45) % 360 }))}
             aria-label="Turn right"
+            title="Turn the dome right"
           >
             →
           </button>

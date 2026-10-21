@@ -138,24 +138,25 @@ def _to_rgb(im):  # noqa: ANN001, ANN202
     return im.convert("RGB")
 
 
-def _thumb(p: FinishedProject, src: Path, tag: str) -> Path:
+def _thumb(p: FinishedProject, src: Path, tag: str, px: int = THUMB_PX) -> Path:
     from django.conf import settings
     from PIL import Image, UnidentifiedImageError
 
-    out = Path(settings.STATION_ROOT) / "cache" / "finished" / f"{p.pk}-{tag}.jpg"
+    size = "" if px == THUMB_PX else f"-{px}"
+    out = Path(settings.STATION_ROOT) / "cache" / "finished" / f"{p.pk}-{tag}{size}.jpg"
     if out.exists():
         return out
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(f".{out.name}.{os.getpid()}.tmp")
     try:
         with Image.open(src) as im:
-            im.thumbnail((THUMB_PX, THUMB_PX))
+            im.thumbnail((px, px))
             _to_rgb(im).save(tmp, "JPEG", quality=85)
         os.replace(tmp, out)
     except (OSError, UnidentifiedImageError, ValueError) as e:
         tmp.unlink(missing_ok=True)
         log.warning("render api: couldn't make a thumbnail of %s: %s", src.name, e)
-        raise ApiError(404, "no_thumbnail", "Couldn't make a thumbnail of the final image.") from e
+        raise ApiError(404, "no_thumbnail", f"Couldn't make a thumbnail of {src.name}.") from e
     return out
 
 

@@ -140,14 +140,14 @@ describe('the sky dome', () => {
 
   it('turns and zooms the dome, and resets', () => {
     render(<SkyView sky={sky()} onOpen={() => {}} />)
-    const start = screen.getByText(/Facing .* up/).textContent ?? ''
+    const start = screen.getByText(/looking .* above/).textContent ?? ''
     expect(screen.queryByRole('button', { name: 'Reset view' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Turn right' }))
-    expect(screen.getByText(/Facing .* up/).textContent).not.toBe(start)
+    expect(screen.getByText(/looking .* above/).textContent).not.toBe(start)
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
     expect(screen.getByRole('button', { name: 'Zoom out' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Reset view' }))
-    expect(screen.getByText(/Facing .* up/).textContent).toBe(start)
+    expect(screen.getByText(/looking .* above/).textContent).toBe(start)
     expect(screen.getByRole('button', { name: 'Zoom out' })).toBeDisabled()
   })
 
