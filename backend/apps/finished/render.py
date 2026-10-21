@@ -139,8 +139,10 @@ def _site_key(f: Frame) -> SiteKey | None:
     return round(f.site_lat), round(f.site_lon)
 
 
-def _site_totals(used: list[Frame]) -> tuple[Counter[SiteKey], dict[SiteKey, float]]:
-    counts: Counter[SiteKey] = Counter()
+def _site_totals(graded: list[Frame], used: list[Frame]) -> tuple[Counter[SiteKey], dict[SiteKey, float]]:
+    """Used subs and their integration per site. Every graded sub's site is listed, so a site whose subs were all
+    rejected still has an id (with 0 used) and every quality entry can name its site."""
+    counts: Counter[SiteKey] = Counter({k: 0 for f in graded if (k := _site_key(f))})
     time: dict[SiteKey, float] = defaultdict(float)
     for f in used:
         k = _site_key(f)
@@ -177,17 +179,17 @@ def _describe(k: SiteKey, sources: list[Library | InstallationSettings]) -> tupl
     return None, None
 
 
-def _sites(used: list[Frame]) -> tuple[list[dict[str, Any]], dict[SiteKey, str]]:
+def _sites(graded: list[Frame], used: list[Frame]) -> tuple[list[dict[str, Any]], dict[SiteKey, str]]:
     """Every place the subs were shot (020-DR-07): one entry per whole-degree site, ids s1, s2 … by integration.
     A master made from home and remote data is several truths, not one average."""
-    counts, time = _site_totals(used)
+    counts, time = _site_totals(graded, used)
     if not counts:
         return [], {}
-    sources = _site_sources(used)
+    sources = _site_sources(graded)
     inst = InstallationSettings.load()
     ids: dict[SiteKey, str] = {}
     out = []
-    for n, (k, subs) in enumerate(sorted(counts.items(), key=lambda kv: -time[kv[0]]), start=1):
+    for n, (k, subs) in enumerate(sorted(counts.items(), key=lambda kv: (-time[kv[0]], -kv[1])), start=1):
         ids[k] = f"s{n}"
         region, bortle = _describe(k, [*sources.get(k, []), inst])
         out.append(
@@ -384,7 +386,8 @@ def build(proj: FinishedProject) -> dict[str, Any]:
     eff = {f.pk: effective(f, list(f.verdicts.all()), grades.get(f.pk)) for f in lights}
     used = [f for f in lights if eff[f.pk].verdict in ("accept", "down")]
     target = _target(proj, dss, solves)
-    sites, site_ids = _sites(used)
+    graded = [f for f in lights if eff[f.pk].verdict is not None]
+    sites, site_ids = _sites(graded, used)
     data = {
         "schema_version": SCHEMA_VERSION,
         "project": {

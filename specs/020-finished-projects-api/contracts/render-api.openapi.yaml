@@ -132,7 +132,11 @@ components:
             subs_accepted: { type: integer }
             subs_down_weighted: { type: integer }
             subs_rejected: { type: integer }
-            nights: { type: integer }
+            nights:
+              type: integer
+              description: >
+                Observing nights with any subs, as SubStation's collection pages count them, including nights whose
+                subs were all rejected. timeline[] lists only nights with subs that were used.
             first_night: { type: string, format: date, description: observing night (local evening date) }
             last_night: { type: string, format: date }
             mosaic:
@@ -176,7 +180,9 @@ components:
                   region: { type: string, description: only when a library or the installation describes this place }
                   bortle: { type: integer, minimum: 1, maximum: 9 }
                   lat_1deg: { type: integer, minimum: -90, maximum: 90 }
-                  subs: { type: integer, description: subs used (accepted and down-weighted) from this site }
+                  subs:
+                    type: integer
+                    description: subs used (accepted and down-weighted) from this site; 0 when every sub there was rejected
                   integration_s: { type: number }
         timeline:
           type: array
@@ -208,7 +214,11 @@ components:
               fwhm_arcsec: { type: number }
               fwhm_px: { type: number }
               stars: { type: integer }
-              snr: { type: number }
+              snr:
+                type: number
+                description: >
+                  A crude whole-frame figure for comparing subs of one target: (image mean − median) / background
+                  noise, measured on the calibrated sub. Around 0–2 is typical; it can be negative. Not a star SNR.
               verdict: { $ref: "#/components/schemas/Verdict" }
         frames:
           type: object

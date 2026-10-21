@@ -380,3 +380,13 @@ def test_the_target_name_prefers_a_catalogue_designation(completed, heart, token
     data = bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()
     assert data["target"]["name"] == "IC 1805"
     assert data["target"]["common_name"] == "Heart Nebula"
+
+
+def test_a_site_with_only_rejected_subs_still_has_an_id(completed, heart, token):
+    rejected = [f.pk for f in Frame.objects.filter(grade__verdict="reject")]
+    Frame.objects.filter(pk__in=rejected).update(site_lat=-31.27, site_lon=149.06)
+    p = _linked(heart)
+    data = bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()
+    sites = {x["id"]: x for x in data["capture"]["sites"]}
+    assert sites["s2"]["lat_1deg"] == -31 and sites["s2"]["subs"] == 0
+    assert all("site" in q for q in data["quality"])

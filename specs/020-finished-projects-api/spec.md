@@ -237,3 +237,6 @@ the action is disabled with the reason.
   settings describe that same place. Every timeline row and per-sub quality entry carries its site's id, and each
   sky track is worked out from its own site. The target's name prefers a catalogue designation (IC 434 over a
   nickname); the collection's name stays the common name.
+- **020-DR-08** (2026-10-21) Every graded sub's site is listed in `capture.sites`, so each quality entry names its
+  site; a site whose subs were all rejected has 0 used subs. The contract says what per-sub SNR measures and that
+  `nights` counts every night with subs while the timeline lists only nights with used subs.
