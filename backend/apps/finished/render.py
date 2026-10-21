@@ -256,15 +256,21 @@ def _rigs(dss: list[Dataset], solves: list[PlateSolve]) -> list[dict[str, Any]]:
     return out
 
 
+def _is_mosaic(proj: FinishedProject) -> bool:
+    """The owner's project kind decides (020-DR-10): subs can carry panel numbers from capture software (a
+    mosaic template, a reframe) on what is really one field."""
+    return any(lp.kind == "mosaic" for lp in proj.linked_projects.all())
+
+
 def _timeline(
-    used: list[Frame], target: dict[str, Any], site_ids: dict[SiteKey, str]
+    used: list[Frame], target: dict[str, Any], site_ids: dict[SiteKey, str], mosaic: bool = True
 ) -> list[dict[str, Any]]:
     """Per observing night, filter, panel and site: the subs used and the target's track that night, worked out
     from that site rounded to whole degrees, never from stored positions (020-FR-007, 020-DR-01, 020-DR-07)."""
     rows: dict[tuple[Any, str, int | None, SiteKey | None], list[Frame]] = defaultdict(list)
     for f in used:
         if f.night is not None:
-            rows[(f.night.date, f.filter_norm or "", f.panel, _site_key(f))].append(f)
+            rows[(f.night.date, f.filter_norm or "", f.panel if mosaic else None, _site_key(f))].append(f)
     ra, dec = target.get("ra_deg"), target.get("dec_deg")
     out = []
     order = sorted(
@@ -356,10 +362,10 @@ def _capture(
         {x.night.date for x in DatasetNight.objects.filter(dataset__in=dss).select_related("night")}
     )
     panels = {d.panel for d in dss if d.panel is not None}
-    planned = [p.planned_panels for p in proj.linked_projects.all() if p.planned_panels]
-    mosaic = (
-        {"panels": max([len(panels), *planned])} if len(panels) > 1 or any(n > 1 for n in planned) else None
-    )
+    planned = [
+        p.planned_panels for p in proj.linked_projects.all() if p.kind == "mosaic" and p.planned_panels
+    ]
+    mosaic = {"panels": max([len(panels), *planned])} if _is_mosaic(proj) else None
     return {
         "total_integration_s": _r(sum(d.accepted_integration_s for d in dss), 1),
         "subs_total": acc + down + rej,
@@ -399,7 +405,7 @@ def build(proj: FinishedProject) -> dict[str, Any]:
         },
         "target": target,
         "capture": _capture(proj, dss, used, solves, sites),
-        "timeline": _timeline(used, target, site_ids),
+        "timeline": _timeline(used, target, site_ids, _is_mosaic(proj)),
         "quality": _quality(lights, eff, meas, site_ids),
         "frames": _frames(proj),
         "processing": list(proj.processing or []),

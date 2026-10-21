@@ -243,3 +243,7 @@ the action is disabled with the reason.
 - **020-DR-09** (2026-10-21) A project folder SubStation can't write to (the library is mounted read-write but the
   folder's own permissions refuse its user) gets a plain reason, not a server error. The install guide says how to
   give SubStation's user write access on TrueNAS.
+- **020-DR-10** (2026-10-21) Whether a finished image is a mosaic comes from the linked SubStation project's kind
+  (the owner's word), not from the subs' panel numbers, which capture software can set on what is really one field
+  (a mosaic template, a reframe between nights). A single-field project has no `mosaic` and its timeline rows
+  aren't split by panel; every panel's subs still count.

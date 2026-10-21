@@ -404,3 +404,14 @@ def test_a_folder_substation_cant_write_gives_a_reason_not_a_500(completed, hear
     r = admin_client.post(f"/api/v1/finished/{p.pk}/project-json")
     assert r.status_code == 409
     assert r.json()["code"] == "no_permission"
+
+
+def test_a_single_field_project_is_never_a_mosaic_whatever_the_subs_say(completed, heart, token):
+    """Subs carry panels 1 and 2, but the owner says the project is one field (020-DR-10)."""
+    heart.kind, heart.planned_panels = "single", None
+    heart.save()
+    p = _linked(heart)
+    data = bearer(token).get(f"/api/v1/render/projects/{p.pk}").json()
+    assert "mosaic" not in data["capture"]
+    assert all("panel" not in r for r in data["timeline"])
+    assert data["capture"]["subs_accepted"] == 12  # every panel's subs still count
