@@ -240,3 +240,6 @@ the action is disabled with the reason.
 - **020-DR-08** (2026-10-21) Every graded sub's site is listed in `capture.sites`, so each quality entry names its
   site; a site whose subs were all rejected has 0 used subs. The contract says what per-sub SNR measures and that
   `nights` counts every night with subs while the timeline lists only nights with used subs.
+- **020-DR-09** (2026-10-21) A project folder SubStation can't write to (the library is mounted read-write but the
+  folder's own permissions refuse its user) gets a plain reason, not a server error. The install guide says how to
+  give SubStation's user write access on TrueNAS.

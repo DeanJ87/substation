@@ -390,3 +390,17 @@ def test_a_site_with_only_rejected_subs_still_has_an_id(completed, heart, token)
     sites = {x["id"]: x for x in data["capture"]["sites"]}
     assert sites["s2"]["lat_1deg"] == -31 and sites["s2"]["subs"] == 0
     assert all("site" in q for q in data["quality"])
+
+
+def test_a_folder_substation_cant_write_gives_a_reason_not_a_500(completed, heart, admin_client, monkeypatch):
+    lib, folder = completed
+    p = _linked(heart)
+    monkeypatch.setattr("apps.libraries.access.is_writable", lambda lib: True)
+
+    def denied(self, data):  # noqa: ANN001
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr("pathlib.Path.write_bytes", denied)
+    r = admin_client.post(f"/api/v1/finished/{p.pk}/project-json")
+    assert r.status_code == 409
+    assert r.json()["code"] == "no_permission"

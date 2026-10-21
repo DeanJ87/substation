@@ -45,6 +45,11 @@ file has three slots:
 | `SUBSTATION_LIBRARY_3`, `_3_NAME`, `_3_MODE` | a third, optional; its mode defaults to the first's |
 | `SUBSTATION_LIBRARY_4`, `_4_NAME`, `_4_MODE` | a fourth, optional, read-only by default; name it `completed` for finished work (spec 020) |
 
+A read-write mount isn't enough on its own: SubStation runs as user 1000 in its containers, and that user also needs
+write permission on the folders themselves (for a Completed library, so it can write `project.json` into project
+folders you create from another machine). On TrueNAS, an ACL entry does it without changing owners:
+`setfacl -R -m u:1000:rwx,d:u:1000:rwx <folder>`.
+
 Mount libraries read-only unless SubStation should write there. A library mounted read-write is writable for
 everything SubStation does with files: the bin can delete there (once you allow it in Settings → Library → Bin),
 and it can be an *active* or *archive* library, so collections can be archived to it or brought back from it

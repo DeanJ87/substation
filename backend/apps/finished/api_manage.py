@@ -326,7 +326,17 @@ def write_project_json(request: HttpRequest, id: int) -> FinishedOut:
             )
     data = build(p)
     body = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode()
-    target.write_bytes(body)  # only project.json is ever written there (020-FR-014)
+    try:
+        target.write_bytes(body)  # only project.json is ever written there (020-FR-014)
+    except PermissionError as e:
+        raise ApiError(
+            409,
+            "no_permission",
+            "SubStation can't write in this project folder: the folder's permissions don't let it, even though the "
+            "library is mounted read-write. Give SubStation's user write access to the Completed folder.",
+        ) from e
+    except OSError as e:
+        raise ApiError(409, "write_failed", f"Couldn't write project.json: {e.strerror or e}.") from e
     p.wrote_project_json_sha256 = hashlib.sha256(body).hexdigest()
     p.save(update_fields=["wrote_project_json_sha256", "updated_at"])
     return _out(p)
