@@ -206,3 +206,17 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   it is refused while files are moving or combined masters remain; the datasets stay as "Not in a collection"; and
   undo brings the collection and its projects back with the same ids, goals, done state, datasets (where still
   unassigned) and finished links. Viewers can look but not change collections or projects.
+- **006-DR-40** (2026-10-22) **Where put-away things are, and one confirm.** The Library's Collections section has a
+  Show filter (Current, Partly archived, Archived, Worth archiving, All), each with its count and kept in the
+  address as `?show=`. Current is the default and leaves out collections whose files are all archived; a line under
+  the cards says how many are hidden, with Show. Where a collection's files are reads with one label set
+  everywhere (Active, Archived, Partly archived, Worth archiving): the Show filter, the card tags and the Files
+  panel. The collection page has a ⋯ menu with Archive files…, Bring back files… (each through the same move
+  preview as the Files panel) and Delete collection…; Edit collection only renames. Every put-away confirm is one
+  small dialog with three lines (Files, Records, Links and goals) and how to undo it, worded from one table for the
+  five verbs; a refusal shows its reason with the confirm disabled. Deleting a collection or project, unlinking a
+  finished image and marking a project done each end in a toast with Undo. The project menu says Mark done and
+  Reopen, the done projects show behind "Show done (N)", and marking the last open project done offers Archive
+  files…. A project held back by combined masters lists them, each with Delete, and links to the collection's
+  masters. Deleting a stack or combined master says "File deleted now; can't be undone." Activity's Your changes
+  shows 20 at a time with More, and a Deleted filter lists deleted collections and projects to bring back.

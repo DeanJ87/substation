@@ -1,6 +1,7 @@
 // Masters (spec 004 v2 amendment; design v2 D5): start an integration of a chosen scope and rule (with a
 // preview of what it includes), the one in progress with its pipeline steps, and every version kept with its
 // recipe, state and report.
+import { FILE_DELETED } from '../changes/putAway'
 import { Glance } from '../../components/Glance'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Zoomable } from '../../components/CloseLook'
@@ -522,7 +523,11 @@ function Version({ m }: { m: Stack }) {
         </button>
         <ConfirmButton
           className={v.pill}
-          question={<>Delete Master v{m.version}? Subs are not affected.</>}
+          question={
+            <>
+              Delete Master v{m.version}? Subs are not affected. {FILE_DELETED}
+            </>
+          }
           confirm={`Delete v${m.version}`}
           onConfirm={() => action.mutate({ id: m.id, action: 'delete' })}
         >

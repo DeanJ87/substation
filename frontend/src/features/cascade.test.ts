@@ -4,7 +4,7 @@ import { filterOptions } from './scope/ScopeBar'
 import { hasDestination } from './settings/Sections'
 import { roleChange, roleFilterChoices } from './finished/FinishedProject'
 import { goalExtras, panelsApply, splitOptions } from './library/ProjectCards'
-import { whereOptions } from './library/Library'
+import { showOptions } from './library/Library'
 
 describe('dependent fields (018-DR-17)', () => {
   it('keeps a child only while its parent still offers it', () => {
@@ -65,14 +65,15 @@ describe('dependent fields (018-DR-17)', () => {
     expect(panelsApply('single', 'mosaic')).toBe(false)
     expect(panelsApply('auto', 'mosaic')).toBe(true)
   })
-  it('counts each Files choice and disables the empty ones', () => {
+  it('counts each Show choice and disables the empty ones', () => {
     const cards = [
       { files_where: 'active', archive_suggested: false },
-      { files_where: 'active', archive_suggested: true },
+      { files_where: 'archive', archive_suggested: true },
     ] as never[]
-    const opts = whereOptions(cards, '')
-    expect(opts.find((o) => o.value === 'active')).toMatchObject({ label: 'In the active library (2)' })
-    expect(opts.find((o) => o.value === 'archive')).toMatchObject({ disabled: true })
-    expect(whereOptions(cards, 'archive').find((o) => o.value === 'archive')?.disabled).toBe(false)
+    const opts = showOptions(cards, 'current')
+    expect(opts.find((o) => o.value === 'current')).toMatchObject({ label: 'Current (1)' })
+    expect(opts.find((o) => o.value === 'archived')).toMatchObject({ label: 'Archived (1)' })
+    expect(opts.find((o) => o.value === 'partly')).toMatchObject({ disabled: true })
+    expect(showOptions(cards, 'partly').find((o) => o.value === 'partly')?.disabled).toBe(false)
   })
 })

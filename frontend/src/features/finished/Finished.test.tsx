@@ -466,4 +466,34 @@ describe('the progression of a finished project (020-DR-15)', () => {
     await openProject({ 'GET /finished/7': { ...PROJECT, links: [] } })
     expect(screen.queryByRole('heading', { name: /Progression/ })).not.toBeInTheDocument()
   })
+
+  it('unlinks after asking, with the renderer warning, then offers Undo and shows warnings', async () => {
+    const { api } = await openProject({
+      'PUT /finished/7/links': {
+        ...PROJECT,
+        links: [],
+        change_id: 61,
+        warnings: ['The renderer no longer gets Heart Nebula for this image.'],
+      },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlink Heart Nebula' }))
+    const dialog = screen.getByRole('dialog', { name: 'Unlink Heart Nebula?' })
+    expect(within(dialog).getByText(/The renderer stops getting/)).toBeInTheDocument()
+    expect(within(dialog).getByText("Your files aren't touched.")).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Unlink' }))
+    await waitFor(() =>
+      expect(api.calls).toContainEqual({
+        method: 'PUT',
+        path: '/finished/7/links',
+        body: { project_ids: [] },
+      }),
+    )
+    const t = await screen.findByText('Unlinked Heart Nebula')
+    expect(
+      within(t.closest('[role="status"]') as HTMLElement).getByRole('button', { name: 'Undo' }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText('The renderer no longer gets Heart Nebula for this image.'),
+    ).toBeInTheDocument()
+  })
 })

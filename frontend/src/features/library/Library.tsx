@@ -1,6 +1,7 @@
 // Library (spec 006; design v2 L1): readouts, collections as cards with integration per filter, then datasets
 // not in a collection with SubStation's suggestion.
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { WHERE_LABEL } from '../changes/putAway'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import {
@@ -144,48 +145,72 @@ export function Library() {
   )
 }
 
-// where a collection's files are (spec 013 FR-009): the Library's own filter, shown once libraries have roles
-const WHERE: [string, string][] = [
-  ['', 'Anywhere'],
-  ['active', 'In the active library'],
-  ['archive', 'In the archive'],
-  ['both', 'Split across both'],
-  ['suggested', 'Worth archiving'],
+// where a collection's files are (spec 013 FR-009, 006-DR-40): the Library's Show filter, in the address (?show=).
+// Current, the default, leaves out collections whose files are all archived; a line under the cards says how many.
+export type Show = 'current' | 'partly' | 'archived' | 'worth' | 'all'
+export const SHOWS: [Show, string][] = [
+  ['current', 'Current'],
+  ['partly', WHERE_LABEL.both],
+  ['archived', WHERE_LABEL.archive],
+  ['worth', WHERE_LABEL.suggested],
+  ['all', 'All'],
 ]
-const WHERE_PILL: Record<string, string> = { archive: 'Archived', both: 'Partly archived' }
+export const readShow = (x: unknown): Show | undefined =>
+  SHOWS.some(([k]) => k === x) && x !== 'current' ? (x as Show) : undefined
+const WHERE_PILL: Record<string, string> = { archive: WHERE_LABEL.archive, both: WHERE_LABEL.both }
 
-/** The Files choices with how many collections each would show; one that would show none can't be chosen. */
-export function whereOptions(cards: Card[], current: string) {
-  return WHERE.map(([k, label]) => {
-    const n = byWhere(cards, k).length
-    return { value: k, label: k ? `${label} (${n})` : label, disabled: !!k && n === 0 && k !== current }
-  })
+export function byShow(cards: Card[], show: Show): Card[] {
+  switch (show) {
+    case 'current':
+      return cards.filter((c) => c.files_where !== 'archive')
+    case 'partly':
+      return cards.filter((c) => c.files_where === 'both')
+    case 'archived':
+      return cards.filter((c) => c.files_where === 'archive')
+    case 'worth':
+      return cards.filter((c) => c.archive_suggested)
+    default:
+      return cards
+  }
 }
 
-export function byWhere(cards: Card[], where: string): Card[] {
-  if (!where) return cards
-  if (where === 'suggested') return cards.filter((c) => c.archive_suggested)
-  return cards.filter((c) => c.files_where === where)
+/** The Show choices with how many collections each would show; one that would show none can't be chosen. */
+export function showOptions(cards: Card[], current: Show) {
+  return SHOWS.map(([k, label]) => {
+    const n = byShow(cards, k).length
+    return { value: k, label: `${label} (${n})`, disabled: n === 0 && k !== current && k !== 'current' }
+  })
 }
 
 function CollectionCards({ cards: all, scope, resetKey }: { cards: Card[]; scope: Scope; resetKey: string }) {
   const navigate = useNavigate()
-  const [where, setWhere] = useState('')
+  const search = useSearch({ strict: false }) as { show?: Show }
+  const show: Show = search.show ?? 'current'
+  const setShow = (next: Show) =>
+    void navigate({
+      to: '.',
+      search: ((prev: Record<string, unknown>) => ({
+        ...prev,
+        show: next === 'current' ? undefined : next,
+      })) as never,
+      replace: true,
+    })
   // a collection opens with the Library's filters, so its links (the map, a night) carry them on (spec 018)
   const carry = scopeQuery(scope)
-  const cards = byWhere(all, where)
-  const { visible, hasMore, more } = useProgressive(cards, 24, `${resetKey}|${where}`)
+  const cards = byShow(all, show)
+  const { visible, hasMore, more } = useProgressive(cards, 24, `${resetKey}|${show}`)
   const roles = all.some((c) => c.files_where)
+  const hidden = show === 'current' ? all.length - cards.length : 0
   if (!all.length) return null
   return (
     <Collapsible id="library-collections" title="Collections" meta={cards.length}>
       {roles && (
-        <Field inline label="Files" className={s.whereFilter}>
+        <Field inline label="Show" className={s.whereFilter}>
           <Select
             size_="sm"
-            value={where}
-            onChange={(e) => setWhere(e.target.value)}
-            options={whereOptions(all, where)}
+            value={show}
+            onChange={(e) => setShow(e.target.value as Show)}
+            options={showOptions(all, show)}
           />
         </Field>
       )}
@@ -206,6 +231,14 @@ function CollectionCards({ cards: all, scope, resetKey }: { cards: Card[]; scope
         ))}
       </div>
       <LoadMore hasMore={hasMore} loading={false} onMore={more} />
+      {hidden > 0 && (
+        <p className={s.hiddenLine}>
+          {plural(hidden, 'archived collection')} hidden ·{' '}
+          <Button size="sm" variant="link" onClick={() => setShow('all')}>
+            Show
+          </Button>
+        </p>
+      )}
     </Collapsible>
   )
 }
@@ -355,7 +388,7 @@ function CollectionCardView({
         {(c.states.length > 0 || WHERE_PILL[c.files_where ?? ''] || c.archive_suggested) && (
           <div className={v.pills}>
             {WHERE_PILL[c.files_where ?? ''] && <Chip>{WHERE_PILL[c.files_where ?? '']}</Chip>}
-            {c.archive_suggested && <Chip>Worth archiving</Chip>}
+            {c.archive_suggested && <Chip>{WHERE_LABEL.suggested}</Chip>}
             {c.states.map(
               (st) =>
                 STATE_LABEL[st] && (

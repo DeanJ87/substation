@@ -45,7 +45,8 @@ import v from '../v2/v2.module.css'
 import s from './library.module.css'
 import { collectionFacts, nameParts } from './names'
 import c from './collection.module.css'
-import { useProjects } from './Projects'
+import { useDeleteCombined, useProjects } from './Projects'
+import { FILE_DELETED } from '../changes/putAway'
 import { useSort } from '../../components/sortable'
 import { CloseLook, type LookMode, type LookTarget, Zoomable } from '../../components/CloseLook'
 import { Collapsible } from '../../components/Collapsible'
@@ -59,6 +60,7 @@ import { inNights, omit, readScope, scopeQuery } from '../scope/scope'
 import { ChooseBox, useChosen } from '../../components/BulkBar'
 import { DatasetBulkBar } from './DatasetBulkBar'
 import { CollectionFiles } from './CollectionFiles'
+import { CollectionMenu, type PutAwayStep } from './CollectionMenu'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -69,6 +71,7 @@ export function CollectionView() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [putAway, setPutAway] = useState<PutAwayStep>(null)
   const [range, setRange] = useState<[string, string] | null>(null)
   const [project, setProject] = useState<number | null>(null)
   const projects = useProjects(Number(id))
@@ -110,31 +113,6 @@ export function CollectionView() {
               (o as { collections: Card[] }).collections,
               (x) => x.id === Number(id),
               (x) => ({ ...x, name }),
-            ),
-          },
-      ],
-    ]),
-  })
-  // leaves the library list at once; the page goes straight back to the library
-  const removeCol = useMutation({
-    mutationFn: async () =>
-      unwrap(
-        await api
-          .DELETE('/collections/{id}', { params: { path: { id: Number(id) } } })
-          .then((r) => ({ ...r, data: null })),
-      ),
-    scope: { id: `collection-${id}` },
-    meta: { failed: "Couldn't remove the collection" },
-    ...optimistic(qc, () => [
-      [
-        ['library'],
-        (o) =>
-          o && {
-            ...(o as object),
-            collections: patchItems<Card>(
-              (o as { collections: Card[] }).collections,
-              (x) => x.id === Number(id),
-              () => null,
             ),
           },
       ],
@@ -187,7 +165,7 @@ export function CollectionView() {
             {card.first_night && ` from ${nightText(card.first_night)} to ${nightText(card.last_night)}`}
           </div>
         </div>
-        {/* one primary; removing lives in the edit dialog, away from Add (C17, C36) */}
+        {/* one primary; archiving and deleting live in the ⋯ menu, away from Add (C17, 006-DR-40) */}
         <div className={v.actions}>
           <Link to="/map" search={{ ...carry, collection: card.id }} className={buttonClass()}>
             Map
@@ -196,6 +174,13 @@ export function CollectionView() {
           <Button variant="primary" onClick={() => setAdding(true)}>
             Add datasets
           </Button>
+          <CollectionMenu
+            id={card.id}
+            name={card.name}
+            onMasters={() => setTab('masters')}
+            open={putAway}
+            setOpen={setPutAway}
+          />
         </div>
       </header>
 
@@ -207,10 +192,6 @@ export function CollectionView() {
           name={card.name}
           onClose={() => setEditing(false)}
           onRename={(name) => name !== card.name && renameCol.mutate(name)}
-          onRemove={() => {
-            removeCol.mutate()
-            void navigate({ to: '/' })
-          }}
         />
       )}
 
@@ -241,7 +222,14 @@ export function CollectionView() {
 
       {tab === 'overview' && (
         <>
-          <ProjectCards collectionId={card.id} datasets={d.datasets} value={project} onChange={setProject} />
+          <ProjectCards
+            collectionId={card.id}
+            datasets={d.datasets}
+            value={project}
+            onChange={setProject}
+            onArchive={() => setPutAway('archive')}
+            onMasters={() => setTab('masters')}
+          />
           <Framing key={project ?? 'all'} id={card.id} project={project} />
           <div className={c.grid}>
             <section className={`${v.card} ${tb.flush}`}>
@@ -767,6 +755,7 @@ function Combined({
       ],
     ]),
   })
+  const removeCombined = useDeleteCombined()
   const d = q.data
   if (!d) return null
   const filters = Object.entries(d.filters)
@@ -830,6 +819,28 @@ function Combined({
                   {m.error && <span className={v.bad}>{m.error}</span>}
                   {m.state === 'current' && (
                     <FilePath path={m.file_path ?? ''} download={`/api/v1/combined/${m.id}/download`} />
+                  )}
+                  {m.id > 0 && m.state !== 'queued' && m.state !== 'running' && (
+                    <span>
+                      <ConfirmButton
+                        size="sm"
+                        variant="ghost"
+                        question={
+                          <>
+                            Delete {filterName(m.filter)} combined v{m.version}? {FILE_DELETED}
+                          </>
+                        }
+                        confirm="Delete"
+                        onConfirm={() =>
+                          removeCombined.mutate({
+                            id: m.id,
+                            name: `${filterName(m.filter)} combined v${m.version}`,
+                          })
+                        }
+                      >
+                        Delete…
+                      </ConfirmButton>
+                    </span>
                   )}
                 </div>
               </article>
@@ -909,17 +920,15 @@ function AddDatasets({ id, onClose, onDone }: { id: number; onClose: () => void;
   )
 }
 
-/** Edit collection (C36): its name, and removing it, in one dialog with Cancel and Escape. */
+/** Edit collection (C36): its name, in a dialog with Cancel and Escape. Delete is in the ⋯ menu (006-DR-40). */
 function EditCollection({
   name,
   onClose,
   onRename,
-  onRemove,
 }: {
   name: string
   onClose: () => void
   onRename: (name: string) => void
-  onRemove: () => void
 }) {
   const [text, setText] = useState(name)
   return (
@@ -941,17 +950,6 @@ function EditCollection({
             Save
           </Button>
           <Button onClick={onClose}>Cancel</Button>
-        </div>
-        <div className={c.dialogDanger}>
-          <ConfirmButton
-            variant="danger"
-            size="sm"
-            question={<>Remove “{name}”? Its datasets and files stay.</>}
-            confirm="Remove collection"
-            onConfirm={onRemove}
-          >
-            Remove collection
-          </ConfirmButton>
         </div>
       </form>
     </Modal>

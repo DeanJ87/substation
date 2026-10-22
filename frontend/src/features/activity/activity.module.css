@@ -357,3 +357,14 @@ button.chip[aria-pressed='true'] {
     grid-column: 2;
   }
 }
+.changesBar,
+.changesMore {
+  display: flex;
+  padding: 0 16px;
+}
+.changesBar {
+  margin-bottom: 10px;
+}
+.changesMore {
+  padding-block: 10px 6px;
+}

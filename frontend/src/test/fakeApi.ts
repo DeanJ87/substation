@@ -103,7 +103,7 @@ export function fakeFor(method: string, path: string): Record<string, unknown> {
   return fake(ok?.[1].content?.['application/json']?.schema) as Record<string, unknown>
 }
 
-export type Overrides = Record<string, unknown | ((body: unknown) => unknown)>
+export type Overrides = Record<string, unknown | ((body: unknown, url: URL) => unknown)>
 
 /** Replace fetch: API calls answer from the contract (or `overrides`, keyed "GET /path"), the session is signed in,
  * anything else is a 404. Returns the mock so tests can see what was sent. */
@@ -127,7 +127,9 @@ export function installFakeApi(overrides: Overrides = {}) {
     const key = `${method} ${path}`
     if (key in overrides) {
       const o = overrides[key]
-      return json(typeof o === 'function' ? (o as (b: unknown) => unknown)(body) : o)
+      const out = typeof o === 'function' ? (o as (b: unknown, u: URL) => unknown)(body, url) : o
+      // a test can answer with its own status (a 409 refusal, a 204)
+      return out instanceof Response ? out.clone() : json(out)
     }
     const op = match(path, method.toLowerCase())
     if (!op) return json({ code: 'not_found', message: 'Not found.' }, 404)
@@ -139,6 +141,6 @@ export function installFakeApi(overrides: Overrides = {}) {
   return { fetch: fn, calls }
 }
 
-function json(data: unknown, status = 200) {
+export function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
 }

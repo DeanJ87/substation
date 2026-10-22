@@ -249,3 +249,12 @@
     max-height: 140px;
   }
 }
+.hiddenLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0 0;
+  color: var(--sst-muted);
+  font-size: 13px;
+}

@@ -105,3 +105,14 @@ requirement they close.
   duplicate-merging migration with held groups, one Projects panel (006-DR-35..37); tests
 - [X] (2026-10-22) Put-away backend: collection impact, safe undoable delete, viewer checks on project and
   collection writes, unused dataset-removal route removed (006-DR-38, -39); tests
+- [X] (2026-10-22) Put-away frontend: one wording table (`features/changes/putAway.ts`) and confirm
+  (`components/PutAway.tsx`); collection ⋯ menu with Archive, Bring back and Delete (impact, refusal, Undo); Edit
+  collection renames only (006-DR-40); tests
+- [X] (2026-10-22) Library Show filter with counts in `?show=`, hidden-archived line, one label set on cards and
+  the Files panel (006-DR-40); tests
+- [X] (2026-10-22) Projects: Mark done / Reopen, Show done (N), Delete through the shared confirm, combined masters
+  deletable from the refusal and the Masters tab, Archive files… offered when the last project is done (006-DR-40);
+  tests
+- [X] (2026-10-22) Finished Unlink through the shared confirm with the renderer warning and Undo; stack and combined
+  master deletes say the file goes for good; Activity Your changes pages by 20 with a Deleted filter (006-DR-40);
+  tests

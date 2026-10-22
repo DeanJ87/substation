@@ -1,6 +1,12 @@
 // Changes made by hand, and undoing them (spec 016): a toast offers Undo after a bulk change, Ctrl/Cmd+Z undoes
 // your latest change anywhere, and Activity lists your recent changes, each with Undo.
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
@@ -21,10 +27,36 @@ export function offerUndo(qc: QueryClient, text: string, changeId: number | null
   toast(text, false, changeId ? { label: 'Undo', run: () => void undoChange(qc, changeId) } : undefined)
 }
 
-export function useChanges(limit = 10) {
+export const CHANGES_PAGE = 20
+
+/** Your changes, newest first, a page at a time (More asks for the next 20 by offset). */
+export function useChanges() {
+  return useInfiniteQuery({
+    queryKey: ['changes', 'all'],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) =>
+      unwrap(await api.GET('/changes', { params: { query: { limit: CHANGES_PAGE, offset: pageParam } } })),
+    getNextPageParam: (last, pages) => (last.length < CHANGES_PAGE ? undefined : pages.length * CHANGES_PAGE),
+  })
+}
+
+/** What you deleted (collections and projects), newest first: the two kinds asked for apart, then merged. */
+export function useDeletedChanges(enabled: boolean) {
   return useQuery({
-    queryKey: ['changes', limit],
-    queryFn: async () => unwrap(await api.GET('/changes', { params: { query: { limit } } })),
+    queryKey: ['changes', 'deleted'],
+    enabled,
+    queryFn: async () => {
+      const kinds = ['collection', 'project'] as const
+      const lists = await Promise.all(
+        kinds.map(async (kind) =>
+          unwrap(await api.GET('/changes', { params: { query: { kind, limit: 100 } } })),
+        ),
+      )
+      return lists
+        .flat()
+        .filter((c) => c.summary.startsWith('Deleted '))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id)
+    },
   })
 }
 

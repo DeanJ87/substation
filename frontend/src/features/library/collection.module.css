@@ -391,3 +391,12 @@
 .refName {
   font-weight: 600;
 }
+/* the move confirm inside the collection menu's dialog: the dialog is the frame */
+.dialog .confirm {
+  padding: 0;
+  border: 0;
+  font-size: inherit;
+}
+.dialog .confirm p {
+  margin: 0;
+}

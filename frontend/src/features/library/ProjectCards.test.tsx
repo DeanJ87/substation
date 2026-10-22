@@ -1,6 +1,9 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderRoute } from '../../test/renderRoute'
+import { fakeFor } from '../../test/fakeApi'
+
+const fakeCombined = (fakeFor('get', '/collections/1/combined') as { combined: object[] }).combined[0]
 
 afterEach(cleanup)
 
@@ -106,11 +109,52 @@ describe('Projects panel (amendment 2026-10-22)', { timeout: 20_000 }, () => {
 
   it('marks a project done from the menu and offers Undo', async () => {
     const { api } = await open({ 'PATCH /projects/2': { ...WIDE, done: true, change_id: 42 } })
-    menu('2025–26 · widefield', 'Done')
+    menu('2025–26 · widefield', 'Mark done')
     await waitFor(() =>
       expect(api.calls).toContainEqual({ method: 'PATCH', path: '/projects/2', body: { done: true } }),
     )
-    await undoOffered('2025–26 · widefield marked done')
+    await undoOffered('Marked 2025–26 · widefield done')
+    // another project is still open: no offer to archive
+    expect(screen.queryByRole('button', { name: 'Archive files…' })).not.toBeInTheDocument()
+  })
+
+  it('reopens a done project, shown with Show done (N)', async () => {
+    const { api } = await renderRoute('/collections/1', {
+      'GET /collections/1/projects': { ...LIST, projects: [MOSAIC, { ...WIDE, done: true }] },
+      'PATCH /projects/2': { ...WIDE, done: false, change_id: 44 },
+    })
+    const chip = await screen.findByRole('button', { name: /Show done/ })
+    expect(screen.queryByText('2025–26 · widefield')).not.toBeInTheDocument()
+    expect(chip).toHaveTextContent('Show done1')
+    fireEvent.click(chip)
+    menu('2025–26 · widefield', 'Reopen')
+    await waitFor(() =>
+      expect(api.calls).toContainEqual({ method: 'PATCH', path: '/projects/2', body: { done: false } }),
+    )
+    await undoOffered('Reopened 2025–26 · widefield')
+  })
+
+  it('offers to archive the files once the last open project is done', async () => {
+    await open({
+      'GET /collections/1/projects': { ...LIST, projects: [{ ...MOSAIC, done: true }, WIDE] },
+      'PATCH /projects/2': { ...WIDE, done: true, change_id: 45 },
+      'GET /collections/1/move-preview': {
+        files: 12,
+        bytes: 1e9,
+        lights: 10,
+        calibration: 2,
+        calibration_kept: 0,
+        from_library: 'fast',
+        to_library: 'big',
+      },
+    })
+    menu('2025–26 · widefield', 'Mark done')
+    const t = await screen.findByText('Every project here is done.')
+    fireEvent.click(
+      within(t.closest('[role="status"]') as HTMLElement).getByRole('button', { name: 'Archive files…' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: /Archive files/ })
+    expect(await within(dialog).findByRole('button', { name: 'Archive 12 files' })).toBeInTheDocument()
   })
 
   it('merges after showing what moves and which goals differ', async () => {
@@ -168,28 +212,48 @@ describe('Projects panel (amendment 2026-10-22)', { timeout: 20_000 }, () => {
     expect(await screen.findByText('Split 2026: 2026 · TTArtisan')).toBeInTheDocument()
   })
 
-  it("explains why a project with combined masters can't be deleted", async () => {
-    await open({
+  it('refuses to delete a project with combined masters, and offers deleting them', async () => {
+    const { api } = await open({
       'GET /projects/1/impact': { finished: [], combined: ['Hα v1'], goal_conflicts: [], datasets: 2 },
+      'GET /collections/1/combined': {
+        ...fakeFor('get', '/collections/1/combined'),
+        combined: [{ ...fakeCombined, id: 9, filter: 'Ha', version: 1, state: 'current' }],
+      },
+      'DELETE /combined/9': new Response(null, { status: 204 }),
     })
-    menu('2026', 'Delete')
-    expect(await screen.findByText(/Can't delete: it has combined masters \(Hα v1\)/)).toBeInTheDocument()
+    menu('2026', 'Delete…')
+    const dialog = await screen.findByRole('dialog', { name: 'Delete 2026?' })
+    expect(
+      await within(dialog).findByText('It has combined masters (Hα v1). Delete them first, or merge it.'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeDisabled()
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Delete…' }))
+    expect(within(dialog).getByText("File deleted now; can't be undone.")).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Hα combined v1' }))
+    await waitFor(() =>
+      expect(api.calls).toContainEqual({ method: 'DELETE', path: '/combined/9', body: null }),
+    )
   })
 
-  it('deletes after asking, then offers Undo', async () => {
+  it('deletes after showing what it touches, then offers Undo', async () => {
     const { api } = await open({
       'GET /projects/2/impact': { finished: ['2026 Heart'], combined: [], goal_conflicts: [], datasets: 1 },
       'DELETE /projects/2': { change_id: 43, warnings: ['No longer linked to 2026 Heart.'] },
     })
-    menu('2025–26 · widefield', 'Delete')
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete 2025–26 · widefield…' }))
-    const ask = screen.getByRole('group', { name: 'Confirm' })
-    expect(ask).toHaveTextContent('no longer linked to 2026 Heart')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }))
+    menu('2025–26 · widefield', 'Delete…')
+    const dialog = await screen.findByRole('dialog', { name: 'Delete 2025–26 · widefield?' })
+    expect(
+      await within(dialog).findByText('1 dataset stays in the collection, as “Not in a project”.', {
+        exact: false,
+      }),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('No longer linked to 2026 Heart.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Undo from Activity for 30 days.')).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() =>
       expect(api.calls).toContainEqual({ method: 'DELETE', path: '/projects/2', body: null }),
     )
-    expect(await screen.findByText('Deleted 2025–26 · widefield')).toBeInTheDocument()
+    await undoOffered('Deleted project 2025–26 · widefield')
   })
 
   it('lists projects held apart for review, with Merge', async () => {

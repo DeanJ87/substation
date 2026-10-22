@@ -6,6 +6,7 @@ import { api, unwrap } from '../../api/client'
 import { optimistic } from '../../api/optimistic'
 import { toast } from '../../components/Toasts'
 import { offerUndo } from '../changes/changes'
+import { deletedText } from '../changes/putAway'
 
 export type ProjectT = NonNullable<ReturnType<typeof useProjects>['data']>['projects'][number]
 export type ReviewT = NonNullable<ReturnType<typeof useProjects>['data']>['review'][number]
@@ -170,7 +171,7 @@ export function useProjectActions(collectionId: number) {
       ),
       onSuccess: said((r, vars: PatchVars) =>
         vars.done !== undefined
-          ? `${r.label} marked ${vars.done ? 'done' : 'not done'}`
+          ? `${vars.done ? 'Marked' : 'Reopened'} ${r.label}${vars.done ? ' done' : ''}`
           : vars.needs_review === false
             ? `${r.label} kept apart`
             : `Saved ${r.label}`,
@@ -186,7 +187,7 @@ export function useProjectActions(collectionId: number) {
           (ps) =>
             ps.filter((p) => p.id !== id),
       ),
-      onSuccess: said((_r, vars: { id: number; label: string }) => `Deleted ${vars.label}`),
+      onSuccess: said((_r, vars: { id: number; label: string }) => deletedText('project', vars.label)),
     }),
     setDatasets: useMutation({
       mutationFn: async ({ id, ids }: { id: number; ids: number[] }) =>
@@ -249,4 +250,22 @@ export function useProjectActions(collectionId: number) {
       ...edit((ids: number[]) => (ps) => [...ps].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id))),
     }),
   }
+}
+
+/** Delete a combined master (006-DR-38): its output file goes for good, so there's no Undo. Refused while it runs. */
+export function useDeleteCombined() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id }: { id: number; name: string }) =>
+      unwrap(
+        await api.DELETE('/combined/{id}', { params: { path: { id } } }).then((r) => ({ ...r, data: null })),
+      ),
+    meta: { failed: "Couldn't delete the combined master" },
+    onSuccess: (_r, vars) => toast(`Deleted ${vars.name}`),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['combined'] })
+      void qc.invalidateQueries({ queryKey: ['project-impact'] })
+      void qc.invalidateQueries({ queryKey: ['collection-impact'] })
+    },
+  })
 }

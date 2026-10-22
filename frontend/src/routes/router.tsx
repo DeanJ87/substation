@@ -10,7 +10,7 @@ import { getSession, type SessionUser } from '../api/auth'
 import { Activity } from '../features/activity/Activity'
 import { DatasetScreen } from '../features/dataset/DatasetScreen'
 import { CollectionView } from '../features/library/CollectionView'
-import { Library } from '../features/library/Library'
+import { Library, readShow, type Show } from '../features/library/Library'
 import { ReviewScreen } from '../features/review/ReviewScreen'
 import { SubDetail } from '../features/sub/SubDetail'
 import { NightView } from '../features/datasets/NightView'
@@ -54,7 +54,11 @@ const datasets = createRoute({
   getParentRoute: () => app,
   path: '/',
   component: Library,
-  validateSearch: (q: Record<string, unknown>): Scope => readScope(q), // spec 018
+  // spec 018; show: which collections by where their files are (006-DR-40)
+  validateSearch: (q: Record<string, unknown>): Scope & { show?: Show } => ({
+    ...readScope(q),
+    show: readShow(q.show),
+  }),
 })
 const collection = createRoute({
   getParentRoute: () => app,

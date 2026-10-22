@@ -9,13 +9,14 @@ import type { components } from '../../api/schema'
 import { Help } from '../../components/Help'
 import { Button, Meter } from '../../components/ui'
 import { offerUndo } from '../changes/changes'
+import { WHERE_LABEL } from '../changes/putAway'
 import { bytesText, countText, plural } from '../format'
 import v from '../v2/v2.module.css'
 import c from './collection.module.css'
 
 type Files = components['schemas']['CollectionFilesOut']
 type Move = components['schemas']['CollectionMoveOut']
-type Direction = 'archive' | 'bring_back'
+export type Direction = 'archive' | 'bring_back'
 
 const size = bytesText
 const count = plural
@@ -51,11 +52,11 @@ export function whereText(f: Pick<Files, 'location' | 'libraries'>): string {
       .join(', ')
   switch (f.location) {
     case 'active':
-      return one('active', 'Active')
+      return one('active', WHERE_LABEL.active)
     case 'archive':
-      return one('archive', 'Archived')
+      return one('archive', WHERE_LABEL.archive)
     case 'both':
-      return `Split · ${at('active')} (active), ${at('archive')} (archive)`
+      return `${WHERE_LABEL.both} · ${at('active')} (active), ${at('archive')} (archive)`
     default:
       return f.libraries.length
         ? f.libraries.map((l) => `${size(l.bytes)} in ${l.name}`).join(', ')
@@ -153,7 +154,7 @@ function Choice({
 }
 
 /** The confirm step: how many files and how much space, from which library to which. */
-function Confirm({
+export function Confirm({
   id,
   name,
   direction,
@@ -312,7 +313,7 @@ function Suggestion({ id, days, canDismiss }: { id: number; days: number; canDis
   })
   return (
     <p className={c.suggestion}>
-      Worth archiving: no new subs for over {days} days, and it has a current master.{' '}
+      {WHERE_LABEL.suggested}: no new subs for over {days} days, and it has a current master.{' '}
       {canDismiss && (
         <Button size="sm" variant="ghost" onClick={() => dismiss.mutate()} disabled={dismiss.isPending}>
           Not now

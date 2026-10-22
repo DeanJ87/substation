@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, describe, expect, it } from 'vitest'
 import { fakeFor } from '../../test/fakeApi'
 import { renderRoute } from '../../test/renderRoute'
-import { byWhere } from './Library'
+import { byShow } from './Library'
 import { whereText } from './CollectionFiles'
 
 afterEach(cleanup)
@@ -147,7 +147,7 @@ describe('Collection → Files (spec 013)', () => {
 describe('where a collection is', () => {
   it('reads as a sentence', () => {
     expect(whereText({ location: 'both', libraries: LIBS.map((l) => ({ ...l, bytes: 1e9 })) })).toBe(
-      'Split · 1.0 GB in fast (active), 1.0 GB in big (archive)',
+      'Partly archived · 1.0 GB in fast (active), 1.0 GB in big (archive)',
     )
     expect(whereText({ location: 'archive', libraries: [{ ...LIBS[1], files: 16, bytes: 5e6 }] })).toBe(
       'Archived · 16 files · 5.0 MB in big',
@@ -159,8 +159,9 @@ describe('where a collection is', () => {
       { id: 1, files_where: 'active', archive_suggested: true },
       { id: 2, files_where: 'archive', archive_suggested: false },
     ] as never[]
-    expect(byWhere(cards, 'archive').map((c: { id: number }) => c.id)).toEqual([2])
-    expect(byWhere(cards, 'suggested').map((c: { id: number }) => c.id)).toEqual([1])
-    expect(byWhere(cards, '')).toHaveLength(2)
+    expect(byShow(cards, 'archived').map((c: { id: number }) => c.id)).toEqual([2])
+    expect(byShow(cards, 'worth').map((c: { id: number }) => c.id)).toEqual([1])
+    expect(byShow(cards, 'current').map((c: { id: number }) => c.id)).toEqual([1])
+    expect(byShow(cards, 'all')).toHaveLength(2)
   })
 })

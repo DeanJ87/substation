@@ -4,7 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { Collapsible } from '../../components/Collapsible'
-import { useChanges, useUndo } from '../changes/changes'
+import { CHANGES_PAGE, useChanges, useDeletedChanges, useUndo } from '../changes/changes'
 import { toast } from '../../components/Toasts'
 import { LoadMore } from '../../components/LoadMore'
 import { Link, useRouter } from '@tanstack/react-router'
@@ -16,6 +16,7 @@ import {
   ErrorState,
   shortError,
   PageLoading,
+  SegmentedControl,
   Skeleton,
 } from '../../components/ui'
 import { BulkBar, ChooseBox, useChosen } from '../../components/BulkBar'
@@ -413,15 +414,38 @@ function outcomeText(j: Job): string {
     .join(' · ')
 }
 
-/** Spec 016: what you changed by hand lately, each with Undo (Ctrl/Cmd+Z undoes the latest). */
+/** Spec 016: what you changed by hand lately, each with Undo (Ctrl/Cmd+Z undoes the latest). 20 at a time with
+ * More; Deleted keeps the collections and projects you deleted, to bring one back (006-DR-40). */
 function YourChanges() {
-  const q = useChanges(10)
+  const [only, setOnly] = useState<'all' | 'deleted'>('all')
+  const [shown, setShown] = useState(CHANGES_PAGE)
+  const all = useChanges()
+  const deleted = useDeletedChanges(only === 'deleted')
   const undo = useUndo()
-  const list = q.data ?? []
-  if (!list.length) return null
+  const list = only === 'all' ? (all.data?.pages.flat() ?? []) : (deleted.data ?? []).slice(0, shown)
+  const more = only === 'all' ? all.hasNextPage : (deleted.data?.length ?? 0) > shown
+  if (!list.length && only === 'all') return null
   return (
-    <section className={v.card}>
+    <section className={`${v.card} ${s.colCard}`}>
       <Collapsible id="activity-changes" title="Your changes" meta={<kbd>Ctrl/⌘ Z</kbd>}>
+        <div className={s.changesBar}>
+          <SegmentedControl
+            label="Which changes"
+            size="sm"
+            value={only}
+            onChange={(x) => {
+              setOnly(x)
+              setShown(CHANGES_PAGE)
+            }}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'deleted', label: 'Deleted' },
+            ]}
+          />
+        </div>
+        {only === 'deleted' && deleted.data && !list.length && (
+          <p className={v.muted}>Nothing deleted lately.</p>
+        )}
         <ul className={`${s.recent} ${s.changes}`}>
           {list.map((c) => (
             <li key={c.id}>
@@ -432,18 +456,24 @@ function YourChanges() {
               </div>
               <span className={`${v.mono} ${v.muted}`}>{hhmm(c.created_at)}</span>
               {c.can_undo && (
-                <button
-                  type="button"
-                  className={v.pill}
-                  disabled={undo.isPending}
-                  onClick={() => undo.mutate(c.id)}
-                >
+                <Button size="sm" variant="ghost" disabled={undo.isPending} onClick={() => undo.mutate(c.id)}>
                   Undo
-                </button>
+                </Button>
               )}
             </li>
           ))}
         </ul>
+        {more && (
+          <div className={s.changesMore}>
+            <Button
+              size="sm"
+              disabled={all.isFetchingNextPage}
+              onClick={() => (only === 'all' ? void all.fetchNextPage() : setShown(shown + CHANGES_PAGE))}
+            >
+              More
+            </Button>
+          </div>
+        )}
       </Collapsible>
     </section>
   )

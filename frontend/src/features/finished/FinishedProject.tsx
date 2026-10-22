@@ -1,7 +1,7 @@
 // One finished project (spec 020): its files as pictures with their roles (final, starless, stars only, single
 // filters, progressive stacks and processing steps), the SubStation projects whose subs made it, its distance, and a
 // preview of what the renderer receives. Changes are for admins; everyone else can look.
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { api, ApiError, unwrap } from '../../api/client'
@@ -10,6 +10,8 @@ import { FilePath } from '../../components/FilePath'
 import { Help } from '../../components/Help'
 import { Modal } from '../../components/Modal'
 import { toast } from '../../components/Toasts'
+import { PutAwayConfirm } from '../../components/PutAway'
+import { offerUndo } from '../changes/changes'
 import { Button, Chip, ErrorState, Input, Meter, PageLoading, Select, Spinner } from '../../components/ui'
 import { filterName, sortFilters } from '../../components/filters'
 import { bytesText, dateTimeText, integrationText, pctText, plural } from '../format'
@@ -153,13 +155,46 @@ function SectionHead({
   )
 }
 
+/** "M31 · 2026", or just the collection when the project is named after it. */
+const linkName = (l: { collection_name: string; project_name: string }) =>
+  l.project_name !== l.collection_name ? `${l.collection_name} · ${l.project_name}` : l.collection_name
+
 function Links({ p, admin, links }: { p: Finished; admin: boolean; links: Actions['links'] }) {
   const sug = useSuggestions(p.id)
   const linked = new Set(p.links.map((l) => l.project_id))
   const ids = [...linked]
   const offers = (sug.data ?? []).filter((s) => !linked.has(s.project_id))
+  const qc = useQueryClient()
+  const [unlinking, setUnlinking] = useState<Finished['links'][number] | null>(null)
+  const unlink = (l: Finished['links'][number]) => {
+    const name = linkName(l)
+    links.mutate(
+      ids.filter((x) => x !== l.project_id),
+      {
+        onSuccess: (r) => {
+          offerUndo(qc, `Unlinked ${name}`, r.change_id)
+          for (const w of r.warnings ?? []) toast(w)
+        },
+      },
+    )
+    setUnlinking(null)
+  }
   return (
     <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="links-h">
+      {unlinking && (
+        <PutAwayConfirm
+          verb="unlink"
+          name={linkName(unlinking)}
+          impact={{
+            records: 'The project and this image both stay.',
+            links: `Only the link between ${p.name} and ${linkName(unlinking)} goes.`,
+          }}
+          warning={`The renderer stops getting ${linkName(unlinking)}'s capture data for this image.`}
+          busy={links.isPending}
+          onConfirm={() => unlink(unlinking)}
+          onClose={() => setUnlinking(null)}
+        />
+      )}
       <SectionHead
         id="links-h"
         title="Linked projects"
@@ -181,7 +216,7 @@ function Links({ p, admin, links }: { p: Finished; admin: boolean; links: Action
                   variant="ghost"
                   disabled={links.isPending}
                   aria-label={`Unlink ${l.project_name}`}
-                  onClick={() => links.mutate(ids.filter((x) => x !== l.project_id))}
+                  onClick={() => setUnlinking(l)}
                 >
                   Unlink
                 </Button>

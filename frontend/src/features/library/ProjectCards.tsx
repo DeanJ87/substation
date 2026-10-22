@@ -26,7 +26,17 @@ import { integrationText, monthSpan, plural } from '../format'
 import v from '../v2/v2.module.css'
 import c from './collection.module.css'
 import p from './projects.module.css'
-import { type ProjectT, type ReviewT, useImpact, useProjectActions, useProjects } from './Projects'
+import {
+  type ProjectT,
+  type ReviewT,
+  useDeleteCombined,
+  useImpact,
+  useProjectActions,
+  useProjects,
+} from './Projects'
+import { PutAwayConfirm, type Impact } from '../../components/PutAway'
+import { toast } from '../../components/Toasts'
+import { FILE_DELETED, VERBS } from '../changes/putAway'
 
 type FilterTime = { total_s: number; accepted_s: number; rejected_s: number }
 type Ds = {
@@ -81,11 +91,17 @@ export function ProjectCards({
   datasets,
   value,
   onChange,
+  onArchive,
+  onMasters,
 }: {
   collectionId: number
   datasets: Ds[]
   value: number | null
   onChange: (id: number | null) => void
+  /** Opens Archive files… for the collection: offered once its last open project is marked done. */
+  onArchive?: () => void
+  /** Opens the Masters tab, where the combined masters that block a delete are. */
+  onMasters?: () => void
 }) {
   const q = useProjects(collectionId)
   const act = useProjectActions(collectionId)
@@ -131,6 +147,16 @@ export function ProjectCards({
               selected={value === x.id}
               onShow={() => onChange(value === x.id ? null : x.id)}
               act={act}
+              collectionId={collectionId}
+              onMasters={onMasters}
+              onDone={() => {
+                // the last open project done: the collection is finished, so its files are worth archiving
+                if (onArchive && projects.filter((o) => !o.done && o.id !== x.id).length === 0)
+                  toast('Every project here is done.', false, {
+                    label: `${VERBS.archive.label}…`,
+                    run: onArchive,
+                  })
+              }}
             />
           ))}
           {unassigned.length > 0 && (
@@ -200,7 +226,7 @@ export function ProjectCards({
           <span className={v.actions}>
             {done.length > 0 && (
               <Chip pressed={showDone} onClick={() => setShowDone(!showDone)} count={done.length}>
-                Done
+                Show done
               </Chip>
             )}
             {projects.length > 0 && (
@@ -256,6 +282,9 @@ function ProjectCard({
   selected,
   onShow,
   act,
+  collectionId,
+  onMasters,
+  onDone,
 }: {
   project: ProjectT
   others: ProjectT[]
@@ -264,6 +293,9 @@ function ProjectCard({
   selected: boolean
   onShow: () => void
   act: Act
+  collectionId: number
+  onMasters?: () => void
+  onDone: () => void
 }) {
   const [mode, setMode] = useState<Mode>(null)
   const filters = sortFilters([
@@ -295,8 +327,11 @@ function ProjectCard({
               ...(splitOptions(x).some((o) => !o.disabled)
                 ? ([['Split…', () => setMode('split')]] as const)
                 : []),
-              [x.done ? 'Not done' : 'Done', () => act.patch.mutate({ id: x.id, done: !x.done })],
-              ['Delete', () => setMode('delete')],
+              [
+                x.done ? VERBS.done.restore : VERBS.done.label,
+                () => act.patch.mutate({ id: x.id, done: !x.done }, { onSuccess: () => !x.done && onDone() }),
+              ],
+              [`${VERBS.delete.label}…`, () => setMode('delete')],
             ]}
           />
         </span>
@@ -359,7 +394,15 @@ function ProjectCard({
       )}
       {mode === 'kind' && <KindForm project={x} act={act} onDone={close} />}
       {mode === 'goals' && <GoalsForm project={x} filters={filters} act={act} onDone={close} />}
-      {mode === 'delete' && <DeleteRow project={x} act={act} onDone={close} />}
+      {mode === 'delete' && (
+        <DeleteProject
+          project={x}
+          act={act}
+          collectionId={collectionId}
+          onMasters={onMasters}
+          onDone={close}
+        />
+      )}
       {mode === 'merge' && <MergeDialog project={x} others={others} act={act} onClose={close} />}
       {mode === 'split' && <SplitDialog project={x} labels={labels} act={act} onClose={close} />}
 
@@ -421,8 +464,8 @@ function PanelMatrix({ project: x, byId }: { project: ProjectT; byId: Map<number
   )
 }
 
-/** The ⋯ menu: closes on a choice, Escape or a click elsewhere. */
-function Menu({ label, items }: { label: string; items: (readonly [string, () => void])[] }) {
+/** The ⋯ menu: closes on a choice, Escape or a click elsewhere. Also the collection page's header menu. */
+export function Menu({ label, items }: { label: string; items: (readonly [string, () => void])[] }) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   const { button: menuButton, menu: menuBox, onKeyDown: menuKeys } = useMenu(open, setOpen)
@@ -649,40 +692,109 @@ function GoalsForm({
   )
 }
 
-/** Delete, asking first: what it unlinks, or why it can't go. */
-function DeleteRow({ project: x, act, onDone }: { project: ProjectT; act: Act; onDone: () => void }) {
+/** The three lines for deleting a project, from its impact. */
+export function projectImpactLines(
+  x: Pick<ProjectT, 'goals'>,
+  i: { datasets: number; finished: string[] },
+): Impact {
+  const goals = Object.keys(x.goals ?? {}).length > 0
+  const links = [
+    goals ? 'Its goals go with it.' : '',
+    i.finished.length ? `No longer linked to ${i.finished.join(', ')}.` : '',
+  ].filter(Boolean)
+  return {
+    records: `${plural(i.datasets, 'dataset')} ${i.datasets === 1 ? 'stays' : 'stay'} in the collection, as “Not in a project”.`,
+    links: links.join(' ') || 'No links or goals.',
+  }
+}
+
+/** Delete, asking first (006-DR-40): what it touches, or why it can't go — with its combined masters to delete. */
+function DeleteProject({
+  project: x,
+  act,
+  collectionId,
+  onMasters,
+  onDone,
+}: {
+  project: ProjectT
+  act: Act
+  collectionId: number
+  onMasters?: () => void
+  onDone: () => void
+}) {
   const impact = useImpact(x.id)
   const i = impact.data
+  const blocked = !!i && i.combined.length > 0
   return (
-    <div className={p.form}>
-      {!i ? (
-        <span className="muted">Checking…</span>
-      ) : i.combined.length ? (
+    <PutAwayConfirm
+      verb="delete"
+      name={x.label || x.name}
+      impact={i ? projectImpactLines(x, i) : null}
+      refused={
+        blocked
+          ? `It has combined masters (${i.combined.join(', ')}). Delete them first, or merge it.`
+          : undefined
+      }
+      onConfirm={() => {
+        act.remove.mutate({ id: x.id, label: x.label || x.name })
+        onDone()
+      }}
+      onClose={onDone}
+    >
+      {blocked && <CombinedToDelete collectionId={collectionId} project={x.id} onMasters={onMasters} />}
+    </PutAwayConfirm>
+  )
+}
+
+/** A project's combined masters, each with Delete: the file goes for good. */
+function CombinedToDelete({
+  collectionId,
+  project,
+  onMasters,
+}: {
+  collectionId: number
+  project: number
+  onMasters?: () => void
+}) {
+  const q = useQuery({
+    queryKey: ['combined', collectionId, project],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/collections/{id}/combined', {
+          params: { path: { id: collectionId }, query: { project } },
+        }),
+      ),
+  })
+  const remove = useDeleteCombined()
+  return (
+    <>
+      <ul className={p.combinedList}>
+        {(q.data?.combined ?? []).map((m) => {
+          const name = `${filterName(m.filter)} combined v${m.version}`
+          return (
+            <li key={m.id}>
+              <span>{name}</span>
+              <ConfirmButton
+                size="sm"
+                variant="danger"
+                question={<>{FILE_DELETED}</>}
+                confirm={`Delete ${name}`}
+                onConfirm={() => remove.mutate({ id: m.id, name })}
+              >
+                Delete…
+              </ConfirmButton>
+            </li>
+          )
+        })}
+      </ul>
+      {onMasters && (
         <span>
-          Can't delete: it has combined masters ({i.combined.join(', ')}). Merge it into another project
-          instead.
+          <Button size="sm" variant="link" onClick={onMasters}>
+            Open the collection's masters
+          </Button>
         </span>
-      ) : (
-        <ConfirmButton
-          question={
-            <>
-              Delete {x.label}? {plural(i.datasets, 'dataset')} stay in the collection
-              {i.finished.length ? `; no longer linked to ${i.finished.join(', ')}` : ''}.
-            </>
-          }
-          confirm="Delete"
-          onConfirm={() => {
-            act.remove.mutate({ id: x.id, label: x.label })
-            onDone()
-          }}
-        >
-          Delete {x.label}…
-        </ConfirmButton>
       )}
-      <Button size="sm" onClick={onDone}>
-        Cancel
-      </Button>
-    </div>
+    </>
   )
 }
 

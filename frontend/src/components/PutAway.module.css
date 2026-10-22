@@ -1,0 +1,70 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.title {
+  margin: 0;
+  padding-right: 28px;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+/* a ledger: the label column stays narrow, the sentence wraps beside it */
+.lines {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--sst-line);
+}
+.lines > div {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--sst-line-2);
+}
+.lines dt {
+  color: var(--sst-muted);
+  font-size: 12px;
+  line-height: 20px;
+}
+.lines dd {
+  margin: 0;
+  line-height: 20px;
+}
+.lines > .undo {
+  border-bottom: 0;
+}
+.lines > .undo dd {
+  color: var(--sst-muted);
+}
+.warning {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--sst-warn);
+  background: var(--sst-panel-2);
+  border-radius: var(--sst-radius-sm);
+}
+.refused {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--sst-line);
+  border-left: 3px solid var(--sst-bad);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-2);
+}
+.refused p {
+  margin: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 480px) {
+  .lines > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
