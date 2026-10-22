@@ -59,6 +59,8 @@ const changed = (project: object) => ({ project, change_id: 41, warnings: [] })
 async function open(more: Record<string, unknown> = {}) {
   const r = await renderRoute('/collections/1', { 'GET /collections/1/projects': LIST, ...more })
   await screen.findByText('2025–26 · widefield')
+  // the menus show once the settings say this user may edit
+  await screen.findByRole('button', { name: 'More for 2025–26 · widefield' })
   return r
 }
 

@@ -47,6 +47,7 @@ import { collectionFacts, nameParts } from './names'
 import c from './collection.module.css'
 import { useDeleteCombined, useProjects } from './Projects'
 import { FILE_DELETED } from '../changes/putAway'
+import { useCanEdit } from '../settings/draft'
 import { useSort } from '../../components/sortable'
 import { CloseLook, type LookMode, type LookTarget, Zoomable } from '../../components/CloseLook'
 import { Collapsible } from '../../components/Collapsible'
@@ -756,6 +757,7 @@ function Combined({
     ]),
   })
   const removeCombined = useDeleteCombined()
+  const canEdit = useCanEdit()
   const d = q.data
   if (!d) return null
   const filters = Object.entries(d.filters)
@@ -820,7 +822,7 @@ function Combined({
                   {m.state === 'current' && (
                     <FilePath path={m.file_path ?? ''} download={`/api/v1/combined/${m.id}/download`} />
                   )}
-                  {m.id > 0 && m.state !== 'queued' && m.state !== 'running' && (
+                  {canEdit && m.id > 0 && m.state !== 'queued' && m.state !== 'running' && (
                     <span>
                       <ConfirmButton
                         size="sm"

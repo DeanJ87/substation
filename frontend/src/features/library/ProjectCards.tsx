@@ -37,6 +37,7 @@ import {
 import { PutAwayConfirm, type Impact } from '../../components/PutAway'
 import { toast } from '../../components/Toasts'
 import { FILE_DELETED, VERBS } from '../changes/putAway'
+import { useCanEdit } from '../settings/draft'
 
 type FilterTime = { total_s: number; accepted_s: number; rejected_s: number }
 type Ds = {
@@ -298,6 +299,8 @@ function ProjectCard({
   onDone: () => void
 }) {
   const [mode, setMode] = useState<Mode>(null)
+  // every item in the menu changes the project: a read-only user gets none of them
+  const canEdit = useCanEdit()
   const filters = sortFilters([
     ...new Set([...Object.keys(x.filter_time ?? {}), ...Object.keys(x.goals ?? {})]),
   ])
@@ -316,24 +319,27 @@ function ProjectCard({
         </div>
         <span className={p.right}>
           <span className={p.figure}>{integrationText(x.accepted_integration_s)}</span>
-          <Menu
-            label={x.label}
-            items={[
-              ['Rename', () => setMode('rename')],
-              ['Season', () => setMode('season')],
-              ['Kind', () => setMode('kind')],
-              ['Goals', () => setMode('goals')],
-              ...(others.length ? ([['Merge into…', () => setMode('merge')]] as const) : []),
-              ...(splitOptions(x).some((o) => !o.disabled)
-                ? ([['Split…', () => setMode('split')]] as const)
-                : []),
-              [
-                x.done ? VERBS.done.restore : VERBS.done.label,
-                () => act.patch.mutate({ id: x.id, done: !x.done }, { onSuccess: () => !x.done && onDone() }),
-              ],
-              [`${VERBS.delete.label}…`, () => setMode('delete')],
-            ]}
-          />
+          {canEdit && (
+            <Menu
+              label={x.label || x.name}
+              items={[
+                ['Rename', () => setMode('rename')],
+                ['Season', () => setMode('season')],
+                ['Kind', () => setMode('kind')],
+                ['Goals', () => setMode('goals')],
+                ...(others.length ? ([['Merge into…', () => setMode('merge')]] as const) : []),
+                ...(splitOptions(x).some((o) => !o.disabled)
+                  ? ([['Split…', () => setMode('split')]] as const)
+                  : []),
+                [
+                  x.done ? VERBS.done.restore : VERBS.done.label,
+                  () =>
+                    act.patch.mutate({ id: x.id, done: !x.done }, { onSuccess: () => !x.done && onDone() }),
+                ],
+                [`${VERBS.delete.label}…`, () => setMode('delete')],
+              ]}
+            />
+          )}
         </span>
       </header>
       <div className={`muted ${p.facts}`}>
@@ -766,6 +772,7 @@ function CombinedToDelete({
       ),
   })
   const remove = useDeleteCombined()
+  const canEdit = useCanEdit()
   return (
     <>
       <ul className={p.combinedList}>
@@ -774,15 +781,17 @@ function CombinedToDelete({
           return (
             <li key={m.id}>
               <span>{name}</span>
-              <ConfirmButton
-                size="sm"
-                variant="danger"
-                question={<>{FILE_DELETED}</>}
-                confirm={`Delete ${name}`}
-                onConfirm={() => remove.mutate({ id: m.id, name })}
-              >
-                Delete…
-              </ConfirmButton>
+              {canEdit && (
+                <ConfirmButton
+                  size="sm"
+                  variant="danger"
+                  question={<>{FILE_DELETED}</>}
+                  confirm={`Delete ${name}`}
+                  onConfirm={() => remove.mutate({ id: m.id, name })}
+                >
+                  Delete…
+                </ConfirmButton>
+              )}
             </li>
           )
         })}

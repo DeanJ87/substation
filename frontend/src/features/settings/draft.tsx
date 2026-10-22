@@ -111,6 +111,12 @@ export function useSettings() {
   return useQuery({ queryKey: ['settings'], queryFn: async () => unwrap(await api.GET('/settings')) })
 }
 
+/** Whether this user may change things: false until the settings say so, so a read-only user never sees an
+ * action flash up. */
+export function useCanEdit() {
+  return !!useSettings().data?.can_edit
+}
+
 type SettingsPatch = Omit<components['schemas']['SettingsIn'], 'regrade' | 'processing'>
 
 /** Save top-level settings (site, workers) outside the draft: shown as saved at once, rolled back on failure. */

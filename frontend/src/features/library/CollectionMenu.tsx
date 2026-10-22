@@ -12,6 +12,7 @@ import { Button } from '../../components/ui'
 import { offerUndo } from '../changes/changes'
 import { deletedText, VERBS } from '../changes/putAway'
 import { bytesText, plural } from '../format'
+import { useCanEdit } from '../settings/draft'
 import { Confirm, useCollectionFiles, type Direction } from './CollectionFiles'
 import c from './collection.module.css'
 import { Menu } from './ProjectCards'
@@ -43,6 +44,7 @@ export function collectionImpactLines(i: CollectionImpact): Impact {
   const links = [
     goals ? `Goals on ${plural(goals, 'project')} go with ${goals === 1 ? 'it' : 'them'}.` : '',
     i.finished.length ? `No longer linked to ${list(i.finished)}.` : '',
+    i.unoffered.length ? `No longer offered to the renderer: ${list(i.unoffered)}.` : '',
   ].filter(Boolean)
   return {
     files,
@@ -69,6 +71,8 @@ export function CollectionMenu({
   setOpen: (step: PutAwayStep) => void
 }) {
   const files = useCollectionFiles(id)
+  // archiving and deleting are changes: a read-only user gets no ⋯ menu at all
+  const canEdit = useCanEdit()
   const where = files.data?.location
   const items: (readonly [string, () => void])[] = [
     ...(where !== 'archive' ? ([[`${VERBS.archive.label}…`, () => setOpen('archive')]] as const) : []),
@@ -77,6 +81,7 @@ export function CollectionMenu({
       : []),
     ['Delete collection…', () => setOpen('delete')],
   ]
+  if (!canEdit) return null
   return (
     <>
       <Menu label={`collection ${name}`} items={items} />

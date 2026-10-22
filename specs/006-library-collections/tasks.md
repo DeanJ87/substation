@@ -116,3 +116,8 @@ requirement they close.
 - [X] (2026-10-22) Finished Unlink through the shared confirm with the renderer warning and Undo; stack and combined
   master deletes say the file goes for good; Activity Your changes pages by 20 with a Deleted filter (006-DR-40);
   tests
+- [X] (2026-10-22) Put-away follow-up: read-only users get no collection ⋯ menu, no project menu and no combined
+  master Delete (Finished Unlink was already admin-only); the collection delete confirm names the finished images no
+  longer offered to the renderer in Links and goals; project menus fall back to the project name for their label;
+  axe (WCAG 2.2 AA) clean on the collection menu, delete (allowed and refused), archive, blocked project delete,
+  Finished unlink and Activity Deleted in dark, light and night at 1440 and 400; keyboard checked (006-DR-40); tests

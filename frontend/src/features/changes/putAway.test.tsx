@@ -237,3 +237,103 @@ describe('your changes in Activity', { timeout: 20_000 }, () => {
     expect(kinds.sort()).toEqual(['collection', 'project'])
   })
 })
+
+describe('deleting a collection, links and goals', () => {
+  it('names the finished images the renderer stops being offered', () => {
+    const lines = collectionImpactLines({ ...IMPACT, unoffered: ['2026 Heart Nebula'] })
+    expect(lines.links).toBe(
+      'Goals on 1 project go with it. No longer linked to 2026 Heart Nebula. ' +
+        'No longer offered to the renderer: 2026 Heart Nebula.',
+    )
+    expect(
+      collectionImpactLines({ ...IMPACT, projects: [], finished: [], unoffered: ['A', 'B'] }).links,
+    ).toBe('No longer offered to the renderer: A, B.')
+  })
+
+  it('shows it in the confirm', async () => {
+    await renderRoute('/collections/1', {
+      'GET /collections/1/impact': { ...IMPACT, unoffered: ['2026 Heart Nebula'] },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: /^More for collection / }))
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Delete collection…' }))
+    const dialog = await screen.findByRole('dialog', { name: /^Delete collection / })
+    expect(
+      await within(dialog).findByText(/No longer offered to the renderer: 2026 Heart Nebula\./),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('someone who can only look', { timeout: 20_000 }, () => {
+  const READ_ONLY = { ...fakeFor('GET', '/settings'), can_edit: false }
+  const COMBINED = (id: number) => ({
+    ...fakeFor('GET', `/collections/${id}/combined`),
+    combined: [
+      { ...(fakeFor('GET', `/collections/${id}/combined`).combined as object[])[0], id: 9, state: 'current' },
+    ],
+  })
+  /** A collection with a usable master, so the Masters tab shows combined masters. */
+  const usable = () => {
+    const col = fakeFor('GET', '/collections/1')
+    const [m] = col.masters as object[]
+    return { ...col, masters: [{ ...m, state: 'current' }] }
+  }
+  /** A finished image linked to one project. */
+  const linked = () => ({
+    ...fakeFor('GET', '/finished/7'),
+    id: 7,
+    kind: 'astro',
+    links: [{ project_id: 1, project_name: '2026', collection_id: 1, collection_name: 'Heart Nebula' }],
+  })
+  /** Waits for the settings to arrive, so an action that would show for an editor has had its chance. */
+  async function settled(api: { calls: { method: string; path: string }[] }) {
+    await waitFor(() => expect(api.calls.some((c) => c.path === '/settings')).toBe(true))
+    await new Promise((r) => setTimeout(r, 50))
+  }
+
+  it('gets no collection or project menu', async () => {
+    const { api } = await renderRoute('/collections/1', { 'GET /settings': READ_ONLY })
+    expect(await screen.findByRole('button', { name: 'Edit collection' })).toBeInTheDocument()
+    await settled(api)
+    expect(screen.queryByRole('button', { name: /^More for / })).not.toBeInTheDocument()
+  })
+
+  it('an editor gets both', async () => {
+    await renderRoute('/collections/1')
+    expect(await screen.findByRole('button', { name: /^More for collection / })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^More for (?!collection)/ }).length).toBeGreaterThan(0)
+  })
+
+  it("can't delete a combined master", async () => {
+    const { api } = await renderRoute('/collections/1?tab=masters', {
+      'GET /settings': READ_ONLY,
+      'GET /collections/1': usable(),
+      'GET /collections/1/combined': COMBINED(1),
+    })
+    expect((await screen.findAllByText(/Combined masters/)).length).toBeGreaterThan(0)
+    await settled(api)
+    expect(screen.queryByRole('button', { name: 'Delete…' })).not.toBeInTheDocument()
+  })
+
+  it('an editor can', async () => {
+    await renderRoute('/collections/1?tab=masters', {
+      'GET /collections/1': usable(),
+      'GET /collections/1/combined': COMBINED(1),
+    })
+    expect((await screen.findAllByRole('button', { name: 'Delete…' })).length).toBeGreaterThan(0)
+  })
+
+  it("can't unlink a finished image", async () => {
+    const { api } = await renderRoute('/finished/7', {
+      'GET /settings': READ_ONLY,
+      'GET /finished/7': linked(),
+    })
+    expect(await screen.findByText('· Read only')).toBeInTheDocument()
+    await settled(api)
+    expect(screen.queryByRole('button', { name: /^Unlink / })).not.toBeInTheDocument()
+  })
+
+  it('an editor can unlink', async () => {
+    await renderRoute('/finished/7', { 'GET /finished/7': linked() })
+    expect((await screen.findAllByRole('button', { name: /^Unlink / })).length).toBeGreaterThan(0)
+  })
+})

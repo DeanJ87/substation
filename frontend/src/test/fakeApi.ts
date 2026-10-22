@@ -135,6 +135,8 @@ export function installFakeApi(overrides: Overrides = {}) {
     if (!op) return json({ code: 'not_found', message: 'Not found.' }, 404)
     const ok = Object.entries(op.responses ?? {}).find(([code]) => code.startsWith('2'))
     const schema = ok?.[1].content?.['application/json']?.schema
+    // the session is the admin, so it may edit unless a test says otherwise
+    if (key === 'GET /settings') return json({ ...(fake(schema) as object), can_edit: true })
     return json(schema ? fake(schema) : null)
   })
   ;(globalThis as { testFetch?: typeof fetch }).testFetch = fn as unknown as typeof fetch
