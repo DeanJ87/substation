@@ -194,3 +194,15 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   absorbed is linked to a finished image, goals disagree, two names were typed by hand, or mosaics differ in size.
   The collection page lists held groups with Merge and Keep apart. The Projects panel is one card per project with
   a menu for these actions.
+- **006-DR-38** (2026-10-22) **Five verbs, one meaning each; only Archive and the Bin touch your files.** Mark done
+  (project: hides it, goals leave the totals; Reopen undoes), Archive (a collection's files move to its archive
+  library; Bring back), Bin (frames to quarantine, deleted after 30 days; Restore), Unlink (a finished image from a
+  project; Link again or Undo), Delete (a collection's or project's record; datasets stay, unassigned; Undo for 30
+  days). A stack or combined master deletes its own output file. Datasets have no Delete; finished projects have
+  only Unlink.
+- **006-DR-39** (2026-10-22) **Deleting a collection is safe and undoable.** It used to remove the collection's
+  projects, combined masters, finished links and even a running archive move without a word. Now its impact is
+  shown first (datasets, projects, combined masters, finished images that stop being offered, a move under way);
+  it is refused while files are moving or combined masters remain; the datasets stay as "Not in a collection"; and
+  undo brings the collection and its projects back with the same ids, goals, done state, datasets (where still
+  unassigned) and finished links. Viewers can look but not change collections or projects.

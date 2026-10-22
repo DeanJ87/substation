@@ -132,3 +132,8 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
   behind Filters; calibration set "Use" checkbox; Finished pages on Chip, Select, Input and format.ts; pill classes
   replaced on the screens touched; axe clean in dark, light and night on every screen changed; light warn token
   darkened for chip contrast (007-DR-45)
+- [X] B58 (2026-10-22) axe clean on every route at 1440 and 400 in dark, light and night; CI spec covers every route
+  and both widths, with a skip-link and dialog keyboard test; skip link; focus ring on the header search and
+  Settings tabs; menu button keyboard (`components/useMenu.ts`); 24 px sub tile targets (007-DR-46)
+- [X] B59 (2026-10-22) Glossary in the design system; the sky's reading note behind `?`; "quarantine" and "frames"
+  out of user copy (007-DR-47)

@@ -105,3 +105,60 @@ def test_project_goals_are_set_changed_removed_and_add_up_on_the_card(admin_clie
     assert card["goals"] == {"Ha": 25, "R": 2.5}
     bad = admin_client.patch(url, {"goals": {"OIII": 5000}}, content_type="application/json")
     assert bad.status_code == 422 and "1,000 hours" in bad.json()["message"]
+
+
+def _finished(name: str, *projects):  # noqa: ANN202
+    from apps.finished.models import FinishedProject
+    from apps.libraries.models import Library, LibraryRole
+
+    lib = Library.objects.get_or_create(
+        name="completed", defaults={"mount_path": "/tmp/c", "role": LibraryRole.COMPLETED}
+    )[0]
+    fp = FinishedProject.objects.create(
+        library=lib, rel_path=f"Astro/{name}", kind="astro", subject="IC 1805", name=name
+    )
+    fp.linked_projects.set(projects)
+    return fp
+
+
+def test_finished_links_are_undone_unless_changed_since(admin_client):
+    from apps.catalogue.models import Collection, Project
+
+    col = Collection.objects.create(name="IC 1805")
+    a = Project.objects.create(collection=col, season="2025")
+    b = Project.objects.create(collection=col, season="2026")
+    fp = _finished("Heart", a)
+    url = f"/api/v1/finished/{fp.pk}/links"
+    r = admin_client.put(url, {"project_ids": []}, content_type="application/json")
+    assert r.status_code == 200, r.content
+    out = r.json()
+    assert (
+        out["links"] == [] and out["warnings"] == ["No longer offered to the renderer."] and out["change_id"]
+    )
+    change = Change.objects.get(pk=out["change_id"])
+    assert change.kind == "link" and change.data == {"finished_id": fp.pk, "before": [a.pk], "after": []}
+    assert admin_client.post(f"/api/v1/changes/{change.pk}/undo").status_code == 200
+    assert list(fp.linked_projects.all()) == [a]
+    # linked again, then changed by hand: that undo is refused
+    out = admin_client.put(url, {"project_ids": [a.pk, b.pk]}, content_type="application/json").json()
+    assert out["warnings"] == [] and out["change_id"]
+    fp.linked_projects.set([b])
+    r = admin_client.post(f"/api/v1/changes/{out['change_id']}/undo")
+    assert r.status_code == 409 and "changed since" in r.json()["message"]
+    # the same links again is no change
+    same = admin_client.put(url, {"project_ids": [b.pk]}, content_type="application/json").json()
+    assert same["change_id"] is None
+
+
+def test_changes_filter_by_kind_and_page(admin_client, admin_user):
+    from apps.catalogue.services.changes import record
+
+    for i in range(5):
+        record(admin_user, "link", f"Linked {i}", 1)
+    record(admin_user, "bin", "Binned", 1)
+    links = admin_client.get("/api/v1/changes", {"kind": "link", "limit": 2}).json()
+    assert [c["summary"] for c in links] == ["Linked 4", "Linked 3"]
+    more = admin_client.get("/api/v1/changes", {"kind": "link", "limit": 2, "offset": 2}).json()
+    assert [c["summary"] for c in more] == ["Linked 2", "Linked 1"]
+    assert len(admin_client.get("/api/v1/changes", {"limit": 100}).json()) == 6
+    assert admin_client.get("/api/v1/changes", {"kind": "nope"}).status_code == 422

@@ -43,6 +43,23 @@ const when = dateTimeText
 /** A single-filter image's filter is chosen, never typed (C06): the canonical set, in order. */
 const FILTERS = sortFilters(['L', 'R', 'G', 'B', 'Hα', 'OIII', 'SII'])
 
+/** The filters a single-filter image can be (018-DR-17): those the linked collections were shot through, or the
+ * canonical set while nothing is linked; a saved choice spelt another way stays as it is. */
+export function roleFilterChoices(linked: string[], current: string | null | undefined): string[] {
+  const base = linked.length ? sortFilters([...new Set(linked.map(filterName))]) : FILTERS
+  return current && !base.includes(filterName(current)) ? [...base, current] : base
+}
+
+/** A role change clears what belonged to the old role: the filter, the order and the step label. */
+export function roleChange(role: string, cur: Cur, nextOrder: (role: string) => number): Partial<Cur> {
+  return {
+    role,
+    role_filter: role === 'per_filter' ? cur.role_filter : '',
+    role_order: ORDERED.has(role) ? (role !== cur.role ? nextOrder(role) : cur.role_order) : null,
+    role_label: role === 'step' ? cur.role_label : '',
+  }
+}
+
 /** "Offered to renderer", or "Not offered" with the reason behind a "?". */
 export function StatusChip({ p }: { p: Pick<Finished, 'offered' | 'reason'> }) {
   return p.offered ? (
@@ -294,6 +311,12 @@ function Files({
   guess: Actions['guess']
 }) {
   const [draft, setDraft] = useState<Draft>({})
+  // the filters of the collections this project is linked to, for the single-filter role
+  const lib = useLibrary()
+  const linkedIds = new Set(p.links.map((l) => l.collection_id))
+  const linkedFilters = (lib.data?.collections ?? [])
+    .filter((c) => linkedIds.has(c.id))
+    .flatMap((c) => Object.keys(c.filters ?? {}))
   const [shown, setShown] = useState<FinishedFile | null>(null)
   const current = (file: FinishedFile): Cur =>
     draft[file.id] ?? {
@@ -366,6 +389,7 @@ function Files({
               cur={current(file)}
               admin={admin}
               onChange={set}
+              filters={linkedFilters}
               onOpen={() => setShown(file)}
               nextOrder={nextOrder}
             />
@@ -458,11 +482,13 @@ function FileCard({
   onChange,
   onOpen,
   nextOrder,
+  filters,
 }: {
   p: Finished
   file: FinishedFile
   cur: Cur
   admin: boolean
+  filters: string[]
   onChange: (file: FinishedFile, next: Partial<Cur>) => void
   onOpen: () => void
   nextOrder: (role: string) => number
@@ -484,11 +510,7 @@ function FileCard({
           disabled={!admin}
           aria-label={`Role of ${name}`}
           onChange={(e) => {
-            const role = e.target.value
-            onChange(file, {
-              role,
-              role_order: ORDERED.has(role) && role !== cur.role ? nextOrder(role) : cur.role_order,
-            })
+            onChange(file, roleChange(e.target.value, cur, nextOrder))
           }}
           options={Object.entries(ROLE).map(([value, label]) => ({ value, label }))}
         />
@@ -529,11 +551,7 @@ function FileCard({
                 onChange={(e) => onChange(file, { role_filter: e.target.value })}
                 options={[
                   { value: '', label: 'Filter…' },
-                  ...FILTERS.map((x) => ({ value: x, label: x })),
-                  // a filter saved before, spelt another way, stays choosable as it is
-                  ...(cur.role_filter && !FILTERS.includes(filterName(cur.role_filter))
-                    ? [{ value: cur.role_filter, label: cur.role_filter }]
-                    : []),
+                  ...roleFilterChoices(filters, cur.role_filter).map((x) => ({ value: x, label: x })),
                 ]}
               />
             )}

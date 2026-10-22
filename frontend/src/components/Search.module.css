@@ -27,7 +27,8 @@
   color: var(--sst-muted);
 }
 .input:focus-visible {
-  outline: none;
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 1px;
   border-color: var(--sst-accent-line);
 }
 .input::-webkit-search-cancel-button {

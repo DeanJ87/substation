@@ -298,3 +298,22 @@
   gap: 2px;
   white-space: normal;
 }
+
+/* the skip link sits off screen until it has focus */
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel);
+  color: var(--sst-text);
+  border: 1px solid var(--sst-line);
+}
+.skip:focus {
+  top: calc(8px + env(safe-area-inset-top, 0px));
+}
+.main:focus {
+  outline: none;
+}

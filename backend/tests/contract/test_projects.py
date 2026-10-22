@@ -267,19 +267,26 @@ def test_delete_is_refused_with_combined_masters_else_keeps_datasets_and_undoes(
     Dataset.objects.filter(pk=d.pk).update(project=p, project_position=0)
     cm = CombinedMaster.objects.create(collection=col, project=p, filter_norm="Hα", version=1)
     r = admin_client.delete(f"/api/v1/projects/{p.pk}")
-    assert r.status_code == 409 and "Hα v1" in r.json()["message"]
-    cm.delete()
+    assert (
+        r.status_code == 409 and "Hα v1" in r.json()["message"] and "Delete them first" in r.json()["message"]
+    )
+    CombinedMaster.objects.filter(pk=cm.pk).update(state="current")
+    assert admin_client.delete(f"/api/v1/combined/{cm.pk}").status_code == 204
+    assert admin_client.get(f"/api/v1/projects/{p.pk}/impact").json()["combined"] == []
     fp = finished("2026 Heart", p)
     r = admin_client.delete(f"/api/v1/projects/{p.pk}")
     assert r.status_code == 200
     out = r.json()
     assert any("2026 Heart" in w for w in out["warnings"])
     assert not Project.objects.filter(pk=p.pk).exists()
+    cm.refresh_from_db()  # the deleted master's record stays
+    assert cm.state == "deleted" and cm.project_id is None
+    assert Change.objects.get(pk=out["change_id"]).summary == "Deleted project 2026 · widefield"
     assert (
         Dataset.objects.get(pk=d.pk).collection_id == col.pk
         and Dataset.objects.get(pk=d.pk).project_id is None
     )
-    undo(admin_client, out["change_id"])
+    assert undo(admin_client, out["change_id"])["note"] == "Restored project 2026 · widefield."
     back = Project.objects.get(pk=p.pk)
     assert back.own_name == "widefield" and list(back.datasets.all()) == [d]
     assert list(fp.linked_projects.all()) == [back]
@@ -307,3 +314,22 @@ def test_held_groups_are_listed_for_review(admin_client):
     ]
     patch(admin_client, f"/api/v1/projects/{b.pk}", {"needs_review": False})
     assert admin_client.get(f"/api/v1/collections/{col.pk}/projects").json()["review"] == []
+
+
+def test_read_only_accounts_cant_change_projects(viewer_client):
+    col = Collection.objects.create(name="IC 1805")
+    p = Project.objects.create(collection=col, season="2026")
+    for method, url, body in [
+        ("post", f"/api/v1/collections/{col.pk}/projects", {"name": "x"}),
+        ("patch", f"/api/v1/projects/{p.pk}", {"done": True}),
+        ("delete", f"/api/v1/projects/{p.pk}", None),
+        ("put", f"/api/v1/projects/{p.pk}/datasets", {"ids": []}),
+        ("put", f"/api/v1/collections/{col.pk}/projects/order", {"ids": [p.pk]}),
+        ("post", f"/api/v1/collections/{col.pk}/projects/suggest", {}),
+        ("post", f"/api/v1/collections/{col.pk}/projects/merge", {"into": p.pk, "from": [p.pk]}),
+        ("post", f"/api/v1/projects/{p.pk}/split", {"by": "rig"}),
+    ]:
+        r = getattr(viewer_client, method)(url, json.dumps(body or {}), content_type="application/json")
+        assert r.status_code == 403, (method, url, r.content)
+    p.refresh_from_db()
+    assert p.done_at is None and Project.objects.filter(collection=col).count() == 1

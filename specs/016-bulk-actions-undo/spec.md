@@ -89,3 +89,6 @@ Built for calibration sets and frames, datasets and failed jobs. Archiving colle
 - **016-DR-03** (2026-10-22) Project changes are undoable: create, edit, done, assign, sort into seasons, merge,
   split and delete. Undoing a merge or delete recreates the project with its own id, its datasets, goals, finished
   links and combined masters.
+- **016-DR-04** (2026-10-22) Collection deletes and finished links are undoable changes too (kinds "collection" and
+  "link"). Undoing a link change puts the old links back only if nothing has changed them since. Your changes can be
+  listed by kind and paged.

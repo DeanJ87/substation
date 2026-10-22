@@ -103,3 +103,5 @@ requirement they close.
 - [X] L62 (2026-10-15) Library totals kept for a minute per filter combination (they took ~2 s over 12,000 lights)
 - [X] (2026-10-22) Projects by season: model, sorting into seasons, merge/split/done/delete with undo, impact check,
   duplicate-merging migration with held groups, one Projects panel (006-DR-35..37); tests
+- [X] (2026-10-22) Put-away backend: collection impact, safe undoable delete, viewer checks on project and
+  collection writes, unused dataset-removal route removed (006-DR-38, -39); tests

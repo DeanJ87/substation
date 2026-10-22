@@ -206,7 +206,7 @@ export function Rigs() {
                 {list
                   .filter((o) => o.id !== r.id)
                   .map((o) => (
-                    <option key={o.id} value={o.id}>
+                    <option key={o.id} value={o.id} disabled={o.id < 0}>
                       {o.name} ({o.camera})
                     </option>
                   ))}

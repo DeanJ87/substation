@@ -52,7 +52,7 @@ export function Backups() {
       meta={d ? d.backups.length : undefined}
       help={
         <>
-          Everything SubStation knows: libraries, frames, grades, masters, settings and users, as one .tar.gz.
+          Everything SubStation knows: libraries, files, grades, masters, settings and users, as one .tar.gz.
           Your image files aren't in it. Restoring replaces the whole database with the backup.
         </>
       }

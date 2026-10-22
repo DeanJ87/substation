@@ -406,27 +406,31 @@ def impact(p: Any, into: Any = None) -> dict:
     links = _links(None, [p.pk]).get(p.pk, [])
     return {
         "finished": finished_names(None, links),
-        "combined": [f"{c.filter_norm} v{c.version}" for c in p.combined.order_by("filter_norm", "version")],
+        "combined": [
+            f"{c.filter_norm} v{c.version}"
+            for c in p.combined.exclude(state="deleted").order_by("filter_norm", "version")
+        ],
         "goal_conflicts": goal_conflicts([into.goals, p.goals]) if into is not None else [],
         "datasets": p.datasets.count(),
     }
 
 
 def remove(p: Any, user: Any) -> tuple:
-    """Remove a project: refused while it has combined masters; its datasets stay in the collection, its finished
-    links go. Returns (change, warnings)."""
+    """Delete a project's record: refused while it has combined masters not yet deleted; its datasets stay in the
+    collection, its finished links go. Returns (change, warnings)."""
     dataset = _m(None, "Dataset")
     combos = impact(p)["combined"]
     if combos:
-        raise Refused(f"It has combined masters ({', '.join(combos)}). Remove those first, or merge it.")
+        raise Refused(f"It has combined masters ({', '.join(combos)}). Delete them first, or merge it.")
     linked = _links(None, [p.pk]).get(p.pk, [])
     warnings = [f"No longer linked to {', '.join(finished_names(None, linked))}."] if linked else []
     rows = list(dataset.objects.filter(project=p).values_list("pk", "project_position"))
     snap = {**_snap(p), "datasets": rows, "finished": linked}
     name = p.name
     dataset.objects.filter(project=p).update(project=None, project_position=None)
+    p.combined.filter(state="deleted").update(project=None)  # the record of a deleted master stays
     p.delete()
-    change = _record(None, user, f"Removed project {name}", len(rows), op="delete", project=snap)
+    change = _record(None, user, f"Deleted project {name}", len(rows), op="delete", project=snap)
     return change, warnings
 
 
@@ -454,7 +458,7 @@ def undo_remove(data: dict) -> str:
     )
     for fp in existing:
         through.objects.get_or_create(finishedproject_id=fp, project_id=p.pk)
-    return f"Brought back {p.name}"
+    return f"Restored project {p.name}"
 
 
 def placements(ids: Iterable[int]) -> dict[str, list]:

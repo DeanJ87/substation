@@ -1,5 +1,6 @@
 // Personal API tokens (spec 020, 020-FR-011): for the renderer app to read finished projects. A token is shown once,
 // when it's made, and stored only hashed; it can only read the render API, and can be revoked at any time.
+import { todayIso } from '../cascade'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
@@ -89,7 +90,12 @@ export function ApiTokens() {
             </label>
             <label className={s.inline}>
               Expires
-              <input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+              <input
+                type="date"
+                value={expires}
+                min={todayIso()}
+                onChange={(e) => setExpires(e.target.value)}
+              />
               <span className="muted">(optional)</span>
             </label>
             <Button type="submit" variant="primary" disabled={!name.trim() || create.isPending}>

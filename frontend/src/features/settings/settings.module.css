@@ -379,6 +379,10 @@
   color: var(--sst-text);
   background: var(--sst-panel-2);
 }
+.railTab:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: -2px;
+}
 .railTab[aria-selected='true'] {
   color: var(--sst-text);
   border-left-color: var(--sst-accent);

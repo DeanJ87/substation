@@ -547,3 +547,19 @@ Taken on the recommendation in the design review (owner may overrule):
   collection pictures shrink to a strip. A flat or dark in a calibration set has a "Use" checkbox instead of a Leave
   out link. Finished pages use the same chips, selects and date formats; a single-filter image's filter is chosen
   from the canonical list; a final the server can't draw shows "No preview", never a broken image.
+
+### Amendment 2026-10-22 (third): accessibility, keyboard and copy across every route
+
+- **007-DR-46 Every route passes, at both widths, in every theme.** axe (WCAG 2.2 A and AA) passes on every route
+  in the router, the sign-in page included, at 1440 and 400 px, in dark, light and night vision; the CI check
+  (`tests/e2e/a11y.spec.ts`) visits the same routes, finding id routes from the list pages that link to them.
+  Small text buttons (a sub tile's time) keep a 24 px target. The first tab stop is "Skip to content", which moves
+  focus to the page. Every focusable control shows the focus ring, the header search and the Settings section tabs
+  included. A menu button (the account menu, a project's ⋯) puts focus on its first item, moves with the arrow keys,
+  Home and End, and closes on Escape with focus back on its button; a dialog opened from a menu gives focus back to
+  the menu's button. Dialogs keep focus inside and close on Escape; the master window editor cancels on Escape.
+- **007-DR-47 One word for each thing.** A sub is a light frame; "frame" is left for calibration frames and file
+  internals. A verdict is Accepted, Down-weighted or Rejected; "kept" is the integration that goes into a stack
+  (accepted and down-weighted). A dataset is one target, panel, filter and rig; a collection is a target's datasets;
+  a project is a collection's season. Binned files move to a hidden folder, not "quarantine". The glossary is in
+  `substation-overhaul-2026-10-22/design-system.md`. Explanations longer than a line sit behind `?`.

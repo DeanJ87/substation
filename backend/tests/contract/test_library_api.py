@@ -53,7 +53,8 @@ def test_removing_a_collection_keeps_its_datasets_and_cards_add_up(admin_client)
     ).json()
     card = next(c for c in admin_client.get("/api/v1/library").json()["collections"] if c["id"] == col["id"])
     assert card["filters"] == {"L": 7200, "Hα": 3600} and card["accepted_integration_s"] == 10800
-    assert admin_client.delete(f"/api/v1/collections/{col['id']}").status_code == 204
+    r = admin_client.delete(f"/api/v1/collections/{col['id']}")
+    assert r.status_code == 200 and r.json()["change_id"] and r.json()["warnings"] == []
     assert Dataset.objects.filter(pk__in=[a.pk, b.pk], collection=None).count() == 2
 
 

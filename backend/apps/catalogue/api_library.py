@@ -12,12 +12,13 @@ from django.db.models import Max, Min, Sum
 from django.shortcuts import get_object_or_404
 from ninja import Query
 
+from apps.accounts.roles import no_viewers
 from substation.api import ApiError, Schema, Status, admin_required
 
 from .api import DatasetOut, dataset_out, router
 from .models import Collection, Dataset, DatasetNight, Rig
 from .scope import Scope, apply, nights_q, rig_id
-from .services.library import add_to_collection, centre, ensure_rig, label, refresh_objects, suggest
+from .services.library import add_to_collection, centre, ensure_rig, label, suggest
 
 
 class RigOut(Schema):
@@ -528,6 +529,7 @@ def get_collection(request, id: int):  # noqa: A002
 
 @router.post("/collections", response={201: CollectionCard})
 def create_collection(request, body: CollectionIn):
+    _no_viewers(request)
     if not body.name.strip():
         raise ApiError(422, "invalid", "Give the collection a name.")
     col = Collection.objects.create(name=body.name.strip())
@@ -537,6 +539,7 @@ def create_collection(request, body: CollectionIn):
 
 @router.patch("/collections/{id}", response=CollectionCard)
 def patch_collection(request, id: int, body: CollectionPatch):  # noqa: A002
+    _no_viewers(request)
     col = get_object_or_404(Collection, pk=id)
     if body.name is not None and body.name.strip():
         col.name = body.name.strip()
@@ -544,11 +547,65 @@ def patch_collection(request, id: int, body: CollectionPatch):  # noqa: A002
     return _card(col)
 
 
-@router.delete("/collections/{id}", response={204: None})
+class CollectionProjectImpact(Schema):
+    id: int
+    label: str
+    done: bool
+    goals_set: bool
+
+
+class CollectionLibraryImpact(Schema):
+    name: str
+    role: str
+    files: int
+    bytes: int
+
+
+class CollectionImpactOut(Schema):
+    datasets: int
+    projects: list[CollectionProjectImpact]
+    combined: list[str]  # combined masters not yet deleted: these stop the delete
+    finished: list[str]  # finished images linked through its projects
+    unoffered: list[str]  # of those, the ones the renderer would no longer offer
+    move: Literal["waiting", "running"] | None  # an archive or bring-back of its files, not finished
+    location: str  # active, archive, both, or blank
+    libraries: list[CollectionLibraryImpact]
+    blockers: list[str]  # why it can't be deleted now; empty when it can
+
+
+class CollectionDeletedOut(Schema):
+    change_id: int
+    warnings: list[str]
+
+
+def _no_viewers(request) -> None:  # noqa: ANN001
+    no_viewers(request, "Read-only users can't change collections.")
+
+
+@router.get("/collections/{id}/impact", response=CollectionImpactOut)
+def collection_impact(request, id: int):  # noqa: A002
+    """What deleting this collection's record would touch, for the page to ask first."""
+    from .services.collections import impact
+
+    return CollectionImpactOut(**impact(get_object_or_404(Collection, pk=id)))
+
+
+@router.delete("/collections/{id}", response=CollectionDeletedOut)
 def delete_collection(request, id: int):  # noqa: A002
+    """Delete the collection's record and its projects': the datasets stay, files are never touched. Refused while
+    its files are moving or it has combined masters; undoable."""
+    from django.db import transaction
+
+    from .services import collections as svc
+
+    _no_viewers(request)
     col = get_object_or_404(Collection, pk=id)
-    col.delete()  # datasets stay (their collection is cleared); files are never touched
-    return Status(204, None)
+    try:
+        with transaction.atomic():
+            change, warnings = svc.remove(col, request.user)
+    except svc.Refused as e:
+        raise ApiError(409, "refused", str(e)) from None
+    return CollectionDeletedOut(change_id=change.pk, warnings=warnings)
 
 
 class DatasetIds(Schema):
@@ -745,14 +802,6 @@ def candidates(request, id: int):  # noqa: A002
         out,
         key=lambda x: (x.overlap is None, -(x.overlap or 0), x.offset_arcmin is None, x.offset_arcmin or 0),
     )
-
-
-@router.delete("/collections/{id}/datasets/{dataset_id}", response=CollectionCard)
-def remove_dataset(request, id: int, dataset_id: int):  # noqa: A002
-    col = get_object_or_404(Collection, pk=id)
-    Dataset.objects.filter(pk=dataset_id, collection=col).update(collection=None)
-    refresh_objects(col)
-    return _card(col)
 
 
 Mount = Literal["equatorial", "altaz", "tracker", "smart", ""]

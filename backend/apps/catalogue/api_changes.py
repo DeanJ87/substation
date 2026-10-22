@@ -47,12 +47,23 @@ def _out(c: Change, request) -> ChangeOut:  # noqa: ANN001
 
 
 @router.get("/changes", response=list[ChangeOut])
-def list_changes(request, everyone: bool = False, limit: int = 20):
-    """Your latest changes, newest first (everyone's, for an admin who asks)."""
+def list_changes(
+    request,
+    everyone: bool = False,
+    limit: int = 20,
+    offset: int = 0,
+    kind: str | None = None,
+):
+    """Your latest changes, newest first (everyone's, for an admin who asks); `kind` keeps one kind, `offset` pages."""
     qs = Change.objects.select_related("user").order_by("-created_at", "-pk")
     if not (everyone and is_admin(request.user)):
         qs = qs.filter(user=request.user)
-    return [_out(c, request) for c in qs[: max(1, min(limit, 100))]]
+    if kind:
+        if kind not in Change.Kind.values:
+            raise ApiError(422, "invalid", f"“{kind}” isn't a kind of change.")
+        qs = qs.filter(kind=kind)
+    start = max(0, offset)
+    return [_out(c, request) for c in qs[start : start + max(1, min(limit, 100))]]
 
 
 @router.post("/changes/{id}/undo", response=UndoneOut)

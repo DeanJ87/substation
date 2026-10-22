@@ -119,3 +119,5 @@ library stays as it is, with no role.
   roles are for admins.
 - **013-DR-11** (2026-10-22) A project's Done state (006-DR-36) is not archiving: it moves no files. Archiving stays a
   whole-collection action.
+- **013-DR-12** (2026-10-22) A collection whose projects are all marked done is suggested for archiving at once, not
+  only after 60 days without new subs (still only with files in an active library that has an archive).

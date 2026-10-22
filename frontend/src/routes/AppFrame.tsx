@@ -6,6 +6,7 @@ import { api, unwrap } from '../api/client'
 import { BusyBar } from '../components/Busy'
 import { Toasts } from '../components/Toasts'
 import { KeyHelp } from '../components/KeyHelp'
+import { useMenu } from '../components/useMenu'
 import { Search } from '../components/Search'
 import { Lockup } from '../components/Logo'
 import { ThemeProvider } from '../design/ThemeContext'
@@ -73,6 +74,17 @@ function Frame({ user }: { user: SessionUser }) {
       <BusyBar />
       <Toasts />
       <UndoKeys />
+      {/* the first tab stop: past the header to the page (WCAG 2.4.1) */}
+      <a
+        href="#main"
+        className={s.skip}
+        onClick={(e) => {
+          e.preventDefault()
+          document.getElementById('main')?.focus()
+        }}
+      >
+        Skip to content
+      </a>
       <header className={s.header}>
         <Link to="/" className={s.brand} aria-label="SubStation home">
           <Lockup size={22} />
@@ -130,7 +142,7 @@ function Frame({ user }: { user: SessionUser }) {
           />
         </div>
       </header>
-      <main className={s.main}>
+      <main className={s.main} id="main" tabIndex={-1}>
         <Outlet />
       </main>
       <KeyHelp />
@@ -146,23 +158,18 @@ function atEnd(el: HTMLElement | null): boolean {
 function AccountMenu({ name, version, onSignOut }: { name: string; version: string; onSignOut: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { button: menuButton, menu: menuBox, onKeyDown: menuKeys } = useMenu(open, setOpen)
   useEffect(() => {
     if (!open) return
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node))
-        setOpen(false)
-    }
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
     document.addEventListener('mousedown', close)
-    document.addEventListener('keydown', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('keydown', close)
-    }
+    return () => document.removeEventListener('mousedown', close)
   }, [open])
   return (
     <div className={s.account} ref={ref}>
       <button
         type="button"
+        ref={menuButton}
         className={s.accountBtn}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -174,17 +181,18 @@ function AccountMenu({ name, version, onSignOut }: { name: string; version: stri
         {name}
       </button>
       {open && (
-        <div className={s.menu} role="menu">
+        <div className={s.menu} role="menu" ref={menuBox as never} tabIndex={-1} onKeyDown={menuKeys}>
           <Link
             to="/settings"
             hash="appearance"
             role="menuitem"
+            tabIndex={-1}
             className={s.menuItem}
             onClick={() => setOpen(false)}
           >
             Appearance
           </Link>
-          <button type="button" role="menuitem" className={s.menuItem} onClick={onSignOut}>
+          <button type="button" role="menuitem" tabIndex={-1} className={s.menuItem} onClick={onSignOut}>
             Sign out
           </button>
           <div className={s.version} title={`SubStation ${version || 'dev'}`}>

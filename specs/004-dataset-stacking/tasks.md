@@ -69,3 +69,4 @@
 - [X] D-T15 (2026-10-15) A saved registration is reused only when the new run registers the same way (mosaic or not);
   checkpoints record which (004-DR-27)
 - [X] (2026-10-22) Combine leaves out other-panel masters outside mosaics (004-DR-29); test
+- [X] (2026-10-22) Delete a combined master (004-DR-30); tests

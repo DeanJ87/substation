@@ -86,3 +86,5 @@ Stats count every frame ever catalogued, including binned and deleted ones: fram
   read-only, disabled, with the reason beside it and the compose setting that mounts that library read-write (spec
   013, 013-DR-02). The API refuses switching it on for a read-only library with the same reason. As in spec 013, a
   library mounted read-write is writable for the bin and for archiving alike.
+- **011-DR-09** (2026-10-22) The Bin is the only way SubStation deletes the owner's files; every other put-away verb
+  leaves files where they are or, for Archive, moves them (006-DR-38).

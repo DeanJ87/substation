@@ -166,7 +166,8 @@
 .menu button:hover,
 .menu button:focus-visible {
   background: var(--sst-panel-2);
-  outline: none;
+  outline: 2px solid var(--sst-focus);
+  outline-offset: -2px;
 }
 .held {
   display: flex;

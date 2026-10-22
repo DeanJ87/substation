@@ -834,7 +834,7 @@ export function Skeleton({
 /** A page waiting for its first answer: a title bar and two blocks where the content will be. */
 export function PageLoading() {
   return (
-    <div className={s.pageLoading} aria-busy="true" aria-label="Loading">
+    <div className={s.pageLoading} role="status" aria-busy="true" aria-label="Loading">
       <Skeleton width={240} height={30} />
       <Skeleton height={120} />
       <Skeleton height={260} />

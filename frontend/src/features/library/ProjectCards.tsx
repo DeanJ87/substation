@@ -2,7 +2,10 @@
 // per season's project with its kind, rigs, months and goal bars; a ⋯ menu renames, changes the season or kind,
 // merges, splits, marks done or deletes, each with Undo. Datasets not in a project sort into their seasons; the
 // board moves datasets between projects by dragging.
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { api, unwrap } from '../../api/client'
+import { useMenu } from '../../components/useMenu'
 import { Collapsible } from '../../components/Collapsible'
 import { Help } from '../../components/Help'
 import { Modal } from '../../components/Modal'
@@ -48,6 +51,30 @@ export function kindText(x: Pick<ProjectT, 'kind' | 'panels' | 'planned_panels'>
 
 /** The filters a goal can be set for: the ones shot, then the rest of the canonical set (C06). */
 const GOAL_FILTERS = ['L', 'R', 'G', 'B', 'Hα', 'OIII', 'SII', 'OSC']
+
+/** Another filter a goal can be set for (018-DR-17): one the project's rigs shot through, or the canonical list
+ * when no rig of the project is known; never one it already has. */
+export function goalExtras(present: string[], rigFilters: string[]): string[] {
+  const have = new Set(present.map(filterName))
+  const known = rigFilters.filter(Boolean)
+  const pool = known.length ? sortFilters([...new Set(known.map(filterName))]) : GOAL_FILTERS
+  return pool.filter((f) => !have.has(f))
+}
+
+type SplitBy = 'rig' | 'panel' | 'datasets'
+/** The ways a project can be split: only those that make two projects (two rigs, two panels, two datasets). */
+export function splitOptions(x: Pick<ProjectT, 'rigs' | 'panels' | 'dataset_ids'>) {
+  return [
+    { value: 'rig' as SplitBy, label: `By rig (${x.rigs.length})`, disabled: x.rigs.length < 2 },
+    { value: 'panel' as SplitBy, label: `By panel (${x.panels.length})`, disabled: x.panels.length < 2 },
+    { value: 'datasets' as SplitBy, label: 'Chosen datasets', disabled: x.dataset_ids.length < 2 },
+  ]
+}
+
+/** Planned panels only mean something for a mosaic: as set, or as worked out when the kind is Auto. */
+export function panelsApply(kind: 'auto' | 'single' | 'mosaic', auto: string | null | undefined): boolean {
+  return kind === 'mosaic' || (kind === 'auto' && auto === 'mosaic')
+}
 
 export function ProjectCards({
   collectionId,
@@ -265,7 +292,9 @@ function ProjectCard({
               ['Kind', () => setMode('kind')],
               ['Goals', () => setMode('goals')],
               ...(others.length ? ([['Merge into…', () => setMode('merge')]] as const) : []),
-              ['Split…', () => setMode('split')],
+              ...(splitOptions(x).some((o) => !o.disabled)
+                ? ([['Split…', () => setMode('split')]] as const)
+                : []),
               [x.done ? 'Not done' : 'Done', () => act.patch.mutate({ id: x.id, done: !x.done })],
               ['Delete', () => setMode('delete')],
             ]}
@@ -396,21 +425,18 @@ function PanelMatrix({ project: x, byId }: { project: ProjectT; byId: Map<number
 function Menu({ label, items }: { label: string; items: (readonly [string, () => void])[] }) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
+  const { button: menuButton, menu: menuBox, onKeyDown: menuKeys } = useMenu(open, setOpen)
   useEffect(() => {
     if (!open) return
     const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false)
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
     document.addEventListener('pointerdown', away)
-    document.addEventListener('keydown', key)
-    return () => {
-      document.removeEventListener('pointerdown', away)
-      document.removeEventListener('keydown', key)
-    }
+    return () => document.removeEventListener('pointerdown', away)
   }, [open])
   return (
     <span ref={box} className={p.menuBox}>
       <button
         type="button"
+        ref={menuButton}
         className={p.dots}
         aria-label={`More for ${label}`}
         aria-haspopup="menu"
@@ -420,14 +446,24 @@ function Menu({ label, items }: { label: string; items: (readonly [string, () =>
         ⋯
       </button>
       {open && (
-        <span className={p.menu} role="menu" aria-label={label}>
+        <span
+          className={p.menu}
+          role="menu"
+          aria-label={label}
+          ref={menuBox}
+          tabIndex={-1}
+          onKeyDown={menuKeys}
+        >
           {items.map(([text, run]) => (
             <button
               key={text}
               type="button"
               role="menuitem"
+              tabIndex={-1}
               onClick={() => {
                 setOpen(false)
+                // a dialog the item opens gives focus back to the ⋯ button, not to an item that's gone
+                menuButton.current?.focus()
                 run()
               }}
             >
@@ -494,7 +530,8 @@ function KindForm({ project: x, act, onDone }: { project: ProjectT; act: Act; on
       className={p.form}
       onSubmit={(e) => {
         e.preventDefault()
-        act.patch.mutate({ id: x.id, kind, planned_panels: Number(panels) || null })
+        const mosaic = panelsApply(kind, x.kind_auto)
+        act.patch.mutate({ id: x.id, kind, planned_panels: mosaic ? Number(panels) || null : null })
         onDone()
       }}
     >
@@ -517,8 +554,9 @@ function KindForm({ project: x, act, onDone }: { project: ProjectT; act: Act; on
           type="number"
           min={1}
           max={100}
-          placeholder="planned"
-          value={panels}
+          placeholder={panelsApply(kind, x.kind_auto) ? 'planned' : 'mosaic only'}
+          disabled={!panelsApply(kind, x.kind_auto)}
+          value={panelsApply(kind, x.kind_auto) ? panels : ''}
           onChange={(e) => setPanels(e.target.value)}
         />
       </label>
@@ -550,8 +588,9 @@ function GoalsForm({
   const [goals, setGoals] = useState<Record<string, string>>(() =>
     Object.fromEntries(filters.map((f) => [f, x.goals?.[f] ? String(x.goals[f]) : ''])),
   )
-  const present = new Set(Object.keys(goals).map((f) => filterName(f)))
-  const extras = GOAL_FILTERS.filter((f) => !present.has(f))
+  const rigs = useQuery({ queryKey: ['rigs'], queryFn: async () => unwrap(await api.GET('/rigs')) })
+  const rigFilters = (rigs.data ?? []).filter((r) => x.rigs.includes(r.name)).flatMap((r) => r.filters ?? [])
+  const extras = goalExtras(Object.keys(goals), rigFilters)
   return (
     <form
       className={p.form}
@@ -721,7 +760,8 @@ function SplitDialog({
   act: Act
   onClose: () => void
 }) {
-  const [by, setBy] = useState<'rig' | 'panel' | 'datasets'>(x.rigs.length > 1 ? 'rig' : 'panel')
+  const ways = splitOptions(x)
+  const [by, setBy] = useState<SplitBy>(ways.find((o) => !o.disabled)?.value ?? 'datasets')
   const [chosen, setChosen] = useState<number[]>([])
   const [name, setName] = useState('')
   const impact = useImpact(x.id)
@@ -736,16 +776,7 @@ function SplitDialog({
     <Modal label={`Split ${x.label}`} onClose={onClose} size="sm">
       <div className={p.dialog}>
         <h2 className={p.dialogTitle}>Split {x.label}</h2>
-        <SegmentedControl
-          label="Split by"
-          value={by}
-          onChange={setBy}
-          options={[
-            { value: 'rig', label: `By rig (${x.rigs.length})` },
-            { value: 'panel', label: `By panel (${x.panels.length})` },
-            { value: 'datasets', label: 'Chosen datasets' },
-          ]}
-        />
+        <SegmentedControl label="Split by" value={by} onChange={setBy} options={ways} />
         {by === 'datasets' && (
           <>
             <ul className={p.choose}>

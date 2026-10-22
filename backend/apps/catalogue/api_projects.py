@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Field
 
+from apps.accounts.roles import no_viewers
 from substation.api import ApiError, Schema, Status
 
 from .api import router
@@ -182,6 +183,10 @@ def _check(kind: str | None, planned: int | None, season: str | None = None) -> 
         raise ApiError(422, "invalid", 'A season is a year, or two across New Year: "2026", "2025–26".')
 
 
+def _no_viewers(request) -> None:  # noqa: ANN001
+    no_viewers(request, "Read-only users can't change projects.")
+
+
 def _refused(e: svc.Refused) -> ApiError:
     return ApiError(409, "refused", str(e))
 
@@ -237,6 +242,7 @@ def _assign(p: Project, ids: list[int]) -> None:
 @router.post("/collections/{id}/projects", response={201: ProjectOut})
 def create_project(request, id: int, body: ProjectIn):  # noqa: A002
     """A new project for a season (this year unless said), with an optional name."""
+    _no_viewers(request)
     col = get_object_or_404(Collection, pk=id)
     _check(body.kind, body.planned_panels, body.season)
     season = (body.season if body.season is not None else str(timezone.localdate().year)).strip()
@@ -258,6 +264,7 @@ def create_project(request, id: int, body: ProjectIn):  # noqa: A002
 @router.patch("/projects/{id}", response=ProjectOut)
 def update_project(request, id: int, body: ProjectPatch):  # noqa: A002
     """Rename, change its season, set its kind (or back to automatic), planned panels, goals; mark it done."""
+    _no_viewers(request)
     p = get_object_or_404(Project, pk=id)
     _check(body.kind, body.planned_panels, body.season)
     change = body.dict(exclude_unset=True)
@@ -300,6 +307,7 @@ def update_project(request, id: int, body: ProjectPatch):  # noqa: A002
 def delete_project(request, id: int):  # noqa: A002
     """The datasets stay in the collection, just not in a project. Refused while it has combined masters; its
     finished-image links go (said in warnings)."""
+    _no_viewers(request)
     p = get_object_or_404(Project, pk=id)
     try:
         with transaction.atomic():
@@ -311,6 +319,7 @@ def delete_project(request, id: int):  # noqa: A002
 
 @router.put("/projects/{id}/datasets", response=ProjectOut)
 def set_project_datasets(request, id: int, body: IdsIn):  # noqa: A002
+    _no_viewers(request)
     p = get_object_or_404(Project, pk=id)
     with transaction.atomic():
         before = svc.placements([*body.ids, *p.datasets.values_list("pk", flat=True)])
@@ -321,6 +330,7 @@ def set_project_datasets(request, id: int, body: IdsIn):  # noqa: A002
 
 @router.put("/collections/{id}/projects/order", response=list[ProjectOut])
 def order_projects(request, id: int, body: IdsIn):  # noqa: A002
+    _no_viewers(request)
     col = get_object_or_404(Collection, pk=id)
     mine = set(col.projects.values_list("pk", flat=True))
     if set(body.ids) != mine:
@@ -334,6 +344,7 @@ def order_projects(request, id: int, body: IdsIn):  # noqa: A002
 def suggest_projects(request, id: int):  # noqa: A002
     """Sort the datasets not in a project into seasons: each joins its season's project, else a new project per
     season. Never split by rig, panel or framing; split a project afterwards if wanted."""
+    _no_viewers(request)
     col = get_object_or_404(Collection, pk=id)
     with transaction.atomic():
         change, created, joined = svc.sort_into_seasons(col, request.user)
@@ -349,6 +360,7 @@ def suggest_projects(request, id: int):  # noqa: A002
 def merge_projects(request, id: int, body: MergeIn):  # noqa: A002
     """Merge projects into one (`into` keeps its name): datasets, goals (the larger per filter), combined masters.
     Refused when a project to be absorbed is linked to a finished image."""
+    _no_viewers(request)
     col = get_object_or_404(Collection, pk=id)
     ids = [body.into, *body.from_]
     if Project.objects.filter(pk__in=ids, collection=col).count() != len(set(ids)):
@@ -364,6 +376,7 @@ def merge_projects(request, id: int, body: MergeIn):  # noqa: A002
 @router.post("/projects/{id}/split", response=SplitOut)
 def split_project(request, id: int, body: SplitIn):  # noqa: A002
     """New projects in the same season for part of this one: by rig, by panel, or the chosen datasets."""
+    _no_viewers(request)
     p = get_object_or_404(Project, pk=id)
     try:
         with transaction.atomic():

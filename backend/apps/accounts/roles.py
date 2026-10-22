@@ -36,3 +36,11 @@ def role_of(user: AbstractBaseUser) -> str:
     if is_admin(user):
         return ADMIN
     return VIEWER if is_viewer(user) else STANDARD
+
+
+def no_viewers(request, message: str = "Read-only users can't change this.") -> None:  # noqa: ANN001
+    """403 for a read-only account; every route that changes something calls it first."""
+    from substation.api import ApiError
+
+    if is_viewer(request.user):
+        raise ApiError(403, "forbidden", message)

@@ -283,3 +283,5 @@ The renderer reads the live render API; SubStation no longer writes into the pro
 - **020-DR-19** (2026-10-22) Projects linked before progressions existed catch up: every five minutes a linked astro
   project that has never had a progression gets one started as linking would have, with the same automatic limits
   (not when many subs need calibrating again; a mosaic or mixed pixel scales give the reason instead).
+- **020-DR-20** (2026-10-22) Changing a finished image's links is an undoable change, and warns when an astro image
+  loses its last link and stops being offered to the renderer.

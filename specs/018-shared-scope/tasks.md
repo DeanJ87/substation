@@ -23,3 +23,9 @@
 - [X] SC8 (2026-10-15) Review fixes: scoped card hours from the subs, rig names shared by several rigs, empty state and
   picker from the whole library (018-DR-13..15); tests
 - [X] SC9 (2026-10-22) Rigs list their filters; the filter bar narrows filters to the chosen rig (018-DR-16); tests
+- [X] SC10 (2026-10-22) Dependent fields across every select, picker and date range: shared helpers
+  (`features/cascade.ts`), scope bar, master window, New master range and sessions, Compare, Finished role and
+  filter, project split, kind and goals, Library Files, token expiry, notification test, path pattern preferences,
+  session filter suggestions by camera (018-DR-17); vitest and a backend contract test
+- [ ] SC11 Cascades that need server data: a project count per collection for Link another, per-rig counts for the
+  scope bar's rig list, counts per rule for New master (018-DR-17, cascade audit)

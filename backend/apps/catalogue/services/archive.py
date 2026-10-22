@@ -558,8 +558,9 @@ def suggest_after_days() -> int:
 
 
 def suggested(where_by: dict[int, str] | None = None) -> set[int]:
-    """Collections worth archiving: files in an active library that has an archive, no sub shot for the set number
-    of days, a current master, not moving now, and not dismissed since its last sub."""
+    """Collections worth archiving: files in an active library that has an archive, not moving now, not dismissed
+    since its last sub, and either every project marked done or no sub shot for the set number of days and a
+    current master."""
     from apps.processing.models import Master
 
     days = suggest_after_days()
@@ -589,7 +590,7 @@ def suggested(where_by: dict[int, str] | None = None) -> set[int]:
             "pk", "archive_dismissed_at"
         )
     )
-    return {
+    old = {
         cid
         for cid, at in last.items()
         if at is not None
@@ -598,6 +599,17 @@ def suggested(where_by: dict[int, str] | None = None) -> set[int]:
         and cid not in moving
         and not (cid in dismissed and dismissed[cid] >= at)
     }
+    # every project marked done: worth archiving now, without waiting out the days (amendment 2026-10-22)
+    done = {
+        cid
+        for cid in Collection.objects.filter(pk__in=candidates, projects__isnull=False)
+        .exclude(projects__done_at__isnull=True)
+        .values_list("pk", flat=True)
+        .distinct()
+        if cid not in moving
+        and not (cid in dismissed and (last.get(cid) is None or dismissed[cid] >= last[cid]))
+    }
+    return old | done
 
 
 def undo(move_id: int, user=None) -> str:  # noqa: ANN001

@@ -34,6 +34,7 @@ import tb from '../library/tables.module.css'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
+import { inRange, keepOffered, setRangeEnd } from '../cascade'
 
 type Rule = 'default' | 'accepted' | 'graded' | 'everything'
 const RULES: [Rule, string][] = [
@@ -62,6 +63,23 @@ export function MastersTab({
     queryFn: async () =>
       unwrap(await api.GET('/datasets/{id}/stack-partners', { params: { path: { id: dataset.id } } })),
   })
+  // the sessions and the custom range narrow each other (018-DR-17): the range stays inside the dataset's nights,
+  // and a session outside it can't be chosen
+  const span = { from: from || undefined, to: to || undefined }
+  const nightsIn = sessions.map((x) => x.night).filter((n) => inRange(n, span))
+  const first = sessions.reduce<string | undefined>((m, x) => (!m || x.night < m ? x.night : m), undefined)
+  const last = sessions.reduce<string | undefined>((m, x) => (!m || x.night > m ? x.night : m), undefined)
+  const setEnd = (end: 'from' | 'to', value: string) => {
+    const r = setRangeEnd(span, end, value)
+    setFrom(r.from ?? '')
+    setTo(r.to ?? '')
+    setNights((ns) =>
+      keepOffered(
+        ns,
+        sessions.map((x) => x.night).filter((n) => inRange(n, r)),
+      ),
+    )
+  }
   const scope = {
     date_from: from || null,
     date_to: to || null,
@@ -108,13 +126,15 @@ export function MastersTab({
               <span className={v.muted}>Sessions</span>
               <div className={`${v.pills} ${s.pillPane}`}>
                 <button className={v.pill} aria-pressed={nights.length === 0} onClick={() => setNights([])}>
-                  All {sessions.length}
+                  All {nightsIn.length}
                 </button>
                 {sessions.map((x) => (
                   <button
                     key={x.night}
                     className={v.pill}
                     aria-pressed={nights.includes(x.night)}
+                    disabled={!nightsIn.includes(x.night)}
+                    title={nightsIn.includes(x.night) ? undefined : 'Outside the custom date range'}
                     onClick={() =>
                       setNights(
                         nights.includes(x.night) ? nights.filter((n) => n !== x.night) : [...nights, x.night],
@@ -137,7 +157,9 @@ export function MastersTab({
                     type="date"
                     className={v.input}
                     value={from}
-                    onChange={(e) => setFrom(e.target.value)}
+                    min={first}
+                    max={to || last}
+                    onChange={(e) => setEnd('from', e.target.value)}
                   />
                 </label>
                 <label>
@@ -146,8 +168,9 @@ export function MastersTab({
                     type="date"
                     className={v.input}
                     value={to}
-                    min={from || undefined}
-                    onChange={(e) => setTo(e.target.value)}
+                    min={from || first}
+                    max={last}
+                    onChange={(e) => setEnd('to', e.target.value)}
                   />
                 </label>
               </div>
@@ -286,7 +309,8 @@ function Compare({ masters }: { masters: Stack[] }) {
     enabled: a !== b,
     queryFn: async () => unwrap(await api.GET('/stacks/compare', { params: { query: { a, b } } })),
   })
-  const pick = (value: number, set: (n: number) => void, label: string) => (
+  // never a master against itself: each side offers every master but the other side's
+  const pick = (value: number, set: (n: number) => void, label: string, other: number) => (
     <select
       className={v.select}
       aria-label={label}
@@ -294,7 +318,7 @@ function Compare({ masters }: { masters: Stack[] }) {
       onChange={(e) => set(Number(e.target.value))}
     >
       {masters.map((m) => (
-        <option key={m.id} value={m.id}>
+        <option key={m.id} value={m.id} disabled={m.id === other}>
           v{m.version} · {m.sub_count} subs
         </option>
       ))}
@@ -306,8 +330,8 @@ function Compare({ masters }: { masters: Stack[] }) {
     <section className={`${v.card} ${v.cardPad}`}>
       <Collapsible id="masters-compare" title="Compare masters" defaultOpen={false}>
         <div className={v.actions}>
-          {pick(a, setA, 'First master')} <span className={v.muted}>with</span>{' '}
-          {pick(b, setB, 'Second master')}
+          {pick(a, setA, 'First master', b)} <span className={v.muted}>with</span>{' '}
+          {pick(b, setB, 'Second master', a)}
         </div>
         {a === b && <p className={v.muted}>Choose two different masters.</p>}
         {q.data && (

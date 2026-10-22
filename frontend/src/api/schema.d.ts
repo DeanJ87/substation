@@ -476,7 +476,7 @@ export interface paths {
         };
         /**
          * List Changes
-         * @description Your latest changes, newest first (everyone's, for an admin who asks).
+         * @description Your latest changes, newest first (everyone's, for an admin who asks); `kind` keeps one kind, `offset` pages.
          */
         get: operations["apps_catalogue_api_changes_list_changes"];
         put?: never;
@@ -572,7 +572,11 @@ export interface paths {
         get: operations["apps_catalogue_api_library_get_collection"];
         put?: never;
         post?: never;
-        /** Delete Collection */
+        /**
+         * Delete Collection
+         * @description Delete the collection's record and its projects': the datasets stay, files are never touched. Refused while
+         *     its files are moving or it has combined masters; undoable.
+         */
         delete: operations["apps_catalogue_api_library_delete_collection"];
         options?: never;
         head?: never;
@@ -660,23 +664,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/collections/{id}/datasets/{dataset_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Remove Dataset */
-        delete: operations["apps_catalogue_api_library_remove_dataset"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/collections/{id}/files": {
         parameters: {
             query?: never;
@@ -712,6 +699,26 @@ export interface paths {
          *     dataset with the most accepted integration. Mosaic panels come back side by side.
          */
         get: operations["apps_catalogue_api_library_collection_framing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collections/{id}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Collection Impact
+         * @description What deleting this collection's record would touch, for the page to ask first.
+         */
+        get: operations["apps_catalogue_api_library_collection_impact"];
         put?: never;
         post?: never;
         delete?: never;
@@ -894,6 +901,26 @@ export interface paths {
          */
         post: operations["apps_catalogue_api_projects_suggest_projects"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/combined/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Combined
+         * @description Delete a combined master's output: its file and preview go, the row stays as the record (state deleted).
+         */
+        delete: operations["apps_processing_api_masters_delete_combined"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3830,6 +3857,13 @@ export interface components {
             /** States */
             states: string[];
         };
+        /** CollectionDeletedOut */
+        CollectionDeletedOut: {
+            /** Change Id */
+            change_id: number;
+            /** Warnings */
+            warnings: string[];
+        };
         /** CollectionFilesOut */
         CollectionFilesOut: {
             /** Active Bytes */
@@ -3853,6 +3887,27 @@ export interface components {
             /** Suggested */
             suggested: boolean;
         };
+        /** CollectionImpactOut */
+        CollectionImpactOut: {
+            /** Blockers */
+            blockers: string[];
+            /** Combined */
+            combined: string[];
+            /** Datasets */
+            datasets: number;
+            /** Finished */
+            finished: string[];
+            /** Libraries */
+            libraries: components["schemas"]["CollectionLibraryImpact"][];
+            /** Location */
+            location: string;
+            /** Move */
+            move: ("waiting" | "running") | null;
+            /** Projects */
+            projects: components["schemas"]["CollectionProjectImpact"][];
+            /** Unoffered */
+            unoffered: string[];
+        };
         /** CollectionIn */
         CollectionIn: {
             /**
@@ -3862,6 +3917,17 @@ export interface components {
             dataset_ids: number[];
             /** Name */
             name: string;
+        };
+        /** CollectionLibraryImpact */
+        CollectionLibraryImpact: {
+            /** Bytes */
+            bytes: number;
+            /** Files */
+            files: number;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
         };
         /** CollectionMasterOut */
         CollectionMasterOut: {
@@ -3963,6 +4029,17 @@ export interface components {
         CollectionPatch: {
             /** Name */
             name?: string | null;
+        };
+        /** CollectionProjectImpact */
+        CollectionProjectImpact: {
+            /** Done */
+            done: boolean;
+            /** Goals Set */
+            goals_set: boolean;
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
         };
         /** CombinedInput */
         CombinedInput: {
@@ -4272,6 +4349,8 @@ export interface components {
         };
         /** FinishedOut */
         FinishedOut: {
+            /** Change Id */
+            change_id?: number | null;
             /**
              * Changed At
              * Format: date-time
@@ -4305,6 +4384,11 @@ export interface components {
             rel_path: string;
             /** Subject */
             subject: string;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
         };
         /** FlatSetChoice */
         FlatSetChoice: {
@@ -8244,6 +8328,8 @@ export interface operations {
             query?: {
                 everyone?: boolean;
                 limit?: number;
+                offset?: number;
+                kind?: string | null;
             };
             header?: never;
             path?: never;
@@ -8402,12 +8488,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
-            204: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CollectionDeletedOut"];
+                };
             };
         };
     };
@@ -8553,29 +8641,6 @@ export interface operations {
             };
         };
     };
-    apps_catalogue_api_library_remove_dataset: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-                dataset_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CollectionCard"];
-                };
-            };
-        };
-    };
     apps_catalogue_api_archive_collection_files: {
         parameters: {
             query?: never;
@@ -8619,6 +8684,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FramingOut"][];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_library_collection_impact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionImpactOut"];
                 };
             };
         };
@@ -8899,6 +8986,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SortOut"];
                 };
+            };
+        };
+    };
+    apps_processing_api_masters_delete_combined: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

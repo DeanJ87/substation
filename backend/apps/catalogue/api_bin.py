@@ -6,6 +6,7 @@ from datetime import datetime
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
+from apps.accounts.roles import no_viewers
 from apps.catalogue.api import router
 from apps.catalogue.models import Copy, Frame, FrameStatus, FrameType, IgnoreRule
 from apps.catalogue.services.binning import QUARANTINE, bin_frames, bin_settings, restore_frames
@@ -50,10 +51,7 @@ class BinListOut(Schema):
 
 
 def _no_viewers(request) -> None:  # noqa: ANN001
-    from apps.accounts.roles import is_viewer
-
-    if is_viewer(request.user):
-        raise ApiError(403, "forbidden", "Read-only users can't bin files.")
+    no_viewers(request, "Read-only users can't bin files.")
 
 
 def _by(request) -> str:  # noqa: ANN001

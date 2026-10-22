@@ -681,6 +681,12 @@
 }
 
 .tileOpen {
+  /* a 24 px target (WCAG 2.5.8) without growing the caption line */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 24px;
+  margin-block: -4px;
   padding: 0;
   border: 0;
   background: none;

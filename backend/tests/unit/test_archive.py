@@ -369,6 +369,29 @@ def test_suggestions_need_old_subs_and_a_current_master_and_can_be_dismissed(set
     assert archive.suggested() == set()
 
 
+def test_a_collection_whose_projects_are_all_done_is_suggested_at_once(setup):
+    from apps.catalogue.models import Project
+
+    col = setup["col"]
+    Frame.objects.filter(pk__in=[f.pk for f in setup["lights"]]).update(date_obs_utc=timezone.now())
+    a = Project.objects.create(collection=col, season="2026")
+    Project.objects.create(collection=col, season="2025", done_at=timezone.now())
+    assert archive.suggested() == set()  # shot yesterday, no master, one project still going
+    Project.objects.filter(pk=a.pk).update(done_at=timezone.now())
+    assert archive.suggested() == {col.pk}  # every project done: no need to wait
+    move = CollectionMove.objects.create(
+        collection=col, direction="archive", from_library=setup["active"], to_library=setup["big"]
+    )
+    assert archive.suggested() == set()  # moving now
+    move.state = MoveState.DONE
+    move.save()
+    Collection.objects.filter(pk=col.pk).update(archive_dismissed_at=timezone.now())
+    assert archive.suggested() == set()  # dismissed
+    Collection.objects.filter(pk=col.pk).update(archive_dismissed_at=None)
+    Copy.objects.filter(frame__dataset__collection=col).update(library=setup["big"])
+    assert archive.suggested() == set()  # its files are in the archive already
+
+
 # -- API -------------------------------------------------------------------------------------------------------
 
 

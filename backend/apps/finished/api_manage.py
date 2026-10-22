@@ -72,6 +72,8 @@ class FinishedOut(Schema):
     distance_ly: float | None
     distance_source: str
     path: str  # where the folder is, as the library's own path shows it
+    change_id: int | None = None  # set when this answer made an undoable change (links)
+    warnings: list[str] = []
 
 
 class FinishedListOut(Schema):
@@ -233,18 +235,43 @@ class LinkIn(Schema):
 @router.put("/{id}/links", response=FinishedOut)
 @admin_required
 def set_links(request: HttpRequest, id: int, body: LinkIn) -> FinishedOut:
+    from apps.catalogue.models import Change
+    from apps.catalogue.services.changes import record
+
     p = get_object_or_404(FinishedProject, pk=id)
     projects = list(Project.objects.filter(pk__in=body.project_ids))
     if len(projects) != len(set(body.project_ids)):
         raise ApiError(400, "unknown_project", "One of those SubStation projects doesn't exist.")
-    p.linked_projects.set(projects)
-    p.save(update_fields=["updated_at"])
+    before = sorted(p.linked_projects.values_list("pk", flat=True))
+    after = sorted(q.pk for q in projects)
+    warnings: list[str] = []
+    change = None
+    with transaction.atomic():
+        p.linked_projects.set(projects)
+        p.save(update_fields=["updated_at"])
+        if before != after:
+            if p.kind == "astro" and before and not after:
+                warnings.append("No longer offered to the renderer.")
+            n = len(after)
+            summary = f"Linked {p.name} to {n} project{'s' if n != 1 else ''}" if n else f"Unlinked {p.name}"
+            change = record(
+                request.user,
+                Change.Kind.LINK,
+                summary,
+                len(set(before) ^ set(after)),
+                finished_id=p.pk,
+                before=before,
+                after=after,
+            )
     if projects:  # 020-DR-15: build the cumulative stacks when nothing needs calibrating again
         try:
             start_progression(p, auto=True)
         except Exception:  # noqa: BLE001 (linking must never fail on it)
             log.exception("Couldn't start the progression of finished project %s", p.pk)
-    return _out(p)
+    out = _out(p)
+    out.change_id = change.pk if change is not None else None
+    out.warnings = warnings
+    return out
 
 
 class RoleIn(Schema):

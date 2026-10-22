@@ -60,6 +60,19 @@ def standard_client(standard_user) -> Client:
     return signed_in_client(standard_user.username)
 
 
+@pytest.fixture
+def viewer_client(db, django_user_model) -> Client:
+    """A read-only account (spec 008)."""
+    from django.contrib.auth.models import Group
+
+    from apps.accounts.roles import VIEWER, ensure_groups
+
+    ensure_groups()
+    u = django_user_model.objects.create_user(username="viewer", password="correct-horse-battery")
+    u.groups.add(Group.objects.get(name=VIEWER))
+    return signed_in_client("viewer")
+
+
 def manage(*args: str, timeout: float = 60, **kwargs) -> subprocess.Popen:
     """Start `manage.py <args>` against the test database (for multi-process tests)."""
     db = settings.DATABASES["default"]  # NAME is already the test database

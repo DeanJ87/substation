@@ -83,7 +83,7 @@ export function Bin() {
                   {!l.writable
                     ? 'Binned files are only hidden here, never moved or deleted.'
                     : l.allow_delete
-                      ? 'Binned files move to quarantine here, then are deleted.'
+                      ? 'Binned files move to a hidden folder here, then are deleted.'
                       : 'Binned files are only hidden here.'}
                 </div>
               </div>

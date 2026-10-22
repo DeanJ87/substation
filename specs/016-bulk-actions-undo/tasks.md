@@ -22,3 +22,4 @@
 - [X] U7 (2026-10-15) Undoing a move after its collection or project was removed (016-DR-01); test
 - [X] U8 (2026-10-17) Change kind `archive` and its undo (016-DR-02); tests in `tests/unit/test_archive.py`
 - [X] (2026-10-22) Change kind "project" with undo for each project action (016-DR-03); tests
+- [X] (2026-10-22) Change kinds collection and link with undo; /changes by kind with offset (016-DR-04); tests

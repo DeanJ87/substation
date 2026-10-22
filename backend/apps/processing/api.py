@@ -1300,6 +1300,21 @@ def _session_lights(dataset_id: int, night: date) -> list[Frame]:
     )
 
 
+def _camera_filters(camera: str | None) -> list[str]:
+    """The filters a session's subs could have been shot through (018-DR-17): those this camera's lights and flat
+    sets were taken with, never another camera's. A camera with no name is matched to every light."""
+    from apps.catalogue.models import CalibrationSet
+
+    lights = Frame.objects.filter(frame_type=FrameType.LIGHT)
+    if camera:
+        lights = lights.filter(camera=camera)
+    names = set(lights.values_list("filter_norm", flat=True).distinct())
+    if camera:
+        flats = CalibrationSet.objects.filter(type=FrameType.FLAT, camera=camera)
+        names |= set(flats.values_list("filter_norm", flat=True).distinct())
+    return sorted(str(x) for x in names if x)
+
+
 @router.get("/datasets/{id}/sessions/{night}/calibration", response=SessionChoicesOut)
 def session_choices(request, id: int, night: date):  # noqa: A002
     """Masters a session could use instead (002 C10): same camera; darks of the session's exposure (or a bias),
@@ -1360,16 +1375,7 @@ def session_choices(request, id: int, night: date):  # noqa: A002
     built_shas = {x.sha for x in sets if x.built}
     return SessionChoicesOut(
         flat_sets=sets,
-        filters=sorted(
-            {
-                str(x)
-                for x in Frame.objects.filter(frame_type=FrameType.LIGHT)
-                .exclude(filter_norm=None)
-                .exclude(filter_norm="")
-                .values_list("filter_norm", flat=True)
-                .distinct()
-            }
-        ),
+        filters=_camera_filters(f0.camera),
         darks=sorted(
             (
                 MasterChoice(

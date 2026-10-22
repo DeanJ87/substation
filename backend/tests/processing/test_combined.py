@@ -110,3 +110,30 @@ R0 3.6 2.8 0.92 0 0.001 1734 H 1 0 14 0 1 2503 0 0 1
 R0 3.1 3.1 0.89 0 0.001 1566 H 1 0 36 0 1 2542 0 0 1
 """)
     assert _placements(seq) == {1: (14, 2503, 6237, 4185), 2: (36, 2542, 6224, 4168)}
+
+
+def test_deleting_a_combined_master_removes_its_files_and_keeps_the_row(
+    admin_client, viewer_client, tmp_path
+):
+    col = Collection.objects.create(name="Soul")
+    out, preview = tmp_path / "Ha_combined.fit", tmp_path / "Ha_combined.jpg"
+    thumb = tmp_path / "Ha_combined_t.jpg"
+    for f in (out, preview, thumb):
+        f.write_bytes(b"x")
+    cm = CombinedMaster.objects.create(
+        collection=col,
+        filter_norm="Hα",
+        version=1,
+        state="running",
+        output_path=str(out),
+        preview_path=str(preview),
+    )
+    r = admin_client.delete(f"/api/v1/combined/{cm.pk}")
+    assert r.status_code == 409 and out.exists()
+    CombinedMaster.objects.filter(pk=cm.pk).update(state="current")
+    assert viewer_client.delete(f"/api/v1/combined/{cm.pk}").status_code == 403
+    assert admin_client.delete(f"/api/v1/combined/{cm.pk}").status_code == 204
+    assert not out.exists() and not preview.exists() and not thumb.exists()
+    cm.refresh_from_db()
+    assert cm.state == "deleted" and cm.output_path == "" and cm.preview_path == ""
+    assert cm.state_reason == "Deleted by admin."

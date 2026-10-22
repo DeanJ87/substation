@@ -128,3 +128,19 @@ and one place in the backend that turns it into a query for each kind of record.
 - **018-DR-16** (2026-10-22) Choices follow their parent. With a rig chosen, the filter list offers only filters that
   rig shot through (each rig lists its filters); choosing a rig that lacks the current filter clears it. No choice
   leads to an empty page.
+
+### Amendment 2026-10-22 (third): dependent fields everywhere
+
+- **018-DR-17** Every control whose choices depend on another's follows it, across the whole app, not only the
+  filter bar. A child's options come from the parent's actual data; changing the parent clears a child that no
+  longer fits; a child waits, disabled, until its parent is chosen; and no choice leads to an empty result. When a
+  choice has to stay visible (a link brought it), it is disabled and says why ("SII (none on this rig)"). In
+  particular: a date range can never turn inside out (moving one end past the other moves both), on the filter bar,
+  a master's window and the New master range; the New master range stays inside the dataset's nights and a session
+  outside it can't be chosen; two masters can't be compared with themselves; a single-filter finished image offers
+  the linked collections' filters; a role change drops the old role's filter, order and label; a project offers
+  only the splits that make two projects, panels only for a mosaic, and goals for its rigs' filters; the Library's
+  Files choice counts each option and disables empty ones; a token can't expire in the past; a test notification
+  needs somewhere to send it; "prefer over the header" keeps only fields the pattern captures; and a session's
+  filter suggestions are those its camera's lights and flat sets used. The audit of every control is
+  `substation-overhaul-2026-10-22/cascade-audit.md`; what needs server data is listed there.

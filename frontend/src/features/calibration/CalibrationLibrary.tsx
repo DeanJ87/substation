@@ -1,5 +1,6 @@
 // Calibration library (T097): raw calibration sets by night, and imported masters with the values calibration
 // matching needs (and where each came from). Building masters is spec 002.
+import { setRangeEnd } from '../cascade'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
@@ -488,14 +489,33 @@ function WindowEditor({ sha, from, to }: { sha: string; from: string; to: string
   return (
     // the row opens the master on click; keep clicks in the editor here
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-    <div className={s.windowEdit} onClick={(e) => e.stopPropagation()}>
-      <input type="date" aria-label="Use from" value={a} onChange={(e) => setA(e.target.value)} />
+    <div
+      className={s.windowEdit}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+    >
+      {/* from ≤ until: moving one end past the other moves both (018-DR-17) */}
+      <input
+        type="date"
+        aria-label="Use from"
+        value={a}
+        max={b || undefined}
+        onChange={(e) => {
+          const r = setRangeEnd({ from: a, to: b }, 'from', e.target.value)
+          setA(r.from ?? '')
+          setB(r.to ?? '')
+        }}
+      />
       <input
         type="date"
         aria-label="Use until"
         value={b}
         min={a || undefined}
-        onChange={(e) => setB(e.target.value)}
+        onChange={(e) => {
+          const r = setRangeEnd({ from: a, to: b }, 'to', e.target.value)
+          setA(r.from ?? '')
+          setB(r.to ?? '')
+        }}
       />
       <button
         type="button"

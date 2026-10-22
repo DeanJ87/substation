@@ -98,6 +98,8 @@ class Change(models.Model):
         QA = "qa"  # your QA choice on raw calibration frames
         ARCHIVE = "archive"  # a collection's files moved to its archive library or back (spec 013)
         PROJECT = "project"  # projects merged, split, removed, edited or datasets moved between them
+        COLLECTION = "collection"  # a collection deleted, with its projects (amendment 2026-10-22)
+        LINK = "link"  # a finished image's links to projects changed
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     kind = models.CharField(max_length=10, choices=Kind.choices)

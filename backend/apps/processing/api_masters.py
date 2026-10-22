@@ -587,6 +587,28 @@ def combined_download(request, id: int):  # noqa: A002
     return FileResponse(p.open("rb"), as_attachment=True, filename=p.name)
 
 
+@router.delete("/combined/{id}", response={204: None})
+def delete_combined(request, id: int):  # noqa: A002
+    """Delete a combined master's output: its file and preview go, the row stays as the record (state deleted)."""
+    from apps.accounts.roles import no_viewers
+
+    from .models import CombinedMaster
+
+    no_viewers(request, "Read-only users can't delete masters.")
+    c = get_object_or_404(CombinedMaster, pk=id)
+    if c.state in (MasterState.QUEUED, MasterState.RUNNING):
+        raise ApiError(409, "running", "Still combining. Wait for it to finish, or cancel it.")
+    for p in (c.output_path, c.preview_path):
+        if p:
+            Path(p).unlink(missing_ok=True)
+            Path(p).with_name(Path(p).stem + "_t.jpg").unlink(missing_ok=True)
+    c.state = MasterState.DELETED
+    c.state_reason = f"Deleted by {request.user.get_username()}."
+    c.output_path = c.preview_path = ""
+    c.save(update_fields=["state", "state_reason", "output_path", "preview_path"])
+    return Status(204, None)
+
+
 # ---- 100% views of masters and palettes (owner 2026-10-10) --------------------------------------------------
 class LookOut(Schema):
     ready: bool

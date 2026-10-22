@@ -287,3 +287,6 @@ split it into, and subs far from the reference share too few stars with it.
   anything else and a finished stack failed at its last step.
 - **004-DR-29** (2026-10-22) Combining inside a project that isn't a mosaic leaves out masters of another panel (and,
   as before, another pixel scale), listed with the reason, now that one project can hold several rigs and panels.
+- **004-DR-30** (2026-10-22) A combined master can be deleted like a stack: refused while queued or running; its
+  output and preview files go; its record stays, marked deleted, so a project or collection is no longer held back
+  by it.

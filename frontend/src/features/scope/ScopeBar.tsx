@@ -8,6 +8,7 @@ import { isEmpty, type Scope } from './scope'
 import s from './scope.module.css'
 import { dateText } from '../format'
 import { filterName, sortFilters } from '../../components/filters'
+import { setRangeEnd } from '../cascade'
 
 const CHIPS: [keyof Scope, string][] = [
   ['date', 'Night'],
@@ -34,6 +35,20 @@ export function filterChoices(
   return sortFilters([...new Set([...base, ...(current ? [current] : [])])])
 }
 
+/** The filter select's options: a current choice the rig never shot through stays visible (a link brought it)
+ * but says so and can't be chosen again, so no choice leads to an empty page. */
+export function filterOptions(
+  page: string[],
+  rig: string[] | undefined,
+  current: string | undefined,
+): { value: string; label: string; disabled?: boolean }[] {
+  return filterChoices(page, rig, current).map((f) =>
+    rig && f === current && !rig.includes(f)
+      ? { value: f, label: `${filterName(f)} (none on this rig)`, disabled: true }
+      : { value: f, label: filterName(f) },
+  )
+}
+
 export function ScopeBar({
   scope,
   onChange,
@@ -50,7 +65,7 @@ export function ScopeBar({
   const set = (patch: Partial<Scope>) => onChange({ ...scope, ...patch })
   const rig = (rigs.data ?? []).find((r) => r.id === scope.rig)
   // filters follow the rig: only what it shot through (and the page has), so no choice leads nowhere
-  const offered = filterChoices(filters, rig?.filters, scope.filter)
+  const offered = filterOptions(filters, rig?.filters, scope.filter)
   const pickRig = (id: number | undefined) => {
     const next = (rigs.data ?? []).find((r) => r.id === id)
     const keep = !scope.filter || !next || next.filters.includes(scope.filter)
@@ -110,23 +125,26 @@ export function ScopeBar({
           aria-label="Filter"
           value={scope.filter ?? ''}
           onChange={(e) => set({ filter: e.target.value || undefined })}
-          options={[
-            { value: '', label: 'Filter: All' },
-            ...offered.map((f) => ({ value: f, label: filterName(f) })),
-          ]}
+          options={[{ value: '', label: 'Filter: All' }, ...offered]}
         />
         <span className={s.dates}>
           <DateInput
             label="From"
             value={scope.date_from}
             max={scope.date_to}
-            onChange={(v) => set({ date_from: v })}
+            onChange={(v) => {
+              const r = setRangeEnd({ from: scope.date_from, to: scope.date_to }, 'from', v)
+              set({ date_from: r.from, date_to: r.to })
+            }}
           />
           <DateInput
             label="To"
             value={scope.date_to}
             min={scope.date_from}
-            onChange={(v) => set({ date_to: v })}
+            onChange={(v) => {
+              const r = setRangeEnd({ from: scope.date_from, to: scope.date_to }, 'to', v)
+              set({ date_from: r.from, date_to: r.to })
+            }}
           />
         </span>
         {/* what a link brought along that the bar has no control for: shown, and removable one by one */}

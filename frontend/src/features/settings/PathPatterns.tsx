@@ -26,6 +26,7 @@ import s from './settings.module.css'
 import { useSort } from '../../components/sortable'
 import { SettingsSection } from './SettingsSection'
 import { LoadMore } from '../../components/LoadMore'
+import { keepOffered } from '../cascade'
 import { useProgressive } from '../../components/useProgressive'
 
 const EXAMPLES = [
@@ -163,8 +164,12 @@ export function PathPatterns() {
             e.preventDefault()
             // the list changes at once and the editor empties; a failure brings the draft back
             const was = { draft, editing }
+            // "prefer over the header" only for fields the pattern still captures (018-DR-17)
+            const prefer = preview
+              ? keepOffered(draft.prefer_over_header, preview.fields)
+              : draft.prefer_over_header
             save.mutate(
-              { ...draft, id: editing },
+              { ...draft, prefer_over_header: prefer, id: editing },
               {
                 onError: () => {
                   setDraft(was.draft)

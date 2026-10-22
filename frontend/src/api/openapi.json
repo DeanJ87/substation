@@ -1239,6 +1239,27 @@
     "title": "CollectionCard",
     "type": "object"
    },
+   "CollectionDeletedOut": {
+    "properties": {
+     "change_id": {
+      "title": "Change Id",
+      "type": "integer"
+     },
+     "warnings": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "change_id",
+     "warnings"
+    ],
+    "title": "CollectionDeletedOut",
+    "type": "object"
+   },
    "CollectionFilesOut": {
     "properties": {
      "active_bytes": {
@@ -1310,6 +1331,88 @@
     "title": "CollectionFilesOut",
     "type": "object"
    },
+   "CollectionImpactOut": {
+    "properties": {
+     "blockers": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Blockers",
+      "type": "array"
+     },
+     "combined": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Combined",
+      "type": "array"
+     },
+     "datasets": {
+      "title": "Datasets",
+      "type": "integer"
+     },
+     "finished": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Finished",
+      "type": "array"
+     },
+     "libraries": {
+      "items": {
+       "$ref": "#/components/schemas/CollectionLibraryImpact"
+      },
+      "title": "Libraries",
+      "type": "array"
+     },
+     "location": {
+      "title": "Location",
+      "type": "string"
+     },
+     "move": {
+      "anyOf": [
+       {
+        "enum": [
+         "waiting",
+         "running"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Move"
+     },
+     "projects": {
+      "items": {
+       "$ref": "#/components/schemas/CollectionProjectImpact"
+      },
+      "title": "Projects",
+      "type": "array"
+     },
+     "unoffered": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Unoffered",
+      "type": "array"
+     }
+    },
+    "required": [
+     "datasets",
+     "projects",
+     "combined",
+     "finished",
+     "unoffered",
+     "move",
+     "location",
+     "libraries",
+     "blockers"
+    ],
+    "title": "CollectionImpactOut",
+    "type": "object"
+   },
    "CollectionIn": {
     "properties": {
      "dataset_ids": {
@@ -1329,6 +1432,34 @@
      "name"
     ],
     "title": "CollectionIn",
+    "type": "object"
+   },
+   "CollectionLibraryImpact": {
+    "properties": {
+     "bytes": {
+      "title": "Bytes",
+      "type": "integer"
+     },
+     "files": {
+      "title": "Files",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "role": {
+      "title": "Role",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "role",
+     "files",
+     "bytes"
+    ],
+    "title": "CollectionLibraryImpact",
     "type": "object"
    },
    "CollectionMasterOut": {
@@ -1590,6 +1721,34 @@
      }
     },
     "title": "CollectionPatch",
+    "type": "object"
+   },
+   "CollectionProjectImpact": {
+    "properties": {
+     "done": {
+      "title": "Done",
+      "type": "boolean"
+     },
+     "goals_set": {
+      "title": "Goals Set",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "label",
+     "done",
+     "goals_set"
+    ],
+    "title": "CollectionProjectImpact",
     "type": "object"
    },
    "CombinedInput": {
@@ -2568,6 +2727,17 @@
    },
    "FinishedOut": {
     "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
      "changed_at": {
       "format": "date-time",
       "title": "Changed At",
@@ -2641,6 +2811,14 @@
      "subject": {
       "title": "Subject",
       "type": "string"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
      }
     },
     "required": [
@@ -15196,7 +15374,7 @@
   },
   "/changes": {
    "get": {
-    "description": "Your latest changes, newest first (everyone's, for an admin who asks).",
+    "description": "Your latest changes, newest first (everyone's, for an admin who asks); `kind` keeps one kind, `offset` pages.",
     "operationId": "apps_catalogue_api_changes_list_changes",
     "parameters": [
      {
@@ -15217,6 +15395,32 @@
        "default": 20,
        "title": "Limit",
        "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "kind",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Kind"
       }
      }
     ],
@@ -15652,6 +15856,7 @@
   },
   "/collections/{id}": {
    "delete": {
+    "description": "Delete the collection's record and its projects': the datasets stay, files are never touched. Refused while\nits files are moving or it has combined masters; undoable.",
     "operationId": "apps_catalogue_api_library_delete_collection",
     "parameters": [
      {
@@ -15665,8 +15870,15 @@
      }
     ],
     "responses": {
-     "204": {
-      "description": "No Content"
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CollectionDeletedOut"
+        }
+       }
+      },
+      "description": "OK"
      }
     },
     "security": [
@@ -15989,52 +16201,6 @@
     ]
    }
   },
-  "/collections/{id}/datasets/{dataset_id}": {
-   "delete": {
-    "operationId": "apps_catalogue_api_library_remove_dataset",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "id",
-      "required": true,
-      "schema": {
-       "title": "Id",
-       "type": "integer"
-      }
-     },
-     {
-      "in": "path",
-      "name": "dataset_id",
-      "required": true,
-      "schema": {
-       "title": "Dataset Id",
-       "type": "integer"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/CollectionCard"
-        }
-       }
-      },
-      "description": "OK"
-     }
-    },
-    "security": [
-     {
-      "SessionAuth": []
-     }
-    ],
-    "summary": "Remove Dataset",
-    "tags": [
-     "catalogue"
-    ]
-   }
-  },
   "/collections/{id}/files": {
    "get": {
     "description": "Where the collection's files are (active, archive, both; FR-009), whether it can be archived or brought back\nand why not, and its move under way.",
@@ -16142,6 +16308,44 @@
      }
     ],
     "summary": "Collection Framing",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/collections/{id}/impact": {
+   "get": {
+    "description": "What deleting this collection's record would touch, for the page to ask first.",
+    "operationId": "apps_catalogue_api_library_collection_impact",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CollectionImpactOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Collection Impact",
     "tags": [
      "catalogue"
     ]
@@ -16715,6 +16919,37 @@
      }
     ],
     "summary": "Suggest Projects",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}": {
+   "delete": {
+    "description": "Delete a combined master's output: its file and preview go, the row stays as the record (state deleted).",
+    "operationId": "apps_processing_api_masters_delete_combined",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "No Content"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Delete Combined",
     "tags": [
      "catalogue"
     ]

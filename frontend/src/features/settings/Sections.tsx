@@ -1080,6 +1080,16 @@ export function Users() {
   )
 }
 
+/** Somewhere to send to: ntfy, a webhook, or Pushover with both its keys. Events and a test need one. */
+export function hasDestination(n: {
+  ntfy: string
+  webhook: string
+  pushover_user?: string | null
+  pushover_token?: string | null
+}): boolean {
+  return !!(n.ntfy.trim() || n.webhook.trim() || (n.pushover_user && n.pushover_token))
+}
+
 const EVENTS: [string, string][] = [
   ['master_finished', 'Master finished'],
   ['job_failed', 'Job failed'],
@@ -1161,7 +1171,11 @@ export function Notifications() {
         ))}
       </div>
       <div className={s.rowActions}>
-        <Button disabled={readOnly || unsaved || test.isPending} onClick={() => test.mutate()}>
+        <Button
+          disabled={readOnly || unsaved || test.isPending || !hasDestination(n)}
+          title={hasDestination(n) ? undefined : 'Set ntfy, a webhook or Pushover first'}
+          onClick={() => test.mutate()}
+        >
           {test.isPending ? 'Sending…' : 'Send test'}
         </Button>
         {unsaved && <span className="muted">Save before testing.</span>}

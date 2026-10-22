@@ -43,6 +43,7 @@ const PROJECT: Finished = {
     file(4, 'project/heart.xisf', { servable: false }),
   ],
   changed_at: '2026-10-20T21:30:00Z',
+  warnings: [],
 }
 
 const LIST = {

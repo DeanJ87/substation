@@ -154,6 +154,14 @@ const WHERE: [string, string][] = [
 ]
 const WHERE_PILL: Record<string, string> = { archive: 'Archived', both: 'Partly archived' }
 
+/** The Files choices with how many collections each would show; one that would show none can't be chosen. */
+export function whereOptions(cards: Card[], current: string) {
+  return WHERE.map(([k, label]) => {
+    const n = byWhere(cards, k).length
+    return { value: k, label: k ? `${label} (${n})` : label, disabled: !!k && n === 0 && k !== current }
+  })
+}
+
 export function byWhere(cards: Card[], where: string): Card[] {
   if (!where) return cards
   if (where === 'suggested') return cards.filter((c) => c.archive_suggested)
@@ -177,11 +185,7 @@ function CollectionCards({ cards: all, scope, resetKey }: { cards: Card[]; scope
             size_="sm"
             value={where}
             onChange={(e) => setWhere(e.target.value)}
-            options={WHERE.map(([k, label]) => ({
-              value: k,
-              label:
-                k === 'suggested' ? `${label} (${all.filter((c) => c.archive_suggested).length})` : label,
-            }))}
+            options={whereOptions(all, where)}
           />
         </Field>
       )}
@@ -565,12 +569,12 @@ function Stats({ scope }: { scope: Scope }) {
       <Collapsible
         id="library-stats"
         title={filtered ? 'Totals for the filters' : 'Totals'}
-        meta={plural(d.frames, 'light')}
+        meta={plural(d.frames, 'sub')}
       >
         <div className={s.statsBody}>
           <StatGrid label="Totals">
             <StatTile
-              label={filtered ? 'Lights in the filters' : 'Lights'}
+              label={filtered ? 'Subs in the filters' : 'Subs'}
               value={countText(d.frames)}
               detail={plural(d.nights, 'night')}
             />

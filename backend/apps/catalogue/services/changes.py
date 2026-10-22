@@ -133,6 +133,29 @@ def _undo_project(change: Change) -> str:
     return undo_project(change.data)
 
 
+def _undo_collection(change: Change) -> str:
+    """A collection's record deleted, with its projects (amendment 2026-10-22)."""
+    from apps.catalogue.services.collections import undo as undo_collection
+
+    return undo_collection(change.data)
+
+
+def _undo_link(change: Change) -> str:
+    """A finished image's links to projects: put back the ones from before, if nobody has changed them since."""
+    from apps.finished.models import FinishedProject
+
+    fp = FinishedProject.objects.filter(pk=change.data.get("finished_id")).first()
+    if fp is None:
+        raise CantUndo("That finished image is no longer recorded.")
+    now = sorted(fp.linked_projects.values_list("pk", flat=True))
+    if now != sorted(change.data.get("after", [])):
+        raise CantUndo(f"The links of {fp.name} have changed since.")
+    from apps.catalogue.models import Project
+
+    fp.linked_projects.set(Project.objects.filter(pk__in=change.data.get("before", [])))
+    return f"Put back the links of {fp.name}"
+
+
 UNDOERS: dict[str, Callable[[Change], str]] = {
     Change.Kind.VERDICT: _undo_verdicts,
     Change.Kind.AGREE: _undo_verdicts,
@@ -142,6 +165,8 @@ UNDOERS: dict[str, Callable[[Change], str]] = {
     Change.Kind.QA: _undo_qa,
     Change.Kind.ARCHIVE: _undo_archive,
     Change.Kind.PROJECT: _undo_project,
+    Change.Kind.COLLECTION: _undo_collection,
+    Change.Kind.LINK: _undo_link,
 }
 
 

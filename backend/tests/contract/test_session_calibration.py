@@ -182,3 +182,32 @@ def test_a_flat_set_can_be_given_its_filter(admin_client):
         content_type="application/json",
     )
     assert r.status_code == 422
+
+
+def test_session_filter_choices_are_the_cameras_own(admin_client):
+    """018-DR-17: the filters offered for a session are those its camera shot lights or flats through."""
+    ds, _ = _session()
+    other = Night.objects.create(site_key="z", date=date(2026, 3, 7))
+    Frame.objects.create(
+        sha256="e2" * 32,
+        size_bytes=1,
+        format="fits",
+        first_seen_at=T,
+        night=other,
+        status=FrameStatus.CATALOGUED,
+        frame_type=FrameType.LIGHT,
+        camera="ASI2600MM",
+        exptime_s=300,
+        filter_norm="SII",
+    )
+    CalibrationSet.objects.create(
+        type=FrameType.FLAT,
+        camera="A7 III",
+        filter_norm="Duo NB",
+        exptime_s=0.1,
+        session_start_utc=datetime(2026, 3, 8, 6, tzinfo=UTC),
+        session_end_utc=datetime(2026, 3, 8, 7, tzinfo=UTC),
+        frame_count=30,
+    )
+    url = f"/api/v1/datasets/{ds.pk}/sessions/2026-03-06/calibration"
+    assert admin_client.get(url).json()["filters"] == ["Duo NB", "OSC"]

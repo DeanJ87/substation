@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { locate, sequence } from './sequence'
 import { filterTint } from '../../components/filterTint'
 import { sortFilters } from '../../components/filters'
+import { Help } from '../../components/Help'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import type { Scope } from '../scope/scope'
@@ -302,9 +303,11 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
             {sky.rigs.length > 1 && (
               <>{sky.rigs.map((r) => `${shapeName(shapeOf.get(r.key))}: ${r.name}`).join('; ')}. </>
             )}
-            Choose a night to bring it forward, or play them in turn: the dome is the sky above you, so a
-            target follows the same arc every night; the date only changes when it gets there, and the sky
-            behind turns with the time.
+            Choose a night to bring it forward, or play them in turn.{' '}
+            <Help topic="Reading the nights">
+              The dome is the sky above you, so a target follows the same arc every night; the date only
+              changes when it gets there, and the sky behind turns with the time.
+            </Help>
             {sky.fov &&
               ` The rectangle is the camera’s frame (${fovText(sky.fov)}) ${at ? 'at the time shown' : `in the middle of ${chosen == null ? 'the latest night' : 'that night'}`}.`}
             {sky.unplaced > 0 && ` ${sky.unplaced} sub${sky.unplaced === 1 ? '' : 's'} couldn’t be placed.`}
