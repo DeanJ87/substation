@@ -76,3 +76,4 @@ the requirement they close.
 - [X] P20 (owner 2026-10-13) `_master_image` for framing; masters drawn last; test (009-DR-10)
 - [X] P21 (2026-10-14) `PlateSolve.wcs`; `solve_light` stores it for solves from the calibrated file; migration 0014
   (009-DR-11)
+- [X] (2026-10-22) Master labels turned to match the preview when the stars only line up mirrored (009-DR-12); tests

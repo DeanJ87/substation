@@ -225,7 +225,48 @@ def annotate_wcs(header: dict, top_down: bool) -> list[dict]:
     return out
 
 
+def _star_light(preview: Path, stars: list[dict], mirrored: bool) -> float:
+    """How bright the preview is where the catalogue's stars should be: the brightest pixel near each, above the
+    picture's median."""
+    import numpy as np
+    from PIL import Image
+
+    with Image.open(preview) as im:
+        g = np.asarray(im.convert("L"), dtype=np.float32)
+    h, w = g.shape
+    base = float(np.median(g))
+    r = max(2, round(min(w, h) / 300))  # a few pixels: the label's error, not a neighbouring star
+    total = 0.0
+    for o in stars:
+        v = 1 - o["v"] if mirrored else o["v"]
+        x, y = round(o["u"] * w), round(v * h)
+        if 0 <= x < w and 0 <= y < h:
+            total += float(g[max(0, y - r) : y + r + 1, max(0, x - r) : x + r + 1].max()) - base
+    return total / len(stars)
+
+
+def upright(out: list[dict], preview: str | None) -> list[dict]:
+    """Labels the right way up on the preview they're drawn over. Which way up a solve's rows run isn't always
+    recorded (a top-down camera file is solved mirrored and its master's solve has no ROWORDER), so the bright
+    catalogue stars are checked against the picture both ways round, and the labels mirrored top to bottom when the
+    stars only line up that way (owner 2026-10-22: the Flame drawn below Alnitak on an A7 III master)."""
+    stars = [o for o in out if o["kind"] == "star" and o.get("mag") is not None and o["mag"] <= 7]
+    if len(stars) < 2 or not preview or not Path(preview).is_file():
+        return out
+    try:
+        kept, mirrored = _star_light(Path(preview), stars, False), _star_light(Path(preview), stars, True)
+    except OSError:
+        return out
+    if mirrored <= max(kept * 1.5, kept + 10):  # only a clear win turns them round
+        return out
+    return [{**o, "v": round(1 - o["v"], 5)} for o in out]
+
+
 def for_master(m) -> list[dict]:  # noqa: ANN001
+    return upright(_for_master(m), m.preview_path)
+
+
+def _for_master(m) -> list[dict]:  # noqa: ANN001
     from apps.catalogue.models import Frame
 
     from .solving import master_corners

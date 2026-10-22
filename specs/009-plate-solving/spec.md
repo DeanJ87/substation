@@ -79,3 +79,9 @@ Solves were recorded but not used anywhere an image is shown; labelling what is 
   calibrated file stores its full WCS keywords (with distortion terms), so a mosaic stack can use the solution without
   solving the sub again (004-DR-26). A sub that only solves at full resolution during a stack gets its solution
   stored then.
+- **009-DR-12** (2026-10-22) **A master's labels are checked against its picture.** Which way up a solve's rows run
+  isn't always recorded: a top-down camera's master was solved mirrored with no row order saved, so every label sat
+  mirrored top to bottom (the Flame drawn below Alnitak). The bright catalogue stars are now compared with the
+  preview both ways round, and the labels are turned only when the stars line up clearly better that way. Checked
+  over every solved master: one turned, every master that was right stays as it is; masters with fewer than two
+  catalogue stars in the field are left alone.
