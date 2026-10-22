@@ -390,9 +390,7 @@ export function QualityTab({
                       {hasFocus && (
                         <td className={`${v.mono} ${tb.num}`} data-label="Focus" data-wide>
                           {x.focpos != null ? Math.round(x.focpos) : '—'}
-                          {x.foctemp != null && (
-                            <span className={v.muted}> · {numText(x.foctemp, 1)} °C</span>
-                          )}
+                          {x.foctemp != null && <span> · {numText(x.foctemp, 1)} °C</span>}
                         </td>
                       )}
                       <td className={v.note} data-label="Reason" data-wide>

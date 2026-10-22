@@ -287,7 +287,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--sst-dim);
+  color: var(--sst-on-scrim); /* the well stays dark in every theme, so its text does too */
   font-size: 12px;
 }
 .inspPreview img {

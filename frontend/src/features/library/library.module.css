@@ -31,7 +31,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--sst-dim);
+  color: var(--sst-on-scrim); /* the well stays dark in every theme */
 }
 /* no stack yet: the target's name, quietly, where the picture will go */
 .previewName {
