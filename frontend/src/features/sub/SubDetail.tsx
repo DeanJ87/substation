@@ -59,7 +59,13 @@ export function SubDetail() {
 }
 
 /** Where the viewer steps: the shas of the list it was opened from, and what to call that list. */
-export type SubList = { shas: string[]; label: string; onPick: (sha: string) => void }
+export type SubList = {
+  shas: string[]
+  label: string
+  onPick: (sha: string) => void
+  /** when the list has nothing left to show (the last sub was binned) */
+  onClose?: () => void
+}
 const LABEL = {
   accept: 'Accepted',
   down: 'Down-weighted',
@@ -213,7 +219,15 @@ export function SubView({
             confirm="Bin"
             onConfirm={() =>
               bin.mutate([sha], {
-                onSuccess: () => go(n.next),
+                // it's gone: the next sub, else the one before, else close (never reload the binned one)
+                onSuccess: () => {
+                  const to = n.next ?? n.previous
+                  if (to) go(to)
+                  else if (list?.onClose) list.onClose()
+                  else if (d?.dataset_id != null)
+                    void navigate({ to: '/datasets/$id', params: { id: String(d.dataset_id) } })
+                  else void navigate({ to: '/' })
+                },
               })
             }
           >

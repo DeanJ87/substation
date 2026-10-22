@@ -37,4 +37,10 @@ describe('sub viewer keys (2026-10-15: J back, K on)', () => {
       }),
     )
   })
+  it('binning the last sub steps back to the one before, not to the binned one', async () => {
+    const { router } = await viewer(SECOND)
+    fireEvent.click(screen.getByRole('button', { name: 'Bin' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bin', hidden: false }))
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ sub: FIRST }))
+  })
 })

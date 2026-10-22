@@ -403,6 +403,7 @@ export function SubsTab({
                   search: { ...search, sub: sha },
                   replace: true,
                 }),
+              onClose: closeSub,
             }}
             afterVerdict={
               filter === 'flagged'

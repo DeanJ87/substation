@@ -4236,6 +4236,10 @@ export interface components {
             offset: number | null;
             /** Panel */
             panel: number | null;
+            /** Project Id */
+            project_id?: number | null;
+            /** Project Label */
+            project_label?: string | null;
             /** Rejected Count */
             rejected_count: number;
             /** Rig */

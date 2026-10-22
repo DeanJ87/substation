@@ -220,3 +220,7 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   files…. A project held back by combined masters lists them, each with Delete, and links to the collection's
   masters. Deleting a stack or combined master says "File deleted now; can't be undone." Activity's Your changes
   shows 20 at a time with More, and a Deleted filter lists deleted collections and projects to bring back.
+- **006-DR-41** (2026-10-22) **The trail leads back up.** A dataset's breadcrumb is Library / Collections / its
+  collection / its project, each a link (the project opens the collection showing only that project), or Library /
+  Not in a collection. A collection's is Library / Collections. "Collections" and "Not in a collection" land on those
+  sections of the Library. Breadcrumb links look like links.

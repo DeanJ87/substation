@@ -3,7 +3,7 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { WHERE_LABEL } from '../changes/putAway'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   BarMeter,
   Button,
@@ -70,6 +70,12 @@ export function Library() {
   const [scope, setScope] = useScope()
   const q = useLibrary(scope)
   const d = q.data
+  // a breadcrumb's "Collections" or "Not in a collection" lands on that section once the lists are drawn
+  const loaded = !!d
+  useEffect(() => {
+    const hash = window.location.hash.slice(1)
+    if (loaded && hash) document.getElementById(hash)?.scrollIntoView({ block: 'start' })
+  }, [loaded])
   // the whole library (the same request when nothing is filtered): whether it's empty, every collection a dataset
   // can join, and every filter to choose from, whatever is filtered now (review 2026-10-15)
   const whole = useLibrary({}).data

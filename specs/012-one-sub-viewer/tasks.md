@@ -27,3 +27,4 @@
 - [X] V12 (2026-10-15) Sub tiles show the capture time and exposure, FWHM, stars and guiding RMS; the file name on
   hover (they showed "…_026" or a cut-off name)
 - [X] V13 (2026-10-22) Night page: the viewer follows the strips' order (012-DR-06)
+- [X] V14 (2026-10-22) Bin in the viewer steps to the next or previous sub, or closes (012-DR-07); test

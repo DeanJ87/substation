@@ -74,9 +74,10 @@ export function CollectionView() {
   const [adding, setAdding] = useState(false)
   const [putAway, setPutAway] = useState<PutAwayStep>(null)
   const [range, setRange] = useState<[string, string] | null>(null)
-  const [project, setProject] = useState<number | null>(null)
-  const projects = useProjects(Number(id))
   const search = route.useSearch()
+  // a link can open one project (a dataset's breadcrumb does)
+  const [project, setProject] = useState<number | null>(search.project ?? null)
+  const projects = useProjects(Number(id))
   const tab = search.tab ?? 'overview'
   const setTab = (t: string) =>
     void navigate({
@@ -153,7 +154,10 @@ export function CollectionView() {
             <Link to="/" search={carry}>
               Library
             </Link>{' '}
-            / Collections
+            /{' '}
+            <Link to="/" search={carry} hash="library-collections-h">
+              Collections
+            </Link>
           </div>
           <h1>
             {nameParts(card.name).title}

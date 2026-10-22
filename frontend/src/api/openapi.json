@@ -2344,6 +2344,28 @@
       ],
       "title": "Panel"
      },
+     "project_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Id"
+     },
+     "project_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Label"
+     },
      "rejected_count": {
       "title": "Rejected Count",
       "type": "integer"

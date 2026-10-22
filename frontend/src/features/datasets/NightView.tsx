@@ -298,6 +298,7 @@ export function NightView() {
               shas: order.includes(search.sub) ? order : [search.sub],
               label: `Every sub on ${nightText(n.date)}`,
               onPick: (sha) => open(sha),
+              onClose: () => open(undefined),
             }}
           />
         </Modal>

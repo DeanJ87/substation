@@ -145,3 +145,5 @@ experience; propose something better. Also asked for: a map on the sub page.
 - **012-DR-06 (2026-10-22) The viewer steps in the order shown.** On a night page the subs are shown dataset by
   dataset; the viewer's Next and Previous now follow that same order, built from the strips themselves, instead of
   one time order across every dataset (which jumped between strips).
+- **012-DR-07 (2026-10-22) Binning steps on.** After a sub is binned the viewer shows the next sub in its list, else
+  the one before, else closes; it never reloads the binned sub (which no longer exists, so it showed an error).

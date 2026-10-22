@@ -121,3 +121,5 @@ requirement they close.
   longer offered to the renderer in Links and goals; project menus fall back to the project name for their label;
   axe (WCAG 2.2 AA) clean on the collection menu, delete (allowed and refused), archive, blocked project delete,
   Finished unlink and Activity Deleted in dark, light and night at 1440 and 400; keyboard checked (006-DR-40); tests
+- [X] (2026-10-22) Breadcrumbs link to the collection, project and Library sections; datasets carry their project
+  (006-DR-41); test

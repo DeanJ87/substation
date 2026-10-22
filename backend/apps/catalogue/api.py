@@ -41,6 +41,8 @@ class DatasetOut(Schema):
     rig: str | None
     collection_id: int | None
     collection: str | None
+    project_id: int | None = None  # so the page can link back to its project
+    project_label: str | None = None
     accepted_count: int
     down_count: int
     rejected_count: int
@@ -169,6 +171,8 @@ def dataset_out(d: Dataset) -> DatasetOut:
         rig=d.rig.name if d.rig_id and d.rig else None,
         collection_id=d.collection_id,
         collection=d.collection.name if d.collection_id and d.collection else None,
+        project_id=d.project_id,
+        project_label=d.project.name if d.project_id and d.project else None,
         accepted_count=d.accepted_count,
         down_count=d.down_count,
         rejected_count=d.rejected_count,

@@ -78,16 +78,38 @@ export function DatasetScreen() {
       <header className={v.head}>
         <div>
           <div className={v.crumbs}>
+            {/* every step leads back up: Library / Collections / the collection / its project */}
             <Link to="/">Library</Link>
             {d.collection_id ? (
               <>
                 {' / '}
+                <Link to="/" hash="library-collections-h">
+                  Collections
+                </Link>
+                {' / '}
                 <Link to="/collections/$id" params={{ id: String(d.collection_id) }}>
                   {d.collection}
                 </Link>
+                {d.project_id != null && (
+                  <>
+                    {' / '}
+                    <Link
+                      to="/collections/$id"
+                      params={{ id: String(d.collection_id) }}
+                      search={{ project: d.project_id }}
+                    >
+                      {d.project_label}
+                    </Link>
+                  </>
+                )}
               </>
             ) : (
-              <> / {d.target}</>
+              <>
+                {' / '}
+                <Link to="/" hash="library-ungrouped-h">
+                  Not in a collection
+                </Link>
+              </>
             )}
           </div>
           {/* one naming order everywhere (C08): target · panel · filter, the rig beside it */}

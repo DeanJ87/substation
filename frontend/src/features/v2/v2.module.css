@@ -21,8 +21,11 @@
   margin-bottom: 4px;
 }
 .crumbs a {
-  color: var(--sst-muted);
-  text-decoration: none;
+  /* links, and they look it: the trail is how you get back up */
+  color: var(--sst-text);
+  text-decoration: underline;
+  text-decoration-color: var(--sst-line);
+  text-underline-offset: 3px;
 }
 .crumbs a:hover {
   color: var(--sst-accent);
