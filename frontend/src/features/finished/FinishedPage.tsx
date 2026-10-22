@@ -15,7 +15,8 @@ import { imageUrl, KIND, useFinishedList, useRescanFinished, type Finished } fro
 /** The folder layout a Completed library is read with. */
 export function FolderLayout() {
   return (
-    <pre className={f.layout} aria-label="Folder layout">
+    // it scrolls sideways on a phone, so it takes focus to be scrolled from the keyboard (axe scrollable-region)
+    <pre className={f.layout} role="region" aria-label="Folder layout" tabIndex={0}>
       {`<Astro | Nightscapes | Videos>/<subject>/<name>/
     exports/   finished images
     web/       versions for the web
