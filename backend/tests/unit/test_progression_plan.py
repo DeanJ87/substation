@@ -168,3 +168,17 @@ def test_the_reference_is_kept_while_its_sub_is(tmp_path):
     assert pg.plan(fp)["reference"] == ha[0].pk
     MachineGrade.objects.filter(frame=ha[0]).update(verdict="reject")
     assert pg.plan(fp)["reference"] == ha[-1].pk
+
+
+def test_projects_linked_before_progressions_existed_catch_up(tmp_path, monkeypatch):
+    """The periodic job starts one for a linked project that never had one, once, with the automatic limits."""
+    from substation.tasks.management.commands import supervise
+
+    fp, _ = finished(tmp_path)
+    calls = []
+    monkeypatch.setattr(pg, "start", lambda proj, auto=False, force=False: calls.append((proj.pk, auto)))
+    supervise._auto_progressions()
+    assert calls == [(fp.pk, True)]
+    Progression.objects.create(project=fp)
+    supervise._auto_progressions()
+    assert len(calls) == 1  # it has one now: left to the button and to linking

@@ -280,3 +280,6 @@ The renderer reads the live render API; SubStation no longer writes into the pro
   real Siril, sharpness weighting gave the softest sub of a two-sub stack almost no weight, hiding the noise drop the
   progression is there to show. Siril's select and unselect take positions in the registered sequence (a sub that
   failed to register leaves a gap in file numbers), and a stack without the reference image still aligns.
+- **020-DR-19** (2026-10-22) Projects linked before progressions existed catch up: every five minutes a linked astro
+  project that has never had a progression gets one started as linking would have, with the same automatic limits
+  (not when many subs need calibrating again; a mosaic or mixed pixel scales give the reason instead).

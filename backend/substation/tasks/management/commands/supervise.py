@@ -258,7 +258,20 @@ def _periodic_jobs(host: str) -> list[tuple[str, Callable[[], object]]]:
         ("Automatic calibration builds", lambda: _auto_builds(host)),
         ("Queueing the bin's tidy", _queue_bin_tidy),
         ("Queueing the database backup", _queue_backup),
+        ("Progressive stacks for linked projects", _auto_progressions),
     ]
+
+
+def _auto_progressions() -> None:
+    """A linked astro project that has never had a progression gets one started, as linking would have (020-DR-15),
+    so projects linked before progressions existed catch up; the automatic-start limits still apply."""
+    from apps.finished import progression
+    from apps.finished.models import FinishedProject
+
+    for proj in FinishedProject.objects.filter(
+        kind="astro", missing=False, linked_projects__isnull=False, progression__isnull=True
+    ).distinct()[:3]:
+        progression.start(proj, auto=True)
 
 
 def _stop_all(everyone: list[Child]) -> None:
