@@ -53,7 +53,7 @@ async function open(files: object = FILES) {
 describe('Collection → Files (spec 013)', () => {
   it('says where the files are and that it is worth archiving', async () => {
     await open()
-    expect(screen.getByText('In the active library: 6.0 GB in fast')).toBeInTheDocument()
+    expect(screen.getByText('Active · 120 files · 6.0 GB in fast')).toBeInTheDocument()
     expect(screen.getByText(/Worth archiving: no new subs for over 60 days/)).toBeInTheDocument()
   })
 
@@ -147,7 +147,10 @@ describe('Collection → Files (spec 013)', () => {
 describe('where a collection is', () => {
   it('reads as a sentence', () => {
     expect(whereText({ location: 'both', libraries: LIBS.map((l) => ({ ...l, bytes: 1e9 })) })).toBe(
-      'Split: 1.0 GB in fast (active), 1.0 GB in big (archive)',
+      'Split · 1.0 GB in fast (active), 1.0 GB in big (archive)',
+    )
+    expect(whereText({ location: 'archive', libraries: [{ ...LIBS[1], files: 16, bytes: 5e6 }] })).toBe(
+      'Archived · 16 files · 5.0 MB in big',
     )
     expect(whereText({ location: '', libraries: [] })).toBe('No files on disk')
   })

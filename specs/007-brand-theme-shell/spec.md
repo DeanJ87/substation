@@ -518,3 +518,32 @@ Taken on the recommendation in the design review (owner may overrule):
   provenance shows on hover. One primary action per page. A raw error shows as one sentence with the full text
   under Details. Every section of the phone navigation stays reachable: the strip scrolls and fades at the edge
   with more.
+
+### Amendment 2026-10-22 (second): the library, collection, project and finished screens on the primitives
+
+- **007-DR-42 Library figures say what they count.** The Library's totals are stat tiles, with kept and rejected as
+  one grade meter, and hours per filter as filter meters in the canonical order and filter colours (hours per rig
+  stay neutral bars). Under them, Needs you, Missing calibration, Ready to stack and This month are worked out by the
+  server for the whole library, not the filters; they are labelled "Whole library" (and "not the filters" while
+  filters are on) instead of pretending to follow them. No rejection causes are claimed that the server didn't
+  report. Ready to stack names its datasets with their new subs ("M31 · L (+20) · 10 more"); a collection card ends
+  "3h 55m kept / 4h 30m", puts its rigs in the facts line, and draws one filter meter per filter with a key for kept,
+  waiting and rejected; a collection with no stack yet shows its name where the picture goes, not a striped box.
+- **007-DR-43 One way to do each thing on a collection.** The page has one search (the header's), one primary
+  action (Add datasets), and Edit collection and Add datasets as dialogs that Escape or Cancel close; removing a
+  collection sits inside the edit dialog, behind a confirm. Rigs are renamed and merged in Settings › Rigs only; a
+  rig's name links there. The Overview no longer repeats the sessions chart, which lives on the Sessions tab, whose
+  axis shows months only. The Masters tab has one empty state. A dataset not in a collection has one "Add to"
+  choice, already on SubStation's suggestion. A project card is read-only with filter meters and goal ticks; a mosaic
+  also shows its panels against its filters; there is one New project button and one Arrange datasets button; goals
+  are set per filter the project has, in hours, with any other filter chosen from a list, never typed.
+- **007-DR-44 Quality reads at a glance.** Each session's strip shows its scale and its middle 80% as a box with the
+  median as a bar; metrics nothing recorded fold into one line. A background below zero is labelled "relative to
+  bias". FWHM and SQM are two stacked charts on the same time axis, each with its own labelled y-axis, never one chart
+  with two scales.
+- **007-DR-45 Colour and controls follow the roles everywhere.** On a night's sky a track is coloured by its
+  filter, and its target is told by the mark's shape, the key and the altitude chart's labels. One date field
+  (`DateInput`) serves the scope bar and the map. On a phone the scope bar folds behind a Filters button and
+  collection pictures shrink to a strip. A flat or dark in a calibration set has a "Use" checkbox instead of a Leave
+  out link. Finished pages use the same chips, selects and date formats; a single-filter image's filter is chosen
+  from the canonical list; a final the server can't draw shows "No preview", never a broken image.

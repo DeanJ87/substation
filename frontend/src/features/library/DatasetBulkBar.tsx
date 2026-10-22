@@ -2,11 +2,10 @@
 // (Undo in the toast, Ctrl/Cmd+Z, or Activity → Your changes).
 import { useState } from 'react'
 import { BulkBar } from '../../components/BulkBar'
-import { Button, ConfirmButton } from '../../components/ui'
-import ui from '../../components/ui.module.css'
+import { Button, ConfirmButton, Select } from '../../components/ui'
 import { useBulkDatasets } from '../changes/bulk'
 import { useLibrary } from '../v2/hooks'
-import v from '../v2/v2.module.css'
+import { countText } from '../format'
 
 export function DatasetBulkBar({
   chosen,
@@ -43,13 +42,14 @@ export function DatasetBulkBar({
   return (
     <BulkBar count={n} noun={['dataset', 'datasets']} label="Selected datasets" onClear={onClear} inset>
       <Button
+        size="sm"
         disabled={act.regrade.isPending}
         onClick={() => act.regrade.mutate(ids, { onSuccess: onClear })}
       >
         Re-grade
       </Button>
       <ConfirmButton
-        className={ui.button}
+        size="sm"
         question={
           <>Start a master for each of the {n} with accepted and down-weighted subs from every night?</>
         }
@@ -58,19 +58,25 @@ export function DatasetBulkBar({
       >
         Stack
       </ConfirmButton>
-      <select className={v.select} value={to} onChange={(e) => setTo(e.target.value)} aria-label="Move to">
-        <option value="">Move to…</option>
-        {from !== null && <option value="out">Out of this collection</option>}
-        {others.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <Button variant="primary" disabled={!to || act.move.isPending} onClick={move}>
+      <Select
+        size_="sm"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        aria-label="Move to"
+        options={[
+          { value: '', label: 'Move to…' },
+          ...(from !== null ? [{ value: 'out', label: 'Out of this collection' }] : []),
+          ...others.map((c) => ({ value: c.id, label: c.name })),
+        ]}
+      />
+      <Button size="sm" disabled={!to || act.move.isPending} onClick={move}>
         Move
       </Button>
-      {n < shown && <Button onClick={onChooseShown}>Select all {shown.toLocaleString('en-GB')} shown</Button>}
+      {n < shown && (
+        <Button size="sm" variant="ghost" onClick={onChooseShown}>
+          Select all {countText(shown)} shown
+        </Button>
+      )}
     </BulkBar>
   )
 }

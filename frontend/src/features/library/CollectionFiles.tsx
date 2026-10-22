@@ -6,9 +6,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
-import { Button } from '../../components/ui'
+import { Help } from '../../components/Help'
+import { Button, Meter } from '../../components/ui'
 import { offerUndo } from '../changes/changes'
-import { bytes } from '../format'
+import { bytesText, countText, plural } from '../format'
 import v from '../v2/v2.module.css'
 import c from './collection.module.css'
 
@@ -16,11 +17,8 @@ type Files = components['schemas']['CollectionFilesOut']
 type Move = components['schemas']['CollectionMoveOut']
 type Direction = 'archive' | 'bring_back'
 
-const size = (n: number) => {
-  const b = bytes(n)
-  return `${b.value} ${b.unit}`
-}
-const count = (n: number, word: string) => `${n.toLocaleString('en-GB')} ${word}${n === 1 ? '' : 's'}`
+const size = bytesText
+const count = plural
 const ROLE: Record<string, string> = { active: 'active', archive: 'archive' }
 const VERB: Record<Direction, { label: string; doing: string; done: string }> = {
   archive: { label: 'Archive', doing: 'Archiving', done: 'Archived' },
@@ -39,23 +37,28 @@ export function useCollectionFiles(id: number) {
   })
 }
 
-/** "Split: 24.6 GB in fast (active), 71.3 GB in big (archive)" — where its files are, in a sentence. */
+/** "Archived · 16 files · 5.0 MB in big" — where its files are, in one line (D17). */
 export function whereText(f: Pick<Files, 'location' | 'libraries'>): string {
+  const of = (role: string) => f.libraries.filter((l) => l.role === role)
+  const one = (role: string, lead: string) => {
+    const ls = of(role)
+    const files = ls.reduce((n, l) => n + l.files, 0)
+    return `${lead} · ${count(files, 'file')} · ${ls.map((l) => `${size(l.bytes)} in ${l.name}`).join(', ')}`
+  }
   const at = (role: string) =>
-    f.libraries
-      .filter((l) => l.role === role)
+    of(role)
       .map((l) => `${size(l.bytes)} in ${l.name}`)
       .join(', ')
   switch (f.location) {
     case 'active':
-      return `In the active library: ${at('active')}`
+      return one('active', 'Active')
     case 'archive':
-      return `In the archive: ${at('archive')}`
+      return one('archive', 'Archived')
     case 'both':
-      return `Split: ${at('active')} (active), ${at('archive')} (archive)`
+      return `Split · ${at('active')} (active), ${at('archive')} (archive)`
     default:
       return f.libraries.length
-        ? `In ${f.libraries.map((l) => `${l.name} (${size(l.bytes)})`).join(', ')}`
+        ? f.libraries.map((l) => `${size(l.bytes)} in ${l.name}`).join(', ')
         : 'No files on disk'
   }
 }
@@ -74,7 +77,7 @@ export function CollectionFiles({ id, name }: { id: number; name: string }) {
         Files
       </h2>
       <p>{whereText(f)}</p>
-      {f.libraries.length > 0 && (
+      {f.libraries.length > 1 && (
         <ul className={c.filesList}>
           {f.libraries.map((l) => (
             <li key={l.id}>
@@ -132,7 +135,7 @@ function Choice({
         onClick={onChoose}
         disabled={!!reason}
         aria-describedby={reason ? reasonId : undefined}
-        variant={direction === 'archive' ? 'primary' : 'default'}
+        size="sm"
       >
         {VERB[direction].label}…
       </Button>
@@ -212,17 +215,27 @@ function Confirm({
             {p.calibration_kept
               ? `; ${count(p.calibration_kept, 'calibration frame')} that other collections in ${p.from_library} still use ${p.calibration_kept === 1 ? 'stays' : 'stay'} there`
               : ''}
-            . Each file keeps its folder and name, and is checked against its catalogue hash before the
-            original is removed. Masters SubStation built stay where they are. The move runs on the queue; you
-            can cancel it, and every file is left either moved or untouched.
+            .{' '}
+            <Help topic="How a move works">
+              Each file keeps its folder and name, and is checked against its catalogue hash before the
+              original is removed. Masters SubStation built stay where they are. The move runs on the queue;
+              you can cancel it, and every file is left either moved or untouched.
+            </Help>
           </p>
         </>
       )}
       <div className={c.filesActions}>
-        <Button variant="primary" disabled={!p || !p.files || start.isPending} onClick={() => start.mutate()}>
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={!p || !p.files || start.isPending}
+          onClick={() => start.mutate()}
+        >
           {p ? `${VERB[direction].label} ${count(p.files, 'file')}` : VERB[direction].label}
         </Button>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button size="sm" onClick={onClose}>
+          Cancel
+        </Button>
       </div>
     </div>
   )
@@ -239,7 +252,7 @@ function MoveStatus({ move, canCancel }: { move: Move; canCancel: boolean }) {
   const verb = VERB[(move.direction as Direction) ?? 'archive'] ?? VERB.archive
   const live = move.state === 'queued' || move.state === 'running'
   const pct = move.bytes_total ? Math.round((100 * move.bytes_done) / move.bytes_total) : 0
-  const progress = `${move.files_done.toLocaleString('en-GB')} of ${count(move.files_total, 'file')} · ${size(move.bytes_done)} of ${size(move.bytes_total)}`
+  const progress = `${countText(move.files_done)} of ${count(move.files_total, 'file')} · ${size(move.bytes_done)} of ${size(move.bytes_total)}`
   return (
     <div className={c.move} role="status">
       {live ? (
@@ -248,18 +261,9 @@ function MoveStatus({ move, canCancel }: { move: Move; canCancel: boolean }) {
             {move.state === 'queued' ? 'Waiting to start: ' : `${verb.doing}: `}
             {move.from_library} → {move.to_library} · {progress}
           </p>
-          <div
-            className={c.moveBar}
-            role="progressbar"
-            aria-label="Files moved"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={pct}
-          >
-            <span style={{ width: `${pct}%` }} />
-          </div>
+          <Meter value={pct} max={100} label="Files moved" />
           {canCancel && (
-            <Button onClick={() => cancel.mutate()} disabled={cancel.isPending}>
+            <Button size="sm" onClick={() => cancel.mutate()} disabled={cancel.isPending}>
               Cancel move
             </Button>
           )}
@@ -281,7 +285,7 @@ function MoveStatus({ move, canCancel }: { move: Move; canCancel: boolean }) {
           <ul className={c.filesList}>
             {move.problem_files.map((p) => (
               <li key={p.path}>
-                <span className={v.mono}>{p.path}</span>: {p.reason}
+                <span className="mono">{p.path}</span>: {p.reason}
               </li>
             ))}
           </ul>
@@ -310,7 +314,7 @@ function Suggestion({ id, days, canDismiss }: { id: number; days: number; canDis
     <p className={c.suggestion}>
       Worth archiving: no new subs for over {days} days, and it has a current master.{' '}
       {canDismiss && (
-        <Button onClick={() => dismiss.mutate()} disabled={dismiss.isPending}>
+        <Button size="sm" variant="ghost" onClick={() => dismiss.mutate()} disabled={dismiss.isPending}>
           Not now
         </Button>
       )}

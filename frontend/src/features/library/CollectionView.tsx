@@ -6,11 +6,39 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { optimistic, patchItems } from '../../api/optimistic'
 import type { components } from '../../api/schema'
-import { Button, ConfirmButton, ErrorState, PageLoading } from '../../components/ui'
-import ui from '../../components/ui.module.css'
+import {
+  Button,
+  buttonClass,
+  Chip,
+  ConfirmButton,
+  EmptyState,
+  ErrorState,
+  Field,
+  FilterTag,
+  GradeMeter,
+  Input,
+  PageLoading,
+  Select,
+} from '../../components/ui'
+import { Help } from '../../components/Help'
+import { Modal } from '../../components/Modal'
+import { compareFilters, filterName, sortFilters } from '../../components/filters'
 import { toast } from '../../components/Toasts'
 import { VerdictBadge } from '../../components/VerdictBadge'
-import { integrationText, nightText } from '../format'
+import {
+  angleText,
+  binText,
+  countText,
+  dateText,
+  datasetLabel,
+  integrationText,
+  monthText,
+  nightShort,
+  nightText,
+  numText,
+  pctText,
+  plural,
+} from '../format'
 import { FilePath } from '../../components/FilePath'
 import { stackPreviewUrl, useCollection, useCollectionActions, useLiveRefresh } from '../v2/hooks'
 import v from '../v2/v2.module.css'
@@ -39,7 +67,7 @@ export function CollectionView() {
   const { id } = route.useParams()
   const q = useCollection(Number(id))
   const navigate = useNavigate()
-  const [renaming, setRenaming] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
   const [range, setRange] = useState<[string, string] | null>(null)
   const [project, setProject] = useState<number | null>(null)
@@ -116,7 +144,7 @@ export function CollectionView() {
   const filters = useMemo(() => {
     const all = new Set<string>()
     for (const row of Object.values(d?.matrix ?? {})) for (const f of Object.keys(row)) all.add(f)
-    return [...all].sort()
+    return sortFilters([...all])
   }, [d])
   if (q.isError)
     return (
@@ -126,6 +154,8 @@ export function CollectionView() {
     )
   if (!d) return <PageLoading />
   const card = d.card
+  // a master to combine from: current or stale (failed and superseded ones don't count)
+  const usable = d.masters.some((m) => m.state === 'current' || m.state === 'stale')
   const chosenProject = projects.data?.projects.find((p) => p.id === project)
   const inProject = (dsId: number) => !chosenProject || chosenProject.dataset_ids.includes(dsId)
   const rigs = Object.keys(d.matrix).sort()
@@ -135,12 +165,6 @@ export function CollectionView() {
   const totals = Object.fromEntries(
     filters.map((f) => [f, rigs.reduce((n, r) => n + (d.matrix[r][f] ?? 0), 0)]),
   )
-
-  function rename() {
-    const name = renaming?.trim()
-    if (name && name !== card.name) renameCol.mutate(name)
-    setRenaming(null)
-  }
 
   return (
     <div className={v.page}>
@@ -152,67 +176,50 @@ export function CollectionView() {
             </Link>{' '}
             / Collections
           </div>
-          {renaming === null ? (
-            <h1>
-              {nameParts(card.name).title}
-              {nameParts(card.name).designation && (
-                <span className={s.designation}>{nameParts(card.name).designation}</span>
-              )}
-            </h1>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                rename()
-              }}
-            >
-              <input
-                className={v.input}
-                value={renaming}
-                onChange={(e) => setRenaming(e.target.value)}
-                aria-label="Name"
-              />{' '}
-              <Button type="submit">Save</Button>
-            </form>
-          )}
+          <h1>
+            {nameParts(card.name).title}
+            {nameParts(card.name).designation && (
+              <span className={s.designation}>{nameParts(card.name).designation}</span>
+            )}
+          </h1>
           <div className={v.sub}>
-            {collectionFacts(card)} · {card.rigs.length} rig
-            {card.rigs.length === 1 ? '' : 's'} · {card.sessions} sessions
+            {collectionFacts(card)} · {plural(card.rigs.length, 'rig')} · {plural(card.sessions, 'session')}
             {card.first_night && ` from ${nightText(card.first_night)} to ${nightText(card.last_night)}`}
           </div>
         </div>
+        {/* one primary; removing lives in the edit dialog, away from Add (C17, C36) */}
         <div className={v.actions}>
-          <Link to="/map" search={{ ...carry, collection: card.id }} className={v.pill}>
+          <Link to="/map" search={{ ...carry, collection: card.id }} className={buttonClass()}>
             Map
           </Link>
+          <Button onClick={() => setEditing(true)}>Edit collection</Button>
           <Button variant="primary" onClick={() => setAdding(true)}>
             Add datasets
           </Button>
-          <Button onClick={() => setRenaming(card.name)}>Edit collection</Button>
-          <ConfirmButton
-            className={ui.dangerButton}
-            question={<>Remove “{card.name}”? Its datasets and files stay.</>}
-            confirm="Remove collection"
-            onConfirm={() => {
-              removeCol.mutate()
-              void navigate({ to: '/' })
-            }}
-          >
-            Remove collection
-          </ConfirmButton>
         </div>
       </header>
 
       {adding && (
         <AddDatasets id={card.id} onClose={() => setAdding(false)} onDone={() => void q.refetch()} />
       )}
+      {editing && (
+        <EditCollection
+          name={card.name}
+          onClose={() => setEditing(false)}
+          onRename={(name) => name !== card.name && renameCol.mutate(name)}
+          onRemove={() => {
+            removeCol.mutate()
+            void navigate({ to: '/' })
+          }}
+        />
+      )}
 
       {chosenProject && (
         <p className={c.scoped} role="status">
           Showing only <strong>{chosenProject.name}</strong>
-          <button type="button" className={v.pill} onClick={() => setProject(null)}>
+          <Button size="sm" onClick={() => setProject(null)}>
             Show everything
-          </button>
+          </Button>
         </p>
       )}
 
@@ -240,8 +247,8 @@ export function CollectionView() {
             <section className={`${v.card} ${tb.flush}`}>
               <Collapsible
                 id="collection-matrix"
-                title="Accepted integration by rig and filter"
-                meta={`${rigs.length} rig${rigs.length === 1 ? '' : 's'} · ${filters.length} filter${filters.length === 1 ? '' : 's'}`}
+                title="Kept integration by rig and filter"
+                meta={`${plural(rigs.length, 'rig')} · ${plural(filters.length, 'filter')}`}
               >
                 <table className={`${v.table} ${tb.table} cards`}>
                   <thead>
@@ -249,7 +256,7 @@ export function CollectionView() {
                       <th>Rig</th>
                       {filters.map((f) => (
                         <th key={f} className={tb.num}>
-                          {f}
+                          <FilterTag filter={f} plain />
                         </th>
                       ))}
                     </tr>
@@ -260,18 +267,22 @@ export function CollectionView() {
                       return (
                         <tr key={r}>
                           <td>
-                            {rd ? (
-                              <RigName id={rd.id} name={r} onDone={() => void q.refetch()} />
-                            ) : (
-                              <strong>{r}</strong>
-                            )}
+                            {/* renaming and merging rigs live in Settings › Rigs only (C19) */}
+                            <Link
+                              to="/settings"
+                              hash="rigs"
+                              className={c.rigLink}
+                              title="Rename or merge in Settings › Rigs"
+                            >
+                              {r}
+                            </Link>
                             {rd && (
                               <div className={v.muted}>
                                 {[
                                   r === reference ? 'reference' : '',
                                   rd.camera,
                                   rd.focal_mm ? `${rd.focal_mm} mm` : '',
-                                  rd.image_scale ? `${rd.image_scale.toFixed(2)}″/px` : '',
+                                  rd.image_scale ? `${numText(rd.image_scale, 2)}″/px` : '',
                                 ]
                                   .filter(Boolean)
                                   .join(' · ')}
@@ -279,7 +290,7 @@ export function CollectionView() {
                             )}
                           </td>
                           {filters.map((f) => (
-                            <td key={f} className={`${v.mono} ${tb.num}`} data-label={f}>
+                            <td key={f} className={tb.num} data-label={filterName(f)}>
                               {d.matrix[r][f] ? integrationText(d.matrix[r][f]) : '—'}
                             </td>
                           ))}
@@ -289,10 +300,10 @@ export function CollectionView() {
                     <tr>
                       <td>
                         <strong>Total</strong>
-                        <div className={v.muted}>{integrationText(card.accepted_integration_s)} accepted</div>
+                        <div className={v.muted}>{integrationText(card.accepted_integration_s)} kept</div>
                       </td>
                       {filters.map((f) => (
-                        <td key={f} className={`${v.mono} ${v.accent} ${tb.num}`} data-label={f}>
+                        <td key={f} className={`${tb.num} ${c.total}`} data-label={filterName(f)}>
                           {integrationText(totals[f])}
                         </td>
                       ))}
@@ -308,25 +319,9 @@ export function CollectionView() {
             />
           </div>
 
-          <section className={`${v.card} ${v.cardPad}`}>
-            <Collapsible
-              id="collection-sessions"
-              title="Sessions"
-              meta={`${card.sessions} session${card.sessions === 1 ? '' : 's'} · integration per night`}
-            >
-              <Timeline sessions={d.sessions} rigs={rigs} range={range} onRange={setRange} />
-            </Collapsible>
-          </section>
-
           <CollectionFiles id={card.id} name={card.name} />
 
-          <DatasetTable
-            resetKey={`${range?.join('-')}|${project}`}
-            rows={(range
-              ? d.datasets.filter((x) => x.nights.some((n) => n >= range[0] && n <= range[1]))
-              : d.datasets
-            ).filter((x) => inProject(x.dataset.id))}
-          />
+          <DatasetTable resetKey={project} rows={d.datasets.filter((x) => inProject(x.dataset.id))} />
         </>
       )}
       {tab === 'datasets' && (
@@ -342,7 +337,7 @@ export function CollectionView() {
             <Collapsible
               id="collection-sessions"
               title="Sessions"
-              meta={`${card.sessions} session${card.sessions === 1 ? '' : 's'} · integration per night`}
+              meta={`${plural(card.sessions, 'session')} · kept integration per night`}
             >
               <Timeline sessions={d.sessions} rigs={rigs} range={range} onRange={setRange} />
             </Collapsible>
@@ -354,7 +349,7 @@ export function CollectionView() {
                 Showing the {only.size} night{only.size === 1 ? '' : 's'} shot
                 {search.at ? ` at ${atName.data ?? 'this place'}` : ' at one place'}.
               </span>
-              <Link to="." search={{ ...carry, tab: 'sessions' }} className={v.pill}>
+              <Link to="." search={{ ...carry, tab: 'sessions' }} className={buttonClass({ size: 'sm' })}>
                 Show every session
               </Link>
             </div>
@@ -365,14 +360,18 @@ export function CollectionView() {
               <Link
                 to="."
                 search={{ ...scopeQuery(omit(scope, 'date', 'date_from', 'date_to')), tab: 'sessions' }}
-                className={v.pill}
+                className={buttonClass({ size: 'sm' })}
               >
                 Show every session
               </Link>
             </div>
           )}
           <SessionList
-            sessions={d.sessions.filter((x) => (only ? only.has(x.night) : inNights(scope, x.night)))}
+            sessions={d.sessions.filter(
+              (x) =>
+                (only ? only.has(x.night) : inNights(scope, x.night)) &&
+                (!range || (x.night >= range[0] && x.night <= range[1])),
+            )}
             carry={carry}
           />
         </>
@@ -388,7 +387,21 @@ export function CollectionView() {
         </section>
       )}
 
-      {tab === 'masters' && (
+      {tab === 'masters' && !usable && (
+        // one empty state, not one per project (C21): combined masters need each dataset's master first
+        <EmptyState
+          title="No masters yet"
+          action={
+            <Button onClick={() => setTab('datasets')} title="Stack each dataset from its page">
+              Open the datasets
+            </Button>
+          }
+        >
+          Stack each dataset first; combined masters are made from those.
+        </EmptyState>
+      )}
+      {tab === 'masters' && !usable && <MasterList masters={d.masters} />}
+      {tab === 'masters' && usable && (
         <>
           {project === null && projects.data?.projects.length ? (
             // all datasets: each project's own combined masters (they're never combined across projects)
@@ -410,13 +423,7 @@ type ColDataset = NonNullable<ReturnType<typeof useCollection>['data']>['dataset
 type ColMaster = NonNullable<ReturnType<typeof useCollection>['data']>['masters'][number]
 type ColSession = NonNullable<ReturnType<typeof useCollection>['data']>['sessions'][number]
 
-const shortDate = (iso: string) =>
-  new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+const shortDate = (iso: string) => dateText(`${iso.slice(0, 10)}T12:00:00`)
 
 /** The collection's datasets (006-DR-06): state as a badge, grades as a split bar, last night as a short date. */
 function DatasetTable({
@@ -449,7 +456,7 @@ function DatasetTable({
   const { visible, hasMore, more } = useProgressive(sorted, 60, `${resetKey}|${sort?.key}|${sort?.desc}`)
   return (
     <section className={`${v.card} ${tb.flush}`}>
-      <Collapsible id="collection-datasets" title="Datasets" meta={all.length.toLocaleString('en-GB')}>
+      <Collapsible id="collection-datasets" title="Datasets" meta={countText(all.length)}>
         {choosing && (
           <DatasetBulkBar
             chosen={pick.chosen}
@@ -476,7 +483,7 @@ function DatasetTable({
                 {th('name', 'Dataset')}
                 {th('state', 'State')}
                 {th('sessions', 'Sessions', tb.num)}
-                {th('accepted', 'Accepted', tb.num)}
+                {th('accepted', 'Kept', tb.num)}
                 {th('grades', 'Grades')}
                 {th('last', 'Last night', tb.num)}
               </tr>
@@ -485,7 +492,6 @@ function DatasetTable({
               {visible.map((x) => {
                 const ds = x.dataset
                 const tot = ds.accepted_count + ds.down_count + ds.rejected_count
-                const w = (n: number) => `${tot ? (n / tot) * 100 : 0}%`
                 return (
                   <tr
                     key={ds.id}
@@ -503,11 +509,16 @@ function DatasetTable({
                       </td>
                     )}
                     <td>
+                      {/* target · panel · filter, the rig as secondary text (C08) */}
                       <Link to="/datasets/$id" params={{ id: String(ds.id) }} className={s.dsName}>
-                        {x.label}
+                        {datasetLabel(ds)}
                       </Link>
                       <div className={v.muted}>
-                        {[ds.target, ds.gain != null ? `gain ${ds.gain}` : '', ds.binning]
+                        {[
+                          x.rig ?? ds.rig,
+                          ds.gain != null ? `gain ${ds.gain}` : '',
+                          ds.binning ? binText(ds.binning) : '',
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                       </div>
@@ -515,23 +526,22 @@ function DatasetTable({
                     <td data-label="State" data-wide>
                       <DatasetState x={x} />
                     </td>
-                    <td className={`${v.mono} ${tb.num}`} data-label="Sessions">
+                    <td className={tb.num} data-label="Sessions">
                       {x.sessions}
                     </td>
-                    <td className={`${v.mono} ${v.accent} ${tb.num}`} data-label="Accepted">
+                    <td className={tb.num} data-label="Kept">
                       {integrationText(ds.accepted_integration_s)}
                     </td>
                     <td data-label="Grades" data-wide>
                       {tot ? (
                         <div className={c.grades}>
-                          <div className={c.split} aria-hidden="true">
-                            <span className={c.ok} style={{ width: w(ds.accepted_count) }} />
-                            <span className={c.down} style={{ width: w(ds.down_count) }} />
-                            <span className={c.bad} style={{ width: w(ds.rejected_count) }} />
-                          </div>
-                          <span className={v.mono}>
-                            {(ds.accepted_count + ds.down_count).toLocaleString('en-GB')} of{' '}
-                            {tot.toLocaleString('en-GB')} kept
+                          <GradeMeter
+                            kept={ds.accepted_count}
+                            down={ds.down_count}
+                            rejected={ds.rejected_count}
+                          />
+                          <span>
+                            {countText(ds.accepted_count + ds.down_count)} of {countText(tot)} kept
                           </span>
                         </div>
                       ) : (
@@ -539,7 +549,7 @@ function DatasetTable({
                       )}
                     </td>
                     <td className={`${v.muted} ${tb.num}`} data-label="Last night">
-                      {x.last_night ? shortDate(x.last_night) : '—'}
+                      {x.last_night ? nightText(x.last_night) : '—'}
                     </td>
                   </tr>
                 )
@@ -570,7 +580,7 @@ function DatasetState({ x }: { x: ColDataset }) {
   if (x.master_state === 'current')
     return (
       <span className={v.muted}>
-        Master current{x.master_finished ? ` · ${shortDate(x.master_finished).replace(/ \d{4}$/, '')}` : ''}
+        Master current{x.master_finished ? ` · ${nightShort(x.master_finished.slice(0, 10))}` : ''}
       </span>
     )
   return <span className={v.muted}>No master yet</span>
@@ -587,11 +597,7 @@ function SessionList({
   const { visible, hasMore, more } = useProgressive(newest, 60)
   return (
     <section className={`${v.card} ${tb.flush}`}>
-      <Collapsible
-        id="collection-nights"
-        title="Every session"
-        meta={sessions.length.toLocaleString('en-GB')}
-      >
+      <Collapsible id="collection-nights" title="Every session" meta={countText(sessions.length)}>
         <div className={tb.pane}>
           <table className={`${v.table} ${tb.table} cards`}>
             <thead>
@@ -600,23 +606,34 @@ function SessionList({
                 <th>Rig</th>
                 <th>Filters</th>
                 <th className={tb.num}>Subs</th>
-                <th className={tb.num}>Integration</th>
+                <th className={tb.num}>Kept</th>
               </tr>
             </thead>
             <tbody>
               {visible.map((x) => (
                 <tr key={`${x.night}-${x.rig}`}>
                   <td className={tb.nowrap}>
-                    <Link to="/nights/$date" params={{ date: x.night }} search={carry}>
+                    <Link
+                      to="/nights/$date"
+                      params={{ date: x.night }}
+                      search={carry}
+                      className={s.quietLink}
+                    >
                       {nightText(x.night)}
                     </Link>
                   </td>
                   <td data-label="Rig">{x.rig}</td>
-                  <td data-label="Filters">{x.filters.join(', ')}</td>
-                  <td className={`${v.mono} ${tb.num}`} data-label="Subs">
-                    {x.subs.toLocaleString('en-GB')}
+                  <td data-label="Filters">
+                    <span className={c.filterList}>
+                      {sortFilters(x.filters).map((f) => (
+                        <FilterTag key={f} filter={f} plain />
+                      ))}
+                    </span>
                   </td>
-                  <td className={`${v.mono} ${v.accent} ${tb.num}`} data-label="Integration">
+                  <td className={tb.num} data-label="Subs">
+                    {countText(x.subs)}
+                  </td>
+                  <td className={tb.num} data-label="Kept">
                     {integrationText(x.accepted_s)}
                   </td>
                 </tr>
@@ -648,14 +665,14 @@ function MasterList({ masters }: { masters: ColMaster[] }) {
   )
   const shown = old ? masters : masters.filter((m) => !older.includes(m))
   const { visible, hasMore, more } = useProgressive(shown, 24, old)
-  if (!masters.length) return <p className={v.muted}>No masters yet.</p>
+  if (!masters.length) return null
   return (
-    <Collapsible id="collection-masters" title="Masters" meta={shown.length.toLocaleString('en-GB')}>
+    <Collapsible id="collection-masters" title="Masters" meta={countText(shown.length)}>
       {older.length > 0 && (
         <div className={v.actions}>
-          <button type="button" className={v.pill} aria-pressed={old} onClick={() => setOld(!old)}>
-            {old ? 'Hide' : 'Show'} {older.length} older or failed
-          </button>
+          <Chip pressed={old} onClick={() => setOld(!old)} count={older.length}>
+            Older or failed
+          </Chip>
         </div>
       )}
       <div className={c.masters}>
@@ -679,7 +696,7 @@ function MasterList({ masters }: { masters: ColMaster[] }) {
                 {m.dataset} · v{m.version}
               </strong>
               <span className={v.muted}>
-                {MASTER_TAG[m.state] ?? m.state} · {m.sub_count.toLocaleString('en-GB')} subs ·{' '}
+                {MASTER_TAG[m.state] ?? m.state} · {plural(m.sub_count, 'sub')} ·{' '}
                 {integrationText(m.integration_s)}
                 {m.finished_at ? ` · ${shortDate(m.finished_at)}` : ''}
               </span>
@@ -761,7 +778,7 @@ function Combined({
         title={`Combined masters${projectName ? ` · ${projectName}` : ''}`}
         meta={
           <Button
-            variant="primary"
+            size="sm"
             disabled={!d.reference || busy || start.isPending}
             onClick={() => start.mutate()}
             title={d.reference ? undefined : 'Stack each dataset first'}
@@ -773,9 +790,10 @@ function Combined({
         <p className={v.muted}>
           {d.reference
             ? `Aligned to ${d.reference_label}. ${filters
-                .map(([f, inputs]) => `${f}: ${inputs.length} master${inputs.length === 1 ? '' : 's'}`)
+                .sort(([a], [b]) => compareFilters(a, b))
+                .map(([f, inputs]) => `${filterName(f)}: ${plural(inputs.length, 'master')}`)
                 .join(' · ')}`
-            : 'No masters yet.'}
+            : 'Stack each dataset in this project first.'}
         </p>
         {d.left_out.length > 0 && (
           <p className={v.muted}>Left out (different pixel scale): {d.left_out.join('; ')}.</p>
@@ -800,12 +818,11 @@ function Combined({
                 </div>
                 <div className={c.masterBody}>
                   <strong>
-                    {m.filter} · v{m.version}
+                    {filterName(m.filter)} · v{m.version}
                   </strong>
                   <span className={v.muted}>
                     {MASTER_TAG[m.state] ?? m.state} · {integrationText(m.integration_s)} from{' '}
-                    {m.inputs.length} master
-                    {m.inputs.length === 1 ? '' : 's'}
+                    {plural(m.inputs.length, 'master')}
                     {m.finished_at ? ` · ${shortDate(m.finished_at)}` : ''}
                   </span>
                   {m.stale && <span className={v.warn}>{m.stale}</span>}
@@ -824,7 +841,8 @@ function Combined({
   )
 }
 
-/** Add datasets (006-DR-05): candidates nearest in pointing first, each with why; several at once. */
+/** Add datasets (006-DR-05): candidates nearest in pointing first, each with why; several at once. A dialog, so
+ * the page doesn't shift and Escape or Cancel closes it (C36). */
 function AddDatasets({ id, onClose, onDone }: { id: number; onClose: () => void; onDone: () => void }) {
   const q = useQuery({
     queryKey: ['candidates', id],
@@ -834,58 +852,109 @@ function AddDatasets({ id, onClose, onDone }: { id: number; onClose: () => void;
   const [picked, setPicked] = useState<number[]>([])
   const rows = q.data ?? []
   return (
-    <section className={`${v.card} ${v.cardPad} ${c.addPanel}`} aria-labelledby="add-h">
-      <div className={c.tlHead}>
-        <span className={v.sectionLabel} id="add-h">
+    <Modal label="Add datasets" onClose={onClose} size="md">
+      <div className={c.dialog}>
+        <h2 className={c.dialogTitle}>
           Add datasets
-        </span>
-        <span className={v.muted}>Nearest first</span>
-      </div>
-      {q.isPending && <p className={v.muted}>Searching…</p>}
-      {q.isSuccess && rows.length === 0 && (
-        <p className={v.muted}>No datasets within 3° or with a matching name.</p>
-      )}
-      <ul className={c.candidates}>
-        {rows.map((r) => (
-          <li key={r.dataset_id}>
-            <label>
-              <input
-                type="checkbox"
-                checked={picked.includes(r.dataset_id)}
-                onChange={(e) =>
-                  setPicked(
-                    e.target.checked ? [...picked, r.dataset_id] : picked.filter((x) => x !== r.dataset_id),
-                  )
-                }
-              />
-              <span>
-                <strong>
-                  {r.target} · {r.label}
-                </strong>{' '}
-                <span className={v.muted}>
-                  {r.subs.toLocaleString('en-GB')} subs · {integrationText(r.integration_s)}
-                  {r.in_collection ? ` · in ${r.in_collection}` : ''}
+          <Help topic="Add datasets">
+            Datasets pointing near this collection, or with a matching object name, nearest first.
+          </Help>
+        </h2>
+        {q.isPending && <p className={v.muted}>Searching…</p>}
+        {q.isSuccess && rows.length === 0 && (
+          <EmptyState inline>No datasets point near it or share its name.</EmptyState>
+        )}
+        <ul className={c.candidates}>
+          {rows.map((r) => (
+            <li key={r.dataset_id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={picked.includes(r.dataset_id)}
+                  onChange={(e) =>
+                    setPicked(
+                      e.target.checked ? [...picked, r.dataset_id] : picked.filter((x) => x !== r.dataset_id),
+                    )
+                  }
+                />
+                <span>
+                  <strong>
+                    {r.target} · {r.label}
+                  </strong>{' '}
+                  <span className={v.muted}>
+                    {plural(r.subs, 'sub')} · {integrationText(r.integration_s)}
+                    {r.in_collection ? ` · in ${r.in_collection}` : ''}
+                  </span>
+                  <span className={`${v.note} ${c.candNote}`}>{r.note}</span>
                 </span>
-                <span className={`${v.note} ${c.candNote}`}>{r.note}</span>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      <div className={v.actions}>
-        <Button
-          variant="primary"
-          disabled={!picked.length || actions.add.isPending}
-          onClick={() => {
-            actions.add.mutate({ id, dataset_ids: picked }, { onSettled: onDone })
-            onClose()
-          }}
-        >
-          Add {picked.length || ''} dataset{picked.length === 1 ? '' : 's'}
-        </Button>
-        <Button onClick={onClose}>Cancel</Button>
+              </label>
+            </li>
+          ))}
+        </ul>
+        <div className={v.actions}>
+          <Button
+            variant="primary"
+            disabled={!picked.length || actions.add.isPending}
+            onClick={() => {
+              actions.add.mutate({ id, dataset_ids: picked }, { onSettled: onDone })
+              onClose()
+            }}
+          >
+            Add {picked.length || ''} dataset{picked.length === 1 ? '' : 's'}
+          </Button>
+          <Button onClick={onClose}>Cancel</Button>
+        </div>
       </div>
-    </section>
+    </Modal>
+  )
+}
+
+/** Edit collection (C36): its name, and removing it, in one dialog with Cancel and Escape. */
+function EditCollection({
+  name,
+  onClose,
+  onRename,
+  onRemove,
+}: {
+  name: string
+  onClose: () => void
+  onRename: (name: string) => void
+  onRemove: () => void
+}) {
+  const [text, setText] = useState(name)
+  return (
+    <Modal label="Edit collection" onClose={onClose} size="sm">
+      <form
+        className={c.dialog}
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (text.trim()) onRename(text.trim())
+          onClose()
+        }}
+      >
+        <h2 className={c.dialogTitle}>Edit collection</h2>
+        <Field label="Name">
+          <Input value={text} onChange={(e) => setText(e.target.value)} />
+        </Field>
+        <div className={v.actions}>
+          <Button type="submit" variant="primary" disabled={!text.trim()}>
+            Save
+          </Button>
+          <Button onClick={onClose}>Cancel</Button>
+        </div>
+        <div className={c.dialogDanger}>
+          <ConfirmButton
+            variant="danger"
+            size="sm"
+            question={<>Remove “{name}”? Its datasets and files stay.</>}
+            confirm="Remove collection"
+            onConfirm={onRemove}
+          >
+            Remove collection
+          </ConfirmButton>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -982,7 +1051,7 @@ function Framing({ id, project }: { id: number; project: number | null }) {
     Math.min(...ys) - pad,
     Math.max(...ys) + pad,
   ]
-  const deg = (n: number) => `${n.toFixed(2)}°`
+  const deg = (n: number) => angleText(n, 2)
   const short = (label: string) =>
     label
       .split(' · ')
@@ -1000,76 +1069,56 @@ function Framing({ id, project }: { id: number; project: number | null }) {
         id="collection-framing"
         title="Framing"
         meta={
-          <label className={c.framingPick}>
-            Reference
-            <select
-              className={v.select}
+          <Field inline label="Reference" className={c.framingPick}>
+            <Select
+              size_="sm"
               value={ref.dataset_id}
               onChange={(e) => setReference(Number(e.target.value))}
-            >
-              {all.map((r) => (
-                <option key={r.dataset_id} value={r.dataset_id}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={all.map((r) => ({ value: r.dataset_id, label: r.label }))}
+            />
+          </Field>
         }
       >
         <div className={`${v.pills} ${c.framingBar}`} role="group" aria-label="Filter and palette">
-          <button
-            type="button"
-            className={v.pill}
-            aria-pressed={filter === 'all' && !palette}
-            onClick={() => (setFilter('all'), setPalette(null))}
-          >
+          <Chip pressed={filter === 'all' && !palette} onClick={() => (setFilter('all'), setPalette(null))}>
             All filters
-          </button>
-          {filters.map((f) => (
-            <button
+          </Chip>
+          {sortFilters(filters).map((f) => (
+            <Chip
               key={f}
-              type="button"
-              className={v.pill}
-              aria-pressed={filter === f}
+              pressed={filter === f}
               onClick={() => {
                 setFilter(f)
                 setSelected(new Set(all.filter((r) => r.filter === f).map((r) => r.dataset_id)))
               }}
             >
-              {f}
-            </button>
+              <FilterTag filter={f} plain />
+            </Chip>
           ))}
           <span className={c.framingSep} aria-hidden="true" />
-          <button
-            type="button"
-            className={v.pill}
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={() => setSelected(new Set(rows.map((r) => r.dataset_id)))}
           >
             All
-          </button>
-          <button type="button" className={v.pill} onClick={() => setSelected(new Set())}>
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
             None
-          </button>
-          <button
-            type="button"
-            className={v.pill}
-            aria-pressed={outlines}
-            onClick={() => setOutlines(!outlines)}
-          >
+          </Button>
+          <Chip pressed={outlines} onClick={() => setOutlines(!outlines)}>
             Outlines
-          </button>
+          </Chip>
         </div>
         <div className={`${v.pills} ${c.framingBar}`} role="group" aria-label="Colour">
           <span className={v.muted}>Colour</span>
-          <button type="button" className={v.pill} aria-pressed={!palette} onClick={() => setPalette(null)}>
+          <Chip pressed={!palette} onClick={() => setPalette(null)}>
             As shot
-          </button>
+          </Chip>
           {palettes.map(([k, p]) => (
-            <button
+            <Chip
               key={k}
-              type="button"
-              className={v.pill}
-              aria-pressed={palette === k}
+              pressed={palette === k}
               title={`${Object.entries(p.map)
                 .map(([f, ch]) => `${f} → ${ch.join('+').toUpperCase()}`)
                 .join(', ')}`}
@@ -1080,13 +1129,14 @@ function Framing({ id, project }: { id: number; project: number | null }) {
               }}
             >
               {p.label}
-            </button>
+            </Chip>
           ))}
-          {!palettes.length && <span className={v.muted}>HOO needs Hα and OIII. SHO also needs SII.</span>}
+          {!palettes.length && (
+            <Help topic="Palettes">HOO needs Hα and OIII datasets. SHO also needs SII.</Help>
+          )}
           {palette && (
-            <button
-              type="button"
-              className={v.pill}
+            <Button
+              size="sm"
               onClick={() =>
                 setLook({
                   target: { kind: 'palette', collection: id, project, name: palette as 'hoo' | 'sho' },
@@ -1095,7 +1145,7 @@ function Framing({ id, project }: { id: number; project: number | null }) {
               }
             >
               {PALETTES[palette].label} at 100%
-            </button>
+            </Button>
           )}
         </div>
         <div className={c.framing}>
@@ -1218,28 +1268,28 @@ function Framing({ id, project }: { id: number; project: number | null }) {
                           (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), pick(r, e))
                         }
                       >
-                        <span className={r.reference ? v.accent : undefined}>{r.label}</span>
+                        <span className={r.reference ? c.refName : undefined}>{r.label}</span>
                       </button>
                       {r.reference && <span className={v.muted}> · reference</span>}
                       <div className={v.muted}>{r.solved} solved</div>
                     </td>
-                    <td className={`${v.mono} ${tb.num}`} data-label="Field">
+                    <td className={tb.num} data-label="Field">
                       {deg(r.fov_w)} × {deg(r.fov_h)}
                     </td>
-                    <td className={`${v.mono} ${tb.num}`} data-label="Scale">
-                      {r.scale.toFixed(2)}″/px
+                    <td className={tb.num} data-label="Scale">
+                      {numText(r.scale, 2)}″/px
                     </td>
-                    <td className={`${v.mono} ${tb.num}`} data-label="Offset">
-                      {r.reference ? '—' : `${r.offset_arcmin.toFixed(0)}′`}
+                    <td className={tb.num} data-label="Offset">
+                      {r.reference ? '—' : `${numText(r.offset_arcmin)}′`}
                     </td>
-                    <td className={`${v.mono} ${tb.num}`} data-label="Overlap">
-                      {Math.round(r.overlap * 100)}%
+                    <td className={tb.num} data-label="Overlap">
+                      {pctText(r.overlap)}
                     </td>
                     <td className={tb.act}>
                       {(r.master_id || r.image) && (
-                        <button
-                          type="button"
-                          className={v.pill}
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onMouseDown={(e) => e.stopPropagation()}
                           onClick={() =>
                             setLook({
@@ -1251,7 +1301,7 @@ function Framing({ id, project }: { id: number; project: number | null }) {
                           }
                         >
                           100%
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -1271,55 +1321,6 @@ function Framing({ id, project }: { id: number; project: number | null }) {
         />
       )}
     </section>
-  )
-}
-
-function RigName({ id, name, onDone }: { id: number; name: string; onDone: () => void }) {
-  const [edit, setEdit] = useState<string | null>(null)
-  const save = useMutation({
-    mutationFn: async (to: string) =>
-      unwrap(await api.PATCH('/rigs/{id}', { params: { path: { id } }, body: { name: to } })),
-    scope: { id: `rig-${id}` },
-    meta: { failed: "Couldn't rename the rig" },
-    onSettled: onDone,
-  })
-  // the new name shows until the collection reloads with it
-  const shown = save.isPending ? save.variables : name
-  if (edit !== null)
-    return (
-      <form
-        className={v.actions}
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (edit.trim() && edit.trim() !== name) save.mutate(edit.trim())
-          setEdit(null)
-        }}
-      >
-        <input
-          className={v.input}
-          value={edit}
-          onChange={(e) => setEdit(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && setEdit(null)}
-          aria-label={`New name for ${name}`}
-        />
-        <Button type="submit" variant="primary">
-          Save
-        </Button>
-        <Button type="button" onClick={() => setEdit(null)}>
-          Cancel
-        </Button>
-      </form>
-    )
-  return (
-    <span className={v.actions}>
-      <strong>{shown}</strong>
-      <button type="button" className={v.pill} onClick={() => setEdit(shown)}>
-        Rename
-      </button>
-      <Link to="/settings" hash="rigs" className={v.pill} title="Merge in Settings → Rigs">
-        Merge…
-      </Link>
-    </span>
   )
 }
 
@@ -1375,27 +1376,19 @@ function MergeNames({
     <section className={`${v.card} ${v.cardPad}`}>
       <Collapsible id="collection-names" title="Names" meta={names.length}>
         <p className={`${v.muted} ${v.note}`}>
-          {names.length} names: {names.map(([n, subs]) => `${n} (${subs} subs)`).join(', ')}. Only subs with
-          the same name stack together. Files are not changed.
+          {names.map(([n, subs]) => `${n} (${plural(subs, 'sub')})`).join(', ')}.{' '}
+          <Help topic="Names">
+            Only subs with the same name stack together. Merging names doesn't change files.
+          </Help>
         </p>
         <div className={v.actions}>
-          <select
-            className={v.select}
+          <Select
             value={keep}
             onChange={(e) => setInto(e.target.value)}
             aria-label="Name to keep"
-          >
-            {names.map(([n]) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <Button
-            variant="primary"
-            disabled={merge.isPending}
-            onClick={() => merge.mutate({ names: others, into: keep })}
-          >
+            options={names.map(([n]) => ({ value: n, label: n }))}
+          />
+          <Button disabled={merge.isPending} onClick={() => merge.mutate({ names: others, into: keep })}>
             Merge {others.length} other name{others.length === 1 ? '' : 's'} into it
           </Button>
         </div>
@@ -1409,45 +1402,31 @@ type Session = { night: string; rig: string; accepted_s: number; subs: number; f
 const DAY = 86400000
 const dayOf = (night: string) => new Date(`${night}T12:00:00Z`).getTime()
 
-/** Date ticks for the axis: months when the span is under ~14 months, else years. */
+/** Date ticks for the axis (D05): the first of each month when the span is under ~14 months, else each year; one
+ * kind of label, never a full date beside a month. */
 function ticks(lo: number, hi: number): { at: number; label: string }[] {
   const out: { at: number; label: string }[] = []
   const a = new Date(lo)
   const months = (hi - lo) / (30 * DAY) < 14
   const d = months
-    ? new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 1))
-    : new Date(Date.UTC(a.getUTCFullYear() + 1, 0, 1))
+    ? new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1))
+    : new Date(Date.UTC(a.getUTCFullYear(), 0, 1))
   const step = months ? Math.max(1, Math.ceil((hi - lo) / (30 * DAY) / 8)) : 1
-  // the start, so the axis always says when it begins
-  out.push({
-    at: lo,
-    label: new Date(lo + 3 * DAY).toLocaleDateString('en-GB', {
-      day: months ? 'numeric' : undefined,
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC',
-    }),
-  })
   while (d.getTime() <= hi) {
-    if (d.getTime() - lo < (hi - lo) * 0.12) {
-      // too close to the start label
-      if (months) d.setUTCMonth(d.getUTCMonth() + step)
-      else d.setUTCFullYear(d.getUTCFullYear() + 1)
-      continue
-    }
-    out.push({
-      at: d.getTime(),
-      label: months
-        ? d.toLocaleDateString('en-GB', {
-            month: 'short',
-            year: d.getUTCMonth() === 0 ? 'numeric' : undefined,
-            timeZone: 'UTC',
-          })
-        : String(d.getUTCFullYear()),
-    })
+    if (d.getTime() >= lo)
+      out.push({
+        at: d.getTime(),
+        label: months ? monthText(d.toISOString().slice(0, 10)) : String(d.getUTCFullYear()),
+      })
     if (months) d.setUTCMonth(d.getUTCMonth() + step)
     else d.setUTCFullYear(d.getUTCFullYear() + 1)
   }
+  // the axis always says when it starts: the month (or year) at the left edge, unless a tick is already near it
+  if (!out.length || out[0].at - lo > (hi - lo) * 0.12)
+    out.unshift({
+      at: lo,
+      label: months ? monthText(a.toISOString().slice(0, 10)) : String(a.getUTCFullYear()),
+    })
   return out
 }
 
@@ -1493,7 +1472,7 @@ function Timeline({
             <div>
               <div className={c.tlRig}>{r}</div>
               <div className={v.muted}>
-                {mine.length} session{mine.length === 1 ? '' : 's'} · {integrationText(total)}
+                {plural(mine.length, 'session')} · {integrationText(total)}
               </div>
             </div>
             <div className={c.tlTrack}>
@@ -1520,7 +1499,11 @@ function Timeline({
         <span />
         <div className={c.tlAxis}>
           {ticks(lo, hi).map((k) => (
-            <span key={k.at} style={{ left: `${pct(k.at)}%` }}>
+            <span
+              key={k.at}
+              className={k.at === lo ? c.tlStart : undefined}
+              style={{ left: `${pct(k.at)}%` }}
+            >
               {k.label}
             </span>
           ))}
@@ -1531,13 +1514,22 @@ function Timeline({
           ? `${nightText(hover.night)} · ${hover.rig} · ${integrationText(hover.accepted_s)} · ${hover.subs} sub${hover.subs === 1 ? '' : 's'} · ${hover.filters.join(', ')}`
           : range
             ? `Sessions ${range[0] === range[1] ? `on ${nightText(range[0])}` : `from ${nightText(range[0])} to ${nightText(range[1])}`}`
-            : `${sessions.length} nights from ${nightText(first)} to ${nightText(last)}${onRange ? ' · click to filter, shift-click for a range' : ''}`}
+            : `${plural(sessions.length, 'night')} from ${nightText(first)} to ${nightText(last)}`}
+        {onRange && !hover && !range && (
+          <>
+            {' '}
+            <Help topic="The sessions chart">
+              Each bar is a night, as tall as its kept integration. Click one to show only that night below;
+              shift-click another for a range.
+            </Help>
+          </>
+        )}
         {range && onRange && (
           <>
             {' '}
-            <button type="button" className={v.pill} onClick={() => onRange(null)}>
+            <Button size="sm" variant="ghost" onClick={() => onRange(null)}>
               Show all
-            </button>
+            </Button>
           </>
         )}
       </p>

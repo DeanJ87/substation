@@ -117,5 +117,18 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
   count with failures, short errors), night (one time convention, one Moon), sky, Activity, Calibration, What to
   shoot, Bin, Settings (file paths, post-processing rows, help behind ?), sub viewer, phone navigation; axe clean;
   screenshots at 1440 and 400 px (007-DR-41)
-- [ ] B53 Library, collection and project screens onto FilterMeter, GradeMeter and the colour roles (owned by the
+- [X] B53 (2026-10-22) Library, collection and project screens onto FilterMeter, GradeMeter and the colour roles (owned by the
   library rework)
+- [X] B54 (2026-10-22) Library totals and whole-library tiles as StatTile/GradeMeter/FilterMeter, labelled for scope;
+  collection cards (filter meters with a key, labelled kept, rig in facts, name placeholder); one Add-to choice per
+  ungrouped dataset; one search (007-DR-42)
+- [X] B55 (2026-10-22) Collection page: Edit and Add datasets dialogs, remove inside edit, rig rename/merge only in
+  Settings, sessions only on their tab with month ticks, one Masters empty state, grade meters, canonical filter
+  order; project cards with filter meters, panel matrix for mosaics, one New project and one Arrange button, goals per
+  filter in hours; collection Files card in one line; tests updated (007-DR-43)
+- [X] B56 (2026-10-22) Quality strips with scale and box/median, "relative to bias", FWHM and SQM as two labelled
+  charts (007-DR-44)
+- [X] B57 (2026-10-22) Sky tracks by filter with target shapes; `DateInput` in the scope bar and map; phone scope bar
+  behind Filters; calibration set "Use" checkbox; Finished pages on Chip, Select, Input and format.ts; pill classes
+  replaced on the screens touched; axe clean in dark, light and night on every screen changed; light warn token
+  darkened for chip contrast (007-DR-45)

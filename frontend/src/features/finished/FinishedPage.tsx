@@ -4,8 +4,9 @@
 // are listed with the reason, never guessed into a project.
 import { Link } from '@tanstack/react-router'
 import { Collapsible } from '../../components/Collapsible'
+import { useState } from 'react'
 import { Button, EmptyState, ErrorState, PageLoading } from '../../components/ui'
-import { agoText } from '../format'
+import { agoText, dateTimeText, plural } from '../format'
 import v from '../v2/v2.module.css'
 import f from './finished.module.css'
 import { StatusChip } from './FinishedProject'
@@ -23,15 +24,6 @@ export function FolderLayout() {
     </pre>
   )
 }
-
-const changed = (iso: string) =>
-  new Date(iso).toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 
 export function FinishedPage() {
   const q = useFinishedList()
@@ -56,13 +48,13 @@ export function FinishedPage() {
           <h1>Finished</h1>
           {d.libraries.length > 0 && projects.length > 0 && (
             <div className={v.sub}>
-              {offered} of {projects.length} offered to the renderer
+              {offered} of {plural(projects.length, 'project')} offered to the renderer
             </div>
           )}
         </div>
         {d.libraries.length > 0 && (
           <div className={v.actions}>
-            <Button disabled={rescan.isPending} onClick={() => rescan.mutate()}>
+            <Button size="sm" disabled={rescan.isPending} onClick={() => rescan.mutate()}>
               {rescan.isPending ? 'Rescanning…' : 'Rescan'}
             </Button>
           </div>
@@ -107,11 +99,10 @@ export function FinishedPage() {
           meta={d.not_projects.length}
           defaultOpen={false}
         >
-          <p className="muted">These folders don't fit the layout, so they aren't treated as projects.</p>
-          <ul className={f.notList}>
+          <ul className={f.notList} aria-label="Folders that don't fit the layout">
             {d.not_projects.map(([path, reason]) => (
               <li key={path}>
-                <span className={v.mono}>{path}</span> <span className="muted">· {reason}</span>
+                <span className="mono">{path}</span> <span className="muted">· {reason}</span>
               </li>
             ))}
           </ul>
@@ -123,6 +114,8 @@ export function FinishedPage() {
 
 function Row({ p }: { p: Finished }) {
   const final = p.files.find((x) => x.role === 'final' && !x.missing)
+  // a final the server can't draw shows as "No preview", never as a broken image
+  const [failed, setFailed] = useState(false)
   return (
     <li className={f.project}>
       <Link
@@ -132,7 +125,13 @@ function Row({ p }: { p: Finished }) {
         tabIndex={-1}
         aria-hidden
       >
-        {final ? <img src={imageUrl(p.id, final.id)} alt="" loading="lazy" /> : 'No final'}
+        {final && !failed ? (
+          <img src={imageUrl(p.id, final.id)} alt="" loading="lazy" onError={() => setFailed(true)} />
+        ) : final ? (
+          'No preview'
+        ) : (
+          'No final'
+        )}
       </Link>
       <div className={f.projectText}>
         <Link to="/finished/$id" params={{ id: String(p.id) }} className={f.name}>
@@ -146,7 +145,7 @@ function Row({ p }: { p: Finished }) {
             p.links.map((l, i) => (
               <span key={l.project_id}>
                 {i > 0 && ', '}
-                <Link to="/collections/$id" params={{ id: String(l.collection_id) }}>
+                <Link to="/collections/$id" params={{ id: String(l.collection_id) }} className={f.quiet}>
                   {l.project_name}
                 </Link>
               </span>
@@ -159,7 +158,7 @@ function Row({ p }: { p: Finished }) {
       </div>
       <div className={f.projectSide}>
         <StatusChip p={p} />
-        <span className="muted" title={changed(p.changed_at)}>
+        <span className="muted" title={dateTimeText(p.changed_at)}>
           {agoText(p.changed_at)}
         </span>
       </div>

@@ -39,7 +39,13 @@ export function SiteMap({ lat, lon, night }: { lat: number; lon: number; night?:
   }, [lat, lon])
   return (
     <div className={s.site}>
-      <div ref={box} className={`${s.mini} ${theme === 'light' ? '' : s.darkTiles}`} aria-hidden="true" />
+      {/* a picture of where: inert, so its tile and attribution links aren't tab stops behind aria-hidden */}
+      <div
+        ref={box}
+        className={`${s.mini} ${theme === 'light' ? '' : s.darkTiles}`}
+        aria-hidden="true"
+        inert
+      />
       <p className={s.siteName}>
         <span>{name.data ?? (name.isLoading ? '…' : 'Where it was shot')}</span>
         <span className={s.coords}>{coords(lat, lon)}</span>

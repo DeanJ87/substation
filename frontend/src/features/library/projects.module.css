@@ -28,22 +28,12 @@
   gap: 12px;
 }
 .bars {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: max-content minmax(80px, 1fr) max-content;
-  align-items: center;
-  gap: 8px 10px;
-  font-size: 13px;
-}
-.row {
-  display: contents;
-}
-.bar {
-  height: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .foot {
+  margin-top: 12px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -111,24 +101,10 @@
   gap: 6px;
   white-space: nowrap;
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 1px 8px;
-  border: 1px solid var(--sst-line);
-  border-radius: 999px;
-  font-size: 12px;
-  color: var(--sst-muted);
-  white-space: nowrap;
-}
 .auto {
-  font-family: var(--sst-font-mono, ui-monospace, monospace);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  margin-left: 6px;
+  font-size: 11px;
   color: var(--sst-muted);
-  opacity: 0.8;
 }
 .facts {
   font-size: 13px;
@@ -200,7 +176,7 @@
   gap: 8px 12px;
   margin-top: 10px;
   padding: 8px 12px;
-  border: 1px solid var(--sst-accent-line, var(--sst-line));
+  border: 1px solid var(--sst-line);
   border-radius: var(--sst-radius-sm);
   font-size: 14px;
 }
@@ -238,7 +214,7 @@
   font-size: 14px;
 }
 .warn {
-  color: var(--sst-warn, var(--sst-accent));
+  color: var(--sst-warn);
 }
 .choose {
   list-style: none;
@@ -250,4 +226,49 @@
   flex-direction: column;
   gap: 4px;
   font-size: 14px;
+}
+.figure {
+  color: var(--sst-data);
+  font-variant-numeric: tabular-nums;
+}
+.goal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.hours {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--sst-muted);
+}
+.matrixWrap {
+  overflow-x: auto;
+}
+.matrix {
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.matrix th,
+.matrix td {
+  padding: 3px 0 3px 16px;
+  text-align: right;
+  white-space: nowrap;
+}
+.matrix th:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+.matrix thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sst-muted);
+}
+.matrix tbody th {
+  font-weight: 500;
+  color: var(--sst-muted);
+}
+.matrix td {
+  color: var(--sst-data);
 }

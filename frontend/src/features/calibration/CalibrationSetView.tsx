@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
-import { Button, buttonClass, ErrorState, PageLoading } from '../../components/ui'
+import { Button, Checkbox, ErrorState, PageLoading } from '../../components/ui'
 import { VerdictBadge, type VerdictState } from '../../components/VerdictBadge'
 import { dateText, dateTimeText, nightText, numText, temp } from '../format'
 import {
@@ -179,19 +179,21 @@ export function CalibrationSetView() {
                         label={`Select ${f.file}`}
                       />
                       <VerdictBadge state={state} label={f.override ? `${label} (you)` : label} />
+                      {/* one checkbox says whether it goes into the master (D12); it differs from the check's
+                          own verdict only when you overrule it */}
                       {f.verdict && (
-                        <button
-                          type="button"
-                          className={buttonClass({ variant: 'ghost', size: 'sm' })}
-                          onClick={() =>
+                        <Checkbox
+                          label={f.override ? 'Use (you)' : 'Use'}
+                          aria-label={`Use ${f.file} in the master`}
+                          checked={eff !== 'reject'}
+                          onChange={(e) => {
+                            const want = e.target.checked ? 'pass' : 'reject'
                             act.override.mutate({
                               sha256s: [f.sha256],
-                              verdict: f.override ? null : eff === 'reject' ? 'pass' : 'reject',
+                              verdict: want === (f.verdict === 'reject' ? 'reject' : 'pass') ? null : want,
                             })
-                          }
-                        >
-                          {f.override ? 'Undo' : eff === 'reject' ? 'Use it' : 'Leave out'}
-                        </button>
+                          }}
+                        />
                       )}
                     </div>
                     <div className={`${v.mono} ${s.file}`} title={f.file}>

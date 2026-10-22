@@ -10,8 +10,9 @@ import { FilePath } from '../../components/FilePath'
 import { Help } from '../../components/Help'
 import { Modal } from '../../components/Modal'
 import { toast } from '../../components/Toasts'
-import { Button, ErrorState, Meter, PageLoading, Spinner } from '../../components/ui'
-import { bytes, integrationText, pctText } from '../format'
+import { Button, Chip, ErrorState, Input, Meter, PageLoading, Select, Spinner } from '../../components/ui'
+import { filterName, sortFilters } from '../../components/filters'
+import { bytesText, dateTimeText, integrationText, pctText, plural } from '../format'
 import { useSettings } from '../settings/draft'
 import { useLibrary } from '../v2/hooks'
 import v from '../v2/v2.module.css'
@@ -36,29 +37,23 @@ import {
 
 const route = getRouteApi('/app/finished/$id')
 
-const size = (n: number) => {
-  const b = bytes(n)
-  return `${b.value} ${b.unit}`
-}
+const size = bytesText
 const baseName = (path: string) => path.split('/').pop() ?? path
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+const when = dateTimeText
+/** A single-filter image's filter is chosen, never typed (C06): the canonical set, in order. */
+const FILTERS = sortFilters(['L', 'R', 'G', 'B', 'Hα', 'OIII', 'SII'])
 
 /** "Offered to renderer", or "Not offered" with the reason behind a "?". */
 export function StatusChip({ p }: { p: Pick<Finished, 'offered' | 'reason'> }) {
   return p.offered ? (
-    <span className={`${f.chip} ${f.chipOk}`}>Offered to renderer</span>
+    <Chip tone="ok" icon="✓">
+      Offered to renderer
+    </Chip>
   ) : (
     <span className={f.chipWrap}>
-      <span className={`${f.chip} ${f.chipWarn}`} title={p.reason}>
+      <Chip tone="warn" icon="!" title={p.reason}>
         Not offered
-      </span>
+      </Chip>
       <Help topic="Why not offered">{p.reason}</Help>
     </span>
   )
@@ -158,13 +153,15 @@ function Links({ p, admin, links }: { p: Finished; admin: boolean; links: Action
           {p.links.map((l) => (
             <li key={l.project_id} className={f.item}>
               <span className={f.itemName}>
-                <Link to="/collections/$id" params={{ id: String(l.collection_id) }}>
+                <Link to="/collections/$id" params={{ id: String(l.collection_id) }} className={f.quiet}>
                   {l.collection_name}
                 </Link>
                 {l.project_name !== l.collection_name && <span className="muted"> · {l.project_name}</span>}
               </span>
               {admin && (
                 <Button
+                  size="sm"
+                  variant="ghost"
                   disabled={links.isPending}
                   aria-label={`Unlink ${l.project_name}`}
                   onClick={() => links.mutate(ids.filter((x) => x !== l.project_id))}
@@ -196,6 +193,7 @@ function Links({ p, admin, links }: { p: Finished; admin: boolean; links: Action
                   </span>
                   {admin && (
                     <Button
+                      size="sm"
                       disabled={links.isPending}
                       aria-label={`Link ${s.project_name}`}
                       onClick={() => links.mutate([...ids, s.project_id])}
@@ -248,38 +246,31 @@ function PickProject({
         setProject(null)
       }}
     >
-      <select
-        className={f.select}
+      <Select
         aria-label="Collection"
         value={collection ?? ''}
         onChange={(e) => {
           setCollection(e.target.value ? Number(e.target.value) : null)
           setProject(null)
         }}
-      >
-        <option value="">Collection…</option>
-        {collections.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <select
-        className={f.select}
+        options={[
+          { value: '', label: 'Collection…' },
+          ...collections.map((c) => ({ value: c.id, label: c.name })),
+        ]}
+      />
+      <Select
         aria-label="Project"
         value={project ?? ''}
         disabled={collection == null || !choices.length}
         onChange={(e) => setProject(e.target.value ? Number(e.target.value) : null)}
-      >
-        <option value="">
-          {collection != null && projects.isSuccess && !choices.length ? 'None left' : 'Project…'}
-        </option>
-        {choices.map((x) => (
-          <option key={x.id} value={x.id}>
-            {x.name}
-          </option>
-        ))}
-      </select>
+        options={[
+          {
+            value: '',
+            label: collection != null && projects.isSuccess && !choices.length ? 'None left' : 'Project…',
+          },
+          ...choices.map((x) => ({ value: x.id, label: x.name })),
+        ]}
+      />
       <Button type="submit" disabled={project == null || busy}>
         Link
       </Button>
@@ -357,6 +348,7 @@ function Files({
       >
         {admin && (
           <Button
+            size="sm"
             disabled={guess.isPending}
             onClick={() => guess.mutate(undefined, { onSuccess: () => setDraft({}) })}
           >
@@ -391,7 +383,7 @@ function Files({
             {working.map((file) => (
               <li key={file.id}>
                 <span className={f.path}>{file.rel_path}</span>
-                <span className={v.mono}>{size(file.size_bytes)}</span>
+                <span className={f.size}>{size(file.size_bytes)}</span>
               </li>
             ))}
           </ul>
@@ -484,10 +476,10 @@ function FileCard({
           {baseName(name)}
         </div>
         <div className={f.fileMeta}>
-          {file.section} · <span className={v.mono}>{size(file.size_bytes)}</span>
+          {file.section} · {size(file.size_bytes)}
         </div>
-        <select
-          className={f.select}
+        <Select
+          size_="sm"
           value={cur.role}
           disabled={!admin}
           aria-label={`Role of ${name}`}
@@ -498,18 +490,14 @@ function FileCard({
               role_order: ORDERED.has(role) && role !== cur.role ? nextOrder(role) : cur.role_order,
             })
           }}
-        >
-          {Object.entries(ROLE).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          options={Object.entries(ROLE).map(([value, label]) => ({ value, label }))}
+        />
         {(cur.role === 'per_filter' || ORDERED.has(cur.role)) && (
           <div className={f.roleExtra}>
             {ORDERED.has(cur.role) && (
-              <input
-                className={`${f.input} ${f.small}`}
+              <Input
+                size_="sm"
+                className={f.small}
                 type="number"
                 min={1}
                 step={1}
@@ -522,8 +510,8 @@ function FileCard({
               />
             )}
             {cur.role === 'step' && (
-              <input
-                className={f.input}
+              <Input
+                size_="sm"
                 value={cur.role_label ?? ''}
                 disabled={!admin}
                 maxLength={100}
@@ -533,14 +521,20 @@ function FileCard({
               />
             )}
             {cur.role === 'per_filter' && (
-              <input
-                className={f.input}
+              <Select
+                size_="sm"
                 value={cur.role_filter ?? ''}
                 disabled={!admin}
-                maxLength={100}
-                placeholder="e.g. Hα"
                 aria-label={`Filter of ${name}`}
                 onChange={(e) => onChange(file, { role_filter: e.target.value })}
+                options={[
+                  { value: '', label: 'Filter…' },
+                  ...FILTERS.map((x) => ({ value: x, label: x })),
+                  // a filter saved before, spelt another way, stays choosable as it is
+                  ...(cur.role_filter && !FILTERS.includes(filterName(cur.role_filter))
+                    ? [{ value: cur.role_filter, label: cur.role_filter }]
+                    : []),
+                ]}
               />
             )}
           </div>
@@ -570,7 +564,7 @@ function Steps({ p }: { p: Finished }) {
                 {!s.missing && <img src={imageUrl(p.id, s.id)} alt="" loading="lazy" />}
               </span>
               <span className={f.stepText}>
-                <span className={v.mono}>{s.role_order ?? '?'}</span> · {s.role_label || baseName(s.rel_path)}
+                <span className={f.stepNo}>{s.role_order ?? '?'}</span> {s.role_label || baseName(s.rel_path)}
               </span>
             </li>
           ))}
@@ -610,7 +604,7 @@ function Progression({ id, admin }: { id: number; admin: boolean }) {
         help="A stack after each night, all with the full stack's stretch, so you see noise fall. Single-field projects only for now."
       >
         {admin && prog && !blocked && !building && (
-          <Button disabled={generate.isPending} onClick={() => generate.mutate(done)}>
+          <Button size="sm" disabled={generate.isPending} onClick={() => generate.mutate(done)}>
             {done ? 'Rebuild' : 'Generate'}
           </Button>
         )}
@@ -629,7 +623,7 @@ function Progression({ id, admin }: { id: number; admin: boolean }) {
                 {STATE[prog.state]}
                 {prog.step && <span className="muted"> · {prog.step}</span>}
               </span>
-              <span className={v.mono}>{pctText(prog.progress)}</span>
+              <span className={f.size}>{pctText(prog.progress)}</span>
               <Meter value={prog.progress} label="Progression progress" />
             </div>
           )}
@@ -686,7 +680,7 @@ function Progression({ id, admin }: { id: number; admin: boolean }) {
 
 /** "3–9 Oct · 4h 30m · 54 subs" */
 const checkpointText = (c: Checkpoint) =>
-  `${c.label} · ${integrationText(c.integration_s)} · ${c.subs} ${c.subs === 1 ? 'sub' : 'subs'}`
+  `${c.label} · ${integrationText(c.integration_s)} · ${plural(c.subs, 'sub')}`
 
 function CheckpointViewer({
   checkpoints,
@@ -815,8 +809,8 @@ function DistanceInput({
     if (n !== value) onSave(n)
   }
   return (
-    <input
-      className={`${f.input} ${f.distanceInput}`}
+    <Input
+      className={f.distanceInput}
       inputMode="decimal"
       value={text}
       disabled={disabled}

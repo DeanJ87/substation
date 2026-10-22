@@ -373,6 +373,7 @@ export function FilterMeter({
   goal,
   max,
   value,
+  detail,
 }: {
   filter: string
   kept: number
@@ -382,27 +383,91 @@ export function FilterMeter({
   max?: number
   /** The figure at the end of the row, already formatted. */
   value?: ReactNode
+  /** What the row's figures mean, in words, for the tooltip and the accessible text ("2h 45m kept of 4h"). */
+  detail?: string
 }) {
   const scale = Math.max(max ?? 0, kept + waiting + rejected, goal ?? 0, 1)
   const w = (n: number) => `${(Math.max(0, n) / scale) * 100}%`
   const parts = [
+    detail ?? '',
     rejected > 0 ? `${Math.round((rejected / (kept + waiting + rejected)) * 100)}% rejected` : '',
     waiting > 0 ? 'some waiting to be graded' : '',
   ].filter(Boolean)
+  const text = `${filterName(filter)}: ${detail ? '' : typeof value === 'string' ? value : ''}${parts.join(', ')}`
   return (
     <div className={s.filterMeter}>
       <FilterTag filter={filter} plain />
-      <div
-        className={s.fmTrack}
-        role="img"
-        aria-label={`${filterName(filter)}: ${typeof value === 'string' ? value : ''}${parts.length ? `, ${parts.join(', ')}` : ''}`}
-      >
+      <div className={s.fmTrack} role="img" aria-label={text} title={text}>
         <span className={s.fmKept} style={{ width: w(kept), background: filterColour(filter) }} />
         {waiting > 0 && <span className={s.fmWait} style={{ width: w(waiting) }} />}
         {rejected > 0 && <span className={s.fmRej} style={{ width: w(rejected) }} />}
         {goal ? <span className={s.fmGoal} style={{ left: w(goal) }} /> : null}
       </div>
       {value != null && <span className={s.fmValue}>{value}</span>}
+    </div>
+  )
+}
+
+/** The key for a list of FilterMeters, shown once under them: what the solid, striped and hatched parts and the
+ * tick mean. Only the parts the list uses. */
+export function FilterMeterLegend({
+  waiting = true,
+  rejected = true,
+  goal = false,
+}: {
+  waiting?: boolean
+  rejected?: boolean
+  goal?: boolean
+}) {
+  return (
+    <div className={s.fmLegend} aria-hidden="true">
+      <span>
+        <i className={s.fmKeyKept} />
+        kept
+      </span>
+      {waiting && (
+        <span>
+          <i className={s.fmWait} />
+          waiting to be graded
+        </span>
+      )}
+      {rejected && (
+        <span>
+          <i className={s.fmRej} />
+          rejected
+        </span>
+      )}
+      {goal && (
+        <span>
+          <i className={s.fmKeyGoal} />
+          goal
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** A named row with a neutral bar and its figure: hours per rig, a share of something. Same grid as FilterMeter
+ * so the two line up when stacked. */
+export function BarMeter({
+  label,
+  value,
+  max,
+  figure,
+}: {
+  label: ReactNode
+  value: number
+  max: number
+  figure: ReactNode
+}) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0
+  return (
+    <div className={cx(s.filterMeter, s.barMeter)}>
+      <span className={s.barLabel}>{label}</span>
+      <div className={s.fmTrack} aria-hidden="true">
+        <span className={s.barFill} style={{ width: `${pct}%` }} />
+      </div>
+      <span className={s.fmValue}>{figure}</span>
     </div>
   )
 }
@@ -523,6 +588,38 @@ export const Input = forwardRef<
 >(function Input({ className, size_, ...rest }, ref) {
   return <input ref={ref} className={cx(s.control, size_ === 'sm' && s.controlSm, className)} {...rest} />
 })
+
+/** A night or date picker in the shared control skin, with its label beside it ("From", "Night"). One component
+ * for every date field (the scope bar, the map). */
+export function DateInput({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  size_,
+}: {
+  label: string
+  value: string | undefined
+  onChange: (iso: string | undefined) => void
+  min?: string
+  max?: string
+  size_?: ButtonSize
+}) {
+  return (
+    <label className={s.dateField}>
+      <span className={s.dateLabel}>{label}</span>
+      <input
+        type="date"
+        className={cx(s.control, s.date, size_ === 'sm' && s.controlSm)}
+        value={value ?? ''}
+        min={min}
+        max={max}
+        onChange={(e) => onChange(e.target.value || undefined)}
+      />
+    </label>
+  )
+}
 
 export function Select({
   className,

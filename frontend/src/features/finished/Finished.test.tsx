@@ -164,7 +164,7 @@ describe('a finished project (spec 020)', () => {
     const save = screen.getByRole('button', { name: 'Save roles' })
     expect(save).toBeDisabled() // a single filter needs its filter
     expect(screen.getByText('A single-filter image needs its filter.')).toBeInTheDocument()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Filter of exports/heart-ha.tif' }), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter of exports/heart-ha.tif' }), {
       target: { value: 'Hα' },
     })
     // the starless file becomes the final: the old starless file loses its role
@@ -227,7 +227,7 @@ describe('a finished project (spec 020)', () => {
   it('gives a processing step its position and label, and shows the steps in order', async () => {
     const { api } = await openProject()
     const section = screen.getByRole('heading', { name: /Processing steps/ }).closest('section')!
-    expect(section).toHaveTextContent('1 · Master')
+    expect(section).toHaveTextContent('1 Master')
     fireEvent.change(screen.getByRole('combobox', { name: 'Role of exports/heart-ha.tif' }), {
       target: { value: 'step' },
     })

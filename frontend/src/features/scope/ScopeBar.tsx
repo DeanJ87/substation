@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { api, unwrap } from '../../api/client'
-import { Button } from '../../components/ui'
+import { Button, Chip, DateInput, Select } from '../../components/ui'
 import { isEmpty, type Scope } from './scope'
 import s from './scope.module.css'
 import { dateText } from '../format'
@@ -64,6 +64,9 @@ export function ScopeBar({
     setSeen(q)
     if (text.trim() !== q) setText(q)
   }
+  // on a phone the bar folds behind one Filters button (D18), open when something is filtered
+  const [open, setOpen] = useState(false)
+  const active = Object.keys(scope).filter((k) => scope[k as keyof Scope] !== undefined).length
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
   const type = (value: string) => {
@@ -74,82 +77,82 @@ export function ScopeBar({
   }
   return (
     <div className={s.bar} role="group" aria-label="Filters">
-      {search !== undefined && (
-        <input
-          type="search"
-          className={s.search}
-          placeholder={search}
-          value={text}
-          onChange={(e) => type(e.target.value)}
-          aria-label="Search"
-        />
-      )}
-      <select
-        aria-label="Rig"
-        value={scope.rig ?? ''}
-        onChange={(e) => pickRig(e.target.value ? Number(e.target.value) : undefined)}
+      <Button
+        size="sm"
+        className={s.toggle}
+        aria-expanded={open}
+        aria-controls="scope-controls"
+        onClick={() => setOpen(!open)}
       >
-        <option value="">Rig: All</option>
-        {(rigs.data ?? []).map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.name}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Filter"
-        value={scope.filter ?? ''}
-        onChange={(e) => set({ filter: e.target.value || undefined })}
-      >
-        <option value="">Filter: All</option>
-        {offered.map((f) => (
-          <option key={f} value={f}>
-            {filterName(f)}
-          </option>
-        ))}
-      </select>
-      <label>
-        From{' '}
-        <input
-          type="date"
-          value={scope.date_from ?? ''}
-          max={scope.date_to}
-          onChange={(e) => set({ date_from: e.target.value || undefined })}
+        Filters{active ? ` · ${active}` : ''}
+      </Button>
+      <div id="scope-controls" className={`${s.controls} ${open ? s.open : ''}`}>
+        {search !== undefined && (
+          <input
+            type="search"
+            className={s.search}
+            placeholder={search}
+            value={text}
+            onChange={(e) => type(e.target.value)}
+            aria-label="Search"
+          />
+        )}
+        <Select
+          aria-label="Rig"
+          value={scope.rig ?? ''}
+          onChange={(e) => pickRig(e.target.value ? Number(e.target.value) : undefined)}
+          options={[
+            { value: '', label: 'Rig: All' },
+            ...(rigs.data ?? []).map((r) => ({ value: r.id, label: r.name })),
+          ]}
         />
-      </label>
-      <label>
-        To{' '}
-        <input
-          type="date"
-          value={scope.date_to ?? ''}
-          min={scope.date_from}
-          onChange={(e) => set({ date_to: e.target.value || undefined })}
+        <Select
+          aria-label="Filter"
+          value={scope.filter ?? ''}
+          onChange={(e) => set({ filter: e.target.value || undefined })}
+          options={[
+            { value: '', label: 'Filter: All' },
+            ...offered.map((f) => ({ value: f, label: filterName(f) })),
+          ]}
         />
-      </label>
-      {/* what a link brought along that the bar has no control for: shown, and removable one by one */}
-      {CHIPS.filter(([k]) => scope[k] !== undefined).map(([k, label]) => (
-        <span key={k} className={s.chip}>
-          {label} {k === 'date' ? nightLabel(String(scope[k])) : String(scope[k])}
-          <button
-            type="button"
-            aria-label={`Remove ${label.toLowerCase()}`}
-            onClick={() => set({ [k]: undefined })}
-          >
-            ×
-          </button>
+        <span className={s.dates}>
+          <DateInput
+            label="From"
+            value={scope.date_from}
+            max={scope.date_to}
+            onChange={(v) => set({ date_from: v })}
+          />
+          <DateInput
+            label="To"
+            value={scope.date_to}
+            min={scope.date_from}
+            onChange={(v) => set({ date_to: v })}
+          />
         </span>
-      ))}
-      {!isEmpty(scope) && (
-        <Button
-          onClick={() => {
-            window.clearTimeout(timer.current)
-            setText('')
-            onChange({})
-          }}
-        >
-          Clear
-        </Button>
-      )}
+        {/* what a link brought along that the bar has no control for: shown, and removable one by one */}
+        {CHIPS.filter(([k]) => scope[k] !== undefined).map(([k, label]) => (
+          <Chip
+            key={k}
+            onRemove={() => set({ [k]: undefined })}
+            removeLabel={`Remove ${label.toLowerCase()}`}
+          >
+            {`${label} ${k === 'date' ? nightLabel(String(scope[k])) : String(scope[k])}`}
+          </Chip>
+        ))}
+        {!isEmpty(scope) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              window.clearTimeout(timer.current)
+              setText('')
+              onChange({})
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

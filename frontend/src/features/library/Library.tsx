@@ -3,9 +3,28 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { Button, EmptyState, ErrorState, Skeleton, Spinner } from '../../components/ui'
+import {
+  BarMeter,
+  Button,
+  buttonClass,
+  Chip,
+  EmptyState,
+  ErrorState,
+  Field,
+  FilterMeter,
+  FilterMeterLegend,
+  GradeMeter,
+  Input,
+  Select,
+  Skeleton,
+  Spinner,
+  StatGrid,
+  StatTile,
+} from '../../components/ui'
+import { Help } from '../../components/Help'
+import { sortFilters } from '../../components/filters'
 import { VerdictBadge, type VerdictState } from '../../components/VerdictBadge'
-import { integrationText, monthSpan, nightText } from '../format'
+import { countText, exposureText, integrationText, monthSpan, nightText, numText, plural } from '../format'
 import {
   stackPreviewUrl,
   useCollectionActions,
@@ -82,12 +101,6 @@ export function Library() {
   const ungrouped = d.ungrouped
   const scoped = !isEmpty(scope)
   const resetKey = scopeParams(scope)
-  const r = d.readouts as Readouts
-  const needs = r.needs_you ?? { review: 0, reconcile: 0, stale: 0 }
-  const needsTotal = needs.review + needs.reconcile + needs.stale
-  const missing = r.missing_calibration ?? { subs: 0, top: [] }
-  const ready = r.ready_to_stack ?? { datasets: 0, top: [] }
-  const month = r.this_month ?? { hours: 0, nights: 0, last: { hours: 0, nights: 0 } }
   const empty = (whole ?? d).counts.datasets === 0
 
   return (
@@ -97,10 +110,9 @@ export function Library() {
         <div>
           <h1>Library</h1>
           <div className={v.sub}>
-            {d.counts.datasets} datasets in {d.counts.collections} collection
-            {d.counts.collections === 1 ? '' : 's'}
-            {d.counts.ungrouped ? `, ${d.counts.ungrouped} ungrouped` : ''} · {d.rigs} rig
-            {d.rigs === 1 ? '' : 's'}
+            {plural(d.counts.datasets, 'dataset')} in {plural(d.counts.collections, 'collection')}
+            {d.counts.ungrouped ? `, ${countText(d.counts.ungrouped)} ungrouped` : ''} ·{' '}
+            {plural(d.rigs, 'rig')}
           </div>
         </div>
         <div className={v.actions}>
@@ -108,77 +120,14 @@ export function Library() {
         </div>
       </header>
 
-      <ScopeBar
-        scope={scope}
-        onChange={setScope}
-        filters={filters}
-        search="Search objects, rigs, filters, months"
-      />
+      {/* one search: the header's (C38). The bar narrows by rig, filter and nights */}
+      <ScopeBar scope={scope} onChange={setScope} filters={filters} />
 
       <Stats scope={scope} />
 
-      {/* what's worth knowing on opening SubStation (owner 2026-10-13): what to do next, not machine status */}
-      <div className={v.readouts}>
-        <Link to={needs.review ? '/review' : needs.reconcile ? '/reconcile' : '/'} className={v.readout}>
-          <div className={v.readoutLabel}>Needs you</div>
-          <div className={`${v.readoutValue} ${needsTotal ? v.accentValue : ''}`}>
-            {needsTotal.toLocaleString('en-GB')}
-          </div>
-          <div className={v.readoutDetail}>
-            {needsTotal
-              ? [
-                  needs.review ? `${needs.review.toLocaleString('en-GB')} to review` : '',
-                  needs.reconcile ? `${needs.reconcile.toLocaleString('en-GB')} to reconcile` : '',
-                  needs.stale ? `${needs.stale} stack${needs.stale === 1 ? '' : 's'} out of date` : '',
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
-              : 'nothing waiting'}
-          </div>
-        </Link>
-        <Link to="/calibration" className={v.readout}>
-          <div className={v.readoutLabel}>Missing calibration</div>
-          <div className={v.readoutValue}>{missing.subs.toLocaleString('en-GB')}</div>
-          <div className={v.readoutDetail}>
-            {missing.subs ? (
-              <>
-                subs waiting
-                {missing.top.slice(0, 2).map((m) => (
-                  <div key={m.reason} className={v.muted}>
-                    {m.reason} ({m.subs.toLocaleString('en-GB')})
-                  </div>
-                ))}
-              </>
-            ) : (
-              'every sub has its calibration'
-            )}
-          </div>
-        </Link>
-        <div className={v.readout}>
-          <div className={v.readoutLabel}>Ready to stack</div>
-          <div className={v.readoutValue}>{ready.datasets.toLocaleString('en-GB')}</div>
-          <div className={v.readoutDetail}>
-            {ready.top.length
-              ? ready.top.slice(0, 2).map((x) => (
-                  <div key={x.id}>
-                    <Link to="/datasets/$id" params={{ id: String(x.id) }}>
-                      {x.name}
-                    </Link>{' '}
-                    <span className={v.muted}>+{x.new.toLocaleString('en-GB')} subs</span>
-                  </div>
-                ))
-              : 'nothing new since the last stacks'}
-          </div>
-        </div>
-        <div className={v.readout}>
-          <div className={v.readoutLabel}>This month</div>
-          <div className={v.readoutValue}>{integrationText(month.hours * 3600)}</div>
-          <div className={v.readoutDetail}>
-            {month.nights} night{month.nights === 1 ? '' : 's'} · last month{' '}
-            {integrationText(month.last.hours * 3600)} over {month.last.nights}
-          </div>
-        </div>
-      </div>
+      {/* what's worth knowing on opening SubStation (owner 2026-10-13): what to do next, not machine status. The
+          server works these out for the whole library, so with filters on they say so rather than pretend (B03) */}
+      <Readouts r={d.readouts as Readouts} scoped={scoped} />
 
       {empty && <FirstRun />}
 
@@ -223,19 +172,23 @@ function CollectionCards({ cards: all, scope, resetKey }: { cards: Card[]; scope
   return (
     <Collapsible id="library-collections" title="Collections" meta={cards.length}>
       {roles && (
-        <label className={s.whereFilter}>
-          Files{' '}
-          <select value={where} onChange={(e) => setWhere(e.target.value)}>
-            {WHERE.map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-                {k === 'suggested' ? ` (${all.filter((c) => c.archive_suggested).length})` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Field inline label="Files" className={s.whereFilter}>
+          <Select
+            size_="sm"
+            value={where}
+            onChange={(e) => setWhere(e.target.value)}
+            options={WHERE.map(([k, label]) => ({
+              value: k,
+              label:
+                k === 'suggested' ? `${label} (${all.filter((c) => c.archive_suggested).length})` : label,
+            }))}
+          />
+        </Field>
       )}
-      {!cards.length && <p className={v.muted}>No collection matches.</p>}
+      {!cards.length && <EmptyState inline>No collection matches.</EmptyState>}
+      {cards.length > 0 && (
+        <FilterMeterLegend goal={cards.some((c) => c.goals && Object.keys(c.goals).length > 0)} />
+      )}
       <div className={s.cards}>
         {visible.map((c) => (
           <CollectionCardView
@@ -276,8 +229,12 @@ function UngroupedList({
         title="Not in a collection"
         meta={
           <span className={s.ungroupedHead}>
-            {rows.length.toLocaleString('en-GB')}
-            <Button onClick={() => actions.acceptAll.mutate()} disabled={actions.acceptAll.isPending}>
+            {countText(rows.length)}
+            <Button
+              size="sm"
+              onClick={() => actions.acceptAll.mutate()}
+              disabled={actions.acceptAll.isPending}
+            >
               {actions.acceptAll.isPending ? 'Accepting…' : 'Accept every suggestion'}
             </Button>
           </span>
@@ -331,86 +288,70 @@ function CollectionCardView({
   )
   const max = Math.max(1, ...Object.values(time).map((t) => t.total_s))
   const captured = Object.values(time).reduce((n, t) => n + t.total_s, 0)
+  const { title, designation } = nameParts(c.name)
   return (
     <article className={`${v.card} ${s.card}`}>
       <button className={s.preview} onClick={onOpen} aria-label={`Open ${c.name}`}>
         {c.preview_master ? (
           <img src={stackPreviewUrl(c.preview_master)} alt="" />
         ) : (
-          <span className="mono">master preview</span>
+          // no stack yet: the target's name, not a pattern that reads like progress (C04)
+          <span className={s.previewName}>{designation || title}</span>
         )}
       </button>
       <div className={s.cardBody}>
         <h2 className={s.cardTitle}>
           <Link to="/collections/$id" params={{ id: String(c.id) }} search={carry}>
-            {nameParts(c.name).title}
+            {title}
           </Link>
-          {nameParts(c.name).designation && (
-            <span className={s.designation}>{nameParts(c.name).designation}</span>
-          )}
+          {designation && <span className={s.designation}>{designation}</span>}
         </h2>
-        <div className={v.muted}>{collectionFacts(c)}</div>
-        <div className={v.pills}>
-          {c.rigs.map((r) => (
-            <Link
-              key={r}
-              to="/settings"
-              hash="rigs"
-              className={v.pill}
-              title={`Rename or merge ${r} in Settings → Rigs`}
-            >
-              {r}
-            </Link>
-          ))}
-        </div>
+        {/* the rig belongs in the facts line, not a chip of its own (D04) */}
+        <div className={v.muted}>{[collectionFacts(c), ...c.rigs].join(' · ')}</div>
         <div className={s.bars}>
-          {Object.entries(time)
-            .sort((a, b) => b[1].total_s - a[1].total_s)
-            .map(([f, t]) => {
-              const waiting = Math.max(0, t.total_s - t.accepted_s - t.rejected_s)
-              const pct = (x: number) => `${(x / max) * 100}%`
-              return (
-                <div
-                  key={f}
-                  className={s.barRow}
-                  title={`${f}: ${integrationText(t.total_s)} captured · ${integrationText(t.accepted_s)} usable · ${integrationText(waiting)} waiting for calibration or grading · ${integrationText(t.rejected_s)} rejected`}
-                >
-                  <span>{f}</span>
-                  <span className={s.bar}>
-                    <span className={s.barOk} style={{ width: pct(t.accepted_s) }} />
-                    <span className={s.barWait} style={{ width: pct(waiting) }} />
-                    <span className={s.barRej} style={{ width: pct(t.rejected_s) }} />
-                  </span>
-                  <span className={v.mono}>
-                    {c.goals?.[f] ? (
-                      <span title={`Goal: ${c.goals[f]} h of usable integration`}>
-                        {integrationText(t.accepted_s)} / {c.goals[f]}h
-                      </span>
-                    ) : (
-                      integrationText(t.total_s)
-                    )}
-                  </span>
-                </div>
-              )
-            })}
+          {sortFilters(Object.keys(time)).map((f) => {
+            const t = time[f]
+            const waiting = Math.max(0, t.total_s - t.accepted_s - t.rejected_s)
+            const goal = c.goals?.[f] ? c.goals[f] * 3600 : null
+            return (
+              <FilterMeter
+                key={f}
+                filter={f}
+                kept={t.accepted_s}
+                waiting={waiting}
+                rejected={t.rejected_s}
+                goal={goal}
+                max={max}
+                value={
+                  goal
+                    ? `${integrationText(t.accepted_s)} / ${integrationText(goal)}`
+                    : integrationText(t.total_s)
+                }
+                detail={
+                  goal
+                    ? `${integrationText(t.accepted_s)} kept of a ${integrationText(goal)} goal`
+                    : `${integrationText(t.accepted_s)} kept of ${integrationText(t.total_s)} captured`
+                }
+              />
+            )
+          })}
         </div>
         <div className={s.cardFoot}>
           <span className={v.muted}>
-            {monthSpan(c.first_night, c.last_night)} · {c.sessions} session{c.sessions === 1 ? '' : 's'}
+            {monthSpan(c.first_night, c.last_night)} · {plural(c.sessions, 'session')}
           </span>
-          <span className={v.mono} title="Usable (graded and kept) of everything captured">
-            <span className={v.accent}>{integrationText(c.accepted_integration_s)}</span>
+          {/* labelled, not "3h 55m of 4h 30m" (D03) */}
+          <span className={s.figure}>
+            {integrationText(c.accepted_integration_s)} kept
             {captured > c.accepted_integration_s && (
-              <span className={v.muted}> of {integrationText(captured)}</span>
+              <span className={v.muted}> / {integrationText(captured)}</span>
             )}
           </span>
         </div>
         {(c.states.length > 0 || WHERE_PILL[c.files_where ?? ''] || c.archive_suggested) && (
           <div className={v.pills}>
-            {WHERE_PILL[c.files_where ?? ''] && (
-              <span className={v.pill}>{WHERE_PILL[c.files_where ?? '']}</span>
-            )}
-            {c.archive_suggested && <span className={v.pill}>Worth archiving</span>}
+            {WHERE_PILL[c.files_where ?? ''] && <Chip>{WHERE_PILL[c.files_where ?? '']}</Chip>}
+            {c.archive_suggested && <Chip>Worth archiving</Chip>}
             {c.states.map(
               (st) =>
                 STATE_LABEL[st] && (
@@ -436,11 +377,14 @@ function UngroupedRow({
   onChoose: () => void
 }) {
   const actions = useCollectionActions()
-  const [choice, setChoice] = useState('')
-  const [newName, setNewName] = useState('')
   const sug = u.suggestion as { collection_id: number | null; name: string; why: string } | null
+  // one choice, already on SubStation's suggestion: an existing collection, or a new one under a name (C37)
+  const [choice, setChoice] = useState(sug?.collection_id ? String(sug.collection_id) : 'new')
+  const [newName, setNewName] = useState((sug && !sug.collection_id ? sug.name : '') ?? '')
   const busy = actions.add.isPending || actions.create.isPending
   const ds = u.dataset
+  const name = newName.trim() || ds.target
+  const each = ds.sub_count ? ds.integration_s / ds.sub_count : 0
   return (
     <div className={s.ungrouped}>
       <div className={s.ungroupedName}>
@@ -450,81 +394,54 @@ function UngroupedRow({
             {ds.target} · {u.label}
           </Link>
           <div className={v.muted}>
-            {u.sessions} session{u.sessions === 1 ? '' : 's'} · {ds.sub_count.toLocaleString('en-GB')} subs
-            {ds.sub_count && Number.isInteger(Math.round((ds.integration_s / ds.sub_count) * 10) / 10)
-              ? ` × ${Math.round(ds.integration_s / ds.sub_count)} s`
+            {plural(u.sessions, 'session')} · {plural(ds.sub_count, 'sub')}
+            {each && Number.isInteger(Math.round(each * 10) / 10)
+              ? ` × ${exposureText(Math.round(each))}`
               : ''}
             {ds.first_utc
               ? ds.last_night && ds.last_night !== ds.first_utc.slice(0, 10)
-                ? ` · from ${nightText(ds.first_utc.slice(0, 10))} to ${nightText(ds.last_night)}`
+                ? ` · ${nightText(ds.first_utc.slice(0, 10))} to ${nightText(ds.last_night)}`
                 : ` · ${nightText(ds.first_utc.slice(0, 10))}`
               : ''}
           </div>
         </div>
       </div>
-      <span className={`${v.mono} ${v.accent}`}>{integrationText(ds.integration_s)}</span>
-      <span className={v.note}>
-        {sug ? (sug.collection_id ? `Suggested: ${sug.name}. ${sug.why}` : sug.why) : ''}
-      </span>
-      <div className={v.actions}>
-        <select
-          className={v.select}
+      <span className={s.figure}>{integrationText(ds.integration_s)}</span>
+      <span className={v.note}>{sug?.collection_id ? sug.why : ''}</span>
+      <form
+        className={s.addTo}
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (choice === 'new') actions.create.mutate({ name, dataset_ids: [ds.id] })
+          else actions.add.mutate({ id: Number(choice), dataset_ids: [ds.id] })
+        }}
+      >
+        <Select
+          size_="sm"
           value={choice}
           onChange={(e) => setChoice(e.target.value)}
-          aria-label="Choose a collection"
-        >
-          <option value="">Choose…</option>
-          <option value="new">New collection…</option>
-          {collections.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {choice === 'new' ? (
-          <form
-            className={v.actions}
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (newName.trim()) actions.create.mutate({ name: newName.trim(), dataset_ids: [ds.id] })
-            }}
-          >
-            <input
-              className={v.input}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Collection name, e.g. Soul Nebula"
-              aria-label="New collection name"
-            />
-            <Button type="submit" variant="primary" disabled={busy || !newName.trim()}>
-              Create
-            </Button>
-          </form>
-        ) : choice ? (
-          <Button
-            disabled={busy}
-            onClick={() => actions.add.mutate({ id: Number(choice), dataset_ids: [ds.id] })}
-          >
-            Add
-          </Button>
-        ) : sug?.collection_id ? (
-          <Button
-            variant="primary"
-            disabled={busy}
-            onClick={() => actions.add.mutate({ id: sug.collection_id!, dataset_ids: [ds.id] })}
-          >
-            Add to {sug.name}
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            disabled={busy}
-            onClick={() => actions.create.mutate({ name: sug?.name || ds.target, dataset_ids: [ds.id] })}
-          >
-            New collection
-          </Button>
+          aria-label={`Add ${ds.target} · ${u.label} to`}
+          options={[
+            { value: 'new', label: '+ New collection' },
+            ...collections.map((c) => ({
+              value: c.id,
+              label: c.id === sug?.collection_id ? `${c.name} (suggested)` : c.name,
+            })),
+          ]}
+        />
+        {choice === 'new' && (
+          <Input
+            size_="sm"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={ds.target}
+            aria-label="New collection name"
+          />
         )}
-      </div>
+        <Button type="submit" size="sm" disabled={busy}>
+          {choice === 'new' ? 'Create' : 'Add'}
+        </Button>
+      </form>
     </div>
   )
 }
@@ -539,10 +456,8 @@ function ReconcileNotice() {
   return (
     <div className={v.banner}>
       <VerdictBadge state="recon" label="Needs reconciliation" />
-      <span>
-        {n.toLocaleString('en-GB')} item{n === 1 ? '' : 's'} blocking grading.
-      </span>
-      <Link to="/reconcile" className={v.pill}>
+      <span>{plural(n, 'item')} blocking grading.</span>
+      <Link to="/reconcile" className={buttonClass({ size: 'sm' })}>
         Open reconciliation
       </Link>
     </div>
@@ -559,17 +474,17 @@ function FirstRun() {
         {(libs.data ?? [])
           .filter((l) => l.enabled)
           .map((l) => (
-            <span key={l.id} className={v.mono}>
+            <span key={l.id} className="mono">
               {l.mount_path}{' '}
             </span>
           ))}
       </p>
       <p>New FITS and XISF files appear here.</p>
       <div className={v.actions}>
-        <Link to="/settings" hash="folders" className={v.pill}>
+        <Link to="/settings" hash="folders" className={buttonClass()}>
           Change watched folders
         </Link>
-        <Link to="/settings" hash="patterns" className={v.pill}>
+        <Link to="/settings" hash="patterns" className={buttonClass()}>
           Import an existing archive
         </Link>
       </div>
@@ -600,10 +515,10 @@ function NewCollection() {
         )
       }}
     >
-      <input
-        className={v.input}
+      <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === 'Escape' && setName(null)}
         placeholder="Name, e.g. Heart and Soul"
         aria-label="New collection name"
       />
@@ -630,23 +545,12 @@ function Stats({ scope }: { scope: Scope }) {
   const updating = st.isFetching && st.isPlaceholderData
   const filtered = Object.keys(query).length > 0
   const pct = (x: number | null | undefined) => (x == null ? '—' : `${Math.round(x * 100)}%`)
-  const bars = (title: string, rows: Record<string, number>) => {
-    const max = Math.max(1e-9, ...Object.values(rows))
-    return (
-      <div className={s.statBars}>
-        <span className={v.sectionLabel}>{title}</span>
-        {Object.entries(rows).map(([k, h]) => (
-          <div key={k} className={s.statRow}>
-            <span>{k}</span>
-            <span className={s.statBar}>
-              <span style={{ width: `${(h / max) * 100}%` }} />
-            </span>
-            <span className={v.mono}>{integrationText(h * 3600)}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
+  // kept + rejected is every graded sub: counted from the rate, each rounded on its own could make 101%
+  const kept = d.success_rate != null ? Math.round(d.success_rate * d.graded) : 0
+  const rejected = d.graded - kept
+  const filterRows = sortFilters(Object.keys(d.by_filter).filter((f) => f !== '?'))
+  const most = Math.max(1e-9, ...Object.values(d.by_filter))
+  const rigMost = Math.max(1e-9, ...Object.values(d.by_rig))
   return (
     <section
       className={`${v.card} ${v.cardPad} ${s.stats} ${updating ? s.updating : ''}`}
@@ -661,51 +565,139 @@ function Stats({ scope }: { scope: Scope }) {
       <Collapsible
         id="library-stats"
         title={filtered ? 'Totals for the filters' : 'Totals'}
-        meta={`${d.frames.toLocaleString('en-GB')} lights`}
+        meta={plural(d.frames, 'light')}
       >
         <div className={s.statsBody}>
-          <div className={s.statNums}>
-            <div>
-              <span className={v.sectionLabel}>{filtered ? 'Filtered' : 'All'} lights</span>
-              <strong className={v.mono}>{d.frames.toLocaleString('en-GB')}</strong>
-              <span className={v.muted}>
-                {d.nights} night{d.nights === 1 ? '' : 's'}
-              </span>
-            </div>
-            <div>
-              <span className={v.sectionLabel}>Hours taken</span>
-              <strong className={v.mono}>{integrationText(d.hours * 3600)}</strong>
-              <span className={v.muted}>{integrationText(d.accepted_hours * 3600)} kept</span>
-            </div>
-            <div>
-              <span className={v.sectionLabel}>Kept</span>
-              <strong className={`${v.mono} ${v.ok}`}>{pct(d.success_rate)}</strong>
-              <span className={v.muted}>of {d.graded.toLocaleString('en-GB')} graded</span>
-            </div>
-            <div>
-              <span className={v.sectionLabel}>Rejected</span>
-              <strong className={`${v.mono} ${v.bad}`}>
-                {/* kept + rejected is every graded sub: rounded on its own each could make 101% */}
-                {d.success_rate != null && d.failure_rate != null
-                  ? `${100 - Math.round(d.success_rate * 100)}%`
-                  : pct(d.failure_rate)}
-              </strong>
-              <span className={v.muted}>cloud, seeing, tracking</span>
-            </div>
-            <div>
-              <span className={v.sectionLabel}>Average SQM</span>
-              <strong className={v.mono}>{d.avg_sqm != null ? d.avg_sqm.toFixed(2) : '—'}</strong>
-              <span className={v.muted}>
-                {d.sqm_subs ? `from ${d.sqm_subs.toLocaleString('en-GB')} subs` : 'not recorded'}
-              </span>
-            </div>
-          </div>
+          <StatGrid label="Totals">
+            <StatTile
+              label={filtered ? 'Lights in the filters' : 'Lights'}
+              value={countText(d.frames)}
+              detail={plural(d.nights, 'night')}
+            />
+            <StatTile
+              label="Hours taken"
+              value={integrationText(d.hours * 3600)}
+              detail={`${integrationText(d.accepted_hours * 3600)} kept`}
+            />
+            <StatTile
+              label="Kept"
+              value={pct(d.success_rate)}
+              detail={
+                d.graded
+                  ? `${countText(kept)} kept, ${countText(rejected)} rejected of ${countText(d.graded)} graded`
+                  : 'nothing graded yet'
+              }
+            >
+              {d.graded > 0 && <GradeMeter kept={kept} rejected={rejected} />}
+            </StatTile>
+            <StatTile
+              label="Average SQM"
+              value={d.avg_sqm != null ? numText(d.avg_sqm, 2) : '—'}
+              unit={d.avg_sqm != null ? 'mag/″²' : undefined}
+              detail={d.sqm_subs ? `from ${plural(d.sqm_subs, 'sub')}` : 'not recorded'}
+            />
+          </StatGrid>
           <div className={s.statGrid}>
-            {bars('Hours per filter', d.by_filter)}
-            {bars('Hours per rig', d.by_rig)}
+            <div className={s.statBars} role="group" aria-label="Hours per filter">
+              <span className={v.sectionLabel}>Hours per filter</span>
+              {filterRows.map((f) => (
+                <FilterMeter
+                  key={f}
+                  filter={f}
+                  kept={d.by_filter[f] * 3600}
+                  max={most * 3600}
+                  value={integrationText(d.by_filter[f] * 3600)}
+                  detail={`${integrationText(d.by_filter[f] * 3600)} taken`}
+                />
+              ))}
+            </div>
+            <div className={s.statBars} role="group" aria-label="Hours per rig">
+              <span className={v.sectionLabel}>Hours per rig</span>
+              {Object.entries(d.by_rig).map(([k, h]) => (
+                <BarMeter key={k} label={k} value={h} max={rigMost} figure={integrationText(h * 3600)} />
+              ))}
+            </div>
           </div>
         </div>
       </Collapsible>
+    </section>
+  )
+}
+
+/** The four tiles under the totals: what needs you, missing calibration, what's ready to stack, this month. */
+function Readouts({ r, scoped }: { r: Readouts; scoped: boolean }) {
+  const needs = r.needs_you ?? { review: 0, reconcile: 0, stale: 0 }
+  const needsTotal = needs.review + needs.reconcile + needs.stale
+  const missing = r.missing_calibration ?? { subs: 0, top: [] }
+  const ready = r.ready_to_stack ?? { datasets: 0, top: [] }
+  const month = r.this_month ?? { hours: 0, nights: 0, last: { hours: 0, nights: 0 } }
+  const needsParts = [
+    needs.review ? `${plural(needs.review, 'sub')} to review` : '',
+    needs.reconcile ? `${countText(needs.reconcile)} to reconcile` : '',
+    needs.stale ? `${plural(needs.stale, 'stack')} out of date` : '',
+  ].filter(Boolean)
+  return (
+    <section className={s.readouts} aria-labelledby="readouts-h">
+      <div className={s.readoutsHead}>
+        <h2 id="readouts-h" className={v.sectionLabel}>
+          {scoped ? 'Whole library, not the filters' : 'Whole library'}
+        </h2>
+        <Help topic="These figures">
+          Needs you, Missing calibration, Ready to stack and This month count everything in the library. The
+          filters above narrow the totals and the collections, not these.
+        </Help>
+      </div>
+      <StatGrid>
+        <Link to={needs.review ? '/review' : needs.reconcile ? '/reconcile' : '/'} className={s.tileLink}>
+          <StatTile
+            label="Needs you"
+            value={countText(needsTotal)}
+            detail={needsTotal ? needsParts.join(' · ') : 'nothing waiting'}
+          />
+        </Link>
+        <Link to="/calibration" className={s.tileLink}>
+          <StatTile
+            label="Missing calibration"
+            value={countText(missing.subs)}
+            detail={
+              missing.subs
+                ? [
+                    'subs waiting',
+                    ...missing.top.slice(0, 2).map((m) => `${m.reason} (${countText(m.subs)})`),
+                  ].join(' · ')
+                : 'every sub has its calibration'
+            }
+          />
+        </Link>
+        <StatTile
+          label="Ready to stack"
+          value={countText(ready.datasets)}
+          detail={
+            ready.top.length ? (
+              <>
+                {plural(ready.datasets, 'dataset')} {ready.datasets === 1 ? 'has' : 'have'} new subs:{' '}
+                {ready.top.slice(0, 2).map((x, i) => (
+                  <span key={x.id}>
+                    {i > 0 && ' · '}
+                    <Link to="/datasets/$id" params={{ id: String(x.id) }} className={s.quietLink}>
+                      {x.name}
+                    </Link>{' '}
+                    (+{countText(x.new)})
+                  </span>
+                ))}
+                {ready.datasets > 2 && ` · ${countText(ready.datasets - 2)} more`}
+              </>
+            ) : (
+              'nothing new since the last stacks'
+            )
+          }
+        />
+        <StatTile
+          label="This month"
+          value={integrationText(month.hours * 3600)}
+          detail={`${plural(month.nights, 'night')} · last month ${integrationText(month.last.hours * 3600)} over ${plural(month.last.nights, 'night')}`}
+        />
+      </StatGrid>
     </section>
   )
 }

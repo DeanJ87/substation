@@ -131,7 +131,7 @@
   --sst-on-accent: #ffffff;
   --sst-violet: #6b46d6;
   --sst-ok: #2f7350;
-  --sst-warn: #8a6a00;
+  --sst-warn: #7a5d00; /* darkened from #8a6a00: 4.5:1 on the chip panel (axe, 2026-10-22) */
   --sst-bad: #be3229;
   --sst-focus: #a3307f;
   --sst-thumb: #1a222c;

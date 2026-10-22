@@ -253,8 +253,9 @@
 }
 .curve {
   fill: none;
+  stroke: var(--sst-muted);
   stroke-width: 1.2;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 .chartMark,
 .chartReject {
@@ -571,4 +572,22 @@
 }
 .nightRow[aria-pressed='false'] .filterDot {
   opacity: 0.3;
+}
+
+/* the night sky's filter key (C44): colour is the filter; shape is the target */
+.filterKey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.rigSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--sst-muted);
+  border-radius: 2px;
 }

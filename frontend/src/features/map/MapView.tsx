@@ -17,6 +17,7 @@ import { besidesNights, type MapSearch, mapQuery, nearest, periodText, presets }
 import { baseLayer } from './tiles'
 import s from './map.module.css'
 import { countText, dateText } from '../format'
+import { Button, DateInput } from '../../components/ui'
 
 type Place = components['schemas']['MapPlace']
 const route = getRouteApi('/app/map')
@@ -227,34 +228,33 @@ function DateFilter({
   const one = search.date ?? (search.date_from && search.date_from === search.date_to ? search.date_from : '')
   return (
     <div className={s.when} role="group" aria-label="Nights shown">
-      <label className={s.whenDay}>
-        <span className="label">Night</span>
-        <input
-          type="date"
-          value={one}
-          onChange={(e) => onChange(e.target.value ? { date: e.target.value } : {})}
-        />
-      </label>
+      {/* the same date field as the Library's filters (D10) */}
+      <DateInput
+        size_="sm"
+        label="Night"
+        value={one || undefined}
+        onChange={(d) => onChange(d ? { date: d } : {})}
+      />
       {presets(today).map((p) => (
-        <button key={p.label} type="button" className={s.whenPreset} onClick={() => onChange(p.search)}>
+        <Button key={p.label} size="sm" onClick={() => onChange(p.search)}>
           {p.label}
-        </button>
+        </Button>
       ))}
       <span className={s.whenText} aria-live="polite">
         {text ? `Showing ${text}` : 'Showing every night'}
       </span>
       {text && (
-        <button type="button" className={s.whenPreset} onClick={() => onChange({})}>
+        <Button size="sm" variant="ghost" onClick={() => onChange({})}>
           Every night
-        </button>
+        </Button>
       )}
       {narrowed > 0 && (
         // carried from another page (a collection, the Library's filters): say so, and offer everything
         <span className={s.whenText}>
           Narrowed by {narrowed} filter{narrowed === 1 ? '' : 's'} from the page you came from{' '}
-          <button type="button" className={s.whenPreset} onClick={onWiden}>
+          <Button size="sm" variant="ghost" onClick={onWiden}>
             Show everything
-          </button>
+          </Button>
         </span>
       )}
     </div>

@@ -191,10 +191,10 @@
   fill: var(--sst-line-2);
 }
 .ovBar {
-  fill: var(--sst-dim);
+  fill: color-mix(in srgb, var(--sst-data-fill) 45%, transparent);
 }
 .ovDot {
-  fill: var(--sst-muted);
+  fill: var(--sst-data);
 }
 .ovDotSel {
   fill: var(--sst-accent);
@@ -232,12 +232,6 @@
   display: flex;
   gap: 8px;
   align-items: center;
-}
-.lgFwhm {
-  color: var(--sst-chart-1);
-}
-.lgSqm {
-  color: var(--sst-chart-2);
 }
 .nightChart {
   width: 100%;
@@ -697,4 +691,52 @@
 .tileOpen:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Quality: readable per-session strips (C41) and the two stacked charts */
+.ovStrip {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: 6px;
+  align-items: stretch;
+}
+.ovScale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--sst-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ovChart {
+  height: 56px;
+}
+.ovBase {
+  stroke: var(--sst-line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.ovAxisPad {
+  margin-left: calc(3.5rem + 6px);
+}
+.ovNone {
+  margin: 0 0 4px;
+}
+.charts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.axisTitle {
+  fill: var(--sst-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.grid {
+  stroke: var(--sst-line-2);
+  stroke-width: 1;
+}
+.sqmPt {
+  fill: var(--sst-chart-2);
 }

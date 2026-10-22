@@ -9,6 +9,8 @@ import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } 
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import { Help } from '../../components/Help'
+import { FilterTag } from '../../components/ui'
+import { filterColour, sortFilters } from '../../components/filters'
 import {
   angleText,
   clockSpan,
@@ -34,7 +36,6 @@ import {
   frameOnDome,
   hourTicks,
   marker,
-  series,
 } from './projection'
 import s from './sky.module.css'
 
@@ -75,11 +76,9 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
   // the target in focus: the one with the most subs to start with
   const [chosen, setChosen] = useState<string | null>(null)
 
-  const colourOf = useMemo(() => new Map(sky.targets.map((t, i) => [t.key, series(i)])), [sky.targets])
-  const shapeOf = useMemo(
-    () => new Map<string, Shape>(sky.rigs.map((r, i) => [r.key, SHAPES[i % SHAPES.length]])),
-    [sky.rigs],
-  )
+  // a track is one dataset, so one filter: colour says the filter, shape says the target (C44)
+  const colourOf = useMemo(() => trackColours(sky), [sky])
+  const shapeOf = useMemo(() => targetShapes(sky), [sky])
   const many = sky.rigs.length > 1
   usePlay(playing, setPlaying, now, setNow, start, end)
 
@@ -149,7 +148,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
                 key={key}
                 d={d}
                 className={`${s.track} ${dimmed(track) ? s.dim : ''}`}
-                style={{ stroke: colourOf.get(sky.tracks[track].target) }}
+                style={{ stroke: colourOf(track) }}
                 markerEnd={here(pts[pts.length - 1]) ? 'url(#sky-arrow)' : undefined}
               />
             )
@@ -158,12 +157,12 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
           const p = proj(x.alt, x.az)
           if (!here(p)) return null
           const tr = sky.tracks[x.track]
-          const colour = colourOf.get(tr.target)
+          const colour = colourOf(x.track)
           const reject = x.verdict === 'reject'
           return (
             <path
               key={x.sha256}
-              d={marker(shapeOf.get(tr.rig) ?? 'circle', p, 4.2 / k)}
+              d={marker(shapeOf.get(tr.target) ?? 'circle', p, 4.2 / k)}
               className={`${s.mark} ${x.verdict === 'down' ? s.faded : ''} ${dimmed(x.track) ? s.dim : ''}`}
               style={reject ? { stroke: colour, fill: 'var(--sst-panel)' } : { fill: colour, stroke: colour }}
               onMouseEnter={() => setHover({ sub: x, at: p })}
@@ -183,7 +182,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
               t={skyTime}
               view={view}
               here={here}
-              colour={colourOf.get(lit ?? '')}
+              colour="var(--sst-text)"
               label={`${sky.rigs.find((r) => r.key === rig)?.name ?? 'The rig'}’s frame, ${fovText(fov)}`}
             />
           ))}
@@ -203,7 +202,7 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
                   cy={p.y}
                   r={5 / k}
                   className={s.now}
-                  style={{ stroke: colourOf.get(t.key) }}
+                  style={{ stroke: 'var(--sst-text)' }}
                 />
               )
             })}
@@ -236,7 +235,6 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
       <div className={s.side}>
         <Key
           sky={sky}
-          colourOf={colourOf}
           shapeOf={shapeOf}
           many={many}
           hidden={hidden}
@@ -423,7 +421,6 @@ function Swatch({ colour, shape }: { colour?: string; shape: Shape }) {
 
 function Key({
   sky,
-  colourOf,
   shapeOf,
   many,
   hidden,
@@ -433,7 +430,6 @@ function Key({
   choose,
 }: {
   sky: Sky
-  colourOf: Map<string, string>
   shapeOf: Map<string, Shape>
   many: boolean
   hidden: Set<string>
@@ -472,10 +468,18 @@ function Key({
             'target',
             t.key,
             t.name,
-            <Swatch colour={colourOf.get(t.key)} shape="circle" />,
+            <Swatch colour="var(--sst-text)" shape={shapeOf.get(t.key) ?? 'circle'} />,
             `${subsOf((x) => x.target === t.key)} subs`,
           ),
         )}
+      </ul>
+      <h3 className="label">Filters</h3>
+      <ul className={s.filterKey} aria-label="Filters by colour">
+        {sortFilters([...new Set(sky.tracks.map((x) => x.filter))]).map((f) => (
+          <li key={f}>
+            <FilterTag filter={f} />
+          </li>
+        ))}
       </ul>
       {many && (
         <>
@@ -486,7 +490,7 @@ function Key({
                 'rig',
                 r.key,
                 r.name,
-                <Swatch shape={shapeOf.get(r.key) ?? 'circle'} />,
+                <span className={s.rigSwatch} aria-hidden="true" />,
                 `${subsOf((x) => x.rig === r.key)} subs`,
               ),
             )}
@@ -496,7 +500,8 @@ function Key({
       <p className={s.keyHint}>
         How to read it{' '}
         <Help topic="How to read the sky">
-          Filled: kept. Faded: down-weighted. Hollow: rejected. Choose a target to bring it into focus
+          Colour is the filter, shape the target. Filled: kept. Faded: down-weighted. Hollow: rejected. Choose
+          a target to bring it into focus
           {many ? '; a rig to hide or show it' : ''}.
         </Help>
       </p>
@@ -576,7 +581,7 @@ function AltitudeChart({
   now,
 }: {
   sky: Sky
-  colourOf: Map<string, string>
+  colourOf: (track: number) => string
   hidden: Set<string>
   now: number | null
 }) {
@@ -637,9 +642,25 @@ function AltitudeChart({
         {sky.moon && <path d={path(sky.moon.points)} className={s.moonLine} />}
         {sky.targets
           .filter((t) => !hidden.has(t.key))
-          .map((t) => (
-            <path key={t.key} d={path(t.curve)} className={s.curve} style={{ stroke: colourOf.get(t.key) }} />
-          ))}
+          .map((t) => {
+            // the target named where it stands highest, so a curve needs no colour of its own
+            const top = t.curve.reduce((a, b) => (b.alt > a.alt ? b : a), t.curve[0])
+            return (
+              <g key={t.key}>
+                <path d={path(t.curve)} className={s.curve} />
+                {top && top.alt > 0 && sky.targets.length > 1 && (
+                  <text
+                    x={x(Date.parse(top.time))}
+                    y={y(top.alt) - 6}
+                    textAnchor="middle"
+                    className={s.axisText}
+                  >
+                    {t.name}
+                  </text>
+                )}
+              </g>
+            )
+          })}
         {sky.subs
           .filter((u) => !hidden.has(sky.tracks[u.track].target) && !hidden.has(sky.tracks[u.track].rig))
           .map((u) => (
@@ -650,8 +671,8 @@ function AltitudeChart({
               r={2.2}
               className={u.verdict === 'reject' ? s.chartReject : s.chartMark}
               style={{
-                fill: u.verdict === 'reject' ? 'var(--sst-panel)' : colourOf.get(sky.tracks[u.track].target),
-                stroke: colourOf.get(sky.tracks[u.track].target),
+                fill: u.verdict === 'reject' ? 'var(--sst-panel)' : colourOf(u.track),
+                stroke: colourOf(u.track),
               }}
             />
           ))}
@@ -659,6 +680,16 @@ function AltitudeChart({
       </svg>
     </figure>
   )
+}
+
+/** Each track's colour: its filter's (a track is one dataset, so one filter). */
+function trackColours(sky: Sky): (track: number) => string {
+  return (i) => filterColour(sky.tracks[i]?.filter)
+}
+
+/** Each target's mark shape, in the order the night lists them. */
+function targetShapes(sky: Sky): Map<string, Shape> {
+  return new Map<string, Shape>(sky.targets.map((t, i) => [t.key, SHAPES[i % SHAPES.length]]))
 }
 
 /** A track's span, shutter open to shutter close, from its subs (their times are mid-exposure). */
@@ -672,14 +703,14 @@ function trackSpan(sky: Sky, i: number, t: { first: string; last: string }): str
 
 /** The tracks in words: target, filter, rig, when and how much (FR-008). */
 export function SkyTracks({ sky }: { sky: Sky }) {
-  const colourOf = new Map(sky.targets.map((t, i) => [t.key, series(i)]))
-  const shapeOf = new Map<string, Shape>(sky.rigs.map((r, i) => [r.key, SHAPES[i % SHAPES.length]]))
+  const colourOf = trackColours(sky)
+  const shapeOf = targetShapes(sky)
   if (!sky.tracks.length) return null
   return (
     <ul className={s.tracks} aria-label="Tracks">
       {sky.tracks.map((t, i) => (
         <li key={t.dataset_id}>
-          <Swatch colour={colourOf.get(t.target)} shape={shapeOf.get(t.rig) ?? 'circle'} />
+          <Swatch colour={colourOf(i)} shape={shapeOf.get(t.target) ?? 'circle'} />
           <span className={s.trackName}>{t.label}</span>
           <span className="muted">
             {sky.rigs.find((r) => r.key === t.rig)?.name} · {trackSpan(sky, i, t)} ·{' '}

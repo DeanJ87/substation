@@ -5,47 +5,55 @@
   gap: 8px 12px;
   font-size: 14px;
 }
-.bar select,
-.bar input {
-  padding: 6px 10px;
+.controls {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.dates {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.search {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: var(--sst-control-h);
+  padding: 4px 10px;
   border: 1px solid var(--sst-line);
   border-radius: var(--sst-radius-sm);
   background: var(--sst-panel-3);
   color: var(--sst-text);
   font: inherit;
-  max-width: 100%;
-}
-.bar label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--sst-muted);
-}
-.bar .search {
-  flex: 1 1 200px;
-  min-width: 0;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 4px 3px 10px;
-  border: 1px solid var(--sst-line);
-  border-radius: 999px;
-  background: var(--sst-panel-2);
-  color: var(--sst-text);
   font-size: 13px;
 }
-.chip button {
-  border: 0;
-  background: none;
-  color: var(--sst-muted);
-  font: inherit;
-  cursor: pointer;
-  padding: 0 6px;
-  border-radius: 999px;
+/* the Filters button only shows on a phone, where the controls fold behind it (D18) */
+.toggle {
+  display: none !important;
 }
-.chip button:hover,
-.chip button:focus-visible {
-  color: var(--sst-text);
+@media (max-width: 640px) {
+  .toggle {
+    display: inline-flex !important;
+  }
+  .controls:not(.open) {
+    display: none;
+  }
+  .controls {
+    flex-basis: 100%;
+  }
+  .controls > select {
+    flex: 1 1 40%;
+  }
+  .dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .dates input {
+    width: 100%;
+  }
 }

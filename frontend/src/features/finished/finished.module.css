@@ -46,24 +46,6 @@
   align-items: center;
   gap: 6px;
 }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border: 1px solid var(--sst-line);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.chipOk {
-  border-color: color-mix(in srgb, var(--sst-ok) 45%, transparent);
-  color: var(--sst-ok);
-}
-.chipWarn {
-  border-color: color-mix(in srgb, var(--sst-warn) 45%, transparent);
-  color: var(--sst-warn);
-}
 
 /* one project's page */
 .head {
@@ -171,7 +153,8 @@ button.thumb:focus-visible {
 }
 .thumbNone {
   font-size: 12px;
-  color: var(--sst-dim);
+  /* on the dark picture well in every theme: the scrim text colour, not the page's */
+  color: var(--sst-on-scrim);
 }
 .fileBody {
   display: flex;
@@ -383,8 +366,28 @@ button.thumb:focus-visible {
 .small {
   width: 64px;
   flex: none;
-  font-family: var(--sst-font-mono);
   font-variant-numeric: tabular-nums;
+}
+.size {
+  font-variant-numeric: tabular-nums;
+  color: var(--sst-data);
+}
+.stepNo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  margin-right: 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.quiet {
+  color: var(--sst-text);
+  text-decoration: none;
+}
+.quiet:hover {
+  color: var(--sst-accent);
+  text-decoration: underline;
 }
 .reason {
   font-size: 13px;

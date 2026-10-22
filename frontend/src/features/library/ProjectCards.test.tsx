@@ -217,6 +217,7 @@ describe('Projects panel (amendment 2026-10-22)', { timeout: 20_000 }, () => {
     const { api } = await open({
       'POST /collections/1/projects': { ...WIDE, id: 5, label: '2027 · north', change_id: 44 },
     })
+    fireEvent.click(screen.getByRole('button', { name: 'New project' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Season' }), { target: { value: '2027' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'New project name' }), {
       target: { value: 'north' },

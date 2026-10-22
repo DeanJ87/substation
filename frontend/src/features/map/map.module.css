@@ -158,32 +158,6 @@
   width: fit-content;
   max-width: calc(100vw - 76px);
 }
-.whenDay {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.whenDay input {
-  padding: 4px 8px;
-  border: 1px solid var(--sst-line);
-  border-radius: var(--sst-radius-sm);
-  background: var(--sst-panel-3);
-  color: var(--sst-text);
-  font: inherit;
-}
-.whenPreset {
-  padding: 4px 10px;
-  border: 1px solid var(--sst-line);
-  border-radius: var(--sst-radius-sm);
-  background: var(--sst-panel-2);
-  color: var(--sst-text);
-  font: inherit;
-  cursor: pointer;
-}
-.whenPreset:hover,
-.whenPreset:focus-visible {
-  border-color: var(--sst-accent);
-}
 .whenText {
   color: var(--sst-muted);
 }

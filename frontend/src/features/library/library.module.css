@@ -3,7 +3,8 @@
 }
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr));
+  margin-top: 10px;
   gap: 16px;
 }
 @media (max-width: 640px) {
@@ -25,21 +26,21 @@
   border: 0;
   padding: 0;
   cursor: pointer;
-  background: repeating-linear-gradient(
-    135deg,
-    var(--sst-thumb),
-    var(--sst-thumb) 8px,
-    var(--sst-panel-3) 8px,
-    var(--sst-panel-3) 16px
-  );
+  background: var(--sst-thumb);
   min-height: 200px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
   color: var(--sst-dim);
-  font-size: 11px;
 }
-.preview span {
-  padding: 10px 12px;
+/* no stack yet: the target's name, quietly, where the picture will go */
+.previewName {
+  color: var(--sst-on-scrim);
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
 }
 .preview img {
   width: 100%;
@@ -58,8 +59,7 @@
 }
 .designation {
   margin-left: 0.6em;
-  font-family: var(--sst-font-mono);
-  font-size: 0.6em;
+  font-size: 0.65em;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--sst-muted);
@@ -73,18 +73,8 @@
 .bars {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin-top: 4px;
-}
-.barRow {
-  display: grid;
-  grid-template-columns: 54px 1fr 78px;
-  gap: 10px;
-  align-items: center;
-  font-size: 13px;
-}
-.barRow > span:last-child {
-  text-align: right;
 }
 .bar {
   height: 6px;
@@ -98,18 +88,6 @@
 .bar > span {
   display: block;
   height: 100%;
-}
-.barOk {
-  background: var(--sst-accent);
-}
-/* captured but not graded yet: waiting for calibration or grading */
-.barWait {
-  background: repeating-linear-gradient(135deg, var(--sst-muted) 0 3px, transparent 3px 6px);
-  opacity: 0.7;
-}
-.barRej {
-  background: var(--sst-bad);
-  opacity: 0.75;
 }
 .cardFoot {
   display: flex;
@@ -165,19 +143,6 @@
   flex-direction: column;
   gap: 16px;
 }
-.statNums {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-}
-.statNums > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.statNums strong {
-  font-size: 22px;
-}
 .statGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -187,24 +152,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-.statRow {
-  display: grid;
-  grid-template-columns: minmax(80px, 160px) 1fr 80px;
-  gap: 10px;
-  align-items: center;
-  font-size: 13px;
-}
-.statBar {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--sst-line);
-}
-.statBar span {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  background: var(--sst-accent);
 }
 .stats {
   position: relative;
@@ -217,6 +164,61 @@
   position: absolute;
   top: 14px;
   right: 140px;
+}
+.figure {
+  color: var(--sst-data);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.readouts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.readoutsHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.readoutsHead h2 {
+  margin: 0;
+}
+.tileLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--sst-radius);
+}
+.tileLink:hover > section {
+  border-color: var(--sst-accent-line);
+}
+.tileLink:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 2px;
+}
+.quietLink {
+  color: var(--sst-text);
+  text-decoration: underline;
+  text-decoration-color: var(--sst-line);
+  text-underline-offset: 2px;
+}
+.quietLink:hover {
+  color: var(--sst-accent);
+  text-decoration: underline;
+}
+.addTo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.addTo select {
+  max-width: 14rem;
+}
+.addTo input {
+  width: 11rem;
 }
 .ungroupedName {
   display: flex;
@@ -236,11 +238,14 @@
   font-size: 13px;
   color: var(--sst-muted);
 }
-.whereFilter select {
-  background: var(--sst-panel-3);
-  color: var(--sst-text);
-  border: 1px solid var(--sst-line);
-  border-radius: var(--sst-radius-sm);
-  padding: 5px 8px;
-  font: inherit;
+
+/* small art on a phone (D18): the picture is a strip, not a screenful */
+@media (max-width: 640px) {
+  .preview {
+    min-height: 88px;
+    max-height: 140px;
+  }
+  .preview img {
+    max-height: 140px;
+  }
 }

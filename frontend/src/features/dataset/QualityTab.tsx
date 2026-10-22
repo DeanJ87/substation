@@ -4,7 +4,8 @@ import { Glance } from '../../components/Glance'
 import { Link } from '@tanstack/react-router'
 import { Zoomable } from '../../components/CloseLook'
 import { useEffect, useMemo, useState } from 'react'
-import { Button } from '../../components/ui'
+import { Button, buttonClass, Chip } from '../../components/ui'
+import { Help } from '../../components/Help'
 import { VerdictIcon } from '../../components/VerdictBadge'
 import { clockText, dateTimeText, nightShort, nightText, numText, timeText } from '../format'
 import { fwhmText, num, previewUrl, useVerdict, type Session, type Sub } from '../v2/hooks'
@@ -109,37 +110,38 @@ export function QualityTab({
         <section className={`${v.card} ${v.cardPad}`}>
           <Collapsible id="quality-sessions" title="Sessions" meta={sessions.length}>
             <div className={s.chartHead}>
+              <span className={`${v.muted} ${v.note}`}>
+                Each session: the middle 80% as a box, the median as a bar
+              </span>
               {years.length > 1 && (
                 <span className={v.pills}>
-                  <button type="button" className={v.pill} aria-pressed={!year} onClick={() => setYear(null)}>
+                  <Chip pressed={!year} onClick={() => setYear(null)}>
                     All
-                  </button>
+                  </Chip>
                   {years.map((y) => (
-                    <button
-                      key={y}
-                      type="button"
-                      className={v.pill}
-                      aria-pressed={year === y}
-                      onClick={() => setYear(y)}
-                    >
+                    <Chip key={y} pressed={year === y} onClick={() => setYear(y)}>
                       {y}
-                    </button>
+                    </Chip>
                   ))}
                 </span>
               )}
               {sessions.length > 1 && (
-                <button
-                  type="button"
-                  className={v.pill}
-                  aria-pressed={chosen === ALL}
-                  onClick={() => setNight(ALL)}
-                >
-                  All sessions · {subs.length} subs
-                </button>
+                <Chip pressed={chosen === ALL} onClick={() => setNight(ALL)} count={subs.length}>
+                  All sessions
+                </Chip>
               )}
             </div>
             <div className={s.overview}>
-              {METRICS.map((m) => {
+              {/* metrics nothing recorded fold into one line instead of rows of crosses */}
+              {(() => {
+                const none = METRICS.filter((m) => !ordered.some((x) => spread(x, m.key).median != null))
+                return none.length ? (
+                  <p className={`${v.muted} ${v.note} ${s.ovNone}`}>
+                    Not recorded: {none.map((m) => m.label).join(', ')}
+                  </p>
+                ) : null
+              })()}
+              {METRICS.filter((m) => ordered.some((x) => spread(x, m.key).median != null)).map((m) => {
                 const vals = ordered.map((x) => spread(x, m.key))
                 const nums = vals
                   .flatMap((x) => [x.p10, x.p90, x.median])
@@ -156,8 +158,15 @@ export function QualityTab({
                             : x[m.key as 'background' | 'sqm'],
                       )
                 const med = median(all.filter((x): x is number => x != null))
-                const lo = Math.min(...nums)
-                const hi = Math.max(...nums)
+                const digits = m.key === 'fwhm' || m.key === 'sqm' || m.key === 'guiding' ? 2 : 0
+                // a padded domain, so a session's spread reads against the others rather than filling the strip
+                const rawLo = Math.min(...nums)
+                const rawHi = Math.max(...nums)
+                const padding = rawHi > rawLo ? (rawHi - rawLo) * 0.15 : Math.abs(rawLo) * 0.05 || 1
+                const lo = rawLo - padding
+                const hi = rawHi + padding
+                // background below zero is the sky after the bias offset, not a fault (C42)
+                const biased = m.key === 'background' && rawLo < 0
                 return (
                   <div key={m.key} className={s.ovRow}>
                     <div>
@@ -166,75 +175,99 @@ export function QualityTab({
                         {m.key === 'sqm' || m.key === 'guiding'
                           ? `${recorded} of ${sessions.length} recorded`
                           : med != null
-                            ? `median ${num(med, m.key === 'fwhm' ? 2 : 0)}${m.unit}`
+                            ? `median ${num(med, digits)}${m.unit}`
                             : 'not measured yet'}
+                        {biased && (
+                          <>
+                            , relative to bias{' '}
+                            <Help topic="Background below zero">
+                              Background is measured after the bias level is taken off, so a dark sky can read
+                              below zero. Lower is darker.
+                            </Help>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <svg
-                      className={s.ovChart}
-                      viewBox={`0 0 ${OV_W} ${OV_H}`}
-                      role="img"
-                      aria-label={`${m.label} per session`}
-                    >
-                      {vals.map((x, i) => {
-                        const cx = colX(i, ordered.length)
-                        const isSel = ordered[i].night === chosen
-                        const flat = !Number.isFinite(lo) || hi === lo
-                        const y = (val: number) =>
-                          flat ? OV_H / 2 : OV_H - 4 - ((val - lo) / (hi - lo)) * (OV_H - 8)
-                        const digits = m.key === 'fwhm' ? 2 : m.key === 'sqm' ? 2 : 0
-                        return (
-                          <g key={i} onClick={() => setNight(ordered[i].night)} className={s.ovCol}>
-                            <title>
-                              {x.median == null
-                                ? `${nightText(ordered[i].night)}: not recorded`
-                                : `${nightText(ordered[i].night)}: median ${num(x.median, digits)}${m.unit}` +
-                                  (x.p10 != null && x.p90 != null
-                                    ? `, 10th–90th percentile ${num(x.p10, digits)}–${num(x.p90, digits)}${m.unit}`
-                                    : '')}
-                            </title>
-                            <rect
-                              x={cx - colW(ordered.length) / 2}
-                              y={0}
-                              width={colW(ordered.length)}
-                              height={OV_H}
-                              className={isSel ? s.ovSel : s.ovHit}
-                            />
-                            {x.median == null ? (
-                              <path
-                                d={`M${cx - 3} ${OV_H / 2 - 3}l6 6M${cx + 3} ${OV_H / 2 - 3}l-6 6`}
-                                className={s.ovMissing}
+                    <div className={s.ovStrip}>
+                      <span className={s.ovScale} aria-hidden="true">
+                        <span>{num(rawHi, digits)}</span>
+                        <span>{num(rawLo, digits)}</span>
+                      </span>
+                      <svg
+                        className={s.ovChart}
+                        viewBox={`0 0 ${OV_W} ${OV_H}`}
+                        preserveAspectRatio="none"
+                        role="img"
+                        aria-label={`${m.label} per session: ${vals
+                          .map((x, i) =>
+                            x.median == null
+                              ? `${nightText(ordered[i].night)} not recorded`
+                              : `${nightText(ordered[i].night)} median ${num(x.median, digits)}`,
+                          )
+                          .join('; ')}`}
+                      >
+                        <line x1={0} x2={OV_W} y1={OV_H - 1} y2={OV_H - 1} className={s.ovBase} />
+                        {vals.map((x, i) => {
+                          const cx = colX(i, ordered.length)
+                          const isSel = ordered[i].night === chosen
+                          const y = (val: number) => OV_H - 4 - ((val - lo) / (hi - lo)) * (OV_H - 8)
+                          const w = Math.min(14, colW(ordered.length) * 0.6)
+                          return (
+                            <g key={i} onClick={() => setNight(ordered[i].night)} className={s.ovCol}>
+                              <title>
+                                {x.median == null
+                                  ? `${nightText(ordered[i].night)}: not recorded`
+                                  : `${nightText(ordered[i].night)}: median ${num(x.median, digits)}${m.unit}` +
+                                    (x.p10 != null && x.p90 != null
+                                      ? `, 10th–90th percentile ${num(x.p10, digits)}–${num(x.p90, digits)}${m.unit}`
+                                      : '')}
+                              </title>
+                              <rect
+                                x={cx - colW(ordered.length) / 2}
+                                y={0}
+                                width={colW(ordered.length)}
+                                height={OV_H}
+                                className={isSel ? s.ovSel : s.ovHit}
                               />
-                            ) : (
-                              <>
-                                {x.p10 != null && x.p90 != null && (
-                                  <rect
-                                    x={cx - 2}
-                                    y={Math.min(y(x.p10), y(x.p90))}
-                                    width={4}
-                                    height={Math.max(Math.abs(y(x.p10) - y(x.p90)), 0.5)}
-                                    rx={2}
-                                    className={s.ovBar}
-                                  />
-                                )}
-                                <circle
-                                  cx={cx}
-                                  cy={y(x.median)}
-                                  r={3}
-                                  className={isSel ? s.ovDotSel : s.ovDot}
+                              {x.median == null ? (
+                                <path
+                                  d={`M${cx - 3} ${OV_H / 2 - 3}l6 6M${cx + 3} ${OV_H / 2 - 3}l-6 6`}
+                                  className={s.ovMissing}
                                 />
-                              </>
-                            )}
-                          </g>
-                        )
-                      })}
-                    </svg>
+                              ) : (
+                                <>
+                                  {/* the middle 80% of the session as a box, its median as a bar across it */}
+                                  {x.p10 != null && x.p90 != null && (
+                                    <rect
+                                      x={cx - w / 2}
+                                      y={Math.min(y(x.p10), y(x.p90))}
+                                      width={w}
+                                      height={Math.max(Math.abs(y(x.p10) - y(x.p90)), 1)}
+                                      rx={2}
+                                      className={s.ovBar}
+                                    />
+                                  )}
+                                  <rect
+                                    x={cx - w / 2 - 3}
+                                    y={y(x.median) - 1.5}
+                                    width={w + 6}
+                                    height={3}
+                                    rx={1.5}
+                                    className={isSel ? s.ovDotSel : s.ovDot}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )
+                        })}
+                      </svg>
+                    </div>
                   </div>
                 )
               })}
               <div className={s.ovRow}>
                 <span />
-                <div className={s.ovAxis}>
+                <div className={`${s.ovAxis} ${s.ovAxisPad}`}>
                   {axisLabels(ordered.map((x) => x.night)).map((a) => (
                     <span
                       key={a.i}
@@ -261,7 +294,6 @@ export function QualityTab({
               }
               meta={
                 <span className={s.legend}>
-                  <span className={s.lgFwhm}>— FWHM</span> <span className={s.lgSqm}>— SQM</span>{' '}
                   <VerdictIcon state="down" size={12} title="" /> weighted{' '}
                   <VerdictIcon state="reject" size={12} title="" /> rejected
                 </span>
@@ -289,7 +321,7 @@ export function QualityTab({
                     {th('time', 'Time', tb.nowrap)}
                     {th('fwhm', 'FWHM', tb.num)}
                     {th('stars', 'Stars', tb.num)}
-                    {th('bg', 'BG', tb.num)}
+                    {th('bg', 'Background', tb.num)}
                     {th('sqm', 'SQM', tb.num)}
                     {th('alt', 'Alt', tb.num)}
                     {hasFocus && th('focus', 'Focus', tb.num)}
@@ -390,8 +422,20 @@ function median(values: number[]): number | null {
   return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2
 }
 
+/** Three tick values for a y-axis: low, middle, high, at the data's own precision. */
+function yTicks(lo: number, hi: number): number[] {
+  if (hi <= lo) return [lo]
+  return [lo, (lo + hi) / 2, hi]
+}
+
+// shared geometry for the stacked charts: the same x positions so a sub lines up in both
+const CW = 900
+const ML = 66 // room for the y-axis values, and a gap before the first sub
+const MR = 16
+
 /** One night against the clock; with every session, subs side by side in capture order (nights apart in time
- * would otherwise leave long empty gaps), labelled by night. */
+ * would otherwise leave long empty gaps), labelled by night. FWHM and SQM are two charts, one scale each, one
+ * above the other on the same x (never one chart with two unlabelled scales). */
 function NightChart({
   subs,
   onPick,
@@ -409,32 +453,26 @@ function NightChart({
 }) {
   const pts = subs.filter((x) => x.time)
   if (pts.length < 2) return <p className={v.muted}>Too few subs to chart.</p>
-  const W = 900
   const H = 200
   const t = pts.map((x) => new Date(x.time!).getTime())
   const t0 = Math.min(...t)
   const t1 = Math.max(...t)
   const fw = pts.map((x) => x.fwhm_arcsec ?? x.fwhm_px ?? null)
   const fvals = fw.filter((x): x is number => x != null)
+  const arcsec = pts.some((x) => x.fwhm_arcsec != null)
   const sq = pts.map((x) => x.sqm)
   const svals = sq.filter((x): x is number => x != null)
+  const span = CW - ML - MR
   const xOf = bySub
-    ? (i: number) => 30 + (i / Math.max(1, pts.length - 1)) * (W - 60)
-    : (i: number) => 30 + ((t[i] - t0) / Math.max(1, t1 - t0)) * (W - 60)
+    ? (i: number) => ML + (i / Math.max(1, pts.length - 1)) * span
+    : (i: number) => ML + ((t[i] - t0) / Math.max(1, t1 - t0)) * span
   const nightStarts = pts
     .map((x, i) => ({ i, night: x.night }))
     .filter((x, i) => i === 0 || pts[i - 1].night !== x.night)
   const every = Math.max(1, Math.ceil(nightStarts.length / 8))
-  const scale = (series: number[], val: number) => {
-    const lo = Math.min(...series)
-    const hi = Math.max(...series)
-    return 170 - ((val - lo) / Math.max(1e-9, hi - lo)) * 140
-  }
-  const path = (series: (number | null)[], all: number[]) =>
-    series
-      .map((val, i) => (val == null ? null : `${xOf(i)},${scale(all, val)}`))
-      .filter(Boolean)
-      .join(' ')
+  const fLo = Math.min(...fvals)
+  const fHi = Math.max(...fvals)
+  const yF = (val: number) => 170 - ((val - fLo) / Math.max(1e-9, fHi - fLo)) * 140
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => t0 + f * (t1 - t0))
   const medF = median(fvals)
   // per night: its own median (dashed) and its cloud passes, runs of subs with under 60% of that night's median
@@ -462,99 +500,170 @@ function NightChart({
       }
     }
   }
-  const half = (W - 60) / Math.max(1, pts.length - 1) / 2
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H + 20}`}
-      className={s.nightChart}
-      role="img"
-      aria-label="FWHM and SQM over the night"
-    >
-      {passes.map((c) => (
-        <rect
-          key={`c${c.from}`}
-          x={xOf(c.from) - half}
-          y={20}
-          width={Math.max(4, xOf(c.to) - xOf(c.from) + 2 * half)}
-          height={H - 20}
-          className={s.cloudBand}
-        >
-          <title>Likely cloud · {c.to - c.from + 1} subs</title>
-        </rect>
-      ))}
-      {bySub
-        ? nightMedians.map(
-            (n) =>
-              n.med != null && (
-                <line
-                  key={`m${n.from}`}
-                  x1={xOf(n.from) - half}
-                  x2={xOf(n.to) + half}
-                  y1={scale(fvals, n.med)}
-                  y2={scale(fvals, n.med)}
-                  className={s.medLine}
-                />
-              ),
-          )
-        : medF != null && (
-            <line x1={30} x2={W - 30} y1={scale(fvals, medF)} y2={scale(fvals, medF)} className={s.medLine} />
-          )}
-      {svals.length > 1 && <polyline points={path(sq, svals)} className={s.sqmLine} />}
-      {fvals.length > 1 && <polyline points={path(fw, fvals)} className={s.fwhmLine} />}
-      {pts.map((x, i) => {
-        const val = fw[i]
-        if (val == null) return null
-        const y = scale(fvals, val)
-        const cls = x.verdict === 'reject' ? s.ptReject : x.verdict === 'down' ? s.ptDown : s.pt
-        return (
-          <g
-            key={x.sha256}
-            onClick={() => onPick(x.sha256)}
-            onMouseEnter={() => onHover(x.sha256)}
-            onMouseLeave={() => onHover(null)}
-            className={s.ptHit}
-          >
-            <title>
-              {x.night ? `${nightText(x.night)} ` : ''}
-              {timeText(x.time)} · {fwhmText(x)} · {num(x.stars)} stars
-            </title>
-            {(x.sha256 === selected || x.sha256 === hovered) && (
-              <circle cx={xOf(i)} cy={y} r={9} className={s.ptRing} />
-            )}
-            {x.verdict === 'reject' ? (
-              <rect x={xOf(i) - 3.5} y={y - 3.5} width={7} height={7} className={cls} />
-            ) : x.verdict === 'down' ? (
-              <path d={`M${xOf(i) - 4} ${y - 3}h8l-4 7z`} className={cls} />
-            ) : (
-              <circle cx={xOf(i)} cy={y} r={3} className={cls} />
-            )}
-          </g>
-        )
-      })}
+  const half = span / Math.max(1, pts.length - 1) / 2
+  const xAxis = (y: number) => (
+    <>
       {bySub &&
-        nightStarts.map((n, k) => (
-          <g key={n.i}>
-            {k > 0 && <line x1={xOf(n.i) - 2} x2={xOf(n.i) - 2} y1={20} y2={H} className={s.nightSep} />}
-            {k % every === 0 && n.night && (
-              <text x={xOf(n.i)} y={H + 14} className={s.tick} textAnchor="start">
+        nightStarts.map(
+          (n, k) =>
+            k % every === 0 &&
+            n.night && (
+              <text key={n.i} x={xOf(n.i)} y={y} className={s.tick} textAnchor="start">
                 {nightShort(n.night)}
               </text>
-            )}
-          </g>
-        ))}
+            ),
+        )}
       {!bySub &&
         ticks.map((tk) => (
           <text
             key={tk}
-            x={30 + ((tk - t0) / Math.max(1, t1 - t0)) * (W - 60)}
-            y={H + 14}
+            x={ML + ((tk - t0) / Math.max(1, t1 - t0)) * span}
+            y={y}
             className={s.tick}
             textAnchor="middle"
           >
             {clockText(tk)}
           </text>
         ))}
-    </svg>
+    </>
+  )
+  const nightSeps = (y1: number, y2: number) =>
+    bySub &&
+    nightStarts.map(
+      (n, k) =>
+        k > 0 && (
+          <line key={n.i} x1={xOf(n.i) - 2} x2={xOf(n.i) - 2} y1={y1} y2={y2} className={s.nightSep} />
+        ),
+    )
+  const sLo = Math.min(...svals)
+  const sHi = Math.max(...svals)
+  const SH = 110
+  const yS = (val: number) => 90 - ((val - sLo) / Math.max(1e-9, sHi - sLo)) * 70
+  return (
+    <div className={s.charts}>
+      <svg viewBox={`0 0 ${CW} ${H + 20}`} className={s.nightChart} role="img" aria-label="FWHM of each sub">
+        <text x={4} y={12} className={s.axisTitle}>
+          FWHM {arcsec ? '(″)' : '(px)'}
+        </text>
+        {fvals.length > 0 &&
+          yTicks(fLo, fHi).map((v0) => (
+            <g key={v0}>
+              <line x1={ML} x2={CW - MR} y1={yF(v0)} y2={yF(v0)} className={s.grid} />
+              <text x={ML - 16} y={yF(v0) + 4} className={s.tick} textAnchor="end">
+                {num(v0, 2)}
+              </text>
+            </g>
+          ))}
+        {passes.map((c) => (
+          <rect
+            key={`c${c.from}`}
+            x={xOf(c.from) - half}
+            y={20}
+            width={Math.max(4, xOf(c.to) - xOf(c.from) + 2 * half)}
+            height={H - 20}
+            className={s.cloudBand}
+          >
+            <title>Likely cloud · {c.to - c.from + 1} subs</title>
+          </rect>
+        ))}
+        {bySub
+          ? nightMedians.map(
+              (n) =>
+                n.med != null && (
+                  <line
+                    key={`m${n.from}`}
+                    x1={xOf(n.from) - half}
+                    x2={xOf(n.to) + half}
+                    y1={yF(n.med)}
+                    y2={yF(n.med)}
+                    className={s.medLine}
+                  />
+                ),
+            )
+          : medF != null && <line x1={ML} x2={CW - MR} y1={yF(medF)} y2={yF(medF)} className={s.medLine} />}
+        {fvals.length > 1 && (
+          <polyline
+            points={fw
+              .map((val, i) => (val == null ? null : `${xOf(i)},${yF(val)}`))
+              .filter(Boolean)
+              .join(' ')}
+            className={s.fwhmLine}
+          />
+        )}
+        {pts.map((x, i) => {
+          const val = fw[i]
+          if (val == null) return null
+          const y = yF(val)
+          const cls = x.verdict === 'reject' ? s.ptReject : x.verdict === 'down' ? s.ptDown : s.pt
+          return (
+            <g
+              key={x.sha256}
+              onClick={() => onPick(x.sha256)}
+              onMouseEnter={() => onHover(x.sha256)}
+              onMouseLeave={() => onHover(null)}
+              className={s.ptHit}
+            >
+              <title>
+                {x.night ? `${nightText(x.night)} ` : ''}
+                {timeText(x.time)} · {fwhmText(x)} · {num(x.stars)} stars
+              </title>
+              {(x.sha256 === selected || x.sha256 === hovered) && (
+                <circle cx={xOf(i)} cy={y} r={9} className={s.ptRing} />
+              )}
+              {x.verdict === 'reject' ? (
+                <rect x={xOf(i) - 3.5} y={y - 3.5} width={7} height={7} className={cls} />
+              ) : x.verdict === 'down' ? (
+                <path d={`M${xOf(i) - 4} ${y - 3}h8l-4 7z`} className={cls} />
+              ) : (
+                <circle cx={xOf(i)} cy={y} r={3} className={cls} />
+              )}
+            </g>
+          )
+        })}
+        {nightSeps(20, H)}
+        {xAxis(H + 14)}
+      </svg>
+      {svals.length > 1 && (
+        <svg
+          viewBox={`0 0 ${CW} ${SH + 20}`}
+          className={s.nightChart}
+          role="img"
+          aria-label="Sky brightness (SQM) of each sub"
+        >
+          <text x={4} y={12} className={s.axisTitle}>
+            SQM (mag/″², higher is darker)
+          </text>
+          {yTicks(sLo, sHi).map((v0) => (
+            <g key={v0}>
+              <line x1={ML} x2={CW - MR} y1={yS(v0)} y2={yS(v0)} className={s.grid} />
+              <text x={ML - 16} y={yS(v0) + 4} className={s.tick} textAnchor="end">
+                {num(v0, 2)}
+              </text>
+            </g>
+          ))}
+          <polyline
+            points={sq
+              .map((val, i) => (val == null ? null : `${xOf(i)},${yS(val)}`))
+              .filter(Boolean)
+              .join(' ')}
+            className={s.sqmLine}
+          />
+          {pts.map(
+            (x, i) =>
+              sq[i] != null && (
+                <circle key={x.sha256} cx={xOf(i)} cy={yS(sq[i]!)} r={2.5} className={s.sqmPt}>
+                  <title>
+                    {x.night ? `${nightText(x.night)} ` : ''}
+                    {timeText(x.time)} · SQM {num(sq[i], 2)}
+                  </title>
+                </circle>
+              ),
+          )}
+          {nightSeps(20, SH)}
+          {xAxis(SH + 14)}
+        </svg>
+      )}
+    </div>
   )
 }
 
@@ -595,7 +704,7 @@ export function Inspector({ sub, session }: { sub: Sub; session?: Session }) {
         ) : (
           <span>No preview</span>
         )}
-        <Link to="/subs/$sha" params={{ sha: sub.sha256 }} className={v.pill}>
+        <Link to="/subs/$sha" params={{ sha: sub.sha256 }} className={buttonClass({ size: 'sm' })}>
           Open full size
         </Link>
       </div>
@@ -656,7 +765,12 @@ export function Inspector({ sub, session }: { sub: Sub; session?: Session }) {
             {session?.stars.median != null && <span className={v.muted}> / {num(session.stars.median)}</span>}
           </dd>
           <dt>Background</dt>
-          <dd className={v.mono}>{num(sub.background)} ADU</dd>
+          <dd className={v.mono}>
+            {num(sub.background)} ADU
+            {sub.background != null && sub.background < 0 && (
+              <span className={v.muted}> relative to bias</span>
+            )}
+          </dd>
           <dt>Eccentricity</dt>
           <dd className={v.mono}>{num(sub.eccentricity, 2)}</dd>
           <dt>SQM</dt>
