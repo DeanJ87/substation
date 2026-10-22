@@ -86,3 +86,6 @@ Built for calibration sets and frames, datasets and failed jobs. Archiving colle
 - **016-DR-02** Archiving a collection or bringing it back (spec 013) is recorded as a change of kind `archive`.
   Undoing one that hasn't started cancels it; otherwise the files are moved back the other way once the first move
   stops.
+- **016-DR-03** (2026-10-22) Project changes are undoable: create, edit, done, assign, sort into seasons, merge,
+  split and delete. Undoing a merge or delete recreates the project with its own id, its datasets, goals, finished
+  links and combined masters.

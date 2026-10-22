@@ -256,3 +256,27 @@ The renderer reads the live render API; SubStation no longer writes into the pro
   typed processing list and the default steps in Settings are gone. Link suggestions now need a shared catalogue
   number or name (a shared year only ranks them), at most five. The app shows each output file as a thumbnail with
   a larger preview.
+- **020-DR-16** (2026-10-22) Nightscapes and videos have no subs, so they are offered with a final image alone and
+  their page has no linking or distance section; their render data has no capture data. A file whose name says the
+  stars were put back (`recombined`, `recomposed`, `stars-back`) is guessed as the final, whatever else its name
+  says. The page asks for the render-data preview only when there is something to build, rather than logging a
+  refused request on every load.
+- **020-DR-15** (2026-10-22) SubStation builds cumulative progressive stacks for a finished project: a stack after
+  each night in capture order (night 1; nights 1–2; …; all), grouped into at most 12 checkpoints with date-range
+  labels when there are more nights. All kept subs are registered once to one pinned reference, then each
+  checkpoint stacks its prefix per channel with the same options as master builds. Every checkpoint gets one crop,
+  is level-matched to the full stack, and uses the full stack's stretch, so the signal stays put and the noise
+  visibly falls. Channels are combined HOO, SHO, RGB or OSC from the filters. Images are JPEGs of at most 2400 px
+  in SubStation's own cache, never in the Completed library; unchanged subs reuse them. It runs as a background job
+  at lower priority than master builds, from Generate on the finished project's page, and after linking when no
+  sub needs calibrating again. The render data lists them as `frames.progression` (file key `progression/<n>`) with
+  `frames.progression_info`; the owner's own progressive exports (`frames.progressive`) stay and take precedence.
+  First version: single-field projects with one pixel scale; L is left out of LRGB; no rebuild when subs change
+  until Generate is pressed again.
+- **020-DR-17** (2026-10-22) Whether a finished image is a mosaic follows the linked project's kind in force: the
+  owner's choice when set (020-DR-10 still holds), otherwise worked out from its panels. A linked project is never
+  merged into another automatically; deleting one unlinks it with a warning.
+- **020-DR-18** (2026-10-22) Progression stacks are weighted by noise, whatever master builds use: checked against
+  real Siril, sharpness weighting gave the softest sub of a two-sub stack almost no weight, hiding the noise drop the
+  progression is there to show. Siril's select and unselect take positions in the registered sequence (a sub that
+  failed to register leaves a gap in file numbers), and a stack without the reference image still aligns.

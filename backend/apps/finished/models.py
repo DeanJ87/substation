@@ -168,3 +168,44 @@ class ApiToken(models.Model):
     def active(self) -> bool:
         now = timezone.now()
         return self.revoked_at is None and (self.expires_at is None or self.expires_at > now)
+
+
+class ProgressionState(models.TextChoices):
+    NONE = "none", "Not built"
+    QUEUED = "queued", "Queued"
+    RUNNING = "running", "Building"
+    DONE = "done", "Done"
+    FAILED = "failed", "Failed"
+    CANCELLED = "cancelled", "Cancelled"
+    UNAVAILABLE = "unavailable", "Unavailable"
+
+
+class Progression(models.Model):
+    """Cumulative progressive stacks of a finished project (020-DR-15): a stack after each night (or group of
+    nights), all drawn with the full stack's crop and stretch so the noise is seen to fall. The images live in
+    SubStation's cache, never in Completed."""
+
+    project = models.OneToOneField(FinishedProject, on_delete=models.CASCADE, related_name="progression")
+    state = models.CharField(max_length=12, choices=ProgressionState.choices, default=ProgressionState.NONE)
+    reason = models.TextField(blank=True, default="", help_text="why it is unavailable, failed or waiting")
+    step = models.CharField(max_length=200, blank=True, default="")
+    progress = models.FloatField(default=0)
+    task = models.ForeignKey(
+        "substation_tasks.Task", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    mapping = models.CharField(max_length=8, blank=True, default="", help_text="HOO, SHO, RGB, OSC or MONO")
+    reference_frame = models.CharField(
+        max_length=64, blank=True, default="", help_text="sha of the reference"
+    )
+    input_hash = models.CharField(max_length=64, blank=True, default="")
+    checkpoints = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="[{order, nights, label, integration_s, subs, filters, hash, file}], cumulative",
+    )
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"Progression of {self.project}"

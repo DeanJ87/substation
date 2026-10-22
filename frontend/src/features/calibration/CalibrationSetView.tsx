@@ -10,9 +10,9 @@ import { useState } from 'react'
 import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
-import { Button, ErrorState, PageLoading } from '../../components/ui'
+import { Button, buttonClass, ErrorState, PageLoading } from '../../components/ui'
 import { VerdictBadge, type VerdictState } from '../../components/VerdictBadge'
-import { nightText, temp } from '../format'
+import { dateText, dateTimeText, nightText, numText, temp } from '../format'
 import {
   builtPreviewUrl,
   qaThumbUrl,
@@ -98,10 +98,9 @@ export function CalibrationSetView() {
         </div>
       </header>
 
-      {d.type === 'flat' && (
-        <p className={`${v.note} ${d.calibrator ? v.muted : v.warn}`}>
-          {d.calibrator ? `Calibrated by ${d.calibrator_note} ${d.calibrator}.` : d.calibrator_note}
-        </p>
+      {/* the master's "Calibrated with" row says which bias it used; only a missing one needs a sentence (C27) */}
+      {d.type === 'flat' && !d.calibrator && d.calibrator_note && (
+        <p className={`${v.note} ${v.warn}`}>{d.calibrator_note}</p>
       )}
 
       {latest && (
@@ -182,7 +181,8 @@ export function CalibrationSetView() {
                       <VerdictBadge state={state} label={f.override ? `${label} (you)` : label} />
                       {f.verdict && (
                         <button
-                          className={s.linkish}
+                          type="button"
+                          className={buttonClass({ variant: 'ghost', size: 'sm' })}
                           onClick={() =>
                             act.override.mutate({
                               sha256s: [f.sha256],
@@ -201,7 +201,7 @@ export function CalibrationSetView() {
                     </div>
                     {stats.median != null && (
                       <div className={v.muted}>
-                        median {stats.median.toFixed(0)} ADU · MAD {stats.mad?.toFixed(1)}
+                        median {numText(stats.median, 0)} ADU · MAD {numText(stats.mad, 1)}
                       </div>
                     )}
                     {f.reason && eff !== 'pass' && <div className={v.note}>{f.reason}</div>}
@@ -257,10 +257,8 @@ function BuiltCard({ b, forcing, onForce }: { b: Built; forcing: boolean; onForc
       meta={
         <span className={s.builtHead}>
           <VerdictBadge state={state} label={label} />
-          {b.finished_at
-            ? new Date(b.finished_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
-            : ''}
-          {b.engine_version ? ` · Siril ${b.engine_version}` : ''}
+          {b.finished_at ? dateTimeText(b.finished_at) : ''}
+          {b.engine_version ? ` · Siril ${b.engine_version.replace(/^siril\s+/i, '')}` : ''}
         </span>
       }
     >
@@ -322,7 +320,7 @@ function BuiltCard({ b, forcing, onForce }: { b: Built; forcing: boolean; onForc
               <>
                 <dt>Level</dt>
                 <dd className={v.mono}>
-                  {r.stats.median.toFixed(0)} ADU · MAD {r.stats.mad?.toFixed(1)}
+                  {numText(r.stats.median, 0)} ADU · MAD {numText(r.stats.mad, 1)}
                 </dd>
               </>
             )}
@@ -365,9 +363,7 @@ function BuiltCard({ b, forcing, onForce }: { b: Built; forcing: boolean; onForc
                   ) : (
                     <>
                       <span className={v.mono}>{r.comparison.against_file}</span>
-                      {r.comparison.against_date
-                        ? ` (${new Date(r.comparison.against_date).toLocaleDateString('en-GB', { dateStyle: 'medium' })})`
-                        : ''}
+                      {r.comparison.against_date ? ` (${dateText(r.comparison.against_date)})` : ''}
                       {r.comparison.kind === 'ratio' ? (
                         <>
                           : ratio spread {pct(r.comparison.spread, 2)}
@@ -379,8 +375,8 @@ function BuiltCard({ b, forcing, onForce }: { b: Built; forcing: boolean; onForc
                       ) : (
                         <>
                           : level {r.comparison.level_change_adu! >= 0 ? '+' : ''}
-                          {r.comparison.level_change_adu?.toFixed(1)} ADU, spread{' '}
-                          {r.comparison.spread?.toFixed(2)} ADU.
+                          {numText(r.comparison.level_change_adu, 1)} ADU, spread{' '}
+                          {numText(r.comparison.spread, 2)} ADU.
                         </>
                       )}
                     </>
@@ -414,12 +410,13 @@ function Profile({ values }: { values: number[] }) {
   const lo = Math.min(...values, 0.6)
   const pts = values.map((y, i) => `${(i / (values.length - 1)) * w},${h - ((y - lo) / (1.02 - lo)) * h}`)
   return (
-    <svg width={w} height={h} role="img" aria-label="Brightness from centre to corner">
-      <polyline points={pts.join(' ')} fill="none" stroke="var(--sst-accent)" strokeWidth="2" />
-      <text x={w} y={h - 2} textAnchor="end" fontSize="10" fill="var(--sst-muted)">
-        {pct(values[values.length - 1] - 1, 0)} at the edge
-      </text>
-    </svg>
+    <figure className={s.profile}>
+      <svg width={w} height={h} role="img" aria-label="Brightness from centre to corner">
+        <polyline points={pts.join(' ')} fill="none" stroke="var(--sst-chart-1)" strokeWidth="2" />
+      </svg>
+      {/* the figure under the curve, never on it (C27) */}
+      <figcaption className={v.muted}>{pct(values[values.length - 1] - 1, 0)} at the edge</figcaption>
+    </figure>
   )
 }
 

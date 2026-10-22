@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Button } from './ui'
 import s from './BulkBar.module.css'
+import { countText } from '../features/format'
 
 export function BulkBar({
   count,
@@ -34,7 +35,7 @@ export function BulkBar({
       }}
     >
       <strong aria-live="polite">
-        {count.toLocaleString('en-GB')} {count === 1 ? noun[0] : noun[1]} selected
+        {countText(count)} {count === 1 ? noun[0] : noun[1]} selected
       </strong>
       <div className={s.actions}>
         {children}

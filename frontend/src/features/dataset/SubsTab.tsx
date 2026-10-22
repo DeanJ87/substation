@@ -4,7 +4,7 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../api/client'
-import { Button, ConfirmButton } from '../../components/ui'
+import { Button, Chip, ChipGroup, ConfirmButton } from '../../components/ui'
 import { Modal } from '../../components/Modal'
 import { SubView } from '../sub/SubDetail'
 import { binMessage, useBinFiles } from '../settings/Bin'
@@ -13,7 +13,15 @@ import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import { VerdictIcon, type VerdictState } from '../../components/VerdictBadge'
-import { integrationText, nightText } from '../format'
+import {
+  clockText,
+  countText,
+  exposureText,
+  integrationText,
+  nightShort,
+  nightText,
+  numText,
+} from '../format'
 import {
   fwhmText,
   num,
@@ -46,9 +54,7 @@ export function verdictState(sub: Sub): VerdictState {
 }
 
 /** A sub's capture time, local, to the minute: what tells the subs of one night apart. */
-function tileTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-}
+const tileTime = clockText
 
 export function shortName(file: string): string {
   const m = file.match(/(_\d{3,5})(\.[a-z]+)?$/i)
@@ -200,25 +206,26 @@ export function SubsTab({
     return () => window.removeEventListener('keydown', key)
   })
 
+  const mixedExposure = new Set(subs.map((x) => x.exptime_s)).size > 1
   const selNights = [...new Set(subs.filter((x) => selected.has(x.sha256)).map((x) => x.night))]
   const sessionInfo = (n: string) => sessions.find((x) => x.night === n)
 
   return (
     <div className={s.subs}>
       <div className={s.filterBar}>
-        <div className={v.pills}>
-          <button className={v.pill} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
-            Sessions <strong>All {dataset.nights}</strong>
-          </button>
+        <ChipGroup label="Show">
+          <Chip pressed={filter === 'all'} onClick={() => setFilter('all')} count={countText(subs.length)}>
+            All
+          </Chip>
           {count('flagged') > 0 && (
-            <button
-              className={v.pill}
-              aria-pressed={filter === 'flagged'}
+            <Chip
+              pressed={filter === 'flagged'}
               onClick={() => setFilter('flagged')}
-              title="Rejected, down-weighted or within 10% of a threshold, and not decided by hand"
+              count={count('flagged')}
+              title={flaggedTitle(subs)}
             >
-              Flagged <span className={v.mono}>{count('flagged')}</span>
-            </button>
+              Needs a look
+            </Chip>
           )}
           {(
             [
@@ -227,51 +234,53 @@ export function SubsTab({
               ['reject', 'Rejected', 'reject'],
             ] as const
           ).map(([f, label, st]) => (
-            <button key={f} className={v.pill} aria-pressed={filter === f} onClick={() => setFilter(f)}>
-              <VerdictIcon state={st} size={13} title="" /> {label} <span className={v.mono}>{count(f)}</span>
-            </button>
-          ))}
-          <button className={v.pill} aria-pressed={filter === 'manual'} onClick={() => setFilter('manual')}>
-            M Manual <span className={v.mono}>{count('manual')}</span>
-          </button>
-          {count('waiting') > 0 && (
-            <button
-              className={v.pill}
-              aria-pressed={filter === 'waiting'}
-              onClick={() => setFilter('waiting')}
+            <Chip
+              key={f}
+              pressed={filter === f}
+              onClick={() => setFilter(f)}
+              count={count(f)}
+              icon={<VerdictIcon state={st} size={13} title="" />}
             >
-              <VerdictIcon state="await" size={13} title="" /> Not graded yet{' '}
-              <span className={v.mono}>{count('waiting')}</span>
-            </button>
+              {label}
+            </Chip>
+          ))}
+          {count('manual') > 0 && (
+            <Chip pressed={filter === 'manual'} onClick={() => setFilter('manual')} count={count('manual')}>
+              Decided by hand
+            </Chip>
           )}
-        </div>
+          {count('waiting') > 0 && (
+            <Chip
+              pressed={filter === 'waiting'}
+              onClick={() => setFilter('waiting')}
+              count={count('waiting')}
+              icon={<VerdictIcon state="await" size={13} title="" />}
+            >
+              Not graded yet
+            </Chip>
+          )}
+        </ChipGroup>
+        {/* one action bar, for what's shown (C15): agree while reviewing, bin while looking at the rejects */}
         <span className={v.actions}>
-          {count('flagged') > 0 && (
+          {filter === 'flagged' && count('flagged') > 0 && (
             <ConfirmButton
-              question={
-                <>
-                  Agree with the automatic grades of all {count('flagged')} flagged subs? Each becomes your
-                  own verdict and leaves the review list. You can undo it.
-                </>
-              }
+              question={<>Keep the automatic grade of all {count('flagged')} as your own? You can undo it.</>}
               confirm="Agree"
               onConfirm={() => agree.mutate({})}
             >
-              Agree with {count('flagged')} flagged
+              Agree with all {count('flagged')}
             </ConfirmButton>
           )}
-          {count('reject') > 0 && (
+          {filter === 'reject' && count('reject') > 0 && (
             <ConfirmButton
-              question={
-                <>Bin all {count('reject')} rejected subs? You can restore them from Settings → Bin.</>
-              }
+              variant="danger"
+              question={<>Bin all {count('reject')} rejected subs? You can restore them from the Bin.</>}
               confirm="Bin them"
               onConfirm={() => binRejected.mutate()}
             >
-              Bin {count('reject')} rejected
+              Bin all {count('reject')}
             </ConfirmButton>
           )}
-          <span className={v.muted}>Sort: capture time</span>
         </span>
       </div>
 
@@ -286,13 +295,47 @@ export function SubsTab({
             </span>
           </span>
           <div className={v.actions}>
-            <Button onClick={() => apply('accept')}>
+            <Button size="sm" onClick={() => apply('accept')}>
               <VerdictIcon state="accept" size={14} title="" /> Accept <kbd>A</kbd>
             </Button>
-            <Button onClick={() => apply('keep')}>
+            <Button size="sm" onClick={() => apply('keep')}>
               <VerdictIcon state="down" size={14} title="" /> Down-weight <kbd>W</kbd>
             </Button>
+            <Button size="sm" onClick={() => apply('reject')}>
+              <VerdictIcon state="reject" size={14} title="" /> Reject <kbd>R</kbd>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => apply('auto')}
+              title="Back to the automatic grade (U)"
+            >
+              Clear override
+            </Button>
+            {selected.size === 1 && (
+              <Button size="sm" variant="ghost" onClick={openReview}>
+                Open
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={stackSelected}
+              disabled={selected.size < 2}
+              title={
+                selected.size < 2 ? 'Choose at least two subs' : 'Stack these subs whatever their grades'
+              }
+            >
+              Stack these
+            </Button>
+            {selected.size < visible.length && (
+              <Button size="sm" variant="ghost" onClick={() => selectAll(visible)}>
+                Select all {countText(visible.length)}
+              </Button>
+            )}
             <ConfirmButton
+              size="sm"
+              variant="danger"
               question={
                 <>
                   Bin {selected.size} sub{selected.size === 1 ? '' : 's'}?
@@ -306,29 +349,13 @@ export function SubsTab({
             >
               Bin
             </ConfirmButton>
-            <Button onClick={() => apply('reject')}>
-              <VerdictIcon state="reject" size={14} title="" /> Reject <kbd>R</kbd>
-            </Button>
-            <Button onClick={() => apply('auto')}>
-              Clear override <kbd>U</kbd>
-            </Button>
-            {selected.size === 1 && (
-              <Button onClick={openReview}>
-                Open <kbd>Enter</kbd>
-              </Button>
-            )}
             <Button
-              onClick={stackSelected}
-              disabled={selected.size < 2}
-              title="Stack these subs regardless of grade"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelected(new Set())}
+              aria-label="Deselect (Esc)"
             >
-              Stack these {selected.size}
-            </Button>
-            {selected.size < visible.length && (
-              <Button onClick={() => selectAll(visible)}>Select all {visible.length} shown</Button>
-            )}
-            <Button onClick={() => setSelected(new Set())}>
-              Deselect <kbd>Esc</kbd>
+              ×
             </Button>
           </div>
         </div>
@@ -349,7 +376,8 @@ export function SubsTab({
           onClick={click}
           onOpen={openSub}
           onSelectAll={() => selectAll(list)}
-          onAgree={() => agree.mutate({ night })}
+          onAgree={filter === 'flagged' ? () => agree.mutate({ night }) : undefined}
+          mixedExposure={mixedExposure}
         />
       ))}
       <LoadMore hasMore={groups.hasMore} loading={false} onMore={groups.more} />
@@ -410,6 +438,7 @@ function SessionGroup({
   onOpen,
   onSelectAll,
   onAgree,
+  mixedExposure,
 }: {
   datasetId: number
   night: string
@@ -420,7 +449,8 @@ function SessionGroup({
   onClick: (sha: string, e: React.MouseEvent) => void
   onOpen: (sha: string) => void
   onSelectAll: () => void
-  onAgree: () => void
+  onAgree?: () => void
+  mixedExposure: boolean
 }) {
   const { visible, hasMore, more } = useProgressive(list, 120, resetKey)
   const flagged = list.filter(isFlagged).length
@@ -429,47 +459,47 @@ function SessionGroup({
     <Collapsible
       id={`dataset-${datasetId}-session-${night}`}
       title={nightText(night)}
-      meta={`${list.length.toLocaleString('en-GB')} subs · ${integrationText(list.reduce((n, x) => n + (x.exptime_s ?? 0), 0))}`}
+      meta={
+        <>
+          <span>
+            {countText(list.length)} subs ·{' '}
+            {integrationText(list.reduce((n, x) => n + (x.exptime_s ?? 0), 0))}
+          </span>
+          {!allSelected && (
+            <Button size="sm" variant="ghost" onClick={onSelectAll}>
+              Select all
+            </Button>
+          )}
+          {onAgree && flagged > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onAgree}
+              title="Keep the automatic grades of this night's flagged subs as your own"
+            >
+              Agree with {flagged}
+            </Button>
+          )}
+          {night !== 'unknown' && (
+            <Link to="/nights/$date" params={{ date: night }} className="quiet">
+              Night of {nightShort(night)} →
+            </Link>
+          )}
+        </>
+      }
       className={s.session}
     >
-      <div className={s.sessionHead}>
-        {info ? (
-          <span
-            className={v.muted}
-            title={
-              Object.entries(info.condition_sources ?? {})
-                .map(([k, src]) => `${k}: ${src}`)
-                .join('\n') || 'No conditions recorded'
-            }
-          >
-            {conditionsText(info.conditions) || 'no conditions recorded'}
-            {Object.keys(info.condition_sources ?? {}).length > 0 &&
-              ` · from ${[...new Set(Object.values(info.condition_sources ?? {}))].join(', ')}`}
-          </span>
-        ) : (
-          <span />
-        )}
-        <span className={v.actions}>
-          {!allSelected && (
-            <button type="button" className={v.pill} onClick={onSelectAll}>
-              Select all {list.length.toLocaleString('en-GB')}
-            </button>
-          )}
-          {flagged > 0 && (
-            <button
-              type="button"
-              className={v.pill}
-              onClick={onAgree}
-              title="Each flagged sub of this night keeps its automatic grade as your own verdict, and leaves the review list"
-            >
-              Agree with {flagged} flagged
-            </button>
-          )}
-          <Link to="/nights/$date" params={{ date: night }}>
-            The night
-          </Link>
-        </span>
-      </div>
+      {/* conditions only when there are some (C14); where each came from on hover */}
+      {info && conditionsText(info.conditions) && (
+        <div
+          className={`${v.muted} ${s.sessionHead}`}
+          title={Object.entries(info.condition_sources ?? {})
+            .map(([k, src]) => `${k}: ${src}`)
+            .join('\n')}
+        >
+          {conditionsText(info.conditions)}
+        </div>
+      )}
       <div className={s.tilePane}>
         <div className={s.tiles}>
           {visible.map((x) => (
@@ -479,6 +509,7 @@ function SessionGroup({
               selected={selected.has(x.sha256)}
               onClick={(e) => onClick(x.sha256, e)}
               onOpen={() => onOpen(x.sha256)}
+              showExposure={mixedExposure}
             />
           ))}
         </div>
@@ -493,11 +524,13 @@ function Tile({
   selected,
   onClick,
   onOpen,
+  showExposure,
 }: {
   sub: Sub
   selected: boolean
   onClick: (e: React.MouseEvent) => void
   onOpen: () => void
+  showExposure: boolean
 }) {
   const st = verdictState(sub)
   const title = sub.reason ?? sub.awaiting_reason ?? sub.error ?? 'Not graded yet'
@@ -528,18 +561,35 @@ function Tile({
         <button
           type="button"
           onClick={onOpen}
-          className={`${s.tileName} ${s.tileOpen} ${v.mono}`}
+          className={`${s.tileName} ${s.tileOpen}`}
           title={sub.file}
           aria-label={`Open ${sub.file}`}
         >
           {sub.time ? tileTime(sub.time) : shortName(sub.file)}
-          {sub.exptime_s ? <span className={v.muted}> · {sub.exptime_s} s</span> : null}
+          {showExposure && sub.exptime_s ? (
+            <span className={v.muted}> · {exposureText(sub.exptime_s)}</span>
+          ) : null}
         </button>
         <div className={`${v.mono} ${s.tileStats}`}>
           {fwhmText(sub)} · ★ {num(sub.stars)}
-          {sub.guiding != null ? ` · ${sub.guiding.toFixed(2)}″ RMS` : ''}
+          {sub.guiding != null ? ` · ${numText(sub.guiding, 2)}″ RMS` : ''}
         </div>
       </div>
     </div>
   )
+}
+
+/** Why "Needs a look" counts what it does: "6 rejected, 1 down-weighted, 1 near a threshold" (C16). */
+function flaggedTitle(subs: Sub[]): string {
+  const f = subs.filter(isFlagged)
+  const rej = f.filter((x) => x.verdict === 'reject').length
+  const down = f.filter((x) => x.verdict === 'down').length
+  const near = f.length - rej - down
+  return [
+    rej ? `${rej} rejected` : '',
+    down ? `${down} down-weighted` : '',
+    near ? `${near} accepted but near a threshold` : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
 }

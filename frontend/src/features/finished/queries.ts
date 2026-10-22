@@ -135,3 +135,40 @@ export function useFinishedActions(id: number) {
     }),
   }
 }
+
+export type Progression = components['schemas']['ProgressionOut']
+export type Checkpoint = components['schemas']['CheckpointOut']
+
+/** Still being built: the page asks again every few seconds until it isn't. */
+export const BUILDING = new Set(['queued', 'running'])
+
+/** The cumulative stacks after each night (020-DR-15): polled while queued or running, still otherwise. */
+export function useProgression(id: number) {
+  return useQuery({
+    queryKey: ['finished', id, 'progression'],
+    queryFn: async () => unwrap(await api.GET('/finished/{id}/progression', { params: { path: { id } } })),
+    refetchInterval: (q) => (BUILDING.has(q.state.data?.state ?? '') ? 3000 : false),
+  })
+}
+
+/** Generate (or, with force, rebuild) them. The server's refusal (409, unavailable) is an answer shown beside the
+ * button, not a failure toast. */
+export function useGenerateProgression(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (force: boolean): Promise<{ progression?: Progression; error?: string }> => {
+      try {
+        return {
+          progression: unwrap(
+            await api.POST('/finished/{id}/progression', { params: { path: { id } }, body: { force } }),
+          ),
+        }
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 409) return { error: e.message }
+        throw e
+      }
+    },
+    onSuccess: (r) => r.progression && qc.setQueryData(['finished', id, 'progression'], r.progression),
+    meta: { failed: "Couldn't start the progression" },
+  })
+}

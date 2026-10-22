@@ -113,7 +113,7 @@ def _fingerprint(proj: FinishedProject) -> str:
                 "role_label",
             )
         ),
-        "linked": [(p.pk, p.kind, p.planned_panels, p.collection_id) for p in linked],
+        "linked": [(p.pk, p.kind, p.planned_panels, p.collection_id, p.season) for p in linked],
         "collections": sorted(
             {
                 (p.collection.pk, p.collection.name, p.collection.objects_text, p.collection.constellation)
@@ -137,6 +137,9 @@ def _fingerprint(proj: FinishedProject) -> str:
             (s.site_lat, s.site_lon, s.site_region, s.site_bortle) for s in [InstallationSettings.load()]
         ],
     }
+    prog = _progression(proj)  # 020-DR-15: a new build of the cumulative stacks
+    if prog is not None and prog.checkpoints:  # absent otherwise, so other projects' fingerprints don't move
+        parts["progression"] = [prog.finished_at, [ck.get("hash") for ck in prog.checkpoints]]
     return hashlib.sha256(json.dumps(parts, default=str, sort_keys=True).encode()).hexdigest()
 
 
@@ -158,7 +161,9 @@ def offered(proj: FinishedProject) -> tuple[bool, str]:
     """Whether the render API offers the project, and why not."""
     if proj.missing:
         return False, "its folder is missing"
-    if not proj.linked_projects.exists():
+    if (
+        proj.kind == "astro" and not proj.linked_projects.exists()
+    ):  # nightscapes and videos have no subs to link
         return False, "not linked to a SubStation project"
     if "final" not in role_files(proj):
         return False, "needs a final image"
@@ -334,9 +339,12 @@ def _rigs(dss: list[Dataset], solves: list[PlateSolve]) -> list[dict[str, Any]]:
 
 
 def _is_mosaic(proj: FinishedProject) -> bool:
-    """The owner's project kind decides (020-DR-10): subs can carry panel numbers from capture software (a
-    mosaic template, a reframe) on what is really one field."""
-    return any(lp.kind == "mosaic" for lp in proj.linked_projects.all())
+    """The linked project's kind in force decides: the owner's choice wins (020-DR-10), as subs can carry panel
+    numbers from capture software (a mosaic template, a reframe) on what is really one field; else it's worked out
+    from the planned and shot panels."""
+    from apps.catalogue.services.projects import effective_kind
+
+    return any(effective_kind(lp) == "mosaic" for lp in proj.linked_projects.all())
 
 
 def _timeline(
@@ -424,7 +432,32 @@ def _frames(proj: FinishedProject) -> dict[str, Any]:
         else:
             frames[key] = f"{url}/{key}"
     frames["thumb"] = f"{url}/thumb"
+    # 020-DR-15: SubStation's own cumulative stacks; frames.progressive (the owner's files) stays as it is
+    prog = _progression(proj)
+    if prog is not None and prog.checkpoints:
+        frames["progression"] = [
+            {
+                "order": ck["order"],
+                "nights": ck.get("nights"),
+                "label": ck.get("label"),
+                "integration_s": ck.get("integration_s"),
+                "subs": ck.get("subs"),
+                "filters": ck.get("filters"),
+                "url": f"{url}/progression/{ck['order']}",
+            }
+            for ck in prog.checkpoints
+        ]
+        frames["progression_info"] = {
+            "mapping": prog.mapping or None,
+            "built_at": prog.finished_at.isoformat() if prog.finished_at else None,
+        }
     return frames
+
+
+def _progression(proj: FinishedProject):  # noqa: ANN202
+    from .models import Progression
+
+    return Progression.objects.filter(project=proj).first()
 
 
 def _capture(

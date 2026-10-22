@@ -123,8 +123,15 @@ class SearchOut(Schema):
 
 
 def _forms(token: str) -> list[str]:
+    """The token, a designation with and without its space, and a filter's canonical name ("Ha" finds "Hα")."""
+    from apps.ingest.fields import normalise_filter
+
     m = _DESIGNATION.match(token)
-    return [token, f"{m[1]} {m[2]}", f"{m[1]}{m[2]}"] if m else [token]
+    forms = [token, f"{m[1]} {m[2]}", f"{m[1]}{m[2]}"] if m else [token]
+    canon = normalise_filter(token, {}) if len(token) >= 2 else None
+    if canon and canon != token:
+        forms.append(canon)
+    return forms
 
 
 def _all_words(q: str, *fields: str) -> Q:

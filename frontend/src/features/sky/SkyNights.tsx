@@ -6,10 +6,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { locate, sequence } from './sequence'
 import { filterTint } from '../../components/filterTint'
+import { sortFilters } from '../../components/filters'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import type { Scope } from '../scope/scope'
-import { integrationText, shortDateText } from '../format'
+import { clockText, integrationText, monthText, shortDateText } from '../format'
 import { Dome, type DomeCtx, middle } from './Dome'
 import { type Pt3, type Shape, SHAPES, homeFor, marker, series } from './projection'
 import s from './sky.module.css'
@@ -119,7 +120,7 @@ export function SkyNights({ sky, onSite }: { sky: Nights; onSite: (key: string) 
   const colour = series(0)
   // each frame's dot in its filter's colour (2026-10-16): L white, R, G, B, Hα deep red, OIII teal, SII amber
   const filters = filtersOf(sky.subs)
-  const filterColour = (f: string) => filterTint(f) ?? series(filters.indexOf(f) + 1)
+  const filterColour = (f: string) => filterTint(f) ?? 'var(--sst-filter-other)'
   const shapeOf = new Map<string, Shape>(sky.rigs.map((r, i) => [r.key, SHAPES[i % SHAPES.length]]))
   const at = pos == null ? null : locate(seq, pos)
   const lit = at ? at.night : (hover ?? chosen) // a night brought forward, else all by age
@@ -397,7 +398,7 @@ export function AltitudeStrip({
           .filter((_, i, all) => all.length * 64 < W || i % Math.ceil((all.length * 64) / W) === 0)
           .map((t) => (
             <text key={t} x={x(t)} y={H - 6} textAnchor="middle" className={s.axisText}>
-              {new Date(t).toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' })}
+              {monthText(new Date(t).toISOString())}
             </text>
           ))}
         {nights.map((night, i) => {
@@ -433,15 +434,9 @@ export function monthTicks(start: number, end: number): number[] {
   return out.length ? out : [start + (end - start) / 2]
 }
 
-const clock = (t: number) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+const clock = (t: number) => clockText(t)
 
-const FILTER_ORDER = ['L', 'R', 'G', 'B', 'Hα', 'Ha', 'OIII', 'SII']
-/** The filters a target was shot in, broadband first, then narrowband, then the rest by name. */
+/** The filters a target was shot in, in the canonical order (filters.ts): broadband, narrowband, the rest. */
 export function filtersOf(subs: { filter?: string }[]): string[] {
-  const all = [...new Set(subs.map((x) => x.filter ?? ''))]
-  const rank = (f: string) => {
-    const i = FILTER_ORDER.indexOf(f)
-    return i < 0 ? FILTER_ORDER.length : i
-  }
-  return all.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+  return sortFilters([...new Set(subs.map((x) => x.filter ?? ''))])
 }

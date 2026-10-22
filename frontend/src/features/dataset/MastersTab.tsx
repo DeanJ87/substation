@@ -9,8 +9,16 @@ import { AnnotateToggle, AnnotationOverlay, useAnnotateSwitch } from '../../comp
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
-import { Button, ConfirmButton } from '../../components/ui'
-import { integrationText, nightText } from '../format'
+import { Button, ConfirmButton, EmptyState, ErrorDetail, shortError } from '../../components/ui'
+import {
+  clockText,
+  countText,
+  dateTimeText,
+  durationText,
+  integrationText,
+  nightShort,
+  numText,
+} from '../format'
 import {
   stackPreviewUrl,
   useStackAction,
@@ -113,34 +121,37 @@ export function MastersTab({
                       )
                     }
                   >
-                    {nightText(x.night)}
+                    {nightShort(x.night)}
                   </button>
                 ))}
               </div>
             </div>
           </div>
           <div className={s.formRow}>
-            <div className={v.actions}>
-              <label>
-                <span className={v.muted}>From</span>
-                <input
-                  type="date"
-                  className={v.input}
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                />
-              </label>
-              <label>
-                <span className={v.muted}>To</span>
-                <input
-                  type="date"
-                  className={v.input}
-                  value={to}
-                  min={from || undefined}
-                  onChange={(e) => setTo(e.target.value)}
-                />
-              </label>
-            </div>
+            <details className={s.options} open={!!(from || to)}>
+              <summary className={v.muted}>Custom date range</summary>
+              <div className={v.actions}>
+                <label>
+                  <span className={v.muted}>From</span>
+                  <input
+                    type="date"
+                    className={v.input}
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span className={v.muted}>To</span>
+                  <input
+                    type="date"
+                    className={v.input}
+                    value={to}
+                    min={from || undefined}
+                    onChange={(e) => setTo(e.target.value)}
+                  />
+                </label>
+              </div>
+            </details>
             {!!partnerList.data?.length && (
               <div>
                 <span className={v.muted}>Also stack</span>
@@ -186,11 +197,7 @@ export function MastersTab({
               disabled={!p || p.subs < 2 || start.isPending}
               onClick={() => start.mutate({ rule, nights: nights.length ? nights : null, options, ...scope })}
             >
-              {start.isPending
-                ? 'Stacking…'
-                : p && p.subs >= 2
-                  ? `Stack ${p.subs.toLocaleString('en-GB')} subs`
-                  : 'Stack'}
+              {start.isPending ? 'Stacking…' : p && p.subs >= 2 ? `Stack ${countText(p.subs)} subs` : 'Stack'}
             </Button>
           </div>
           {p?.sharpness_note && <p className={`${v.note} ${v.muted}`}>{p.sharpness_note}</p>}
@@ -252,7 +259,7 @@ export function MastersTab({
         <Running key={m.id} m={m} />
       ))}
 
-      {done.length === 0 && running.length === 0 && <p className={v.empty}>No masters yet.</p>}
+      {done.length === 0 && running.length === 0 && <EmptyState inline>No masters yet.</EmptyState>}
       {done.filter((m) => m.state !== 'failed' && m.state !== 'cancelled').length >= 2 && (
         <Compare masters={done.filter((m) => m.state !== 'failed' && m.state !== 'cancelled')} />
       )}
@@ -294,7 +301,7 @@ function Compare({ masters }: { masters: Stack[] }) {
     </select>
   )
   const fmt = (x: number | null | undefined, unit: string) =>
-    x == null ? '—' : `${Number.isInteger(x) ? x.toLocaleString('en-GB') : x.toFixed(2)}${unit}`
+    x == null ? '—' : `${numText(x, Number.isInteger(x) ? 0 : 2)}${unit}`
   return (
     <section className={`${v.card} ${v.cardPad}`}>
       <Collapsible id="masters-compare" title="Compare masters" defaultOpen={false}>
@@ -352,8 +359,7 @@ function Running({ m }: { m: Stack }) {
           <div className={v.muted}>
             {m.sub_count} subs from {m.session_count} session{m.session_count === 1 ? '' : 's'} ·{' '}
             {m.rule_text}
-            {m.started_at &&
-              ` · started ${new Date(m.started_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+            {m.started_at && ` · started ${clockText(m.started_at)}`}
           </div>
         </div>
         <div className={v.actions}>
@@ -455,24 +461,28 @@ function Version({ m }: { m: Stack }) {
         <span className={`${s.tag} ${stateTag}`}>{STATE_TAG[m.state] ?? m.state}</span>
         <div className={v.muted}>
           {m.sub_count} subs · {m.session_count} session{m.session_count === 1 ? '' : 's'} ·{' '}
-          {m.finished_at
-            ? new Date(m.finished_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
-            : ''}{' '}
-          · {m.rule_text} · {m.method}
+          {m.finished_at ? `${dateTimeText(m.finished_at)} · ` : ''}
+          {m.rule_text} · {m.method}
           {m.created_by ? ` · by ${m.created_by}` : ''}
         </div>
-        {(m.state_reason || m.error) && (
-          <div className={`${v.note} ${m.error ? v.bad : v.muted}`}>{m.error ?? m.state_reason}</div>
+        {/* a failure in one short line; Siril's raw output folded away beneath (B14) */}
+        {m.error ? (
+          <div className={v.note}>
+            <span className={v.bad}>{shortError(m.error)}</span>
+            {m.error.length > shortError(m.error).length && <ErrorDetail detail={m.error} />}
+          </div>
+        ) : (
+          m.state_reason && <div className={`${v.note} ${v.muted}`}>{m.state_reason}</div>
         )}
       </div>
       <div className={s.verFig}>
         <span className={v.sectionLabel}>Integration</span>
-        <span className={`${v.mono} ${v.accent}`}>{integrationText(m.integration_s)}</span>
+        <span className={v.mono}>{integrationText(m.integration_s)}</span>
       </div>
       <div className={s.verFig}>
         <span className={v.sectionLabel}>FWHM</span>
         <span className={v.mono}>
-          {r.fwhm_arcsec ? `${r.fwhm_arcsec.toFixed(2)}″` : r.fwhm_px ? `${r.fwhm_px.toFixed(2)} px` : '—'}
+          {r.fwhm_arcsec ? `${numText(r.fwhm_arcsec, 2)}″` : r.fwhm_px ? `${numText(r.fwhm_px, 2)} px` : '—'}
         </span>
       </div>
       <div className={v.actions}>
@@ -511,7 +521,7 @@ function Version({ m }: { m: Stack }) {
                     </Glance>{' '}
                     {x.included
                       ? x.weight < 1
-                        ? `weight ${x.weight.toFixed(2)}`
+                        ? `weight ${numText(x.weight, 2)}`
                         : ''
                       : `left out: ${x.reason}`}
                   </li>
@@ -661,9 +671,9 @@ function TiltOverlay({ r }: { r: RegionalT }) {
             style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
           >
             <span>
-              {z.fwhm_px.toFixed(2)} px
+              {numText(z.fwhm_px, 2)} px
               <br />
-              {z.roundness.toFixed(2)} round
+              {numText(z.roundness, 2)} round
             </span>
           </div>
         )
@@ -705,12 +715,10 @@ function PostStages({ id, version }: { id: number; version: number }) {
             ? d.helper_online
               ? `queued on ${d.helper_host}`
               : `queued · starts when a post-processing helper connects${
-                  d.helper_seen_at
-                    ? ` (${d.helper_host} last seen ${new Date(d.helper_seen_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })})`
-                    : ''
+                  d.helper_seen_at ? ` (${d.helper_host} last seen ${dateTimeText(d.helper_seen_at)})` : ''
                 }`
             : run
-              ? `run ${run.run} · ${new Date(run.finished_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`
+              ? `run ${run.run} · ${dateTimeText(run.finished_at)}`
               : ''}
         </span>
         <button
@@ -731,7 +739,9 @@ function PostStages({ id, version }: { id: number; version: number }) {
                 v{version} · {st.label}
               </strong>
               <span className={v.note}>
-                {st.state === 'done' ? `${st.tool_label || 'GraXpert'} · ${st.seconds ?? 0} s` : st.reason}
+                {st.state === 'done'
+                  ? `${st.tool_label || 'GraXpert'} · ${durationText(st.seconds ?? 0)}`
+                  : st.reason}
               </span>
               {st.state === 'done' && st.full && (
                 <Zoomable

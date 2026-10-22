@@ -1,15 +1,21 @@
+/* the same gutter and rhythm as every other page (C45): the app frame sets the width */
 .page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding-block: 24px 48px;
+  gap: 22px;
 }
 .crumbs {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   color: var(--sst-muted);
-  font-size: 14px;
+  font-size: 13px;
+}
+.crumbs a {
+  color: var(--sst-muted);
+  text-decoration: none;
+}
+.crumbs a:hover {
+  color: var(--sst-accent);
+  text-decoration: underline;
 }
 .head h1 {
   margin: 0 0 4px;
@@ -33,7 +39,7 @@
   background: var(--sst-panel-3);
   color: var(--sst-text);
   font: inherit;
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .scroll {
   overflow-x: auto;
@@ -47,8 +53,6 @@
   text-align: left;
   font-weight: 600;
   font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--sst-muted);
   padding: 8px 10px;
   border-bottom: 1px solid var(--sst-line);

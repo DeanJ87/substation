@@ -302,43 +302,62 @@ class _Live:
 def _inputs(m: Master, members: list[MasterMember], work: Path) -> dict[int, MasterMember]:
     """Each member's calibrated sub, linked as work/sub_NNNNN.fit. Subs whose cached calibration was pruned are
     calibrated again in batches (calibrate_batch) into this stack's own folder."""
+    order: dict[int, MasterMember] = {}
+    redo = work / "recal"
+    pending: list[tuple[int, MasterMember]] = []  # pruned from the cache: calibrated again below
+    for i, mm in enumerate(members, start=1):
+        cal = Path(mm.frame.measurement.calibrated_path) if mm.frame.measurement.calibrated_path else None
+        if cal is not None and cal.exists():
+            os.symlink(cal, work / f"sub_{i:05d}.fit")
+            order[i] = mm
+        else:
+            pending.append((i, mm))
+    if pending:
+        # into this stack's own folder: written back to the shared cache, a recalibrated sub could be pruned by
+        # other workers while this stack still reads it (2026-10-13)
+        failed = recalibrate(
+            [(mm.frame, redo / f"sub_{i:05d}.fit") for i, mm in pending],
+            redo,
+            lambda note, frac: _step(m, note, 0.1 + 0.1 * frac),
+        )
+        for i, mm in pending:
+            if mm.frame_id in failed:
+                mm.included, mm.reason = False, failed[mm.frame_id]
+                mm.save(update_fields=["included", "reason"])
+                continue
+            os.symlink(redo / f"sub_{i:05d}.fit", work / f"sub_{i:05d}.fit")
+            order[i] = mm
+    return dict(sorted(order.items()))
+
+
+def recalibrate(items: list[tuple[Frame, Path]], redo: Path, step=None) -> dict[str, str]:  # noqa: ANN001
+    """Calibrate subs whose cached calibration was pruned again, each into its given file under `redo`: in batches
+    (calibrate_batch), then one at a time for what a batch couldn't do. `step(note, fraction)` reports progress.
+    Returns the subs that couldn't be calibrated, with why (frame sha → reason)."""
     from .models import CalibrationMatch, MatchState
     from .tasks import calibrate_batch, calibrate_file, source_path
 
-    order: dict[int, MasterMember] = {}
-    redo = work / "recal"
+    failed: dict[str, str] = {}
     todo: list = []  # (frame, match, source, where the result goes)
-    links: list[tuple[Path, Path]] = []  # (result, sub_NNNNN link) for those
-    for i, mm in enumerate(members, start=1):
-        dest = work / f"sub_{i:05d}.fit"
-        cal = Path(mm.frame.measurement.calibrated_path) if mm.frame.measurement.calibrated_path else None
-        if cal is not None and cal.exists():
-            os.symlink(cal, dest)
-        else:
-            cm = CalibrationMatch.objects.filter(frame=mm.frame, state=MatchState.MATCHED).first()
-            src = source_path(mm.frame)
-            if cm is None or src is None:
-                mm.included, mm.reason = False, "no copy on disk" if src is None else "no longer matched"
-                mm.save(update_fields=["included", "reason"])
-                continue
-            # into this stack's own folder: written back to the shared cache, a recalibrated sub could be pruned by
-            # other workers while this stack still reads it (2026-10-13)
-            out = redo / f"sub_{i:05d}.fit"
-            todo.append((mm.frame, cm, src, out))
-            links.append((out, dest))
-        order[i] = mm
-    if todo:
-        _step(m, f"Calibrate ({len(todo)} subs)", 0.1)
-        redo.mkdir(exist_ok=True)
-        left = {f.pk for f in calibrate_batch(todo, redo)}
-        for k, (frame, cm, src, out) in enumerate(todo, start=1):
-            if frame.pk in left:  # one at a time, as before
-                calibrate_file(frame, cm, src, redo, out)
-            if k % 10 == 0:
-                _step(m, f"Calibrate ({k} of {len(todo)})", 0.1 + 0.1 * k / len(todo))
-        for out, dest in links:
-            os.symlink(out, dest)
-    return order
+    for frame, out in items:
+        cm = CalibrationMatch.objects.filter(frame=frame, state=MatchState.MATCHED).first()
+        src = source_path(frame)
+        if cm is None or src is None:
+            failed[frame.pk] = "no copy on disk" if src is None else "no longer matched"
+            continue
+        todo.append((frame, cm, src, out))
+    if not todo:
+        return failed
+    if step:
+        step(f"Calibrate ({len(todo)} subs)", 0.0)
+    redo.mkdir(parents=True, exist_ok=True)
+    left = {f.pk for f in calibrate_batch(todo, redo)}
+    for k, (frame, cm, src, out) in enumerate(todo, start=1):
+        if frame.pk in left:  # one at a time, as before
+            calibrate_file(frame, cm, src, redo, out)
+        if k % 10 == 0 and step:
+            step(f"Calibrate ({k} of {len(todo)})", k / len(todo))
+    return failed
 
 
 MOSAIC_SPREAD = 0.5  # subs whose centres stray more than half the field's short side make a mosaic
@@ -961,14 +980,22 @@ def _stack_command(
     m: Master, order: dict[int, MasterMember], notes: list[str], mosaic: str | None, out: Path
 ) -> str:
     """Siril's stack command from the recipe; a note is added when mixed exposures change the weighting."""
-    cfg = m.recipe.get("options", {})
+    exposures = {round(mm.frame.exptime_s or 0, 3) for mm in order.values() if mm.included}
+    # a mosaic: the canvas holds every sub; levels match on the overlaps and edges blend
+    canvas = " -maximize -overlap_norm -feather=100" if mosaic else ""
+    opts = stack_options(m.recipe.get("options", {}), exposures, notes)
+    return f"stack r_sub_ {opts}{canvas} -out={out} -32b".replace("  ", " ")
+
+
+def stack_options(cfg: dict, exposures: set[float], notes: list[str], rejection: bool = True) -> str:
+    """Rejection, normalisation and weighting for Siril's stack command, from stacking options (a master's recipe
+    or Settings → Stacking); `rejection` False stacks without it (too few subs to reject from)."""
     lo, hi = (cfg.get("sigma") or [3.0, 3.0])[:2]
     weight = {"grade": "-weight=wfwhm", "snr": "-weight=noise", "equal": ""}.get(
         cfg.get("weighting", "grade"), ""
     )
     # mixed exposures (owner 2026-10-13): weight by noise (inverse
     # variance), so a 240 s sub counts for about four 60 s ones; sharpness weighting ignores exposure
-    exposures = {round(mm.frame.exptime_s or 0, 3) for mm in order.values() if mm.included}
     if weight == "-weight=wfwhm" and len(exposures) > 1:
         weight = "-weight=noise"
         notes.append(
@@ -977,11 +1004,8 @@ def _stack_command(
             + "): weighted by noise, so longer subs count for more."
         )
     rej = {"winsorized": "w", "sigma": "s", "linear": "l"}.get(cfg.get("rejection", "winsorized"), "w")
-    # a mosaic: the canvas holds every sub; levels match on the overlaps and edges blend
-    canvas = " -maximize -overlap_norm -feather=100" if mosaic else ""
-    return f"stack r_sub_ rej {rej} {lo:g} {hi:g} -norm=addscale {weight}{canvas} -out={out} -32b".replace(
-        "  ", " "
-    )
+    rejecting = f"rej {rej} {lo:g} {hi:g}" if rejection else "rej n"
+    return f"{rejecting} -norm=addscale {weight}"
 
 
 def _measure_master(

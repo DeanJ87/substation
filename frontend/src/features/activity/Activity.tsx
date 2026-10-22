@@ -8,23 +8,28 @@ import { useChanges, useUndo } from '../changes/changes'
 import { toast } from '../../components/Toasts'
 import { LoadMore } from '../../components/LoadMore'
 import { Link, useRouter } from '@tanstack/react-router'
-import { Button, ErrorState, PageLoading, Skeleton } from '../../components/ui'
+import {
+  Button,
+  buttonClass,
+  EmptyState,
+  ErrorDetail,
+  ErrorState,
+  shortError,
+  PageLoading,
+  Skeleton,
+} from '../../components/ui'
 import { BulkBar, ChooseBox, useChosen } from '../../components/BulkBar'
 import { useBulkJobs } from '../changes/bulk'
-import { bytes } from '../format'
+import { bytes, bytesText, clockText, countText, durationText, pctText } from '../format'
+import { Help } from '../../components/Help'
 import { useActivity, useJobAction, useMoveJob, usePause, type Job, type WorkerT } from '../v2/hooks'
 import { Steps } from '../steps'
 import v from '../v2/v2.module.css'
 import s from './activity.module.css'
 
-function dur(sec: number | null | undefined): string {
-  if (sec == null) return ''
-  if (sec < 60) return `${Math.round(sec)} s`
-  if (sec < 3600) return `${Math.floor(sec / 60)} min ${Math.round(sec % 60)} s`
-  return `${Math.floor(sec / 3600)} h ${Math.round((sec % 3600) / 60)} min`
-}
-const hhmm = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+/** A job's run time; under a second says nothing (C39). */
+const dur = (sec: number | null | undefined): string => (sec == null || sec < 1 ? '' : durationText(sec))
+const hhmm = (iso: string | null | undefined) => (iso ? clockText(iso) : '')
 
 const PAGE = 50
 
@@ -96,7 +101,7 @@ export function Activity() {
           <h1>Activity</h1>
           <div className={v.sub}>
             {d.workers.length} worker{d.workers.length === 1 ? '' : 's'} · {d.running.length} job
-            {d.running.length === 1 ? '' : 's'} running · {waiting.toLocaleString('en-GB')} queued
+            {d.running.length === 1 ? '' : 's'} running · {countText(waiting)} queued
             {d.paused ? ' · paused' : ''}
           </div>
         </div>
@@ -104,7 +109,7 @@ export function Activity() {
           <Button onClick={() => pause.mutate(!d.paused)} variant={d.paused ? 'primary' : 'default'}>
             {d.paused ? 'Resume new work' : 'Pause new work'}
           </Button>
-          <Link to="/settings" hash="workers" className={v.pill}>
+          <Link to="/settings" hash="workers" className={buttonClass()}>
             Worker settings
           </Link>
         </div>
@@ -144,29 +149,29 @@ export function Activity() {
           <div className={v.meter}>
             <span style={{ width: `${r.disk_total ? (1 - (r.disk_free ?? 0) / r.disk_total) * 100 : 0}%` }} />
           </div>
-          <dl className={s.kv} title={diskNote ?? undefined}>
+          <dl className={s.kv}>
             <dt>Free</dt>
             <dd>
               {free.value} {free.unit}
-              {diskNote ? '*' : ''}
+              {diskNote ? (
+                <>
+                  {' '}
+                  <Help topic="Free space">{diskNote}</Help>
+                </>
+              ) : null}
             </dd>
             {workUsed.total != null && (
               <>
                 <dt>Work</dt>
                 <dd title={workUsed.at ? `Measured ${hhmm(workUsed.at)}` : undefined}>
-                  {bytes(workUsed.total).value} {bytes(workUsed.total).unit} of {bytes(workBudget).value}{' '}
-                  {bytes(workBudget).unit}
+                  {bytesText(workUsed.total)} of {bytesText(workBudget)}
                 </dd>
                 <dt>Cache</dt>
-                <dd>
-                  {bytes(workUsed.calibrated).value} {bytes(workUsed.calibrated).unit}
-                </dd>
+                <dd>{bytesText(workUsed.calibrated)}</dd>
                 {!!workUsed.stacking && (
                   <>
                     <dt>Stacking</dt>
-                    <dd>
-                      {bytes(workUsed.stacking).value} {bytes(workUsed.stacking).unit}
-                    </dd>
+                    <dd>{bytesText(workUsed.stacking)}</dd>
                   </>
                 )}
               </>
@@ -220,8 +225,8 @@ export function Activity() {
             title="Queue"
             meta={
               <>
-                {waiting.toLocaleString('en-GB')}
-                {clearIn ? ` · ≈ ${dur(clearIn)}` : ''}
+                {countText(waiting)}
+                {clearIn ? ` · about ${dur(clearIn)}` : ''}
               </>
             }
           >
@@ -237,7 +242,7 @@ export function Activity() {
                     title={kind === k ? 'Show every kind of job' : `Show only ${k.toLowerCase()} jobs`}
                     onClick={() => setKind(kind === k ? null : k)}
                   >
-                    {k} <span className={v.mono}>{n.toLocaleString('en-GB')}</span>
+                    {k} <span className={v.mono}>{countText(n)}</span>
                   </button>
                 ))}
             </div>
@@ -251,6 +256,7 @@ export function Activity() {
                   setDragged(null)
                 }}
               >
+                {!queueQ.isPending && queue.length === 0 && <EmptyState inline>Nothing queued.</EmptyState>}
                 <ol className={s.queue}>
                   {queue.map((j, i) => (
                     <li key={j.id} className={dragged === j.id ? s.dragging : undefined} data-job={j.id}>
@@ -375,14 +381,10 @@ export function Activity() {
                   <li key={j.id}>
                     <span className={v.ok}>✓</span>
                     <div className={s.rowText} title={`${j.name} · ${j.target}`}>
-                      {j.link ? (
-                        <JobLink href={j.link}>{j.outcome || `${j.name} · ${j.target}`}</JobLink>
-                      ) : (
-                        j.outcome || `${j.name} · ${j.target}`
-                      )}
+                      {j.link ? <JobLink href={j.link}>{outcomeText(j)}</JobLink> : outcomeText(j)}
                     </div>
                     <span className={`${v.mono} ${v.muted}`}>
-                      {dur(j.seconds)} · {hhmm(j.finished_at)}
+                      {[dur(j.seconds), hhmm(j.finished_at)].filter(Boolean).join(' · ')}
                     </span>
                   </li>
                 ))}
@@ -400,6 +402,15 @@ export function Activity() {
       <YourChanges />
     </div>
   )
+}
+
+/** A result in a few words: a file's path shortened to its name (C39), the full text on hover. */
+function outcomeText(j: Job): string {
+  const text = j.outcome || `${j.name} · ${j.target}`
+  return text
+    .split(' · ')
+    .map((part) => (part.includes('/') ? (part.split('/').pop() ?? part) : part))
+    .join(' · ')
 }
 
 /** Spec 016: what you changed by hand lately, each with Undo (Ctrl/Cmd+Z undoes the latest). */
@@ -483,7 +494,7 @@ function FailureGroup({
           <span className={v.muted}>
             {targets.slice(0, 3).join(', ') + (targets.length > 3 ? ` and ${targets.length - 3} more` : '')}
           </span>
-          <div className={v.note}>{j.error}</div>
+          <div className={v.note}>{shortError(j.error)}</div>
           <div className={`${v.note} ${v.muted}`}>
             {many ? `${jobs.length} jobs` : `Attempt ${j.attempts} of ${j.max_attempts}`}
             {j.attempts >= j.max_attempts ? ' · no more retries' : ''}
@@ -500,11 +511,8 @@ function FailureGroup({
           </div>
         </div>
       </div>
-      {j.log.length > 1 && (
-        <details>
-          <summary className={v.muted}>Details</summary>
-          <pre className={s.log}>{j.log.join('\n')}</pre>
-        </details>
+      {(j.log.length > 1 || (j.error ?? '') !== shortError(j.error)) && (
+        <ErrorDetail detail={[j.error, ...j.log].filter(Boolean).join('\n')} />
       )}
     </article>
   )
@@ -514,11 +522,7 @@ function FailureGroup({
 function eta(j: Job): string | null {
   if (j.progress == null || j.progress < 0.05 || j.progress >= 1 || !j.seconds) return null
   const left = (j.seconds * (1 - j.progress)) / j.progress
-  return left < 60
-    ? '≈ 1 min'
-    : left < 3600
-      ? `≈ ${Math.round(left / 60)} min`
-      : `≈ ${(left / 3600).toFixed(1)} h`
+  return left < 60 ? 'under a minute left' : `about ${durationText(left)} left`
 }
 
 function RunningJob({ j }: { j: Job }) {
@@ -543,18 +547,20 @@ function RunningJob({ j }: { j: Job }) {
           </div>
         </div>
         <div className={v.actions}>
-          <span className={`${v.mono} ${v.accent}`}>
-            {j.progress != null ? `${Math.round(j.progress * 100)}%` : dur(j.seconds)}
-          </span>
+          <span className={v.mono}>{j.progress != null ? pctText(j.progress) : dur(j.seconds)}</span>
           {eta(j) && <span className={`${v.mono} ${v.muted}`}>{eta(j)}</span>}
           {j.dataset_id && (
-            <Link to="/datasets/$id" params={{ id: String(j.dataset_id) }} className={v.pill}>
+            <Link
+              to="/datasets/$id"
+              params={{ id: String(j.dataset_id) }}
+              className={buttonClass({ size: 'sm' })}
+            >
               Open dataset
             </Link>
           )}
           <button
             type="button"
-            className={v.pill}
+            className={buttonClass({ size: 'sm' })}
             disabled={cancelling || act.isPending}
             onClick={() => act.mutate({ id: j.id, action: 'cancel' })}
           >
@@ -649,7 +655,7 @@ function WorkerTile({ w, container }: { w: WorkerT; container: number }) {
         <span>CPU {Math.round(w.cpu_pct ?? 0)}%</span>
         <span>RAM {mb(w.rss_bytes)}</span>
         {(w.engine_rss_bytes ?? 0) > 0 && (
-          <span className={v.accent}>
+          <span>
             {w.engine_label ?? 'Siril'} {Math.round(w.engine_cpu_pct ?? 0)}% · {mb(w.engine_rss_bytes)}
           </span>
         )}
@@ -664,6 +670,7 @@ export function JobLink({ href, children }: { href: string; children: React.Reac
   return (
     <a
       href={href}
+      className="quiet"
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
         e.preventDefault()

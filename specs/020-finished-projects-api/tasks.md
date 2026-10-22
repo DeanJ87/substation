@@ -43,8 +43,13 @@
 - [X] F19 (2026-10-21) Processing step images: `step` role guessed from `-step-<n>-<what>` names with editable
   labels, `frames.steps`, `processing` from the labels; typed steps and Settings defaults removed; owner thumbnail
   and preview route; relevant-only link suggestions (020-DR-14); tests
+- [X] F21 (2026-10-22) Cumulative progressive stacks: plan, one registration, prefix stacks, shared crop and
+  stretch, cache, owner routes, render `frames.progression` and `progression/<n>` (020-DR-15); mocked-Siril tests
+- [ ] F22 Progressive stacks: rebuild automatically when subs change; LRGB luminance; mosaics
 - [ ] F12 (later) Link suggestions by plate-solve overlap once finished images are solved; annotations from that
   solve (FR-004, FR-007)
 - [ ] F13 (later) Target type, distance and angular size from the catalogue data (FR-007)
 
 - [ ] F14 (later) A session thumbnail route so the Finished page can show each project's final image
+- [X] F20 (2026-10-22) Nightscapes and videos offered without links; recombined files guessed as finals; preview
+  only when buildable (020-DR-16); tests

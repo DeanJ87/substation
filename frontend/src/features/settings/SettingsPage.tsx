@@ -95,7 +95,7 @@ export function SettingsPage() {
           ))}
         </div>
         <div className={s.page} role="tabpanel" aria-label={tab.label}>
-          {tab.sections.length > 1 && <h1>{tab.label}</h1>}
+          <h1>{tab.label}</h1>
           {readOnly && <p className="muted">Admins only.</p>}
           {tab.body}
         </div>

@@ -74,3 +74,9 @@ def test_too_short_finds_nothing(admin_client, library):
         "nights": [],
         "files": [],
     }
+
+
+def test_a_filter_alias_finds_the_filter(admin_client, library):
+    """ "Ha" finds the Hα dataset, as the filter is normalised when subs are read."""
+    r = admin_client.get("/api/v1/search", {"q": "bubble ha"}).json()
+    assert [d["name"] for d in r["datasets"]] == ["NGC 7635 - Bubble Nebula · Hα"]

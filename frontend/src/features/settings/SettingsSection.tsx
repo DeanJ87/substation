@@ -2,17 +2,21 @@
 // outside so /settings#workers still scrolls to it, and a link straight to a section opens it.
 import { useState, type ReactNode } from 'react'
 import { Collapsible } from '../../components/Collapsible'
+import { Help } from '../../components/Help'
 import s from './settings.module.css'
 
 export function SettingsSection({
   id,
   title,
   meta,
+  help,
   children,
 }: {
   id: string
   title: ReactNode
   meta?: ReactNode
+  /** What the section is for: behind a ? beside its title, not a paragraph on the page (C13). */
+  help?: ReactNode
   children: ReactNode
 }) {
   // runs before the Collapsible below reads its remembered state
@@ -26,7 +30,18 @@ export function SettingsSection({
   })
   return (
     <div className={s.section} id={id}>
-      <Collapsible id={`settings-${id}`} title={title} meta={meta}>
+      <Collapsible
+        id={`settings-${id}`}
+        title={title}
+        meta={
+          meta != null || help ? (
+            <>
+              {help && <Help topic={typeof title === 'string' ? title : 'this section'}>{help}</Help>}
+              {meta}
+            </>
+          ) : undefined
+        }
+      >
         <div className={s.sectionBody}>{children}</div>
       </Collapsible>
     </div>

@@ -148,7 +148,7 @@ def _states(datasets: list[Dataset]) -> list[str]:
 
 def _goals_total(col: Collection) -> dict[str, float]:
     total: dict[str, float] = defaultdict(float)
-    for g in col.projects.values_list("goals", flat=True):
+    for g in col.projects.filter(done_at=None).values_list("goals", flat=True):  # done projects drop out
         for f, h in (g or {}).items():
             total[f] += h
     return dict(total)

@@ -115,10 +115,8 @@
   gap: 8px;
 }
 .label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--sst-muted);
 }
 
@@ -522,4 +520,54 @@ button.thumb:focus-visible {
   border: 1px solid var(--sst-line);
   border-radius: var(--sst-radius-sm);
   background: var(--sst-panel-3);
+}
+
+/* progression: the stacks after each night */
+.progState {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 13px;
+}
+.progState > :last-child {
+  grid-column: 1 / -1;
+}
+.progReason {
+  margin: 0;
+  font-size: 13px;
+  color: var(--sst-muted);
+}
+.checkpoint {
+  flex: none;
+  width: 168px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.checkpoint .stepText {
+  white-space: normal;
+  line-height: 1.35;
+}
+button.stepThumb {
+  padding: 0;
+  width: 100%;
+  cursor: zoom-in;
+}
+button.stepThumb:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 2px;
+}
+.progCount {
+  margin-left: 10px;
+  font-family: var(--sst-font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--sst-muted);
+}
+.progNav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
 }

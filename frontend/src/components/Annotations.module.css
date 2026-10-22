@@ -7,7 +7,7 @@
   container-type: inline-size;
 }
 .obj {
-  --tone: var(--sst-accent);
+  --tone: var(--sst-chart-1);
 }
 .star {
   --tone: var(--sst-text);

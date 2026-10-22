@@ -97,6 +97,7 @@ class Change(models.Model):
         DISMISS = "dismiss"  # failed jobs dismissed from Activity
         QA = "qa"  # your QA choice on raw calibration frames
         ARCHIVE = "archive"  # a collection's files moved to its archive library or back (spec 013)
+        PROJECT = "project"  # projects merged, split, removed, edited or datasets moved between them
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     kind = models.CharField(max_length=10, choices=Kind.choices)

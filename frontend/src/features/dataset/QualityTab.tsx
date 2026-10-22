@@ -6,7 +6,7 @@ import { Zoomable } from '../../components/CloseLook'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/ui'
 import { VerdictIcon } from '../../components/VerdictBadge'
-import { nightText, timeText } from '../format'
+import { clockText, dateTimeText, nightShort, nightText, numText, timeText } from '../format'
 import { fwhmText, num, previewUrl, useVerdict, type Session, type Sub } from '../v2/hooks'
 import v from '../v2/v2.module.css'
 import s from './dataset.module.css'
@@ -40,16 +40,10 @@ function axisLabels(nights: string[]): { i: number; label: string }[] {
   const out: { i: number; label: string }[] = []
   let year = ''
   for (let i = 0; i < nights.length; i += step) {
-    const d = new Date(`${nights[i]}T12:00:00Z`)
     const y = nights[i].slice(0, 4)
     out.push({
       i,
-      label: d.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: y !== year ? 'numeric' : undefined,
-        timeZone: 'UTC',
-      }),
+      label: y !== year ? nightText(nights[i]) : nightShort(nights[i]),
     })
     year = y
   }
@@ -286,7 +280,7 @@ export function QualityTab({
         )}
 
         <section className={`${v.card} ${tb.flush}`}>
-          <Collapsible id="quality-subs" title="Subs" meta={nightSubs.length.toLocaleString('en-GB')}>
+          <Collapsible id="quality-subs" title="Subs" meta={numText(nightSubs.length)}>
             <div className={tb.pane}>
               <table className={`${v.table} ${tb.table} cards`}>
                 <thead>
@@ -341,11 +335,9 @@ export function QualityTab({
                         {x.manual && <span className={s.manual}>M</span>}
                       </td>
                       <td className={`${v.mono} ${tb.nowrap}`} data-label="Time">
-                        {chosen === ALL && x.night
-                          ? `${new Date(`${x.night}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} `
-                          : ''}
+                        {chosen === ALL && x.night ? `${nightShort(x.night)} ` : ''}
                         <Glance sha={x.sha256} label={x.file}>
-                          {timeText(x.time).slice(0, 5)}
+                          {timeText(x.time)}
                         </Glance>
                       </td>
                       <td className={`${v.mono} ${tb.num}`} data-label="FWHM">
@@ -358,7 +350,7 @@ export function QualityTab({
                         {num(x.background)}
                       </td>
                       <td className={`${v.mono} ${tb.num}`} data-label="SQM">
-                        {x.sqm ? x.sqm.toFixed(2) : '—'}
+                        {x.sqm ? numText(x.sqm, 2) : '—'}
                       </td>
                       <td className={`${v.mono} ${tb.num}`} data-label="Alt">
                         {x.altitude ? `${Math.round(x.altitude)}°` : '—'}
@@ -366,11 +358,16 @@ export function QualityTab({
                       {hasFocus && (
                         <td className={`${v.mono} ${tb.num}`} data-label="Focus" data-wide>
                           {x.focpos != null ? Math.round(x.focpos) : '—'}
-                          {x.foctemp != null && <span className={v.muted}> · {x.foctemp.toFixed(1)} °C</span>}
+                          {x.foctemp != null && (
+                            <span className={v.muted}> · {numText(x.foctemp, 1)} °C</span>
+                          )}
                         </td>
                       )}
                       <td className={v.note} data-label="Reason" data-wide>
-                        {x.reason ?? x.awaiting_reason ?? ''}
+                        {/* a reason only where there's something to say (C14): accepted, normal rows stay blank */}
+                        {x.verdict === 'accept' && !x.near_threshold && !x.manual
+                          ? ''
+                          : (x.reason ?? x.awaiting_reason ?? '')}
                       </td>
                     </tr>
                   ))}
@@ -540,11 +537,7 @@ function NightChart({
             {k > 0 && <line x1={xOf(n.i) - 2} x2={xOf(n.i) - 2} y1={20} y2={H} className={s.nightSep} />}
             {k % every === 0 && n.night && (
               <text x={xOf(n.i)} y={H + 14} className={s.tick} textAnchor="start">
-                {new Date(`${n.night}T12:00:00Z`).toLocaleDateString('en-GB', {
-                  day: 'numeric',
-                  month: 'short',
-                  timeZone: 'UTC',
-                })}
+                {nightShort(n.night)}
               </text>
             )}
           </g>
@@ -558,7 +551,7 @@ function NightChart({
             className={s.tick}
             textAnchor="middle"
           >
-            {new Date(tk).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+            {clockText(tk)}
           </text>
         ))}
     </svg>
@@ -613,9 +606,9 @@ export function Inspector({ sub, session }: { sub: Sub; session?: Session }) {
         <div className={s.inspVerdict}>
           <VerdictIcon state={st} size={22} title="" />
           <strong>{label}</strong>
-          {sub.manual && <span className={s.manualTag}>MANUAL</span>}
+          {sub.manual && <span className={s.manualTag}>Manual</span>}
           {sub.source === 'nina' && <span className={s.manualTag}>NINA</span>}
-          {sub.provisional && <span className={s.manualTag}>PROVISIONAL</span>}
+          {sub.provisional && <span className={s.manualTag}>Provisional</span>}
         </div>
         {sub.manual || sub.source === 'nina' ? (
           <p className={v.note}>
@@ -624,9 +617,7 @@ export function Inspector({ sub, session }: { sub: Sub; session?: Session }) {
             {sub.decided_by === 'NINA'
               ? 'Marked bad in NINA.'
               : `${sub.decided_by ? `${sub.decided_by} ` : 'You '}${DID[sub.verdict ?? ''] ?? 'changed'} it${
-                  sub.decided_at
-                    ? ` at ${new Date(sub.decided_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`
-                    : ''
+                  sub.decided_at ? ` at ${dateTimeText(sub.decided_at)}` : ''
                 }.`}
           </p>
         ) : (
@@ -656,7 +647,7 @@ export function Inspector({ sub, session }: { sub: Sub; session?: Session }) {
           <dd className={v.mono}>
             {fwhmText(sub)}
             {session?.fwhm_arcsec.median != null && (
-              <span className={v.muted}> / {session.fwhm_arcsec.median.toFixed(2)}″</span>
+              <span className={v.muted}> / {numText(session.fwhm_arcsec.median, 2)}″</span>
             )}
           </dd>
           <dt>Stars</dt>
@@ -669,7 +660,7 @@ export function Inspector({ sub, session }: { sub: Sub; session?: Session }) {
           <dt>Eccentricity</dt>
           <dd className={v.mono}>{num(sub.eccentricity, 2)}</dd>
           <dt>SQM</dt>
-          <dd className={v.mono}>{sub.sqm ? sub.sqm.toFixed(2) : 'Not recorded'}</dd>
+          <dd className={v.mono}>{sub.sqm ? numText(sub.sqm, 2) : 'Not recorded'}</dd>
           <dt>Altitude</dt>
           <dd className={v.mono}>{sub.altitude ? `${Math.round(sub.altitude)}°` : 'Not recorded'}</dd>
         </dl>

@@ -31,3 +31,5 @@ each is.
   (the page narrows to it, with a "Showing only …" note and "Show everything") and "Edit" (name, kind, panels,
   goals, remove). Datasets not in a project have their own card with "Suggest projects"; "Arrange datasets…"
   opens the drag-and-drop board.
+- **019-DR-03** (2026-10-22) Merging projects keeps the larger goal for each filter and says where they differed;
+  projects marked Done leave the collection's goal totals.

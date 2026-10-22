@@ -18,15 +18,21 @@
 .crumbs {
   font-size: 13px;
   color: var(--sst-muted);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .crumbs a {
   color: var(--sst-muted);
+  text-decoration: none;
+}
+.crumbs a:hover {
+  color: var(--sst-accent);
   text-decoration: underline;
 }
 .sub {
   color: var(--sst-muted);
   margin-top: 4px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 .actions {
   display: flex;
@@ -34,39 +40,44 @@
   flex-wrap: wrap;
   align-items: center;
 }
+/* readouts are stat tiles (ui.tsx StatTile): figures in tabular sans, plain text colour, never the accent */
 .readouts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 .readout {
+  min-width: 0;
   border: 1px solid var(--sst-line);
-  border-radius: 0.7rem;
-  background: linear-gradient(180deg, var(--sst-panel-2), var(--sst-card-end));
-  padding: 16px 18px;
+  border-radius: var(--sst-radius);
+  background: var(--sst-panel);
+  padding: 14px 16px;
   color: inherit;
   text-decoration: none;
   display: block;
 }
+a.readout:hover {
+  border-color: var(--sst-accent-line);
+}
 .readoutLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--sst-muted);
   display: flex;
   justify-content: space-between;
+  gap: 8px;
 }
 .readoutValue {
-  font-family: var(--sst-font-mono);
-  font-size: 34px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  margin: 8px 0 6px;
+  font-size: var(--sst-fs-stat);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 4px 0 2px;
+  color: var(--sst-data);
   font-variant-numeric: tabular-nums;
 }
 .accentValue {
-  color: var(--sst-accent);
+  color: var(--sst-data);
 }
 .readoutDetail {
   font-size: 13px;
@@ -75,61 +86,58 @@
 .meter {
   height: 4px;
   border-radius: 2px;
-  background: var(--sst-line);
-  margin: 10px 0 8px;
+  background: var(--sst-data-track);
+  margin: 8px 0 6px;
   overflow: hidden;
 }
 .meter > span {
   display: block;
   height: 100%;
-  background: var(--sst-accent);
+  background: var(--sst-data-fill);
 }
 .meterOk > span {
   background: var(--sst-ok);
 }
 .sectionLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--sst-muted);
   margin: 4px 0 -8px;
 }
 .card {
   border: 1px solid var(--sst-line);
-  border-radius: 0.85rem;
-  background: linear-gradient(180deg, var(--sst-panel), var(--sst-card-end));
+  border-radius: var(--sst-radius-lg);
+  background: var(--sst-panel);
 }
 .cardPad {
   padding: 16px 18px;
 }
-/* A static tag: a small capsule. Clickable ones (a button or link with this class) are buttons in their own right
-   (2026-10-15: actions drawn as 12 px outlined capsules looked flat and like labels): the same height, radius and
-   type as the main buttons, a filled face, and hover, pressed and focus states. Toggles in a .pills group stay
-   chips. */
+/* A static tag is a chip; a clickable pill (a button or link with this class) is a Button (ui.tsx), the same
+   height, radius and type; toggles in a .pills group are toggle chips. Kept for screens not yet on ui.tsx. */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px;
+  min-height: 24px;
+  padding: 1px 10px;
   border: 1px solid var(--sst-line);
   border-radius: 999px;
   font-size: 12px;
+  font-weight: 500;
   color: var(--sst-text);
-  background: none;
+  background: var(--sst-panel-3);
   font-family: inherit;
   white-space: nowrap;
 }
 button.pill,
 a.pill,
 label.pill {
-  white-space: nowrap;
-  min-height: 34px;
-  padding: 6px 14px;
+  justify-content: center;
+  min-height: var(--sst-control-h);
+  padding: 4px 12px;
   border-radius: var(--sst-radius-sm);
   background: var(--sst-panel-2);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
   line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
@@ -141,7 +149,7 @@ button.pill:hover,
 a.pill:hover,
 label.pill:hover {
   border-color: var(--sst-accent-line);
-  background: color-mix(in srgb, var(--sst-panel-2), var(--sst-text) 7%);
+  background: color-mix(in srgb, var(--sst-panel-2), var(--sst-text) 6%);
 }
 button.pill:focus-visible,
 a.pill:focus-visible {
@@ -149,36 +157,45 @@ a.pill:focus-visible {
   outline-offset: 2px;
 }
 button.pill:disabled {
-  border-style: dashed;
-  background: transparent;
-  color: var(--sst-dim);
-  cursor: default;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button.pill:disabled:hover {
+  border-color: var(--sst-line);
+  background: var(--sst-panel-2);
 }
 .pill[aria-pressed='true'],
 .pill[aria-current='page'],
 .pill[aria-selected='true'] {
   border-color: var(--sst-accent);
   background: var(--sst-accent-tint);
-  color: var(--sst-accent);
+  color: var(--sst-text);
 }
 .pills > button.pill,
 .pills > a.pill {
   border-radius: 999px;
-  min-height: 30px;
-  padding: 4px 12px;
+  min-height: 28px;
+  padding: 2px 12px;
   font-size: 13px;
+  color: var(--sst-muted);
+}
+.pills > button.pill:hover,
+.pills > button.pill[aria-pressed='true'],
+.pills > a.pill[aria-current='page'] {
+  color: var(--sst-text);
 }
 .pills {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
+/* figures: tabular sans (007-DR-38). Mono is for paths and hashes: use the global .mono class for those. */
 .mono {
-  font-family: var(--sst-font-mono);
   font-variant-numeric: tabular-nums;
 }
+/* data figures are plain text; the accent is for interaction only */
 .accent {
-  color: var(--sst-accent);
+  color: var(--sst-data);
 }
 .muted {
   color: var(--sst-muted);
@@ -221,19 +238,19 @@ button.pill:disabled {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 .table th {
   text-align: left;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
   color: var(--sst-muted);
   font-weight: 600;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--sst-line);
+  white-space: nowrap;
 }
 .table td {
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--sst-line-2);
   vertical-align: top;
 }
@@ -244,7 +261,7 @@ button.pill:disabled {
   cursor: pointer;
 }
 .rowLink:hover td {
-  background: var(--sst-accent-tint);
+  background: color-mix(in srgb, var(--sst-panel-2) 70%, transparent);
 }
 .note {
   font-size: 13px;
@@ -270,19 +287,26 @@ button.pill:disabled {
   font-size: 14px;
 }
 .empty {
-  padding: 28px;
+  padding: 24px;
   text-align: center;
   color: var(--sst-muted);
+  font-size: 14px;
 }
 .input,
 .select {
+  min-height: var(--sst-control-h);
   background: var(--sst-panel-3);
   color: var(--sst-text);
   border: 1px solid var(--sst-line);
   border-radius: var(--sst-radius-sm);
-  padding: 7px 10px;
+  padding: 4px 10px;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
+}
+.input:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 1px;
 }
 .twoCol {
   display: grid;

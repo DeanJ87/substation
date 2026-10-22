@@ -8,7 +8,18 @@ import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
-import { integrationText, timeText } from '../format'
+import { Help } from '../../components/Help'
+import {
+  angleText,
+  clockSpan,
+  clockText,
+  integrationText,
+  exposureText,
+  numText,
+  pctText,
+  shutterSpan,
+  timeText,
+} from '../format'
 import { Dome, type DomeCtx, middle } from './Dome'
 import {
   type Fov,
@@ -236,10 +247,13 @@ export function SkyView({ sky, onOpen }: { sky: Sky; onOpen: (sha: string) => vo
         />
         {frames.size > 0 && (
           <p className={s.keyHint}>
-            The rectangle is the camera’s frame from its plate solve (
-            {[...frames.values()].map(fovText).join('; ')}), where it pointed at{' '}
-            {now == null ? 'the middle of the night' : 'the slider’s time'}. Zoom in to see it against the
-            sky.
+            Camera frame{' '}
+            <Help topic="Camera frame">
+              The rectangle is the camera’s frame from its plate solve (
+              {[...frames.values()].map(fovText).join('; ')}), where it pointed at{' '}
+              {now == null ? 'the middle of the night' : 'the slider’s time'}. Zoom in to see it against the
+              sky.
+            </Help>
           </p>
         )}
         <Facts sky={sky} />
@@ -330,7 +344,7 @@ function moonAt(points: { time: string; alt: number; az: number }[], t: number, 
   return alt != null && az != null && alt > 0 ? proj(alt, az) : null
 }
 
-const deg = (x: number) => (x >= 1 ? `${x.toFixed(1)}°` : `${Math.round(x * 60)}′`)
+const deg = (x: number) => (x >= 1 ? `${numText(x, 1)}°` : `${Math.round(x * 60)}′`)
 export const fovText = (f: Fov) => `${deg(f.w_deg)} × ${deg(f.h_deg)}, turned ${Math.round(f.rotation_deg)}°`
 
 /** The camera's frame on the dome: what it framed, against the sky behind, at time `t` (spec 015 amendment). */
@@ -364,12 +378,12 @@ export function CameraFrame({
   )
 }
 
-const exposure = (x: number | null | undefined) => (x != null ? `${x % 1 ? x.toFixed(1) : x} s` : '')
+const exposure = (x: number | null | undefined) => (x != null ? exposureText(x) : '')
 const fwhm = (x: SkySub) =>
   x.fwhm_arcsec != null
-    ? `FWHM ${x.fwhm_arcsec.toFixed(2)}″`
+    ? `FWHM ${numText(x.fwhm_arcsec, 2)}″`
     : x.fwhm_px != null
-      ? `FWHM ${x.fwhm_px.toFixed(2)} px`
+      ? `FWHM ${numText(x.fwhm_px, 2)} px`
       : ''
 
 function Tip({
@@ -480,8 +494,11 @@ function Key({
         </>
       )}
       <p className={s.keyHint}>
-        Filled: kept. Faded: down-weighted. Hollow: rejected. Choose a target to bring it into focus
-        {many ? '; a rig to hide or show it' : ''}.
+        How to read it{' '}
+        <Help topic="How to read the sky">
+          Filled: kept. Faded: down-weighted. Hollow: rejected. Choose a target to bring it into focus
+          {many ? '; a rig to hide or show it' : ''}.
+        </Help>
       </p>
     </div>
   )
@@ -490,7 +507,6 @@ function Key({
 function Facts({ sky }: { sky: Sky }) {
   const tw = sky.twilight
   const moon = sky.moon
-  const highest = moon?.points.reduce((a, p) => (p.alt > a ? p.alt : a), -90) ?? -90
   return (
     <dl className={s.facts}>
       {tw?.dusk && tw.dawn && (
@@ -504,10 +520,7 @@ function Facts({ sky }: { sky: Sky }) {
       {moon && (
         <>
           <dt>Moon</dt>
-          <dd>
-            {Math.round(moon.illumination * 100)}% lit
-            {highest > 0 ? `, up to ${Math.round(highest)}°` : ', below the horizon'}
-          </dd>
+          <dd>{moonSummary(sky)}</dd>
         </>
       )}
       {sky.unplaced.length > 0 && (
@@ -539,7 +552,22 @@ export function useWidth<T extends HTMLElement>(fallback: number): [RefObject<T 
   return [ref, w]
 }
 
-const hm = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+const hm = clockText
+
+/** The Moon during the lights, said once for the whole page (B18): "51% lit · up to 2°" or "below the horizon".
+ * Only the points between the first shutter open and the last shutter close count. */
+export function moonSummary(sky: Sky): string {
+  const moon = sky.moon
+  if (!moon) return 'Not known'
+  const span = shutterSpan(sky.subs, true)
+  const during = moon.points.filter((p) => {
+    const t = Date.parse(p.time)
+    return !span || (t >= span[0] && t <= span[1])
+  })
+  const pts = during.length ? during : moon.points
+  const highest = pts.reduce((a, p) => (p.alt > a ? p.alt : a), -90)
+  return `${pctText(moon.illumination)} lit · ${highest > 0 ? `up to ${angleText(highest)}` : 'below the horizon'}`
+}
 
 function AltitudeChart({
   sky,
@@ -603,7 +631,7 @@ function AltitudeChart({
           .filter((_, i, all) => all.length * 56 < W || i % 2 === 0)
           .map((t) => (
             <text key={t} x={x(t)} y={H - 6} textAnchor="middle" className={s.axisText}>
-              {new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              {clockText(t)}
             </text>
           ))}
         {sky.moon && <path d={path(sky.moon.points)} className={s.moonLine} />}
@@ -633,6 +661,15 @@ function AltitudeChart({
   )
 }
 
+/** A track's span, shutter open to shutter close, from its subs (their times are mid-exposure). */
+function trackSpan(sky: Sky, i: number, t: { first: string; last: string }): string {
+  const span = shutterSpan(
+    sky.subs.filter((x) => x.track === i),
+    true,
+  )
+  return span ? clockSpan(span[0], span[1]) : clockSpan(t.first, t.last)
+}
+
 /** The tracks in words: target, filter, rig, when and how much (FR-008). */
 export function SkyTracks({ sky }: { sky: Sky }) {
   const colourOf = new Map(sky.targets.map((t, i) => [t.key, series(i)]))
@@ -640,12 +677,12 @@ export function SkyTracks({ sky }: { sky: Sky }) {
   if (!sky.tracks.length) return null
   return (
     <ul className={s.tracks} aria-label="Tracks">
-      {sky.tracks.map((t) => (
+      {sky.tracks.map((t, i) => (
         <li key={t.dataset_id}>
           <Swatch colour={colourOf.get(t.target)} shape={shapeOf.get(t.rig) ?? 'circle'} />
           <span className={s.trackName}>{t.label}</span>
           <span className="muted">
-            {sky.rigs.find((r) => r.key === t.rig)?.name} · {hm(t.first)} to {hm(t.last)} ·{' '}
+            {sky.rigs.find((r) => r.key === t.rig)?.name} · {trackSpan(sky, i, t)} ·{' '}
             {integrationText(t.integration_s)} · {t.subs} subs
           </span>
         </li>

@@ -285,3 +285,5 @@ split it into, and subs far from the reference share too few stars with it.
   and a tenth of the solved ones) sit away from the middle; a single framing test or slew 2.9° off had turned M 42 L
   into a "mosaic". Stack notes written into the master's header are made plain ASCII ("°" → "deg"), since FITS refuses
   anything else and a finished stack failed at its last step.
+- **004-DR-29** (2026-10-22) Combining inside a project that isn't a mosaic leaves out masters of another panel (and,
+  as before, another pixel scale), listed with the reason, now that one project can hold several rigs and panels.

@@ -28,8 +28,6 @@
 }
 .kind {
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   color: var(--sst-muted);
   margin-right: 6px;
 }
@@ -129,8 +127,6 @@
   text-align: left;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--sst-muted);
   padding: 8px 10px;
   border-bottom: 1px solid var(--sst-line);
@@ -265,8 +261,6 @@
 .table th {
   text-align: left;
   font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--sst-muted);
   font-weight: 600;
   padding: 8px 10px;
@@ -286,7 +280,7 @@
   background: var(--sst-panel-3);
   color: var(--sst-text);
   font: inherit;
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
   font-variant-numeric: tabular-nums;
 }
 .inline {
@@ -576,4 +570,92 @@
   .withReason {
     align-items: flex-start;
   }
+}
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.radio input {
+  accent-color: var(--sst-accent);
+  margin: 0;
+}
+/* every field in Settings has the one control skin (ui.tsx Input/Select): one height, one border, one focus ring.
+   Written once here instead of per form, so no form is left with the browser's look (B04). */
+.page :is(select, textarea, input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'])) {
+  min-height: var(--sst-control-h);
+  padding: 4px 10px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-panel-3);
+  color: var(--sst-text);
+  font: inherit;
+  font-size: 13px;
+}
+.page textarea {
+  padding: 8px 10px;
+}
+.page :is(select, textarea, input):focus-visible {
+  outline: 2px solid var(--sst-focus);
+  outline-offset: 1px;
+}
+.page :is(input[type='checkbox'], input[type='radio']) {
+  accent-color: var(--sst-accent);
+}
+.page fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.page legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+/* post-processing steps: one grid row each (B05) */
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius);
+}
+.step {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.2fr) minmax(8rem, 1fr) minmax(0, 2fr);
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.step + .step {
+  border-top: 1px solid var(--sst-line-2);
+}
+.stepName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepParams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+@media (max-width: 599px) {
+  .step {
+    grid-template-columns: 1fr;
+  }
+}
+.toolStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
 }

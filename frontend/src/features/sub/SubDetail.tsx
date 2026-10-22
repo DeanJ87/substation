@@ -4,10 +4,19 @@
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Button, ConfirmButton, ErrorState, PageLoading } from '../../components/ui'
+import {
+  Button,
+  buttonClass,
+  ConfirmButton,
+  ErrorState,
+  PageLoading,
+  SegmentedControl,
+} from '../../components/ui'
+import { filterName } from '../../components/filters'
+import { filterOfLabel } from '../../components/filterTint'
 import { useBinFiles } from '../settings/Bin'
 import { VerdictIcon } from '../../components/VerdictBadge'
-import { nightText } from '../format'
+import { clockText, countText, dateTimeText, exposureText, nightText } from '../format'
 import { previewUrl, useLiveRefresh, useProcessing, useVerdict } from '../v2/hooks'
 import v from '../v2/v2.module.css'
 import { verdictState } from '../dataset/SubsTab'
@@ -169,15 +178,21 @@ export function SubView({
             )}
           </div>
           {list && <div className={v.muted}>{list.label}</div>}
-          <h1 className={v.mono} style={{ fontSize: 24 }}>
-            {sub.file}
+          {/* the sub by what tells it apart (C23): when, through what, for how long; the file name beneath */}
+          <h1>
+            {[
+              sub.time ? clockText(sub.time) : null,
+              filterName(filterOfLabel(d.dataset_label ?? '')) || null,
+              sub.exptime_s ? exposureText(sub.exptime_s) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || sub.file}
           </h1>
-          {/* owner 2026-10-13: when it was taken and for how long, without digging through the header */}
           <div className={v.muted}>
-            {sub.time
-              ? `Taken ${new Date(sub.time).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC`
-              : 'Capture time not recorded'}
-            {sub.exptime_s ? ` · ${sub.exptime_s} s exposure` : ''}
+            <span className="mono" title={sub.file}>
+              {sub.file}
+            </span>
+            {sub.time ? ` · ${dateTimeText(sub.time)}` : ' · capture time not recorded'}
           </div>
         </div>
         <div className={v.actions}>
@@ -193,6 +208,7 @@ export function SubView({
             Next <kbd>K</kbd>
           </Button>
           <ConfirmButton
+            variant="danger"
             question="Bin this sub?"
             confirm="Bin"
             onConfirm={() =>
@@ -228,50 +244,42 @@ export function SubView({
       </section>
       <div className={s.grid}>
         <div className={s.left}>
-          <div className={v.pills} role="group" aria-label="Preview">
-            {(
-              [
-                ['auto', 'Auto-stretch'],
-                ['stars', 'Stars'],
-                ['fwhm', 'FWHM map'],
-              ] as const
-            )
-              .filter(([k]) => k === 'auto' || starList.data)
-              .map(([k, label]) => (
-                <button
-                  key={k}
-                  type="button"
-                  className={v.pill}
-                  aria-pressed={mode === k}
-                  onClick={() => setMode(k)}
-                >
-                  {label}
-                </button>
-              ))}
-          </div>
-          <div className={v.actions}>
-            <AnnotateToggle
-              target={{ kind: 'sub', sha: sub.sha256 }}
-              on={annotate}
-              onChange={setAnnotate}
-              className={v.pill}
+          {/* a view is a choice of one (segmented); tools are actions beside it (C23) */}
+          <div className={s.toolbar}>
+            <SegmentedControl
+              label="Preview"
+              size="sm"
+              value={mode}
+              onChange={setMode}
+              options={(
+                [
+                  ['auto', 'Auto-stretch'],
+                  ['stars', 'Stars'],
+                  ['fwhm', 'FWHM map'],
+                ] as const
+              )
+                .filter(([k]) => k === 'auto' || starList.data)
+                .map(([k, label]) => ({ value: k, label }))}
             />
-            <button
-              type="button"
-              className={v.pill}
-              onClick={() => setLook('full')}
-              disabled={!sub.has_preview}
-            >
-              100% view
-            </button>
-            <button
-              type="button"
-              className={v.pill}
-              onClick={() => setLook('inspector')}
-              disabled={!sub.has_preview}
-            >
-              Aberration inspector
-            </button>
+            <span className={v.actions}>
+              <AnnotateToggle
+                target={{ kind: 'sub', sha: sub.sha256 }}
+                on={annotate}
+                onChange={setAnnotate}
+                className={buttonClass({ variant: 'ghost', size: 'sm' })}
+              />
+              <Button size="sm" variant="ghost" onClick={() => setLook('full')} disabled={!sub.has_preview}>
+                100% view
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setLook('inspector')}
+                disabled={!sub.has_preview}
+              >
+                Aberration inspector
+              </Button>
+            </span>
           </div>
           {look && (
             <CloseLook
@@ -283,9 +291,7 @@ export function SubView({
             />
           )}
           {mode === 'stars' && (
-            <p className={`${v.note} ${v.muted}`}>
-              {starList.data?.stars.length.toLocaleString('en-GB')} stars detected.
-            </p>
+            <p className={`${v.note} ${v.muted}`}>{countText(starList.data?.stars.length)} stars detected.</p>
           )}
           {mode === 'fwhm' && (
             <p className={`${v.note} ${v.muted}`}>
@@ -317,8 +323,7 @@ export function SubView({
               <strong>{LABEL[st as keyof typeof LABEL]}</strong>
               <span className={v.muted}>
                 {sub.manual ? 'manual' : sub.source === 'nina' ? 'NINA thumbs-down' : 'auto'}
-                {d.graded_at &&
-                  ` · graded ${new Date(d.graded_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`}
+                {d.graded_at && ` · graded ${dateTimeText(d.graded_at)}`}
               </span>
               <span className={v.actions} style={{ marginLeft: 'auto' }}>
                 <Button onClick={() => decide('accept')}>
@@ -340,7 +345,7 @@ export function SubView({
                     {h.source === 'nina_bad_prefix'
                       ? 'NINA thumbs-down'
                       : `${h.verdict === 'auto' ? 'Reverted to auto' : h.verdict} by ${h.by ?? 'someone'}`}{' '}
-                    · {new Date(h.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+                    · {dateTimeText(h.at)}
                   </li>
                 ))}
               </ul>
@@ -359,16 +364,14 @@ export function SubView({
                       <dt>Dark</dt>
                       <dd>
                         {c.dark ? `${String(c.dark)} · ` : ''}
-                        <span className={c.dark ? v.ok : v.muted}>{String(c.dark_note || 'None')}</span>
+                        <span className={v.muted}>{String(c.dark_note || 'None')}</span>
                       </dd>
                     </div>
                     <div className={s.field}>
                       <dt>Flat</dt>
                       <dd>
                         {c.flat ? `${String(c.flat)} · ` : ''}
-                        <span className={c.weak ? v.warn : c.flat ? v.ok : v.muted}>
-                          {String(c.flat_note || 'None')}
-                        </span>
+                        <span className={c.weak ? v.warn : v.muted}>{String(c.flat_note || 'None')}</span>
                       </dd>
                     </div>
                   </dl>
@@ -417,8 +420,13 @@ export function SubView({
                   {sec.fields.map((f) => (
                     <div key={f.label} className={s.field}>
                       <dt>{f.label}</dt>
-                      <dd className={f.value ? v.mono : v.muted}>{f.value ?? 'Not recorded'}</dd>
-                      <dd className={s.src}>{f.value ? f.source.toUpperCase() : '—'}</dd>
+                      {/* where a value came from shows on hover, not on every row (C14) */}
+                      <dd
+                        className={f.value ? v.mono : v.muted}
+                        title={f.value ? `From ${f.source}` : undefined}
+                      >
+                        {fieldValue(f.label, f.value)}
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -460,11 +468,20 @@ function StarOverlay({ data, fwhm }: { data: StarList; fwhm: boolean }) {
             cy={y * aspect}
             r={r}
             fill="none"
-            stroke="var(--sst-accent)"
+            stroke="var(--sst-chart-1)"
             strokeWidth={0.0012}
           />
         )
       })}
     </svg>
   )
+}
+
+/** A header value as people read it: filter names in their usual form ("Halpha" → Hα); an SNR below zero (a
+ * calibrated frame's background) isn't a measure, so it isn't shown as one (C23). */
+function fieldValue(label: string, value: string | null | undefined): string {
+  if (value == null || value === '') return 'Not recorded'
+  if (/^filter$/i.test(label)) return filterName(value)
+  if (/snr/i.test(label) && /^[-−]/.test(value.trim())) return 'Not measurable'
+  return value
 }

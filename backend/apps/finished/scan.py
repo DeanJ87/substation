@@ -173,6 +173,8 @@ _ROLE_PATTERNS = (
     (FileRole.STARS, re.compile(r"(^|[-_ .])(stars|stars[-_ ]?only|starmask)([-_ .]|$)", re.I)),
     (FileRole.FINAL, re.compile(r"(^|[-_ .])(final)([-_ .]|$)", re.I)),
 )
+# stars put back: a final, whatever else the name says ("…_starless-recombined")
+_RECOMBINED = re.compile(r"(^|[-_ .])(recombined|recomposed|stars[-_ ]?back)([-_ .]|$)", re.I)
 _PROGRESSIVE = re.compile(r"(?:progress(?:ive)?|stack)[-_ ]?(\d{1,3})(?!\d)", re.I)
 _STEP = re.compile(r"(?:^|[-_ .])step[-_ ]?(\d{1,3})(?:[-_ .]+(.+))?$", re.I)
 # How a step's tools read on screen (020-DR-14); anything else keeps the owner's spelling.
@@ -236,6 +238,8 @@ def _role_for(stem: str, names: list[str]) -> tuple[str, str, int | None]:
     then a filter. A step's label comes from `_step`."""
     if _step(stem):
         return FileRole.STEP, "", _step(stem)[0]  # type: ignore[index]
+    if _RECOMBINED.search(stem):
+        return FileRole.FINAL, "", None
     for r, pat in _ROLE_PATTERNS:
         if pat.search(stem):
             return r, "", None

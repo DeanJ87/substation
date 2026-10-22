@@ -8,6 +8,7 @@ import { useDraft } from './draft'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
 import { ReadOnlyReason } from './LibraryAccess'
+import { countText } from '../format'
 
 export function Bin() {
   const qc = useQueryClient()
@@ -24,12 +25,18 @@ export function Bin() {
   const b = draft.bin ?? { auto_bin_rejected_days: 30, purge_after_days: 30 }
   const d = bin.data
   return (
-    <SettingsSection id="bin" title="Bin" meta={d ? d.total : undefined}>
-      <p className="muted">
-        Binned files leave SubStation at once. In a library SubStation may delete in, they move to a hidden{' '}
-        <span className={s.mono}>.substation-quarantine</span> folder there and are deleted for good later;
-        elsewhere they're only hidden. Their records stay, so your history still counts them.
-      </p>
+    <SettingsSection
+      id="bin"
+      title="Bin"
+      meta={d ? d.total : undefined}
+      help={
+        <>
+          Binned files leave SubStation at once. In a library SubStation may delete in, they move to a hidden{' '}
+          <span className={s.mono}>.substation-quarantine</span> folder there and are deleted for good later;
+          elsewhere they're only hidden. Their records stay, so your history still counts them.
+        </>
+      }
+    >
       <div className={s.inline}>
         <label>
           Bin rejected subs after{' '}
@@ -98,7 +105,7 @@ export function Bin() {
           ))}
       </ul>
       <p className="muted">
-        {d ? `${d.total.toLocaleString('en-GB')} file${d.total === 1 ? '' : 's'} in the bin. ` : ''}
+        {d ? `${countText(d.total)} file${d.total === 1 ? '' : 's'} in the bin. ` : ''}
         <Link to="/bin">Open the bin</Link> to see them, restore any, or tidy now.
       </p>
     </SettingsSection>

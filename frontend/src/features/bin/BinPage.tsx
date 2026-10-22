@@ -5,14 +5,14 @@ import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
-import { Button, ConfirmButton, EmptyState, ErrorState, PageLoading } from '../../components/ui'
-import { bytes } from '../format'
+import { Help } from '../../components/Help'
+import { Button, buttonClass, ConfirmButton, EmptyState, ErrorState, PageLoading } from '../../components/ui'
+import { bytes, countText, dateText } from '../format'
 import v from '../v2/v2.module.css'
 import s from './bin.module.css'
 
 const PAGE = 200
-const day = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+const day = (iso: string | null | undefined) => (iso ? dateText(iso) : '')
 const TYPE: Record<string, string> = {
   light: 'Light',
   dark: 'Dark',
@@ -82,13 +82,16 @@ export function BinPage() {
         <div>
           <h1>Bin</h1>
           <div className={v.sub}>
-            Binned files leave SubStation at once. Where SubStation may delete, they wait in a hidden
-            quarantine folder and are deleted after {d.purge_after_days} days; elsewhere they're only hidden.
-            Their records stay, so your history still counts them.
+            Deleted after {d.purge_after_days} days where SubStation may delete{' '}
+            <Help topic="The bin">
+              Binned files leave SubStation at once. Where SubStation may delete, they wait in a hidden
+              quarantine folder and are deleted after {d.purge_after_days} days; elsewhere they're only
+              hidden. Their records stay, so your history still counts them.
+            </Help>
           </div>
         </div>
         <div className={v.actions}>
-          <Link to="/settings" hash="bin" className={v.pill}>
+          <Link to="/settings" hash="bin" className={buttonClass()}>
             Bin settings
           </Link>
         </div>
@@ -97,42 +100,41 @@ export function BinPage() {
       <div className={v.readouts}>
         <div className={v.readout}>
           <div className={v.readoutLabel}>In the bin</div>
-          <div className={v.readoutValue}>{d.total.toLocaleString('en-GB')}</div>
+          <div className={v.readoutValue}>{countText(d.total)}</div>
           <div className={v.readoutDetail}>files</div>
         </div>
         <div className={v.readout}>
           <div className={v.readoutLabel}>In quarantine</div>
           <div className={v.readoutValue}>
-            {d.bytes_in_quarantine ? (
-              <>
-                {space.value} <span className={s.unit}>{space.unit}</span>
-              </>
-            ) : (
-              'None'
-            )}
+            {space.value === '—' ? '0' : space.value} <span className={s.unit}>{space.unit || 'B'}</span>
           </div>
-          <div className={v.readoutDetail}>{d.moved.toLocaleString('en-GB')} files waiting to be deleted</div>
+          <div className={v.readoutDetail}>{countText(d.moved)} files waiting to be deleted</div>
         </div>
         <div className={v.readout}>
           <div className={v.readoutLabel}>Only hidden</div>
-          <div className={v.readoutValue}>{d.hidden.toLocaleString('en-GB')}</div>
+          <div className={v.readoutValue}>{countText(d.hidden)}</div>
           <div className={v.readoutDetail}>in libraries SubStation may not delete from</div>
         </div>
         <div className={v.readout}>
           <div className={v.readoutLabel}>Deleted so far</div>
-          <div className={v.readoutValue}>{d.deleted.toLocaleString('en-GB')}</div>
+          <div className={v.readoutValue}>{countText(d.deleted)}</div>
           <div className={v.readoutDetail}>records kept for history</div>
         </div>
       </div>
 
       <section className={`${v.card} ${s.tidy}`}>
         <div>
-          <strong>Daily tidy</strong>
-          <p className={v.muted}>
+          <strong>Daily tidy</strong>{' '}
+          <Help topic="Daily tidy">
             Once a day SubStation bins subs that have been rejected for more than {d.auto_bin_rejected_days}{' '}
             days
             {d.auto_bin_rejected_days ? '' : ' (switched off)'}, unless you've kept them, and deletes
-            quarantined files whose date has passed. "Tidy now" runs it straight away.
+            quarantined files whose date has passed. Tidy now runs it straight away.
+          </Help>
+          <p className={v.muted}>
+            {d.auto_bin_rejected_days
+              ? `Bins subs rejected for ${d.auto_bin_rejected_days} days`
+              : 'Rejected subs are never binned by itself'}
           </p>
         </div>
         <Button disabled={tidy.isPending} onClick={() => tidy.mutate()}>

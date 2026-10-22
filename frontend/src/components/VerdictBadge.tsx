@@ -1,6 +1,7 @@
 // The seven-state verdict system from the brand guidelines (section 07). Each state has its own shape and
 // glyph, so colour is a third cue, never the only one (constitution III); filled shapes are final
-// decisions, outlined shapes are states that will change. Paths are the design's 16-unit artwork.
+// decisions, outlined shapes are states that will change. Paths are the design's 16-unit artwork. Colours are the
+// status tokens (007-DR-38): low-chroma, clear of the filter palette; rejected is grey, never red.
 import styles from './VerdictBadge.module.css'
 
 export type VerdictState = 'accept' | 'down' | 'reject' | 'await' | 'integ' | 'stale' | 'recon'
@@ -18,17 +19,17 @@ const circle = 'M8 1.75a6.25 6.25 0 1 1 0 12.5a6.25 6.25 0 1 1 0-12.5z'
 const square = 'M2.75 1.75h10.5a1 1 0 0 1 1 1v10.5a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1V2.75a1 1 0 0 1 1-1z'
 
 export const VERDICTS: Record<VerdictState, Def> = {
-  accept: { name: 'Accepted', token: 'ok', filled: true, shape: circle, glyph: 'M5.1 8.3l2 2l3.9-4.3' },
+  accept: { name: 'Accepted', token: 'st-kept', filled: true, shape: circle, glyph: 'M5.1 8.3l2 2l3.9-4.3' },
   down: {
     name: 'Down-weighted',
-    token: 'warn',
+    token: 'st-down',
     filled: true,
     shape: 'M1.5 2.25h13L8 14.5z',
     glyph: 'M5.6 5.4h4.8',
   },
   reject: {
     name: 'Rejected',
-    token: 'bad',
+    token: 'st-rejected',
     filled: true,
     shape: square,
     glyph: 'M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8',
@@ -43,7 +44,7 @@ export const VERDICTS: Record<VerdictState, Def> = {
   },
   integ: {
     name: 'Integrating',
-    token: 'accent',
+    token: 'st-pending',
     filled: false,
     shape: 'M8 1.5l5.6 3.25v6.5L8 14.5l-5.6-3.25v-6.5z',
     glyph: 'M5.4 6.2h5.2M5.4 8h5.2M5.4 9.8h5.2',

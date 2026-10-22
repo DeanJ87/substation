@@ -11,19 +11,11 @@ import v from '../v2/v2.module.css'
 import { useSettings } from './draft'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
+import { dateTimeText } from '../format'
 
 type Token = components['schemas']['TokenOut']
 
-const when = (iso: string | null | undefined, never = 'never') =>
-  iso
-    ? new Date(iso).toLocaleString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : never
+const when = (iso: string | null | undefined, never = 'never') => (iso ? dateTimeText(iso) : never)
 
 const state = (t: Token) => (t.revoked_at ? 'Revoked' : t.active ? 'Active' : 'Expired')
 
@@ -60,12 +52,18 @@ export function ApiTokens() {
   const tokens = list.data ?? []
   const origin = window.location.origin
   return (
-    <SettingsSection id="tokens" title="API tokens" meta={list.isSuccess ? tokens.length : undefined}>
-      <p className="muted">
-        A token lets another app, such as the renderer, read your finished projects and their files. It can't
-        sign in, change anything or reach the rest of SubStation. Make one per app, so you can revoke one
-        without the others.
-      </p>
+    <SettingsSection
+      id="tokens"
+      title="API tokens"
+      meta={list.isSuccess ? tokens.length : undefined}
+      help={
+        <>
+          A token lets another app, such as the renderer, read your finished projects and their files. It
+          can't sign in, change anything or reach the rest of SubStation. Make one per app, so you can revoke
+          one without the others.
+        </>
+      }
+    >
       {!admin ? null : (
         <>
           <form

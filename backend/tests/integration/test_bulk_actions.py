@@ -104,7 +104,7 @@ def _ds(name: str, col: Collection | None = None, project: Project | None = None
 
 def test_moving_datasets_records_where_they_were_and_undo_puts_them_back(admin_client):
     soul, heart = Collection.objects.create(name="Soul"), Collection.objects.create(name="Heart")
-    mosaic = Project.objects.create(collection=soul, name="Mosaic 2026")
+    mosaic = Project.objects.create(collection=soul, own_name="Mosaic 2026")
     a, b, c = _ds("IC 1848", soul, mosaic), _ds("IC 1805", heart), _ds("NGC 896")
     r = post(
         admin_client, "/bulk/datasets/move", {"dataset_ids": [a.pk, b.pk, c.pk], "collection_id": heart.pk}
@@ -229,7 +229,7 @@ def test_read_only_accounts_and_empty_or_huge_choices_are_refused(viewer_client,
 def test_undoing_a_move_after_the_old_collection_was_removed_leaves_them_unfiled(admin_client):
     """Review 2026-10-15: the collection a move came from may be gone by the time it's undone."""
     soul, heart = Collection.objects.create(name="Soul"), Collection.objects.create(name="Heart")
-    mosaic = Project.objects.create(collection=soul, name="Mosaic 2026")
+    mosaic = Project.objects.create(collection=soul, own_name="Mosaic 2026")
     a = _ds("IC 1848", soul, mosaic)
     r = post(admin_client, "/bulk/datasets/move", {"dataset_ids": [a.pk], "collection_id": heart.pk})
     soul.delete()  # its project goes with it

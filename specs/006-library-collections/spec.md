@@ -172,3 +172,25 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
 - **006-DR-34 A full re-read tidies datasets.** After re-reading every frame, and after every re-match, datasets whose figures no longer match
   their subs are recounted, and those left with no subs and no stacks are removed (subs moved by an earlier regroup
   had left four datasets showing 1–2 subs that now belonged to the merged datasets).
+- **006-DR-35** (2026-10-22) **A project is a target's season.** This replaces 006-DR-20's split by panel and framing.
+  A project is a collection plus a season ("2026", or "2025–26" when the nights run across New Year without a gap
+  of more than 120 days), with an optional name; its label is "2026" or "2026 · wide field". Rigs, panels and
+  filters are data inside it. Whether it is a mosaic is worked out (more than one planned panel, or datasets on more
+  than one panel) unless the owner sets it. Sorting unassigned datasets puts each into its season's project, joining
+  one that exists, and never splits by rig, panel or framing. A dataset spanning seasons goes to the season with
+  most of its integration.
+- **006-DR-36** (2026-10-22) **Merge, split, done and delete, all undoable.** Merge moves the datasets into one
+  project, keeps the larger goal per filter (saying where they differed), the larger panel count, and moves its
+  combined masters; it is refused when a project being absorbed is linked to a finished image. Split moves datasets
+  by rig, by panel or by hand into new projects of the same season; goals and finished links stay. Done hides a
+  project from the bar and from goal totals, and moves no files (archiving stays a collection action, spec 013).
+  Delete leaves the datasets in the collection, unlinks finished images (named in the warning), and is refused while
+  the project has combined masters. Each of these, and creating, editing and assigning datasets, is a change that
+  can be undone; undoing a merge or delete brings the project back with its own id.
+- **006-DR-37** (2026-10-22) **Duplicates merged once.** On upgrade, every project keeps its kind as the owner's
+  choice and gets its season; projects of one collection and season merge into the one with the most integration,
+  each merge an undoable change. Names the old suggester made ("2-panel mosaic 2026", "Single field · rig") are
+  dropped so the label is the season. A group is held for the owner, flagged with why, when a project to be
+  absorbed is linked to a finished image, goals disagree, two names were typed by hand, or mosaics differ in size.
+  The collection page lists held groups with Merge and Keep apart. The Projects panel is one card per project with
+  a menu for these actions.

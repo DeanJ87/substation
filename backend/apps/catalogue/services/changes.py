@@ -126,6 +126,13 @@ def _undo_archive(change: Change) -> str:
         raise CantUndo(str(e)) from None
 
 
+def _undo_project(change: Change) -> str:
+    """Projects merged, split, removed, edited or datasets moved between them (amendment 2026-10-22)."""
+    from apps.catalogue.services.projects import undo as undo_project
+
+    return undo_project(change.data)
+
+
 UNDOERS: dict[str, Callable[[Change], str]] = {
     Change.Kind.VERDICT: _undo_verdicts,
     Change.Kind.AGREE: _undo_verdicts,
@@ -134,6 +141,7 @@ UNDOERS: dict[str, Callable[[Change], str]] = {
     Change.Kind.DISMISS: _undo_dismiss,
     Change.Kind.QA: _undo_qa,
     Change.Kind.ARCHIVE: _undo_archive,
+    Change.Kind.PROJECT: _undo_project,
 }
 
 

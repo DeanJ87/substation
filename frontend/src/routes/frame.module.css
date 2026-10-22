@@ -55,7 +55,6 @@
   align-items: center;
   gap: 8px;
   color: var(--sst-muted);
-  font-family: var(--sst-font-mono);
   font-size: 12px;
   text-decoration: none;
 }
@@ -189,21 +188,29 @@
   margin: 0;
 }
 
+/* a count beside a section: a small neutral figure; failures add a red dot (007-DR-38: never a pink badge) */
 .count {
-  font-family: var(--sst-font-mono);
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 16px;
   padding: 0 6px;
   border-radius: 999px;
-  border: 1px solid var(--sst-accent-line);
-  background: var(--sst-accent-tint);
-  color: var(--sst-accent);
+  background: var(--sst-panel-2);
+  color: var(--sst-muted);
+  font-variant-numeric: tabular-nums;
 }
 .countBad {
-  border-color: var(--sst-bad);
-  color: var(--sst-bad);
-  background: transparent;
+  color: var(--sst-text);
+}
+.countBad::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sst-bad);
 }
 .signInStack {
   display: flex;
@@ -258,13 +265,20 @@
   .divider {
     display: none;
   }
+  /* every section stays reachable: the strip scrolls sideways, fades at the edge that has more, and the
+     current section is scrolled into view (B16) */
   .nav {
     order: 3;
     flex-basis: 100%;
     height: 44px;
-    gap: 20px;
+    gap: 18px;
     overflow-x: auto;
     scrollbar-width: none;
+    padding-right: 28px;
+    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+  }
+  .navEnd {
+    mask-image: none;
   }
   .nav::-webkit-scrollbar {
     display: none;

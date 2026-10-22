@@ -8,6 +8,7 @@ import { api, unwrap } from '../../api/client'
 import { scopeQuery, type Scope } from '../scope/scope'
 import { useLiveEvents } from '../../api/events'
 import type { components } from '../../api/schema'
+import { numText } from '../format'
 
 type S = components['schemas']
 export type Sub = S['SubOut']
@@ -422,14 +423,12 @@ export const stackPreviewUrl = (id: number, size: 'thumb' | 'screen' = 'thumb') 
   `/api/v1/stacks/${id}/preview?size=${size}`
 
 export function fwhmText(s: { fwhm_arcsec?: number | null; fwhm_px?: number | null }): string {
-  if (s.fwhm_arcsec) return `${s.fwhm_arcsec.toFixed(2)}″`
-  if (s.fwhm_px) return `${s.fwhm_px.toFixed(2)} px`
+  if (s.fwhm_arcsec) return `${numText(s.fwhm_arcsec, 2)}″`
+  if (s.fwhm_px) return `${numText(s.fwhm_px, 2)} px`
   return '—'
 }
-export const num = (n: number | null | undefined, digits = 0) =>
-  n == null
-    ? '—'
-    : n.toLocaleString('en-GB', { maximumFractionDigits: digits, minimumFractionDigits: digits })
+/** A figure with en-GB grouping and a real minus sign (format.ts numText). */
+export const num = (n: number | null | undefined, digits = 0) => numText(n, digits)
 
 export type SetDetail = S['SetDetailOut']
 export type Built = S['BuiltOut']

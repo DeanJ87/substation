@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, Outlet, useNavigate } from '@tanstack/react-router'
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { signOut, type SessionUser } from '../api/auth'
 import { api, unwrap } from '../api/client'
@@ -46,6 +46,20 @@ function Frame({ user }: { user: SessionUser }) {
   const act = useQueueSummary()
   const running = act.data?.running ?? 0
   const failed = act.data?.failed_open ?? 0
+  const nav = useRef<HTMLElement>(null)
+  const [navEnd, setNavEnd] = useState(false)
+  const onNavScroll = () => setNavEnd(atEnd(nav.current))
+  const path = useRouterState({ select: (r) => r.location.pathname })
+  // on a phone the section strip scrolls: keep the current section in view
+  useEffect(() => {
+    const el = nav.current
+    if (!el || !path) return
+    el.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({
+      block: 'nearest',
+      inline: 'nearest',
+    })
+    setNavEnd(atEnd(el))
+  }, [path])
   const healthy = libraries.length > 0 && libraries.every((l) => l.status === 'ok' || l.status === 'watching')
 
   async function out() {
@@ -63,7 +77,12 @@ function Frame({ user }: { user: SessionUser }) {
         <Link to="/" className={s.brand} aria-label="SubStation home">
           <Lockup size={22} />
         </Link>
-        <nav aria-label="Main" className={s.nav}>
+        <nav
+          aria-label="Main"
+          className={`${s.nav} ${navEnd ? s.navEnd : ''}`}
+          ref={nav}
+          onScroll={onNavScroll}
+        >
           {NAV.map((n) => (
             <Link
               key={n.to}
@@ -78,7 +97,7 @@ function Frame({ user }: { user: SessionUser }) {
                   aria-label={`${failed} failed jobs`}
                   title={`${failed} failed`}
                 >
-                  {failed} failed
+                  {failed}
                 </span>
               ) : (
                 n.to === '/activity' &&
@@ -117,6 +136,11 @@ function Frame({ user }: { user: SessionUser }) {
       <KeyHelp />
     </div>
   )
+}
+
+/** Is a sideways-scrolling strip at its right end (nothing more to see)? */
+function atEnd(el: HTMLElement | null): boolean {
+  return !el || el.scrollLeft + el.clientWidth >= el.scrollWidth - 4
 }
 
 function AccountMenu({ name, version, onSignOut }: { name: string; version: string; onSignOut: () => void }) {

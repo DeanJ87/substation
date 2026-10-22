@@ -105,3 +105,17 @@ requirement they close. Gap numbers (G1–G16) refer to `docs/design/design-revi
 - [X] B47 (2026-10-16) Filter tint tokens, `filterTint`, `<Tinted>` on collection, combined and dataset master
   thumbnails; the collection's masters carry their filter (007-DR-35); tests; screenshots
 - [X] B48 (2026-10-16) Thumbnail tints removed (007-DR-36); the filter tokens kept for the sky dome
+- [X] (2026-10-22) Search matches filter aliases to their canonical names (007-DR-37); test
+- [X] B49 (2026-10-22) Colour roles in `substation-tokens.css` (data, chart, status, filter tokens in dark, light and
+  night; series-1 no longer the accent); verdict, grade, night and chart colours moved to them; no uppercase labels;
+  mono only for paths (007-DR-38)
+- [X] B50 (2026-10-22) `format.ts` rebuilt (dates, times, durations, exposures, numbers, binning, `datasetLabel`,
+  `shutterSpan`); inline `toLocale*`/`toFixed` replaced outside the library and finished screens; tests (007-DR-39)
+- [X] B51 (2026-10-22) `ui.tsx` primitive layer and `filters.ts`; Modal focus trap and sizes; dead CSS and five unused
+  dependencies removed (007-DR-40)
+- [X] B52 (2026-10-22) Screens: dataset (title order, one action bar, Needs a look, quiet tiles and sessions, masters
+  count with failures, short errors), night (one time convention, one Moon), sky, Activity, Calibration, What to
+  shoot, Bin, Settings (file paths, post-processing rows, help behind ?), sub viewer, phone navigation; axe clean;
+  screenshots at 1440 and 400 px (007-DR-41)
+- [ ] B53 Library, collection and project screens onto FilterMeter, GradeMeter and the colour roles (owned by the
+  library rework)

@@ -829,8 +829,32 @@ export interface paths {
         /** List Projects */
         get: operations["apps_catalogue_api_projects_list_projects"];
         put?: never;
-        /** Create Project */
+        /**
+         * Create Project
+         * @description A new project for a season (this year unless said), with an optional name.
+         */
         post: operations["apps_catalogue_api_projects_create_project"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collections/{id}/projects/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Projects
+         * @description Merge projects into one (`into` keeps its name): datasets, goals (the larger per filter), combined masters.
+         *     Refused when a project to be absorbed is linked to a finished image.
+         */
+        post: operations["apps_catalogue_api_projects_merge_projects"];
         delete?: never;
         options?: never;
         head?: never;
@@ -865,7 +889,8 @@ export interface paths {
         put?: never;
         /**
          * Suggest Projects
-         * @description Make projects for the datasets not in one yet (006-DR-20); rename or regroup them afterwards.
+         * @description Sort the datasets not in a project into seasons: each joins its season's project, else a new project per
+         *     season. Never split by rig, panel or framing; split a project afterwards if wanted.
          */
         post: operations["apps_catalogue_api_projects_suggest_projects"];
         delete?: never;
@@ -1324,6 +1349,44 @@ export interface paths {
         get?: never;
         /** Set Links */
         put: operations["apps_finished_api_manage_set_links"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/progression": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Progression */
+        get: operations["apps_finished_api_manage_get_progression"];
+        put?: never;
+        /**
+         * Generate Progression
+         * @description Build the cumulative stacks (the Generate progression button); `force` rebuilds even when cached.
+         */
+        post: operations["apps_finished_api_manage_generate_progression"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finished/{id}/progression/{order}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Progression Image */
+        get: operations["apps_finished_api_manage_progression_image"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2223,12 +2286,16 @@ export interface paths {
         post?: never;
         /**
          * Delete Project
-         * @description The datasets stay in the collection, just not in a project.
+         * @description The datasets stay in the collection, just not in a project. Refused while it has combined masters; its
+         *     finished-image links go (said in warnings).
          */
         delete: operations["apps_catalogue_api_projects_delete_project"];
         options?: never;
         head?: never;
-        /** Update Project */
+        /**
+         * Update Project
+         * @description Rename, change its season, set its kind (or back to automatic), planned panels, goals; mark it done.
+         */
         patch: operations["apps_catalogue_api_projects_update_project"];
         trace?: never;
     };
@@ -2243,6 +2310,46 @@ export interface paths {
         /** Set Project Datasets */
         put: operations["apps_catalogue_api_projects_set_project_datasets"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Project Impact
+         * @description What merging, splitting or removing this project would touch, for the page to ask first.
+         */
+        get: operations["apps_catalogue_api_projects_project_impact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Split Project
+         * @description New projects in the same season for part of this one: by rig, by panel, or the chosen datasets.
+         */
+        post: operations["apps_catalogue_api_projects_split_project"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3622,6 +3729,37 @@ export interface components {
             /** Undone At */
             undone_at: string | null;
         };
+        /** ChangedOut */
+        ChangedOut: {
+            /** Change Id */
+            change_id?: number | null;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
+        /** CheckpointOut */
+        CheckpointOut: {
+            /** Filters */
+            filters: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Image Url */
+            image_url: string;
+            /** Integration S */
+            integration_s: number;
+            /** Label */
+            label: string;
+            /** Nights */
+            nights: string[];
+            /** Order */
+            order: number;
+            /** Subs */
+            subs: number;
+        };
         /** ClassificationIn */
         ClassificationIn: {
             /** Frame Type */
@@ -4589,6 +4727,17 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** ImpactOut */
+        ImpactOut: {
+            /** Combined */
+            combined: string[];
+            /** Datasets */
+            datasets: number;
+            /** Finished */
+            finished: string[];
+            /** Goal Conflicts */
+            goal_conflicts: string[];
+        };
         /** JobIdsIn */
         JobIdsIn: {
             /** Ids */
@@ -5044,12 +5193,30 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** MergeIn */
+        MergeIn: {
+            /** From */
+            from: number[];
+            /** Into */
+            into: number;
+        };
         /** MergeNamesIn */
         MergeNamesIn: {
             /** Into */
             into: string;
             /** Names */
             names: string[];
+        };
+        /** MergeOut */
+        MergeOut: {
+            /** Change Id */
+            change_id?: number | null;
+            project: components["schemas"]["ProjectOut"];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
         };
         /** MetadataFieldOut */
         MetadataFieldOut: {
@@ -5705,6 +5872,31 @@ export interface components {
             site_lon?: number | null;
             sub: components["schemas"]["SubOut"];
         };
+        /** ProgressionIn */
+        ProgressionIn: {
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+        };
+        /** ProgressionOut */
+        ProgressionOut: {
+            /** Built At */
+            built_at: string | null;
+            /** Checkpoints */
+            checkpoints: components["schemas"]["CheckpointOut"][];
+            /** Mapping */
+            mapping: string;
+            /** Progress */
+            progress: number;
+            /** Reason */
+            reason: string;
+            /** State */
+            state: string;
+            /** Step */
+            step: string;
+        };
         /** ProjectIn */
         ProjectIn: {
             /**
@@ -5712,22 +5904,33 @@ export interface components {
              * @default []
              */
             dataset_ids: number[];
+            /** Kind */
+            kind?: string | null;
             /**
-             * Kind
-             * @default single
+             * Name
+             * @default
              */
-            kind: string;
-            /** Name */
             name: string;
             /** Planned Panels */
             planned_panels?: number | null;
+            /** Season */
+            season?: string | null;
         };
         /** ProjectOut */
         ProjectOut: {
             /** Accepted Integration S */
             accepted_integration_s: number;
+            /** Change Id */
+            change_id?: number | null;
             /** Dataset Ids */
             dataset_ids: number[];
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /** Done At */
+            done_at?: string | null;
             /**
              * Filter Time
              * @default {}
@@ -5748,12 +5951,25 @@ export interface components {
             id: number;
             /** Kind */
             kind: string;
+            /** Kind Auto */
+            kind_auto: string;
+            /** Kind Override */
+            kind_override?: string | null;
+            /** Label */
+            label: string;
             /** Last Night */
             last_night: string | null;
             /** Missing Panels */
             missing_panels: number[];
             /** Name */
             name: string;
+            /**
+             * Needs Review
+             * @default false
+             */
+            needs_review: boolean;
+            /** Own Name */
+            own_name: string;
             /** Panels */
             panels: number[];
             /** Planned Panels */
@@ -5761,13 +5977,27 @@ export interface components {
             /** Position */
             position: number;
             /**
+             * Review Reason
+             * @default
+             */
+            review_reason: string;
+            /**
              * Rigs
              * @default []
              */
             rigs: string[];
+            /** Season */
+            season: string;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
         };
         /** ProjectPatch */
         ProjectPatch: {
+            /** Done */
+            done?: boolean | null;
             /** Goals */
             goals?: {
                 [key: string]: number | null;
@@ -5776,8 +6006,12 @@ export interface components {
             kind?: string | null;
             /** Name */
             name?: string | null;
+            /** Needs Review */
+            needs_review?: boolean | null;
             /** Planned Panels */
             planned_panels?: number | null;
+            /** Season */
+            season?: string | null;
         };
         /** ProjectSummary */
         ProjectSummary: {
@@ -5808,6 +6042,11 @@ export interface components {
         ProjectsOut: {
             /** Projects */
             projects: components["schemas"]["ProjectOut"][];
+            /**
+             * Review
+             * @default []
+             */
+            review: components["schemas"]["ReviewOut"][];
             /** Unassigned */
             unassigned: number[];
         };
@@ -6069,6 +6308,22 @@ export interface components {
             subs: components["schemas"]["SubOut"][];
             /** Target */
             target: string;
+        };
+        /**
+         * ReviewOut
+         * @description Projects of one season held apart when seasons were joined: the owner merges them or keeps them apart.
+         */
+        ReviewOut: {
+            /** Into */
+            into: number;
+            /** Mergeable */
+            mergeable: boolean;
+            /** Project Ids */
+            project_ids: number[];
+            /** Reasons */
+            reasons: string[];
+            /** Season */
+            season: string;
         };
         /** RigIn */
         RigIn: {
@@ -6758,6 +7013,22 @@ export interface components {
             /** Waiting */
             waiting: number;
         };
+        /** SortOut */
+        SortOut: {
+            /** Change Id */
+            change_id?: number | null;
+            /** Created */
+            created: components["schemas"]["ProjectOut"][];
+            /** Joined */
+            joined: components["schemas"]["ProjectOut"][];
+            /** Placed */
+            placed: number;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
         /** SourceUse */
         SourceUse: {
             /** Detail */
@@ -6768,6 +7039,34 @@ export interface components {
             frames: number;
             /** Source */
             source: string;
+        };
+        /** SplitIn */
+        SplitIn: {
+            /** By */
+            by: string;
+            /**
+             * Dataset Ids
+             * @default []
+             */
+            dataset_ids: number[];
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+        };
+        /** SplitOut */
+        SplitOut: {
+            /** Change Id */
+            change_id?: number | null;
+            /** Created */
+            created: components["schemas"]["ProjectOut"][];
+            project: components["schemas"]["ProjectOut"];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
         };
         /** Spread */
         Spread: {
@@ -8529,6 +8828,32 @@ export interface operations {
             };
         };
     };
+    apps_catalogue_api_projects_merge_projects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MergeOut"];
+                };
+            };
+        };
+    };
     apps_catalogue_api_projects_order_projects: {
         parameters: {
             query?: never;
@@ -8572,7 +8897,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectOut"][];
+                    "application/json": components["schemas"]["SortOut"];
                 };
             };
         };
@@ -9284,6 +9609,82 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["FinishedOut"];
                 };
+            };
+        };
+    };
+    apps_finished_api_manage_get_progression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_generate_progression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionOut"];
+                };
+            };
+        };
+    };
+    apps_finished_api_manage_progression_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                order: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -10568,12 +10969,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
-            204: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChangedOut"];
+                };
             };
         };
     };
@@ -10625,6 +11028,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_projects_project_impact: {
+        parameters: {
+            query?: {
+                into?: number | null;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpactOut"];
+                };
+            };
+        };
+    };
+    apps_catalogue_api_projects_split_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SplitIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SplitOut"];
                 };
             };
         };

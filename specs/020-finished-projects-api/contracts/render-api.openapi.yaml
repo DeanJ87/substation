@@ -65,7 +65,7 @@ paths:
       summary: A project file by role key
       description: >
         Keys: final, starless, stars, thumb, per_filter/<filter name, URL-encoded, e.g. H%CE%B1>,
-        progressive/<n> (1-based), step/<n> (1-based, 020-DR-14). PNG, JPEG or TIFF only.
+        progressive/<n> (1-based), step/<n> (1-based, 020-DR-14), progression/<n> (1-based, 020-DR-15). PNG, JPEG or TIFF only.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: key, in: path, required: true, schema: { type: string } }
@@ -237,6 +237,34 @@ components:
             thumb: { type: string }
             per_filter: { type: object, additionalProperties: { type: string } }
             progressive: { type: array, items: { type: string } }
+            progression:
+              type: array
+              description: >
+                020-DR-15 cumulative stacks built by SubStation, oldest first: each checkpoint stacks every kept sub
+                up to and including its nights, all stretched alike from the full stack so only the noise changes.
+                Use frames.progressive (the owner's own exports) instead when it isn't empty.
+              items:
+                type: object
+                required: [order, nights, url]
+                properties:
+                  order: { type: integer, minimum: 1 }
+                  nights: { type: array, items: { type: string, format: date }, description: The nights this checkpoint adds }
+                  label: { type: string, description: 'e.g. "2 Sep" or "3–9 Oct"' }
+                  integration_s: { type: number, description: Cumulative }
+                  subs: { type: integer, description: Cumulative }
+                  filters:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        subs: { type: integer }
+                        integration_s: { type: number }
+                  url: { type: string }
+            progression_info:
+              type: object
+              properties:
+                mapping: { type: string, enum: [HOO, SHO, RGB, OSC, MONO] }
+                built_at: { type: string, format: date-time }
             steps:
               type: array
               description: 020-DR-14 processing step images in order (export files named <name>-step-<n>-<what>)

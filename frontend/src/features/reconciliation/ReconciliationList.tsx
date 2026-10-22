@@ -10,7 +10,7 @@ import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import { useLiveEvents } from '../../api/events'
-import { fileName, shortDateText, signed } from '../format'
+import { countText, fileName, shortDateText, signed } from '../format'
 import {
   FIELD_LABEL,
   FRAME_TYPES,
@@ -151,7 +151,7 @@ function KindSection({
     <Collapsible
       id={`reconcile-${kind}`}
       title={KIND_TITLE[kind] ?? kind}
-      meta={`${files.toLocaleString('en-GB')} file${files === 1 ? '' : 's'} · ${groups.length} group${groups.length === 1 ? '' : 's'}`}
+      meta={`${countText(files)} file${files === 1 ? '' : 's'} · ${groups.length} group${groups.length === 1 ? '' : 's'}`}
     >
       <div className={s.pane}>
         <ul className={s.groups}>
@@ -225,7 +225,7 @@ function GroupCard({ g, open, all }: { g: Group; open: boolean; all: ReconItem[]
                 <span className={s.type}>{typeLabel(ex?.frame_type ?? first.frame?.frame_type)}</span>
                 {(KIND[g.kind] ?? ((k) => k))(g.field)}
                 <span className={s.count}>
-                  {n.toLocaleString('en-GB')} file{n === 1 ? '' : 's'}
+                  {countText(n)} file{n === 1 ? '' : 's'}
                 </span>
               </h2>
               {where && (

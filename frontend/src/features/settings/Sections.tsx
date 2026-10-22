@@ -13,10 +13,11 @@ import { api, unwrap } from '../../api/client'
 import { optimistic, patchItems } from '../../api/optimistic'
 import type { components } from '../../api/schema'
 import { toast } from '../../components/Toasts'
-import { Button } from '../../components/ui'
+import { Help } from '../../components/Help'
+import { Button, FieldGroup, Input, Tag } from '../../components/ui'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
-import { bytes } from '../format'
+import { bytes, countText, dateTimeText } from '../format'
 import { tempId } from '../metadata/queries'
 import { useDraft, useSaveSettings, useSettings, type Processing } from './draft'
 import s from './settings.module.css'
@@ -24,15 +25,7 @@ import { SettingsSection } from './SettingsSection'
 import { MountMode, RoleControls } from './LibraryAccess'
 import { LibrarySite, SiteRenderFields } from './LibrarySite'
 
-const when = (iso: string | null | undefined) =>
-  iso
-    ? new Date(iso).toLocaleString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : 'never'
+const when = (iso: string | null | undefined) => (iso ? dateTimeText(iso) : 'never')
 
 export function Folders() {
   const qc = useQueryClient()
@@ -53,13 +46,19 @@ export function Folders() {
   const { draft, set, readOnly } = useDraft()
   const days = draft?.archive?.suggest_after_days ?? 60
   return (
-    <SettingsSection id="folders" title="Folders" meta={libs.isSuccess ? folders.length : undefined}>
-      <p className="muted">
-        Mount new folders under /data/library and restart the container. SubStation writes only to a library
-        mounted read-write: the bin can delete there, and it can be an active library (new subs and work in
-        progress) or an archive (finished collections move there from a collection's page, and can be brought
-        back).
-      </p>
+    <SettingsSection
+      id="folders"
+      title="Folders"
+      meta={libs.isSuccess ? folders.length : undefined}
+      help={
+        <>
+          Mount new folders under /data/library and restart the container. SubStation writes only to a library
+          mounted read-write: the bin can delete there, and it can be an active library (new subs and work in
+          progress) or an archive (finished collections move there from a collection's page, and can be
+          brought back).
+        </>
+      }
+    >
       <ul className={s.patternList}>
         {folders.map((l) => (
           <li key={l.id} className={`${s.patternRow} ${s.libraryRow}`}>
@@ -71,7 +70,7 @@ export function Folders() {
                   ? 'Watching'
                   : l.status === 'unreachable'
                     ? 'Unreachable'
-                    : l.status} · {l.frame_count.toLocaleString('en-GB')} files · last full scan{' '}
+                    : l.status} · {countText(l.frame_count)} files · last full scan{' '}
                 {when(l.last_full_sweep_at)} · <MountMode lib={l} />
               </div>
               <RoleControls lib={l} all={folders} readOnly={readOnly} />
@@ -396,7 +395,7 @@ export function FilePaths() {
   const site = draft.paths?.map ?? []
   const row = (list: PathMap[], i: number, change: (next: PathMap[]) => void, disabled: boolean) => (
     <div key={i} className={s.inline}>
-      <input
+      <Input
         aria-label="Server path"
         placeholder="/data/library/organised"
         value={list[i].from}
@@ -404,76 +403,93 @@ export function FilePaths() {
         onChange={(e) => change(list.map((m, j) => (j === i ? { ...m, from: e.target.value } : m)))}
       />
       →
-      <input
+      <Input
         aria-label="Shown as"
         placeholder="Z:\\Photography\\Deep Sky\\Organised"
         value={list[i].to}
         disabled={disabled}
         onChange={(e) => change(list.map((m, j) => (j === i ? { ...m, to: e.target.value } : m)))}
       />
-      <button type="button" disabled={disabled} onClick={() => change(list.filter((_, j) => j !== i))}>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={disabled}
+        onClick={() => change(list.filter((_, j) => j !== i))}
+      >
         Remove
-      </button>
+      </Button>
     </div>
   )
   return (
-    <SettingsSection id="paths" title="File paths">
-      <p className="muted">
-        Masters and processed versions can open where they are on your share, or download. Map the server's
-        folders to the drive or share your machines use; a file no mapping reaches downloads instead.
-      </p>
-      <fieldset className={s.inline}>
-        <legend>In this browser, files</legend>
-        {(
-          [
-            ['open', 'Open where they are (show the path, copy it)'],
-            ['download', 'Download'],
-          ] as const
-        ).map(([value, label]) => (
-          <label key={value}>
-            <input
-              type="radio"
-              name="file-mode"
-              checked={mode === value}
-              onChange={() => {
-                setMode(value)
-                saveFileMode(value)
-              }}
-            />{' '}
-            {label}
-          </label>
-        ))}
-      </fieldset>
-      <strong>For everyone</strong>
-      {site.map((_, i) => row(site, i, (next) => set('paths', 'map', next), readOnly))}
-      <button
-        type="button"
-        disabled={readOnly}
-        onClick={() => set('paths', 'map', [...site, { from: '', to: '' }])}
-      >
-        Add a mapping
-      </button>
-      <strong>This browser only</strong>
-      {mine.map((_, i) =>
-        row(
-          mine,
-          i,
-          (next) => {
-            setMine(next)
-            saveLocalPathMap(next)
-          },
-          false,
-        ),
-      )}
-      <button
-        type="button"
-        onClick={() => {
-          const next = [...mine, { from: '', to: '' }]
-          setMine(next)
-        }}
-      >
-        Add one for this browser
-      </button>
+    <SettingsSection
+      id="paths"
+      title="File paths"
+      help={
+        <>
+          Masters and processed versions can open where they are on your share, or download. Map the server's
+          folders to the drive or share your machines use; a file no mapping reaches downloads instead.
+        </>
+      }
+    >
+      <FieldGroup legend="In this browser, files">
+        <div className={s.inline}>
+          {(
+            [
+              ['open', 'Open where they are'],
+              ['download', 'Download'],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value} className={s.radio}>
+              <input
+                type="radio"
+                name="file-mode"
+                checked={mode === value}
+                onChange={() => {
+                  setMode(value)
+                  saveFileMode(value)
+                }}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </FieldGroup>
+      <FieldGroup legend="Mappings for everyone">
+        {site.map((_, i) => row(site, i, (next) => set('paths', 'map', next), readOnly))}
+        <div>
+          <Button
+            size="sm"
+            disabled={readOnly}
+            onClick={() => set('paths', 'map', [...site, { from: '', to: '' }])}
+          >
+            Add a mapping
+          </Button>
+        </div>
+      </FieldGroup>
+      <FieldGroup legend="Mappings for this browser only">
+        {mine.map((_, i) =>
+          row(
+            mine,
+            i,
+            (next) => {
+              setMine(next)
+              saveLocalPathMap(next)
+            },
+            false,
+          ),
+        )}
+        <div>
+          <Button
+            size="sm"
+            onClick={() => {
+              const next = [...mine, { from: '', to: '' }]
+              setMine(next)
+            }}
+          >
+            Add a mapping
+          </Button>
+        </div>
+      </FieldGroup>
     </SettingsSection>
   )
 }
@@ -487,29 +503,26 @@ function FinishingTools() {
     refetchInterval: (query) => (query.state.data?.checking ? 3000 : false),
   })
   const d = q.data
-  const line = (name: string, t: { ready?: boolean; reason?: string } | undefined) => (
-    <div className={s.inline}>
-      <strong>{name}</strong>
-      <span className="muted">
-        {t?.ready ? 'ready' : t?.reason || (d?.checked_at ? 'not ready' : 'not checked yet')}
-      </span>
-    </div>
+  const tool = (name: string, t: { ready?: boolean; reason?: string } | undefined) => (
+    <Tag tone={t?.ready ? 'ok' : 'neutral'} title={t?.reason || undefined}>
+      {name}: {t?.ready ? 'ready' : d?.checked_at ? 'not ready' : 'not checked yet'}
+    </Tag>
   )
   return (
-    <div>
-      {line('GraXpert', d?.graxpert as { ready?: boolean; reason?: string })}
-      {line('RC-Astro', d?.rc_astro as { ready?: boolean; reason?: string })}
-      <p className="muted">
+    <div className={s.toolStatus}>
+      {tool('GraXpert', d?.graxpert as { ready?: boolean; reason?: string })}
+      {tool('RC-Astro', d?.rc_astro as { ready?: boolean; reason?: string })}
+      <span className="muted">
         {d?.checking
           ? 'Asking the finisher…'
           : d?.checked_at
-            ? `Checked ${new Date(d.checked_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })} on ${d.host}${d.note ? ` · ${d.note}` : ''}`
+            ? `Checked ${dateTimeText(d.checked_at)} on ${d.host}${d.note ? ` · ${d.note}` : ''}`
             : ''}
-      </p>
-      <p className="muted">
-        These tools run on a post-processing helper on a faster machine (spec 010), reported each time it asks
-        for work. RC-Astro is activated on that machine itself.
-      </p>
+      </span>
+      <Help topic="Where the tools run">
+        These tools run on a post-processing helper on a faster machine, reported each time it asks for work.
+        RC-Astro is activated on that machine itself.
+      </Help>
     </div>
   )
 }
@@ -525,12 +538,17 @@ export function PostProcessing() {
       p.steps.map((st, j) => (j === i ? { ...st, [key]: v } : st)),
     )
   return (
-    <SettingsSection id="post" title="Master post-processing">
-      <p className="muted">
-        After a master integrates, run it through these tools in order. The master itself is never changed:
-        each step keeps its own linear 32-bit copy. Tools run on the worker and must be installed there;
-        RC-Astro's need your own licence. A missing tool is skipped, never a failed master.
-      </p>
+    <SettingsSection
+      id="post"
+      title="Master post-processing"
+      help={
+        <>
+          After a master integrates, run it through these tools in order. The master itself is never changed:
+          each step keeps its own linear 32-bit copy. Tools run on the worker and must be installed there;
+          RC-Astro's need your own licence. A missing tool is skipped, never a failed master.
+        </>
+      }
+    >
       <FinishingTools />
       <label className={s.inline}>
         <input
@@ -550,33 +568,37 @@ export function PostProcessing() {
         />
         Use the GPU when the worker has one
       </label>
-      <ol className={s.formGrid}>
+      {/* one row per step (B05): checkbox and name, the tool, then its settings */}
+      <ol className={s.steps}>
         {p.steps.map((st, i) => {
           const meta = POST_STEPS[st.step] ?? { label: st.step, tool: '', params: [] }
           return (
-            <li key={st.step}>
-              <label className={s.inline}>
+            <li key={st.step} className={s.step}>
+              <label className={s.stepName}>
                 <input
                   type="checkbox"
                   checked={!!st.enabled}
                   disabled={readOnly || !p.enabled}
                   onChange={(e) => setStep(i, 'enabled', e.target.checked)}
                 />
-                <strong>{meta.label}</strong> <span className="muted">· {meta.tool}</span>
+                <strong>{meta.label}</strong>
               </label>
-              {st.enabled &&
-                meta.params.map(([key, label, min, max]) => (
-                  <div key={key} className={s.inline} title={`${min} to ${max}`}>
-                    {label}
-                    <Num
-                      label={`${meta.label}: ${label}, ${min} to ${max}`}
-                      step={0.05}
-                      value={Number(st[key] ?? 0)}
-                      disabled={readOnly || !p.enabled}
-                      onChange={(v) => setStep(i, key, Math.min(max, Math.max(min, v)))}
-                    />
-                  </div>
-                ))}
+              <span className="muted">{meta.tool}</span>
+              <span className={s.stepParams}>
+                {st.enabled &&
+                  meta.params.map(([key, label, min, max]) => (
+                    <span key={key} className={s.inline} title={`${min} to ${max}`}>
+                      {label}
+                      <Num
+                        label={`${meta.label}: ${label}, ${min} to ${max}`}
+                        step={0.05}
+                        value={Number(st[key] ?? 0)}
+                        disabled={readOnly || !p.enabled}
+                        onChange={(v) => setStep(i, key, Math.min(max, Math.max(min, v)))}
+                      />
+                    </span>
+                  ))}
+              </span>
             </li>
           )
         })}
@@ -606,12 +628,17 @@ export function MetadataSources() {
   }
   const aliases = Object.entries(d.filter_aliases ?? {})
   return (
-    <SettingsSection id="sources" title="Metadata sources">
-      <p className="muted">
-        Order: headers, path patterns, then these defaults. Site sets night boundaries when a sub has no
-        position. Region and Bortle class are what the renderer may show about where you shot: never the
-        site's name or position.
-      </p>
+    <SettingsSection
+      id="sources"
+      title="Metadata sources"
+      help={
+        <>
+          Order: headers, path patterns, then these defaults. Site sets night boundaries when a sub has no
+          position. Region and Bortle class are what the renderer may show about where you shot: never the
+          site's name or position.
+        </>
+      }
+    >
       <form
         className={s.formGrid}
         onSubmit={(e) => {
@@ -742,10 +769,15 @@ export function Workers() {
     stackThreads != null ||
     stackMem != null
   return (
-    <SettingsSection id="workers" title="Workers">
-      <p className="muted">
-        {d.workers_alive} worker{d.workers_alive === 1 ? '' : 's'} on {d.cpu_threads} CPU threads.
-      </p>
+    <SettingsSection
+      id="workers"
+      title="Workers"
+      help={
+        <>
+          {d.workers_alive} worker{d.workers_alive === 1 ? '' : 's'} on {d.cpu_threads} CPU threads.
+        </>
+      }
+    >
       <div className={s.formGrid}>
         <label className={s.inline}>
           Workers
@@ -842,8 +874,11 @@ export function Workers() {
         />
       </div>
       <p className="muted">
-        A stack can use several GB of memory; with 8 GB for Docker, use one stacking slot. A stack needs about
-        twice its subs' size in work budget. Changes apply without a restart.
+        Changes apply without a restart.{' '}
+        <Help topic="Sizing workers">
+          A stack can use several GB of memory; with 8 GB for Docker, use one stacking slot. A stack needs
+          about twice its subs' size in work budget.
+        </Help>
       </p>
       <div className={s.rowActions}>
         <Button disabled={readOnly || !dirty} onClick={apply}>
@@ -1147,11 +1182,16 @@ export function CalibrationMatching() {
   if (!draft) return null
   const c = draft.calibration
   return (
-    <SettingsSection id="calibration" title="Calibration matching">
-      <p className="muted">
-        Darks: exposure, gain, offset, binning, size, temperature. Flats: filter, camera, telescope, binning,
-        size; latest on or before the session.
-      </p>
+    <SettingsSection
+      id="calibration"
+      title="Calibration matching"
+      help={
+        <>
+          Darks: exposure, gain, offset, binning, size, temperature. Flats: filter, camera, telescope,
+          binning, size; latest on or before the session.
+        </>
+      }
+    >
       <div className={s.inline}>
         Dark temperature within
         <Num
@@ -1204,13 +1244,13 @@ export function PlateSolving() {
         <>
           <p className="muted">Offline, using Siril's local catalogues.</p>
           <p>
-            <span className={s.mono}>{d.solved.toLocaleString('en-GB')}</span> solved ·{' '}
-            <span className={s.mono}>{d.failed.toLocaleString('en-GB')}</span> failed ·{' '}
-            <span className={s.mono}>{d.waiting.toLocaleString('en-GB')}</span> not tried
+            <span className={s.mono}>{countText(d.solved)}</span> solved ·{' '}
+            <span className={s.mono}>{countText(d.failed)}</span> failed ·{' '}
+            <span className={s.mono}>{countText(d.waiting)}</span> not tried
           </p>
           <div className={s.rowActions}>
             <Button disabled={readOnly || !d.waiting} onClick={() => backfill.mutate()}>
-              Solve {d.waiting.toLocaleString('en-GB')} remaining
+              Solve {countText(d.waiting)} remaining
             </Button>
             {(backfill.isPending || backfill.data) && <span className="muted">Queued.</span>}
           </div>
@@ -1250,15 +1290,13 @@ function SourcesInUse() {
           {[...by.entries()].map(([field, rs]) => (
             <tr key={field}>
               <th scope="row">{field.replace('_', ' ')}</th>
-              <td>
-                {rs
-                  .slice(0, 4)
-                  .map(
-                    (r) =>
-                      `${r.detail || SOURCE[r.source] || r.source}${r.detail ? ` (${SOURCE[r.source] ?? r.source})` : ''} · ${r.frames.toLocaleString('en-GB')}`,
-                  )
-                  .join('; ')}
-                {rs.length > 4 ? `; and ${rs.length - 4} more` : ''}
+              {/* one figure per kind of source, "FILTER (header) ×206 · inferred ×43"; every detail on hover (C14) */}
+              <td
+                title={rs
+                  .map((r) => `${r.detail || SOURCE[r.source] || r.source} · ${countText(r.frames)}`)
+                  .join('\n')}
+              >
+                {sourceKinds(rs, SOURCE).join(' · ')}
               </td>
             </tr>
           ))}
@@ -1266,4 +1304,19 @@ function SourcesInUse() {
       </table>
     </div>
   )
+}
+
+/** Sources of one field folded by kind: header keywords by name, everything else as its kind with a total. */
+function sourceKinds(
+  rs: { source: string; detail?: string | null; frames: number }[],
+  names: Record<string, string>,
+): string[] {
+  const out = new Map<string, number>()
+  for (const r of rs) {
+    const header = r.source === 'header' && r.detail
+    const inferred = !header && /\(inferred\)|inferred/.test(r.detail ?? '')
+    const key = header ? `${r.detail} (header)` : inferred ? 'inferred' : (names[r.source] ?? r.source)
+    out.set(key, (out.get(key) ?? 0) + r.frames)
+  }
+  return [...out.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ×${countText(n)}`)
 }

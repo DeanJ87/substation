@@ -6,13 +6,23 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
+import { glanceUrl } from '../../components/Glance'
 import { Modal } from '../../components/Modal'
 import { EmptyState, ErrorState, PageLoading } from '../../components/ui'
 import { useSort } from '../../components/sortable'
-import { integrationText, nightText, timeText } from '../format'
+import {
+  clockSpan,
+  clockText,
+  countText,
+  exposureText,
+  integrationText,
+  nightText,
+  pctText,
+  shutterSpan,
+} from '../format'
 import { SiteMap } from '../map/SiteMap'
 import { usePlaceName } from '../map/place'
-import { SkyTable, SkyTracks, SkyView, useNightSky } from '../sky/SkyView'
+import { moonSummary, SkyTable, SkyTracks, SkyView, useNightSky } from '../sky/SkyView'
 import { SubView } from '../sub/SubDetail'
 import v from '../v2/v2.module.css'
 import tb from '../library/tables.module.css'
@@ -84,6 +94,14 @@ export function NightView() {
   const integ = n.datasets.reduce((a, d) => a + d.integration_s, 0)
   // One order for the grid and the viewer: dataset by dataset, as the strips show them, so Next is the sub to the right
   const order = n.datasets.flatMap((d) => (byDataset.get(d.dataset.id) ?? []).map((x) => x.sha256))
+  // one convention for every block's times (B17): first shutter open to last shutter close, to the minute
+  const span = (list: Sub[] | undefined, first?: string | null, last?: string | null) => {
+    const sp = list?.length ? shutterSpan(list) : null
+    return sp ? clockSpan(sp[0], sp[1]) : first && last ? clockSpan(first, last) : ''
+  }
+  const nightSpan = span(subsQ.data, n.first_utc, n.last_utc)
+  // the Moon from one source (B18): the sky's, during the lights, when it's known
+  const moon = skyQ.data?.moon ? moonSummary(skyQ.data).split(' · ') : null
   return (
     <div className={v.page}>
       <header className={v.head}>
@@ -97,7 +115,7 @@ export function NightView() {
           <h1>{nightText(n.date)}</h1>
           <div className={v.sub}>
             <Place n={n} />
-            {n.first_utc && n.last_utc ? ` · ${timeText(n.first_utc)} to ${timeText(n.last_utc)}` : ''}
+            {nightSpan ? ` · ${nightSpan}` : ''}
           </div>
         </div>
         <nav className={v.actions} aria-label="Other nights, and what to shoot">
@@ -148,25 +166,27 @@ export function NightView() {
       <div className={`${v.readouts} ${s.readouts}`}>
         <div className={v.readout}>
           <div className={v.readoutLabel}>Integration</div>
-          <div className={`${v.readoutValue} ${v.accentValue}`}>{integrationText(integ)}</div>
+          <div className={v.readoutValue}>{integrationText(integ)}</div>
           <div className={v.readoutDetail}>
-            {subs.toLocaleString('en-GB')} subs in {n.datasets.length} dataset
+            {countText(subs)} subs in {n.datasets.length} dataset
             {n.datasets.length === 1 ? '' : 's'}
           </div>
         </div>
         <div className={v.readout}>
           <div className={v.readoutLabel}>Moon</div>
           <div className={v.readoutValue}>
-            {n.moon ? `${Math.round(n.moon.illumination * 100)}%` : 'Not known'}
+            {moon ? moon[0].replace(' lit', '') : n.moon ? pctText(n.moon.illumination) : 'Not known'}
           </div>
           <div className={v.readoutDetail}>
-            {!n.moon
-              ? 'no lights with a time'
-              : n.moon.up_during_lights == null
-                ? 'lit; where it was shot isn’t recorded'
-                : n.moon.up_during_lights
-                  ? `up during the lights, ${Math.round(n.moon.altitude_deg ?? 0)}° mid-session`
-                  : 'below the horizon all session'}
+            {moon
+              ? `${moon[1]} during the lights`
+              : !n.moon
+                ? 'no lights with a time'
+                : n.moon.up_during_lights == null
+                  ? 'lit; where it was shot isn’t recorded'
+                  : n.moon.up_during_lights
+                    ? 'up during the lights'
+                    : 'below the horizon during the lights'}
           </div>
         </div>
         <div className={v.readout}>
@@ -228,20 +248,13 @@ export function NightView() {
                     {d.dataset.display_name}
                   </Link>
                   <div className={v.muted}>
-                    {[
-                      d.dataset.rig,
-                      d.first_utc && d.last_utc
-                        ? `${timeText(d.first_utc)} to ${timeText(d.last_utc)}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {[d.dataset.rig, span(list, d.first_utc, d.last_utc)].filter(Boolean).join(' · ')}
                     {d.user_rejected_count > 0 ? ` · ${d.user_rejected_count} rejected in NINA` : ''}
                   </div>
                 </div>
                 <div className={s.dsFigures}>
-                  <span className={`${v.mono} ${v.accent}`}>{integrationText(d.integration_s)}</span>
-                  <span className={v.muted}>{d.sub_count.toLocaleString('en-GB')} subs</span>
+                  <span className={v.mono}>{integrationText(d.integration_s)}</span>
+                  <span className={v.muted}>{countText(d.sub_count)} subs</span>
                 </div>
               </header>
               <ul className={s.strip} aria-label={`Subs of ${d.dataset.display_name}`}>
@@ -252,10 +265,11 @@ export function NightView() {
                       className={`${s.thumb} ${VERDICT[x.verdict ?? ''] ?? ''}`}
                       onClick={() => open(x.sha256)}
                       aria-label={`Open ${x.file}`}
-                      title={`${x.file}${x.time ? ` · ${timeText(x.time)}` : ''}`}
+                      title={x.file}
                     >
-                      <img src={`/api/v1/frames/${x.sha256}/glance`} alt="" loading="lazy" />
+                      <img src={glanceUrl(x.sha256)} alt="" loading="lazy" />
                     </button>
+                    {x.time && <span className={s.thumbTime}>{clockText(x.time)}</span>}
                   </li>
                 ))}
                 {subsQ.isPending && <li className={v.muted}>Loading subs…</li>}
@@ -319,15 +333,15 @@ function Timeline({ n }: { n: Night }) {
               <span
                 className={s.bar}
                 style={{ left: `${left}%`, width: `${width}%` }}
-                title={`${timeText(d.first_utc)} to ${timeText(d.last_utc)} · ${d.sub_count} subs`}
+                title={`${clockSpan(d.first_utc, d.last_utc)} · ${d.sub_count} subs`}
               />
             </span>
           </div>
         )
       })}
       <div className={s.axis}>
-        <span>{timeText(n.first_utc)}</span>
-        <span>{timeText(n.last_utc)}</span>
+        <span>{clockText(n.first_utc)}</span>
+        <span>{clockText(n.last_utc)}</span>
       </div>
     </div>
   )
@@ -371,13 +385,15 @@ function Calibration({ n }: { n: Night }) {
                       .join(', ')}
                 </td>
                 <td className={`${v.mono} ${tb.num}`} data-label="Exposure">
-                  {c.exptime_s} s
+                  {exposureText(c.exptime_s)}
                 </td>
                 <td className={`${v.mono} ${tb.num}`} data-label="Frames">
                   {c.frame_count}
                 </td>
                 <td className={`${v.mono} ${tb.num}`} data-label="Session">
-                  {timeText(c.session_start_utc)}–{timeText(c.session_end_utc)}
+                  {clockText(c.session_start_utc) === clockText(c.session_end_utc)
+                    ? clockText(c.session_start_utc)
+                    : clockSpan(c.session_start_utc, c.session_end_utc)}
                 </td>
               </tr>
             ))}

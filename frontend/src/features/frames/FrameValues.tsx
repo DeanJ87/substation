@@ -6,6 +6,7 @@ import { Button } from '../../components/ui'
 import type { Frame } from '../datasets/queries'
 import { FIELDS, FIELD_LABEL, FRAME_TYPES, useSetMetadata } from '../metadata/queries'
 import s from './frames.module.css'
+import { dateText } from '../format'
 
 type Meta = Frame['metadata'][number]
 
@@ -18,7 +19,7 @@ export function sourceText(m: Meta): string {
     case 'filename_pattern':
       return `from file name ${m.source_detail ?? 'pattern'}`
     case 'user':
-      return `set by ${m.set_by ?? 'a user'} on ${new Date(m.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+      return `set by ${m.set_by ?? 'a user'} on ${dateText(m.at)}`
     case 'inferred':
       return `inferred${m.source_detail ? ` (${m.source_detail})` : ''}`
     case 'settings':

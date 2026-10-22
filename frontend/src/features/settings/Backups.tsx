@@ -5,21 +5,13 @@ import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
 import { Button } from '../../components/ui'
-import { bytes } from '../format'
+import { bytes, dateTimeText } from '../format'
 import { useDraft } from './draft'
 import v from '../v2/v2.module.css'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+const when = (iso: string) => dateTimeText(iso)
 
 export function Backups() {
   const qc = useQueryClient()
@@ -54,11 +46,17 @@ export function Backups() {
   const b = draft.backup ?? { enabled: true, time: '03:30', keep: 14, folder: '' }
   const d = list.data
   return (
-    <SettingsSection id="backups" title="Backups" meta={d ? d.backups.length : undefined}>
-      <p className="muted">
-        Everything SubStation knows: libraries, frames, grades, masters, settings and users, as one .tar.gz.
-        Your image files aren't in it. Restoring replaces the whole database with the backup.
-      </p>
+    <SettingsSection
+      id="backups"
+      title="Backups"
+      meta={d ? d.backups.length : undefined}
+      help={
+        <>
+          Everything SubStation knows: libraries, frames, grades, masters, settings and users, as one .tar.gz.
+          Your image files aren't in it. Restoring replaces the whole database with the backup.
+        </>
+      }
+    >
       <div className={s.backupRow}>
         <label>
           <input

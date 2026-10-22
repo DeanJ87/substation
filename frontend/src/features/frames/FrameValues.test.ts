@@ -19,7 +19,7 @@ describe('sourceText', () => {
   })
   it('names who set it and when', () => {
     expect(sourceText({ ...base, source: 'user', source_detail: null, set_by: 'dean' })).toBe(
-      'set by dean on 9 Oct',
+      'set by dean on 9 Oct 2026',
     )
   })
 })

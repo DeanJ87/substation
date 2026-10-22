@@ -16,7 +16,7 @@
   color: var(--sst-text);
 }
 .name {
-  font-family: var(--sst-mono, ui-monospace, monospace);
+  font-family: var(--sst-font-mono);
   font-size: 13px;
   margin-right: auto;
   overflow-wrap: anywhere;
@@ -39,10 +39,6 @@
 .group button[aria-pressed='true'] {
   border-color: var(--sst-accent);
   color: var(--sst-accent);
-}
-kbd {
-  font-size: 11px;
-  opacity: 0.6;
 }
 .wait {
   color: var(--sst-muted);

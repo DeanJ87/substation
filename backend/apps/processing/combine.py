@@ -47,20 +47,30 @@ def _scale(m: Master) -> float | None:
 def plan(col: Collection, project_id: int | None = None) -> dict:
     """What a combine would do for a project (owner 2026-10-10: combine within a project, never across rigs):
     the reference and, per filter, the masters it would use. Masters at another pixel scale (more than 10% off the
-    reference's) are left out and listed, as they belong to another project."""
+    reference's) are left out and listed, as they belong to another project. Outside a mosaic, masters of another
+    panel than the reference's are left out too (a season's project can hold a mosaic's panels and a single
+    field): only a mosaic stitches panels."""
     from apps.catalogue.api_library import label
+    from apps.catalogue.models import Project
+    from apps.catalogue.services.projects import effective_kind
 
     ms = [m for m in current_masters(col, project_id) if Path(m.output_path).exists()]
     if not ms:
         return {"reference": None, "filters": {}, "left_out": []}
     ref = max(ms, key=lambda m: m.dataset.accepted_integration_s or m.integration_s or 0)
     rs = _scale(ref)
+    project = Project.objects.filter(pk=project_id).first() if project_id else None
+    stitch = project is not None and effective_kind(project) == "mosaic"
     left_out = []
     keep = []
     for m in ms:
         sc = _scale(m)
         if rs and sc and abs(sc / rs - 1) > 0.10:
             left_out.append(f"{label(m.dataset)} ({sc:.2f}″/px, not {rs:.2f}″/px)")
+        elif not stitch and m.dataset.panel != ref.dataset.panel:
+            left_out.append(
+                f"{label(m.dataset)} (panel {m.dataset.panel or 'none'}, not {ref.dataset.panel or 'none'})"
+            )
         else:
             keep.append(m)
     filters: dict[str, list[dict]] = defaultdict(list)

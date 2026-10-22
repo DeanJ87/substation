@@ -6,6 +6,8 @@ import { api, unwrap } from '../../api/client'
 import { Button } from '../../components/ui'
 import { isEmpty, type Scope } from './scope'
 import s from './scope.module.css'
+import { dateText } from '../format'
+import { filterName, sortFilters } from '../../components/filters'
 
 const CHIPS: [keyof Scope, string][] = [
   ['date', 'Night'],
@@ -18,8 +20,7 @@ const CHIPS: [keyof Scope, string][] = [
   ['dataset', 'Dataset'],
 ]
 
-const nightLabel = (d: string) =>
-  new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+const nightLabel = (d: string) => dateText(`${d}T12:00:00`)
 
 /** The filters to offer: the page's, narrowed to the rig's when a rig is chosen (all of the rig's when the page
  * names none), plus the current choice so it stays visible. */
@@ -29,7 +30,8 @@ export function filterChoices(
   current: string | undefined,
 ): string[] {
   const base = rig ? (page.length ? page.filter((f) => rig.includes(f)) : rig) : page
-  return [...new Set([...base, ...(current ? [current] : [])])].sort()
+  // the canonical filter order everywhere (C09): L R G B, Hα OIII SII, OSC, then the rest
+  return sortFilters([...new Set([...base, ...(current ? [current] : [])])])
 }
 
 export function ScopeBar({
@@ -101,7 +103,9 @@ export function ScopeBar({
       >
         <option value="">Filter: All</option>
         {offered.map((f) => (
-          <option key={f}>{f}</option>
+          <option key={f} value={f}>
+            {filterName(f)}
+          </option>
         ))}
       </select>
       <label>

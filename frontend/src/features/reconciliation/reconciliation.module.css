@@ -50,12 +50,10 @@
 .type {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   padding: 2px 7px;
-  border: 1px solid var(--sst-accent-line);
+  border: 1px solid var(--sst-line);
   border-radius: var(--sst-radius-sm);
-  color: var(--sst-accent);
+  color: var(--sst-muted);
 }
 .count {
   font-size: 13px;
@@ -128,7 +126,7 @@
 }
 .chip dd {
   margin: 0;
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
   font-variant-numeric: tabular-nums;
 }
 .missing dd {

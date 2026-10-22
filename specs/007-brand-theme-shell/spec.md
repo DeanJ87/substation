@@ -485,3 +485,36 @@ Taken on the recommendation in the design review (owner may overrule):
   dome, where each frame's mark takes its filter's colour (spec 015-DR-16). The `--sst-filter-*` tokens remain for
   that.
 
+- **007-DR-37 (2026-10-22) Search knows filter names.** A word that is a filter alias also matches the filter's own
+  name, as subs are read: "Ha" finds Hα, "O3" OIII, "S2" SII. Single letters (L, R, G, B) stay plain words.
+
+### Amendment 2026-10-22: one design system, colour roles, one way to write things
+
+- **007-DR-38 Colour roles.** Four colour families that never stand in for each other, written down at the top of
+  `substation-tokens.css`. The accent (orchid) is the brand and interaction only: links, focus, the primary button,
+  the selected tab, pressed chips and selected rows; never a figure, bar, chart line or count. Data figures are plain
+  text, neutral bars use `--sst-data-fill`, charts start at `--sst-chart-1` and categorical series never begin with
+  the accent. Filters have one colour each from one table (`components/filters.ts` plus tokens, with light and night
+  values): L light grey, R orange-red, G green, B blue, Hα crimson, OIII teal, SII amber-orange, OSC and unknown
+  neutral. Status uses low-chroma hues clear of the filter palette, always with a glyph or pattern: kept ✓ sage,
+  down-weighted ◐/hatched slate, rejected ✕/cross-hatched grey (never red), warning ! yellow, missing dashed.
+  `--sst-bad` red is for errors and destructive buttons only. Labels and table headings are sentence case, never
+  CSS-uppercased (which turned Hα into "HA"). Mono is for paths, hashes and keys; figures are tabular sans.
+- **007-DR-39 One way to write things.** `features/format.ts` writes every date, time, duration and number: "18 Sep
+  2026" (never "Sept"), "18 Sep 2026, 21:12", "18 Sep" in lists, "Sep 2026"; times to the minute in local time;
+  durations "45s", "12m", "4h 30m", "5h" (no "00m"); exposures "300 s", "1 ms"; en-GB grouping with a real minus
+  sign; "1×1". A dataset is named target · panel · filter, with the rig beside it, never in the name. Filters are
+  listed L R G B, Hα OIII SII, OSC, then the rest, and shown by their canonical name. A block of subs runs from the
+  first shutter open to the last shutter close, the same on every part of a page; the Moon is said once, from one
+  source.
+- **007-DR-40 One primitive layer.** `components/ui.tsx` is the only place controls are styled: Button (default,
+  primary, danger, ghost, link; md 32 px and sm 26 px; icon-only with a label), one Chip family (tag, toggle,
+  removable), SegmentedControl, StatTile, Table, Meter, FilterMeter, GradeMeter, Field/Input/Select/Checkbox and
+  FieldGroup, PageHeader and SectionHead, EmptyState, ErrorState with ErrorDetail, and shortError for raw worker
+  errors. The v2 stylesheet's classes take the same look while screens move over. Disabled controls fade; they are
+  never dashed. Modal traps focus, gives it back on close and has sm, md and lg sizes.
+- **007-DR-41 Quiet pages.** A page or section has one short line under its title at most; anything longer sits
+  behind a `?` (Help). Rows leave a value blank when it is normal and say why only when something is flagged;
+  provenance shows on hover. One primary action per page. A raw error shows as one sentence with the full text
+  under Details. Every section of the phone navigation stays reachable: the strip scrolls and fades at the edge
+  with more.

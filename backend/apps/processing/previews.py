@@ -281,3 +281,25 @@ def glance(src: Path, out: Path, width: int = 480) -> None:
     img = np.stack(out8, axis=-1) if colour else out8[0]
     out.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(np.ascontiguousarray(img)).save(out, quality=80)
+
+
+def compose_fixed(
+    planes: dict[str, np.ndarray],
+    params: dict[str, tuple[float, float, float]],
+    rgb: tuple[str, str, str] | None,
+) -> np.ndarray:
+    """An 8-bit image from planes drawn with given stretches (020-DR-15: every checkpoint of a progression uses the
+    full stack's, so the signal stays put and the noise is seen to fall). `rgb` names the plane for red, green and
+    blue (one plane may feed two, as in HOO); None draws the single plane in grey. Planes are cropped to the
+    smallest among them."""
+    names = list(rgb) if rgb else [next(iter(planes))]
+    h = min(planes[n].shape[0] for n in names)
+    w = min(planes[n].shape[1] for n in names)
+    drawn: dict[str, np.ndarray] = {}
+    for n in dict.fromkeys(names):
+        lo, m, span = params[n]
+        x = np.clip((np.nan_to_num(planes[n][:h, :w]) - lo) / max(span, 1e-9), 0, 1)
+        drawn[n] = (np.clip(_mtf(x, m), 0, 1) * 255).astype(np.uint8)
+    if rgb is None:
+        return np.ascontiguousarray(drawn[names[0]])
+    return np.ascontiguousarray(np.stack([drawn[n] for n in rgb], axis=-1))

@@ -8,16 +8,17 @@ import { api, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import { Collapsible } from '../../components/Collapsible'
 import { EmptyState, ErrorState, PageLoading } from '../../components/ui'
-import { integrationText, nightText } from '../format'
+import { countText, integrationText, nightText } from '../format'
 import { ScopeBar } from '../scope/ScopeBar'
 import { scopeParams, scopeQuery } from '../scope/scope'
 import v from '../v2/v2.module.css'
 import s from './toShoot.module.css'
+import { Help } from '../../components/Help'
 
 type Need = components['schemas']['NeedOut']
 type Ref = components['schemas']['DatasetRef']
 
-const subsText = (n: number) => `${n.toLocaleString('en-GB')} sub${n === 1 ? '' : 's'}`
+const subsText = (n: number) => `${countText(n)} sub${n === 1 ? '' : 's'}`
 const temp = (t: number | null | undefined) => (t == null ? 'uncooled' : `${t} °C`)
 const gainText = (n: Need) =>
   [n.gain != null ? `gain ${n.gain}` : '', n.offset != null ? `offset ${n.offset}` : '']
@@ -77,9 +78,7 @@ export function ToShoot() {
       <header className={s.head}>
         <div>
           <h1>What to shoot</h1>
-          <p className="muted">
-            The calibration frames that would release the subs waiting for calibration, biggest win first.
-          </p>
+          <p className="muted">What would release the subs waiting for calibration, biggest win first.</p>
         </div>
       </header>
       <ScopeBar
@@ -166,8 +165,10 @@ export function ToShoot() {
       {flats.length > 0 && (
         <Collapsible id="to-shoot-flats" title="Flats" meta={subsText(flats.reduce((t, x) => t + x.subs, 0))}>
           <p className="muted">
-            A flat belongs to the rig as it was that night (focus, rotation, dust), so these are yours to
-            shoot: on or before the night, without changing the rig in between.
+            Shoot on or before the night, without changing the rig in between.{' '}
+            <Help topic="Why flats can't wait">
+              A flat belongs to the rig as it was that night (focus, rotation, dust).
+            </Help>
           </p>
           <ul className={s.flatList}>
             {flats.map((f) => (

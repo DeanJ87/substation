@@ -117,3 +117,5 @@ library stays as it is, with no role.
   cancels it; undoing one under way or finished queues the move back, which waits for the first to stop.
 - **013-DR-10 Who.** Read-only accounts can't archive, bring back, cancel a move or dismiss a suggestion; library
   roles are for admins.
+- **013-DR-11** (2026-10-22) A project's Done state (006-DR-36) is not archiving: it moves no files. Archiving stays a
+  whole-collection action.

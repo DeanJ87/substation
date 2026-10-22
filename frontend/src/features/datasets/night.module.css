@@ -9,8 +9,13 @@
 }
 .dsName {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
   color: inherit;
+  text-decoration: none;
+}
+.dsName:hover {
+  color: var(--sst-accent);
+  text-decoration: underline;
 }
 .dsFigures {
   display: flex;
@@ -44,21 +49,34 @@
   display: block;
 }
 .thumb:hover {
-  border-color: var(--sst-accent);
+  border-color: var(--sst-accent-line);
+}
+.strip > li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.thumbTime {
+  font-size: 12px;
+  color: var(--sst-muted);
+  font-variant-numeric: tabular-nums;
 }
 .thumb:focus-visible {
   outline: 2px solid var(--sst-focus);
   outline-offset: 2px;
 }
+/* verdict borders in the status colours: kept solid, down-weighted dashed, rejected dotted and faded */
 .accept {
-  border-color: color-mix(in srgb, var(--sst-ok) 55%, transparent);
+  border-color: color-mix(in srgb, var(--sst-st-kept) 55%, transparent);
 }
 .down {
-  border-color: color-mix(in srgb, var(--sst-warn) 70%, transparent);
+  border-color: var(--sst-st-down);
+  border-style: dashed;
 }
 .reject {
-  border-color: var(--sst-bad);
-  opacity: 0.7;
+  border-color: var(--sst-st-rejected);
+  border-style: dotted;
+  opacity: 0.6;
 }
 .timeline {
   display: flex;
@@ -89,7 +107,7 @@
   top: 0;
   bottom: 0;
   border-radius: 6px;
-  background: var(--sst-accent);
+  background: var(--sst-data-fill);
 }
 .axis {
   display: flex;
@@ -97,7 +115,7 @@
   margin-left: calc(34% + 10px);
   font-size: 12px;
   color: var(--sst-muted);
-  font-family: var(--sst-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
 }
 .tableTitle {
   padding: 16px 18px 0;
@@ -121,8 +139,7 @@
     min-width: 0;
   }
   div.readouts > div > div:first-child {
-    font-size: 10px;
-    letter-spacing: 0.06em;
+    font-size: 11px;
   }
   div.readouts > div > div:nth-child(2) {
     font-size: 18px;

@@ -10,6 +10,7 @@ import { Spinner } from './ui'
 import { AnnotateToggle, AnnotationOverlay, type AnnotateTarget, useAnnotateSwitch } from './Annotations'
 import s from './CloseLook.module.css'
 import { anchoredScroll, clampZoom, fitScale as fitOf } from './zoom'
+import { numText } from '../features/format'
 
 export type LookMode = 'full' | 'inspector'
 /** What to look at: a sub, a master, or a palette made from a project's combined masters. */
@@ -434,7 +435,7 @@ function StatsPanel({ label, now, original }: { label: string; now: Stats; origi
                   <span className={s.delta}>
                     {' '}
                     {change > 0 ? '+' : ''}
-                    {change.toFixed(0)}%
+                    {numText(change, 0)}%
                   </span>
                 )}
               </dd>

@@ -1,5 +1,26 @@
 /* SubStation design tokens. Mirrors SQMeter's --sqm-* naming with the --sst- prefix.
-   Dark is the default. Set data-theme="light" or data-theme="night" on <html>. */
+   Dark is the default. Set data-theme="light" or data-theme="night" on <html>.
+
+   Colour roles (007-DR-38, 2026-10-22). Four families that never stand in for each other:
+
+   1. Accent (--sst-accent, orchid pink): the brand and interaction only. Links, focus rings, primary buttons, the
+      selected tab, pressed chips and selected rows. Never a figure, a bar, a chart line, a count or a dot that only
+      shows data. If it's pink, it can be clicked or it's the current choice.
+   2. Data (--sst-data*, --sst-chart-*, --sst-series-*): figures are plain text; neutral bars use --sst-data-fill;
+      chart lines start at --sst-chart-1 (a soft blue); categorical series follow Okabe-Ito and never begin with the
+      accent.
+   3. Filters (--sst-filter-*): one colour per filter, the same everywhere a filter is drawn (bars, swatches, sky
+      tracks): L neutral light grey, R orange-red, G green, B blue, Hα deep crimson, OIII teal, SII amber-orange.
+      OSC and unknown filters take the neutral --sst-filter-other (their pictures carry their own colour).
+   4. Status (--sst-st-*, --sst-ok/warn/bad): low-chroma hues that stay clear of the filter palette, and always with
+      a glyph or a pattern so colour is never the only signal:
+        kept           ✓ on sage green-grey (low chroma, not filter G)
+        down-weighted  ◐ / hatched slate-blue (low chroma, not filter B)
+        rejected       ✕ / hatched neutral grey, struck through: never red, so it can't be read as Hα or R
+        warning        ! on yellow (not SII's orange)
+        missing        dashed outline, no fill
+      --sst-bad (red) is for errors, failures and destructive buttons only: never for a data value or a verdict.
+   Night vision collapses everything to red; glyphs, patterns and lightness carry the meaning there. */
 :root {
   --sst-bg: #080d14;
   --sst-panel: #0d141d;
@@ -11,13 +32,13 @@
   --sst-text: #e7edf3;
   --sst-muted: #8b9baa;
   --sst-dim: #768798;
-  --sst-accent: #ee7bd0; /* Orchid: SubStation signature */
+  --sst-accent: #ee7bd0; /* Orchid: SubStation signature, interaction only */
   --sst-accent-tint: rgba(238, 123, 208, 0.12);
   --sst-accent-line: rgba(238, 123, 208, 0.45);
   --sst-on-accent: #080d14;
   --sst-violet: #a78bfa;
-  --sst-ok: #5ee0a0;
-  --sst-warn: #f4c15d;
+  --sst-ok: #86c29f;
+  --sst-warn: #e9c64a;
   --sst-bad: #f26b62;
   --sst-focus: #ee7bd0;
   --sst-thumb: #04070b;
@@ -27,31 +48,70 @@
   --sst-ch-g: #00ff00;
   --sst-ch-b: #0000ff;
   --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+  --sst-on-scrim: #f4f6f8; /* text on a scrim over an image, any theme but night */
+
+  /* data */
+  --sst-data: #e7edf3;
+  --sst-data-fill: #a3b3c3;
+  --sst-data-track: #1b2a38;
+  --sst-chart-1: #4f95e0;
+  --sst-chart-2: #bd8628;
+  --sst-chart-ref: #5d6e80;
   /* one colour per series (targets on the sky, spec 015): Okabe–Ito hues, told apart with the common colour
-     blindnesses; brightened for a dark ground */
-  --sst-series-1: #ee7bd0;
-  --sst-series-2: #56b4e9;
-  --sst-series-3: #e69f00;
+     blindnesses; brightened for a dark ground. Series 1 is not the accent. */
+  --sst-series-1: #56b4e9;
+  --sst-series-2: #e69f00;
+  --sst-series-3: #2ec4a0;
   --sst-series-4: #f0e442;
-  --sst-series-5: #2ec4a0;
+  --sst-series-5: #cc79a7;
   --sst-series-6: #f0703a;
 
-  --sst-font-sans: 'Inter', system-ui, sans-serif;
+  /* status: see the header. Glyph or pattern always goes with the colour. */
+  --sst-st-kept: #86c29f;
+  --sst-st-down: #a0a6f0;
+  --sst-st-rejected: #5a6470;
+  --sst-st-pending: #768798;
+  --sst-st-missing: #3a4a5a;
+
+  /* filters */
+  --sst-filter-l: #dde3ea;
+  --sst-filter-r: #e5573f;
+  --sst-filter-g: #3c9a4c;
+  --sst-filter-b: #5d8cfb;
+  --sst-filter-ha: #d63a63;
+  --sst-filter-oiii: #1c9aa8;
+  --sst-filter-sii: #cc7a20;
+  --sst-filter-other: #7b8794;
+
+  --sst-font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
   --sst-font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --sst-radius-sm: 0.55rem;
-  --sst-radius: 0.7rem;
-  --sst-radius-lg: 0.85rem;
+  --sst-radius-sm: 0.5rem;
+  --sst-radius: 0.65rem;
+  --sst-radius-lg: 0.8rem;
   --sst-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  --sst-shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  /* control heights: one size for every button, select and input (md), a compact one (sm) */
+  --sst-control-h: 32px;
+  --sst-control-h-sm: 26px;
+
+  /* stacking */
+  --sst-z-sticky: 10;
+  --sst-z-menu: 30;
+  --sst-z-popover: 40;
+  --sst-z-overlay: 50;
+  --sst-z-toast: 60;
 
   /* Type scale (rem, 16px base) */
-  --sst-fs-label: 0.6875rem; /* 11 uppercase, 0.08em tracking */
+  --sst-fs-label: 0.75rem; /* 12 labels and table headings, sentence case */
+  --sst-fs-xs: 0.75rem; /* 12 */
   --sst-fs-small: 0.8125rem; /* 13 */
+  --sst-fs-body-sm: 0.875rem; /* 14 */
   --sst-fs-body: 0.9375rem; /* 15 */
-  --sst-fs-h3: 1.125rem; /* 18 */
-  --sst-fs-h2: 1.5rem; /* 24 */
-  --sst-fs-h1: 2.25rem; /* 36 */
-  --sst-fs-readout: 3rem; /* 48 mono */
-  --sst-fs-hero: 6rem; /* 96 mono */
+  --sst-fs-h3: 1.0625rem; /* 17 */
+  --sst-fs-h2: 1.25rem; /* 20 */
+  --sst-fs-h1: 1.625rem; /* 26 */
+  --sst-fs-stat: 1.625rem; /* 26 stat tiles, sans tabular */
 }
 
 [data-theme='light'] {
@@ -70,23 +130,46 @@
   --sst-accent-line: rgba(163, 48, 127, 0.45);
   --sst-on-accent: #ffffff;
   --sst-violet: #6b46d6;
-  --sst-ok: #127a4a;
-  --sst-warn: #8a5a00;
+  --sst-ok: #2f7350;
+  --sst-warn: #8a6a00;
   --sst-bad: #be3229;
   --sst-focus: #a3307f;
   --sst-thumb: #1a222c;
   --sst-scrim: rgba(0, 0, 0, 0.5); /* overlays on images */
   --sst-scrim-soft: rgba(0, 0, 0, 0.35);
-  --sst-series-1: #a3307f;
-  --sst-series-2: #0072b2;
-  --sst-series-3: #a35f00;
+  --sst-shadow-pop: 0 10px 30px rgba(13, 20, 29, 0.16);
+
+  --sst-data: #0d141d;
+  --sst-data-fill: #5d6c7a;
+  --sst-data-track: #dfe5ea;
+  --sst-chart-1: #2f6fb3;
+  --sst-chart-2: #a36a00;
+  --sst-chart-ref: #9aa6b1;
+  --sst-series-1: #0072b2;
+  --sst-series-2: #a35f00;
+  --sst-series-3: #00795a;
   --sst-series-4: #7a6f00;
-  --sst-series-5: #00795a;
+  --sst-series-5: #9b4f7c;
   --sst-series-6: #c04a00;
+
+  --sst-st-kept: #2f7350;
+  --sst-st-down: #5060c0;
+  --sst-st-rejected: #848d95;
+  --sst-st-pending: #55626e;
+  --sst-st-missing: #b9c3cc;
+
+  --sst-filter-l: #5c6670;
+  --sst-filter-r: #cf3a24;
+  --sst-filter-g: #2e8540;
+  --sst-filter-b: #2b5fcf;
+  --sst-filter-ha: #a3173f;
+  --sst-filter-oiii: #008a9e;
+  --sst-filter-sii: #b8610a;
+  --sst-filter-other: #9aa4ad;
 }
 
 /* Night vision: deep red on near-black only. No blue, green or white light.
-   Status colours collapse to red; verdicts rely on icon and shape. */
+   Status and filter colours collapse to reds of different lightness; verdicts rely on glyph and pattern. */
 [data-theme='night'] {
   --sst-bg: #050000;
   --sst-panel: #0c0101;
@@ -110,6 +193,14 @@
   --sst-thumb: #000000;
   --sst-scrim: rgba(0, 0, 0, 0.6); /* overlays on images */
   --sst-scrim-soft: rgba(0, 0, 0, 0.35);
+  --sst-on-scrim: #ff4a3a;
+
+  --sst-data: #ff4a3a;
+  --sst-data-fill: #c0302a;
+  --sst-data-track: #3a0a06;
+  --sst-chart-1: #ff6a58;
+  --sst-chart-2: #b8241a;
+  --sst-chart-ref: #6a140c;
   /* red only: series differ in lightness, and shapes and labels carry the rest */
   --sst-series-1: #ff4a3a;
   --sst-series-2: #b8241a;
@@ -117,26 +208,19 @@
   --sst-series-4: #8a1a12;
   --sst-series-5: #e06050;
   --sst-series-6: #ffb0a4;
-}
 
-/* Filter tints (2026-10-16): a mono master's thumbnail takes its filter's colour. Narrowband as it's usually
-   shown: Hα deep red, OIII teal, SII amber; broadband as itself. */
-:root {
-  --sst-filter-l: #f4f4f2;
-  --sst-filter-r: #ff5a52;
-  --sst-filter-g: #5fd47e;
-  --sst-filter-b: #5a8cff;
-  --sst-filter-ha: #ff3b5c;
-  --sst-filter-oiii: #3fd8c8;
-  --sst-filter-sii: #ffb547;
-}
-/* night vision: only reds, so every filter is a shade of red */
-[data-theme='night'] {
+  --sst-st-kept: #ff4a3a;
+  --sst-st-down: #b8241a;
+  --sst-st-rejected: #9a3a30;
+  --sst-st-pending: #8a1a12;
+  --sst-st-missing: #3a0a06;
+
   --sst-filter-l: #ff6a58;
   --sst-filter-r: #ff4a3a;
   --sst-filter-g: #c03a2c;
-  --sst-filter-b: #8a1a12;
+  --sst-filter-b: #b02e22;
   --sst-filter-ha: #ff2a1a;
-  --sst-filter-oiii: #a02a1e;
+  --sst-filter-oiii: #b84030;
   --sst-filter-sii: #e06050;
+  --sst-filter-other: #a83a2e;
 }

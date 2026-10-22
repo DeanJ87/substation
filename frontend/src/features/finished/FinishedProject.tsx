@@ -3,28 +3,32 @@
 // preview of what the renderer receives. Changes are for admins; everyone else can look.
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { api, ApiError, unwrap } from '../../api/client'
 import { Collapsible } from '../../components/Collapsible'
 import { FilePath } from '../../components/FilePath'
 import { Help } from '../../components/Help'
 import { Modal } from '../../components/Modal'
 import { toast } from '../../components/Toasts'
-import { Button, ErrorState, PageLoading, Spinner } from '../../components/ui'
-import { bytes } from '../format'
+import { Button, ErrorState, Meter, PageLoading, Spinner } from '../../components/ui'
+import { bytes, integrationText, pctText } from '../format'
 import { useSettings } from '../settings/draft'
 import { useLibrary } from '../v2/hooks'
 import v from '../v2/v2.module.css'
 import f from './finished.module.css'
 import {
+  BUILDING,
   imageUrl,
   KIND,
   ROLE,
   SINGLE_ROLES,
   useFinished,
   useFinishedActions,
+  useGenerateProgression,
+  useProgression,
   useRenderData,
   useSuggestions,
+  type Checkpoint,
   type Finished,
   type FinishedFile,
   type RoleChange,
@@ -93,14 +97,22 @@ export function FinishedProject() {
 
       <Files p={p} admin={admin} roles={act.roles} guess={act.guess} />
       <Steps p={p} />
-      <div className={f.pair}>
-        <Links p={p} admin={admin} links={act.links} />
-        <Distance p={p} admin={admin} set={act.distance} lookup={act.lookup} />
-      </div>
+      {/* nightscapes and videos have no subs to link and no target distance */}
+      {p.kind === 'astro' && (
+        <div className={f.pair}>
+          <Links p={p} admin={admin} links={act.links} />
+          <Distance p={p} admin={admin} set={act.distance} lookup={act.lookup} />
+        </div>
+      )}
+      {/* the stacks after each night come from the linked projects' subs */}
+      {p.kind === 'astro' && p.links.length > 0 && <Progression id={p.id} admin={admin} />}
 
-      <Collapsible id="finished-render-data" title="Preview render data" defaultOpen={false}>
-        <RenderData id={p.id} />
-      </Collapsible>
+      {/* nothing to preview until an astro project is linked (it asked anyway and logged a 409 on every load) */}
+      {(p.links.length > 0 || p.kind !== 'astro') && (
+        <Collapsible id="finished-render-data" title="Preview render data" defaultOpen={false}>
+          <RenderData id={p.id} />
+        </Collapsible>
+      )}
     </div>
   )
 }
@@ -567,6 +579,154 @@ function Steps({ p }: { p: Finished }) {
         <p className="muted">None yet.</p>
       )}
     </section>
+  )
+}
+
+const STATE: Record<string, string> = {
+  queued: 'Queued',
+  running: 'Building',
+  done: 'Built',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+}
+
+/** The cumulative stacks after each night (020-DR-15): a state line, Generate or Rebuild, and the stacks in order. */
+function Progression({ id, admin }: { id: number; admin: boolean }) {
+  const q = useProgression(id)
+  const generate = useGenerateProgression(id)
+  const [shown, setShown] = useState<number | null>(null)
+  const prog = q.data
+  const building = !!prog && BUILDING.has(prog.state)
+  // "none" with a reason is the server saying it can't be built (a mosaic, too few subs …)
+  const blocked = !!prog && (prog.state === 'unavailable' || (prog.state === 'none' && !!prog.reason))
+  const done = prog?.state === 'done'
+  const refused = generate.data?.error
+  const checkpoints = [...(prog?.checkpoints ?? [])].sort((a, b) => a.order - b.order)
+  return (
+    <section className={`${v.card} ${v.cardPad} ${f.section}`} aria-labelledby="progression-h">
+      <SectionHead
+        id="progression-h"
+        title="Progression"
+        help="A stack after each night, all with the full stack's stretch, so you see noise fall. Single-field projects only for now."
+      >
+        {admin && prog && !blocked && !building && (
+          <Button disabled={generate.isPending} onClick={() => generate.mutate(done)}>
+            {done ? 'Rebuild' : 'Generate'}
+          </Button>
+        )}
+      </SectionHead>
+      {!prog ? (
+        q.isError ? (
+          <p className={f.error}>{q.error.message}</p>
+        ) : (
+          <Spinner label="Loading the progression" />
+        )
+      ) : (
+        <>
+          {building && (
+            <div className={f.progState} role="status">
+              <span>
+                {STATE[prog.state]}
+                {prog.step && <span className="muted"> · {prog.step}</span>}
+              </span>
+              <span className={v.mono}>{pctText(prog.progress)}</span>
+              <Meter value={prog.progress} label="Progression progress" />
+            </div>
+          )}
+          {blocked ? (
+            <p className={f.progReason}>{prog.reason || 'Not available for this project.'}</p>
+          ) : (
+            (prog.state === 'failed' || prog.state === 'cancelled') && (
+              <p className={prog.state === 'failed' ? f.error : 'muted'}>
+                {STATE[prog.state]}
+                {prog.reason && `: ${prog.reason}`}
+              </p>
+            )
+          )}
+          {prog.state === 'none' && !blocked && (
+            <p className="muted">Not built yet: a stack after each night of the linked subs.</p>
+          )}
+          {refused && (
+            <p className={f.error} role="alert">
+              {refused}
+            </p>
+          )}
+          {checkpoints.length > 0 && (
+            <ol className={f.steps} aria-label="Stacks after each night">
+              {checkpoints.map((c, i) => (
+                <li key={c.order} className={f.checkpoint}>
+                  <button
+                    type="button"
+                    className={f.stepThumb}
+                    aria-label={`Open ${c.label}`}
+                    onClick={() => setShown(i)}
+                  >
+                    <img src={c.image_url} alt="" loading="lazy" />
+                  </button>
+                  <span className={f.stepText} title={checkpointText(c)}>
+                    {checkpointText(c)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+      {shown != null && checkpoints[shown] && (
+        <CheckpointViewer
+          checkpoints={checkpoints}
+          at={shown}
+          onMove={setShown}
+          onClose={() => setShown(null)}
+        />
+      )}
+    </section>
+  )
+}
+
+/** "3–9 Oct · 4h 30m · 54 subs" */
+const checkpointText = (c: Checkpoint) =>
+  `${c.label} · ${integrationText(c.integration_s)} · ${c.subs} ${c.subs === 1 ? 'sub' : 'subs'}`
+
+function CheckpointViewer({
+  checkpoints,
+  at,
+  onMove,
+  onClose,
+}: {
+  checkpoints: Checkpoint[]
+  at: number
+  onMove: (i: number) => void
+  onClose: () => void
+}) {
+  const c = checkpoints[at]
+  const last = checkpoints.length - 1
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && at > 0) onMove(at - 1)
+      if (e.key === 'ArrowRight' && at < last) onMove(at + 1)
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [at, last, onMove])
+  return (
+    <Modal label={`Progression: ${c.label}`} onClose={onClose}>
+      <h2 className={f.previewName}>
+        {checkpointText(c)}
+        <span className={f.progCount}>
+          {at + 1} of {checkpoints.length}
+        </span>
+      </h2>
+      <img className={f.preview} src={c.image_url} alt={`Stack after ${c.label}`} />
+      <div className={f.progNav}>
+        <Button disabled={at === 0} onClick={() => onMove(at - 1)}>
+          ← Prev
+        </Button>
+        <Button disabled={at === last} onClick={() => onMove(at + 1)}>
+          Next →
+        </Button>
+      </div>
+    </Modal>
   )
 }
 

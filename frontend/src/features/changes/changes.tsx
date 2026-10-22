@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { useEffect } from 'react'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
+import { countText } from '../format'
 
 export async function undoChange(qc: QueryClient, id: number) {
   try {
@@ -44,7 +45,7 @@ export function useAgree(datasetId: number) {
       offerUndo(
         qc,
         r.updated
-          ? `Agreed with ${r.updated.toLocaleString('en-GB')} grade${r.updated === 1 ? '' : 's'}`
+          ? `Agreed with ${countText(r.updated)} grade${r.updated === 1 ? '' : 's'}`
           : 'Nothing left to agree with',
         r.change_id,
       ),

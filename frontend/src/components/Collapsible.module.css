@@ -17,15 +17,12 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sst-muted);
-}
-.toggle:hover,
-.toggle:focus-visible {
   color: var(--sst-text);
+}
+.chev {
+  color: var(--sst-muted);
 }
 .toggle:focus-visible {
   outline: 2px solid var(--sst-accent);
@@ -41,9 +38,12 @@
   transform: rotate(90deg);
 }
 .meta {
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
   color: var(--sst-muted);
-  font-family: var(--sst-mono, ui-monospace, monospace);
   font-variant-numeric: tabular-nums;
 }
 .body {

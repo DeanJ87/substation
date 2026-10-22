@@ -71,6 +71,8 @@ export function PathPatterns() {
   const remove = useDeletePattern()
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [editing, setEditing] = useState<number | undefined>()
+  // the editor folds away until it's wanted (D13)
+  const [composing, setComposing] = useState(false)
   const [samples, setSamples] = useState('')
   // Live preview of the draft, debounced so typing doesn't flood the server
   const debouncedJson = useDebounced(JSON.stringify({ draft, samples }), 350)
@@ -114,11 +116,10 @@ export function PathPatterns() {
       id="patterns"
       title="Path patterns"
       meta={patterns.isSuccess ? patterns.data.length : undefined}
+      help={
+        <>Read values from folder and file names. Headers win unless “Prefer over the header” is ticked.</>
+      }
     >
-      <p className="muted">
-        Read values from folder and file names. Headers win unless “Prefer over the header” is ticked.
-      </p>
-
       <ul className={s.patternList}>
         {(patterns.data ?? []).map((p) => (
           <li key={p.id} className={`${s.patternRow} ${p.id < 0 ? s.saving : ''}`}>
@@ -149,145 +150,153 @@ export function PathPatterns() {
         {patterns.isSuccess && patterns.data.length === 0 && <li className="muted">No patterns.</li>}
       </ul>
 
-      <form
-        className={s.editor}
-        onSubmit={(e) => {
-          e.preventDefault()
-          // the list changes at once and the editor empties; a failure brings the draft back
-          const was = { draft, editing }
-          save.mutate(
-            { ...draft, id: editing },
-            {
-              onError: () => {
-                setDraft(was.draft)
-                setEditing(was.editing)
-              },
-            },
-          )
-          setDraft(EMPTY)
-          setEditing(undefined)
-        }}
-      >
-        <h3>{editing ? `Edit pattern #${editing}` : 'New pattern'}</h3>
-        <div className={s.examples}>
-          {EXAMPLES.map((ex) => (
-            <button
-              type="button"
-              key={ex.pattern}
-              className={s.chip}
-              onClick={() => setDraft((d) => ({ ...d, kind: ex.kind, pattern: ex.pattern }))}
-            >
-              {ex.note}
-            </button>
-          ))}
-        </div>
-        <div className={s.grid}>
-          <label>
-            <span className="label">Matches</span>
-            <select value={draft.kind} onChange={(e) => set('kind', e.target.value as Draft['kind'])}>
-              <option value="filename">File name</option>
-              <option value="folder">Folder path</option>
-            </select>
-          </label>
-          <label className={s.wide}>
-            <span className="label">Pattern</span>
-            <input
-              className="mono"
-              value={draft.pattern}
-              onChange={(e) => set('pattern', e.target.value)}
-              placeholder={EXAMPLES[0].pattern}
-              spellCheck={false}
-            />
-            <span className={s.hint}>{TOKENS}</span>
-          </label>
-          <label>
-            <span className="label">Library</span>
-            <select
-              value={draft.library_id ?? ''}
-              onChange={(e) => set('library_id', e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">All libraries</option>
-              {(libraries.data ?? []).map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="label">Only paths matching</span>
-            <input
-              className="mono"
-              value={draft.scope_glob}
-              onChange={(e) => set('scope_glob', e.target.value)}
-            />
-          </label>
-          <label>
-            <span className="label">Priority</span>
-            <input
-              type="number"
-              value={draft.priority}
-              onChange={(e) => set('priority', Number(e.target.value))}
-            />
-          </label>
-        </div>
-        {preview && preview.fields.length > 0 && (
-          <fieldset className={s.prefer}>
-            <legend className="label">Prefer over the header for</legend>
-            {preview.fields.map((f) => (
-              <label key={f}>
-                <input
-                  type="checkbox"
-                  checked={draft.prefer_over_header.includes(f)}
-                  onChange={(e) =>
-                    set(
-                      'prefer_over_header',
-                      e.target.checked
-                        ? [...draft.prefer_over_header, f]
-                        : draft.prefer_over_header.filter((x) => x !== f),
-                    )
-                  }
-                />{' '}
-                {FIELD_LABEL[f] ?? f}
-              </label>
-            ))}
-          </fieldset>
-        )}
-        <label className={s.wide}>
-          <span className="label">Test paths (one per line)</span>
-          <textarea
-            className="mono"
-            rows={3}
-            value={samples}
-            onChange={(e) => setSamples(e.target.value)}
-            placeholder="Leave empty to test on known files"
-          />
-        </label>
-
-        {previewError && (
-          <p role="alert" className={s.error}>
-            {previewError}
-          </p>
-        )}
-        {preview && <PreviewView p={preview} />}
-
-        <div className={s.rowActions}>
-          <Button type="submit" variant="primary" disabled={!draft.pattern || !!previewError}>
-            {editing ? 'Save changes' : 'Add pattern'}
+      {editing === undefined && !composing ? (
+        <div>
+          <Button size="sm" onClick={() => setComposing(true)}>
+            New pattern
           </Button>
-          {editing && (
+        </div>
+      ) : (
+        <form
+          className={s.editor}
+          onSubmit={(e) => {
+            e.preventDefault()
+            // the list changes at once and the editor empties; a failure brings the draft back
+            const was = { draft, editing }
+            save.mutate(
+              { ...draft, id: editing },
+              {
+                onError: () => {
+                  setDraft(was.draft)
+                  setEditing(was.editing)
+                },
+              },
+            )
+            setDraft(EMPTY)
+            setEditing(undefined)
+            setComposing(false)
+          }}
+        >
+          <h3>{editing ? `Edit pattern #${editing}` : 'New pattern'}</h3>
+          <div className={s.examples}>
+            {EXAMPLES.map((ex) => (
+              <button
+                type="button"
+                key={ex.pattern}
+                className={s.chip}
+                onClick={() => setDraft((d) => ({ ...d, kind: ex.kind, pattern: ex.pattern }))}
+              >
+                {ex.note}
+              </button>
+            ))}
+          </div>
+          <div className={s.grid}>
+            <label>
+              <span className="label">Matches</span>
+              <select value={draft.kind} onChange={(e) => set('kind', e.target.value as Draft['kind'])}>
+                <option value="filename">File name</option>
+                <option value="folder">Folder path</option>
+              </select>
+            </label>
+            <label className={s.wide}>
+              <span className="label">Pattern</span>
+              <input
+                className="mono"
+                value={draft.pattern}
+                onChange={(e) => set('pattern', e.target.value)}
+                placeholder={EXAMPLES[0].pattern}
+                spellCheck={false}
+              />
+              <span className={s.hint}>{TOKENS}</span>
+            </label>
+            <label>
+              <span className="label">Library</span>
+              <select
+                value={draft.library_id ?? ''}
+                onChange={(e) => set('library_id', e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">All libraries</option>
+                {(libraries.data ?? []).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="label">Only paths matching</span>
+              <input
+                className="mono"
+                value={draft.scope_glob}
+                onChange={(e) => set('scope_glob', e.target.value)}
+              />
+            </label>
+            <label>
+              <span className="label">Priority</span>
+              <input
+                type="number"
+                value={draft.priority}
+                onChange={(e) => set('priority', Number(e.target.value))}
+              />
+            </label>
+          </div>
+          {preview && preview.fields.length > 0 && (
+            <fieldset className={s.prefer}>
+              <legend className="label">Prefer over the header for</legend>
+              {preview.fields.map((f) => (
+                <label key={f}>
+                  <input
+                    type="checkbox"
+                    checked={draft.prefer_over_header.includes(f)}
+                    onChange={(e) =>
+                      set(
+                        'prefer_over_header',
+                        e.target.checked
+                          ? [...draft.prefer_over_header, f]
+                          : draft.prefer_over_header.filter((x) => x !== f),
+                      )
+                    }
+                  />{' '}
+                  {FIELD_LABEL[f] ?? f}
+                </label>
+              ))}
+            </fieldset>
+          )}
+          <label className={s.wide}>
+            <span className="label">Test paths (one per line)</span>
+            <textarea
+              className="mono"
+              rows={3}
+              value={samples}
+              onChange={(e) => setSamples(e.target.value)}
+              placeholder="Leave empty to test on known files"
+            />
+          </label>
+
+          {previewError && (
+            <p role="alert" className={s.error}>
+              {previewError}
+            </p>
+          )}
+          {preview && <PreviewView p={preview} />}
+
+          <div className={s.rowActions}>
+            <Button type="submit" variant="primary" disabled={!draft.pattern || !!previewError}>
+              {editing ? 'Save changes' : 'Add pattern'}
+            </Button>
             <Button
               type="button"
               onClick={() => {
                 setEditing(undefined)
+                setComposing(false)
                 setDraft(EMPTY)
               }}
             >
               Cancel
             </Button>
-          )}
-        </div>
-      </form>
+          </div>
+        </form>
+      )}
     </SettingsSection>
   )
 }

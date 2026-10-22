@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, unwrap } from '../api/client'
 import s from './Search.module.css'
+import { countText, dateText } from '../features/format'
 
 type Hit = { key: string; group: string; title: string; detail: string; go: () => void }
 
@@ -17,7 +18,7 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 function plural(n: number, word: string): string {
-  return `${n.toLocaleString('en-GB')} ${word}${n === 1 ? '' : 's'}`
+  return `${countText(n)} ${word}${n === 1 ? '' : 's'}`
 }
 
 export function Search() {
@@ -82,12 +83,7 @@ export function Search() {
       ...r.nights.map((n) => ({
         key: `n${n.date}`,
         group: 'Nights',
-        title: new Date(`${n.date}T12:00:00`).toLocaleDateString('en-GB', {
-          weekday: 'short',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        }),
+        title: dateText(`${n.date}T12:00:00`),
         detail: plural(n.datasets, 'dataset'),
         go: done(() => void navigate({ to: '/nights/$date', params: { date: n.date } })),
       })),

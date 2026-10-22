@@ -170,6 +170,8 @@ def _inside(path: Path, folder: Path) -> bool:
 @router.get("/projects/{id}/files/{path:key}", response={200: None, 304: None, 404: None})
 def get_file(request: HttpRequest, id: str, key: str) -> HttpResponse | FileResponse:
     p = _project(id)
+    if key.startswith("progression/"):
+        return _progression_file(request, p, key)
     want = "final" if key == "thumb" else key
     f = role_files(p).get(want)
     if f is None:
@@ -188,6 +190,39 @@ def get_file(request: HttpRequest, id: str, key: str) -> HttpResponse | FileResp
     if key == "thumb":
         path = _thumb(p, path, tag)
     out = FileResponse(path.open("rb"), filename=path.name)
+    out["ETag"] = etag
+    out["Cache-Control"] = "private, max-age=300"
+    log.info("render api: served %s of project %s", key, p.pk)
+    return out
+
+
+def progression_checkpoint(p: FinishedProject, order: str) -> tuple[dict, Path] | None:
+    """A cumulative stack's checkpoint and its cached JPEG (020-DR-15), or None when there's no such image."""
+    from .models import Progression
+    from .progression import image_path
+
+    prog = Progression.objects.filter(project=p).first()
+    if prog is None or not order.isascii() or not order.isdigit():
+        return None
+    ck = next((c for c in prog.checkpoints if c.get("order") == int(order)), None)
+    if ck is None or not ck.get("hash"):
+        return None
+    path = image_path(p.pk, ck)
+    return (ck, path) if path.is_file() else None
+
+
+def _progression_file(request: HttpRequest, p: FinishedProject, key: str) -> HttpResponse | FileResponse:
+    found = progression_checkpoint(p, key.split("/", 1)[1])
+    if found is None:
+        raise ApiError(404, "no_file", "This project has no progression image with that number.")
+    ck, path = found
+    etag = f'"{ck["hash"][:32]}"'
+    match = request.headers.get("If-None-Match", "")
+    if etag in {t.strip().removeprefix("W/") for t in match.split(",")}:
+        resp: HttpResponse = HttpResponseNotModified()
+        resp["ETag"] = etag
+        return resp
+    out = FileResponse(path.open("rb"), content_type="image/jpeg", filename=f"progression-{ck['order']}.jpg")
     out["ETag"] = etag
     out["Cache-Control"] = "private, max-age=300"
     log.info("render api: served %s of project %s", key, p.pk)

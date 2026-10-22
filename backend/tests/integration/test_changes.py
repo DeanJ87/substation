@@ -93,10 +93,8 @@ def test_project_goals_are_set_changed_removed_and_add_up_on_the_card(admin_clie
     from apps.catalogue.models import Collection, Project
 
     col = Collection.objects.create(name="M 81")
-    old = Project.objects.create(collection=col, name="Single field 2025")
-    new = Project.objects.create(
-        collection=col, name="20-panel mosaic 2026", kind="mosaic", planned_panels=20
-    )
+    old = Project.objects.create(collection=col, season="2025")
+    new = Project.objects.create(collection=col, season="2026", kind_override="mosaic", planned_panels=20)
     url = f"/api/v1/projects/{new.pk}"
     r = admin_client.patch(url, {"goals": {"L": 10, "Ha": 20}}, content_type="application/json").json()
     assert r["goals"] == {"L": 10, "Ha": 20}

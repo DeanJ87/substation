@@ -24,7 +24,7 @@
   gap: 12px;
 }
 .title {
-  font-family: 'JetBrains Mono', var(--sst-font-mono);
+  font-family: var(--sst-font-mono);
   font-size: 15px;
   margin: 0;
   word-break: break-all;

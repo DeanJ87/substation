@@ -179,6 +179,8 @@ describe('the sky dome', () => {
     const frame = container.querySelector('svg[role="img"] g[class*="frame"]')!
     expect(frame.querySelector('title')?.textContent).toMatch(/Askar 71F \+ ATR2600M’s frame, 3\.2° × 2\.1°/)
     expect(frame.querySelectorAll('path')).toHaveLength(2)
+    // the explanation sits behind the frame's ? (C13)
+    fireEvent.click(screen.getByRole('button', { name: 'Help: Camera frame' }))
     expect(screen.getByText(/camera’s frame from its plate solve/)).toHaveTextContent(/middle of the night/)
     // another target in focus: its rig has no solve, so no frame
     fireEvent.click(screen.getByRole('button', { name: /Heart Nebula/ }))
@@ -193,7 +195,7 @@ describe('the sky dome', () => {
 
   it('tells the moon, darkness and what couldn’t be placed', () => {
     render(<SkyView sky={sky()} onOpen={() => {}} />)
-    expect(screen.getByText('2% lit, below the horizon')).toBeInTheDocument()
+    expect(screen.getByText('2% lit · below the horizon')).toBeInTheDocument()
     expect(screen.getByText(/1 sub: No time recorded/)).toBeInTheDocument()
   })
 })

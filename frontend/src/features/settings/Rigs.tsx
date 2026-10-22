@@ -9,6 +9,7 @@ import { Button } from '../../components/ui'
 import { tempId } from '../metadata/queries'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
+import { numText } from '../format'
 
 export function Rigs() {
   const qc = useQueryClient()
@@ -110,10 +111,18 @@ export function Rigs() {
   const byId = Object.fromEntries(list.map((r) => [r.id, r]))
 
   return (
-    <SettingsSection id="rigs" title="Rigs" meta={rigs.isSuccess ? list.length : undefined}>
-      <p className="muted">
-        Detected from TELESCOP, INSTRUME and FOCALLEN. Merge duplicates to share datasets.
-      </p>
+    <SettingsSection
+      id="rigs"
+      title="Rigs"
+      meta={rigs.isSuccess ? list.length : undefined}
+      help={
+        <>
+          Detected from TELESCOP, INSTRUME and FOCALLEN. Merge duplicates to share datasets. Calibration:
+          Darks + flats needs both; Flats + bias uses bias in place of darks; In camera means the subs arrive
+          already calibrated.
+        </>
+      }
+    >
       {(sugg.data ?? []).map((x) => (
         <div key={`${x.rig_id}-${x.into}`} className={s.suggest}>
           <span>Possible duplicate: {x.why}</span>
@@ -146,7 +155,7 @@ export function Rigs() {
                   r.camera,
                   r.telescope,
                   r.focal_mm ? `${r.focal_mm} mm` : '',
-                  r.image_scale ? `${r.image_scale.toFixed(2)}″/px` : '',
+                  r.image_scale ? `${numText(r.image_scale, 2)}″/px` : '',
                 ]
                   .filter(Boolean)
                   .join(' · ')}{' '}
@@ -163,9 +172,9 @@ export function Rigs() {
                   edit.mutate({ id: r.id, calibration: e.target.value as 'masters' | 'flats' | 'none' })
                 }
               >
-                <option value="masters">Darks and flats</option>
-                <option value="flats">Flats and bias, no darks</option>
-                <option value="none">None: calibrated in the camera</option>
+                <option value="masters">Darks + flats</option>
+                <option value="flats">Flats + bias</option>
+                <option value="none">In camera</option>
               </select>
               <select
                 aria-label={`Mount for ${r.name}`}

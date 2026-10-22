@@ -5,7 +5,7 @@ import { Button } from '../../components/ui'
 import { Collapsible } from '../../components/Collapsible'
 import { VerdictBadge } from '../../components/VerdictBadge'
 import { useFrame } from '../datasets/queries'
-import { nightText, timeText } from '../format'
+import { dateTimeText, nightText, timeText } from '../format'
 import { FrameValues } from './FrameValues'
 import { IgnoreActions } from './IgnoreActions'
 import s from './frames.module.css'
@@ -89,7 +89,7 @@ export function FrameDetail({ sha256, onClose }: { sha256: string | null; onClos
                         />{' '}
                         <span className="muted">
                           {v.source === 'nina_bad_prefix' ? 'Rejected in NINA (BAD_ prefix)' : `by ${v.by}`} ·{' '}
-                          {new Date(v.at).toLocaleString('en-GB')}
+                          {dateTimeText(v.at)}
                         </span>
                       </li>
                     ))}
@@ -117,8 +117,7 @@ export function FrameDetail({ sha256, onClose }: { sha256: string | null; onClos
                   <ul className={`${s.plain} ${s.pane}`}>
                     {f.history.map((h, i) => (
                       <li key={i}>
-                        <span className="mono muted">{new Date(h.at).toLocaleString('en-GB')}</span>{' '}
-                        {describe(h as HistoryEvent)}
+                        <span className="mono muted">{dateTimeText(h.at)}</span> {describe(h as HistoryEvent)}
                       </li>
                     ))}
                   </ul>

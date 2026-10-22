@@ -321,3 +321,148 @@ describe('a finished project (spec 020)', () => {
     expect(screen.getByRole('textbox', { name: 'Distance in light years' })).toBeDisabled()
   })
 })
+
+const checkpoint = (order: number, label: string, integration_s: number, subs: number) => ({
+  order,
+  nights: [],
+  label,
+  integration_s,
+  subs,
+  filters: {},
+  image_url: `/api/v1/finished/7/progression/${order}/image`,
+})
+const progression = (more: Record<string, unknown> = {}) => ({
+  state: 'none',
+  step: '',
+  progress: 0,
+  reason: '',
+  mapping: '',
+  built_at: null,
+  checkpoints: [],
+  ...more,
+})
+const BUILT = progression({
+  state: 'done',
+  mapping: 'HOO',
+  built_at: '2026-10-21T08:00:00Z',
+  // out of order on purpose: the page shows them by order
+  checkpoints: [
+    checkpoint(2, '3–4 Oct', 16_200, 54),
+    checkpoint(1, '2 Oct', 7_200, 24),
+    checkpoint(3, '9 Oct', 25_200, 84),
+  ],
+})
+const progressionSection = async () =>
+  (await screen.findByRole('heading', { name: /Progression/ })).closest('section')!
+
+describe('the progression of a finished project (020-DR-15)', () => {
+  it('offers Generate before anything is built, and posts it', async () => {
+    const { api } = await openProject({
+      'GET /finished/7/progression': progression(),
+      'POST /finished/7/progression': progression({ state: 'queued', step: 'Waiting for a worker' }),
+    })
+    const section = await progressionSection()
+    fireEvent.click(await within(section).findByRole('button', { name: 'Generate' }))
+    await waitFor(() =>
+      expect(api.calls).toContainEqual({
+        method: 'POST',
+        path: '/finished/7/progression',
+        body: { force: false },
+      }),
+    )
+    expect(await within(section).findByRole('progressbar')).toBeInTheDocument()
+    expect(within(section).queryByRole('button', { name: 'Generate' })).not.toBeInTheDocument()
+  })
+
+  it('shows the step and a progress bar while building', async () => {
+    await openProject({
+      'GET /finished/7/progression': progression({
+        state: 'running',
+        step: 'Stack 2 Oct Hα',
+        progress: 0.42,
+      }),
+    })
+    const section = await progressionSection()
+    expect(await within(section).findByRole('progressbar')).toHaveAttribute('aria-valuenow', '0.42')
+    expect(section).toHaveTextContent('Building · Stack 2 Oct Hα')
+    expect(section).toHaveTextContent('42%')
+    expect(within(section).queryByRole('button', { name: /Generate|Rebuild/ })).not.toBeInTheDocument()
+  })
+
+  it("says why it can't be built, with no button", async () => {
+    await openProject({
+      'GET /finished/7/progression': progression({ state: 'unavailable', reason: 'This is a mosaic.' }),
+    })
+    const section = await progressionSection()
+    expect(await within(section).findByText('This is a mosaic.')).toBeInTheDocument()
+    expect(within(section).queryByRole('button', { name: /Generate|Rebuild/ })).not.toBeInTheDocument()
+  })
+
+  it('shows the stacks in order, labelled, and rebuilds with force', async () => {
+    const { api } = await openProject({
+      'GET /finished/7/progression': BUILT,
+      'POST /finished/7/progression': BUILT,
+    })
+    const section = await progressionSection()
+    const strip = await within(section).findByRole('list', { name: 'Stacks after each night' })
+    const items = within(strip).getAllByRole('listitem')
+    expect(items.map((li) => li.textContent)).toEqual([
+      '2 Oct · 2h · 24 subs',
+      '3–4 Oct · 4h 30m · 54 subs',
+      '9 Oct · 7h · 84 subs',
+    ])
+    expect(items[0].querySelector('img')).toHaveAttribute('src', '/api/v1/finished/7/progression/1/image')
+    fireEvent.click(within(section).getByRole('button', { name: 'Rebuild' }))
+    await waitFor(() =>
+      expect(api.calls).toContainEqual({
+        method: 'POST',
+        path: '/finished/7/progression',
+        body: { force: true },
+      }),
+    )
+  })
+
+  it("shows the server's refusal beside the button", async () => {
+    await openProject({ 'GET /finished/7/progression': progression() })
+    const g = globalThis as { testFetch?: typeof globalThis.fetch }
+    const fetch = g.testFetch!
+    g.testFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = input instanceof Request ? input : new Request(String(input), init)
+      if (req.method === 'POST' && req.url.endsWith('/finished/7/progression'))
+        return new Response(
+          JSON.stringify({ code: 'unavailable', message: 'Needs at least two kept subs.' }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
+      return fetch(input, init)
+    }) as typeof globalThis.fetch
+    const section = await progressionSection()
+    fireEvent.click(await within(section).findByRole('button', { name: 'Generate' }))
+    expect(await within(section).findByRole('alert')).toHaveTextContent('Needs at least two kept subs.')
+  })
+
+  it('opens a stack larger and steps through them in order with Prev, Next and the arrow keys', async () => {
+    await openProject({ 'GET /finished/7/progression': BUILT })
+    const section = await progressionSection()
+    fireEvent.click(await within(section).findByRole('button', { name: 'Open 3–4 Oct' }))
+    let dialog = screen.getByRole('dialog', { name: 'Progression: 3–4 Oct' })
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', '/api/v1/finished/7/progression/2/image')
+    expect(dialog).toHaveTextContent('2 of 3')
+    fireEvent.click(within(dialog).getByRole('button', { name: /Next/ }))
+    dialog = screen.getByRole('dialog', { name: 'Progression: 9 Oct' })
+    expect(within(dialog).getByRole('button', { name: /Next/ })).toBeDisabled()
+    fireEvent.keyDown(dialog, { key: 'ArrowLeft' })
+    fireEvent.keyDown(dialog, { key: 'ArrowLeft' })
+    dialog = screen.getByRole('dialog', { name: 'Progression: 2 Oct' })
+    expect(within(dialog).getByRole('button', { name: /Prev/ })).toBeDisabled()
+    fireEvent.click(within(dialog).getByRole('button', { name: /Next/ }))
+    expect(screen.getByRole('dialog', { name: 'Progression: 3–4 Oct' })).toBeInTheDocument()
+  })
+
+  it('is not shown until the project is linked', async () => {
+    await openProject({ 'GET /finished/7': { ...PROJECT, links: [] } })
+    expect(screen.queryByRole('heading', { name: /Progression/ })).not.toBeInTheDocument()
+  })
+})

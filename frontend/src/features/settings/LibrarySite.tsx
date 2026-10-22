@@ -127,7 +127,7 @@ export function SiteRenderFields({
         <input
           value={region}
           maxLength={100}
-          placeholder="e.g. a county or national park"
+          placeholder="e.g. a county"
           disabled={disabled}
           onChange={(e) => onChange({ region: e.target.value })}
           aria-label="Region"

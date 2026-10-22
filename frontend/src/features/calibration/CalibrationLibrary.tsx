@@ -6,15 +6,15 @@ import { useMemo, useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { optimistic, patchItems } from '../../api/optimistic'
 import type { components } from '../../api/schema'
-import { Button, ConfirmButton, EmptyState, ErrorState, Spinner } from '../../components/ui'
+import { Button, buttonClass, ConfirmButton, EmptyState, ErrorState, Spinner } from '../../components/ui'
+import { filterName } from '../../components/filters'
 import { VerdictBadge, type VerdictState } from '../../components/VerdictBadge'
 import { useCalibrationActions } from '../v2/hooks'
 import { useCatalogueLiveUpdates } from '../datasets/queries'
 import { FrameDetail } from '../frames/FrameDetail'
 import { Zoomable } from '../../components/CloseLook'
-import { agoText, nightText, temp } from '../format'
+import { agoText, binText, clockText, countText, exposureText, nightText, temp } from '../format'
 import ui from '../../components/ui.module.css'
-import v from '../v2/v2.module.css'
 import s from './calibration.module.css'
 import { useSort } from '../../components/sortable'
 import { Collapsible } from '../../components/Collapsible'
@@ -52,8 +52,7 @@ const BUILT: Record<string, [VerdictState, string]> = {
   blocked: ['await', 'Blocked'],
 }
 
-const hhmm = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+const hhmm = (iso: string) => clockText(iso)
 
 export function CalibrationLibrary() {
   useCatalogueLiveUpdates()
@@ -144,7 +143,7 @@ export function CalibrationLibrary() {
           </p>
         </div>
         <div className={s.headButtons}>
-          <Link to="/calibration/to-shoot" search={query} className={v.pill}>
+          <Link to="/calibration/to-shoot" search={query} className={buttonClass()}>
             What to shoot
           </Link>
           <Button onClick={() => rescan.mutate()} disabled={rescan.isPending || !folders.length}>
@@ -188,7 +187,7 @@ export function CalibrationLibrary() {
         title="Raw sets"
         meta={
           sets.isSuccess &&
-          `${setCount.toLocaleString('en-GB')} set${setCount === 1 ? '' : 's'} · ${byNight.length} night${byNight.length === 1 ? '' : 's'}`
+          `${countText(setCount)} set${setCount === 1 ? '' : 's'} · ${byNight.length} night${byNight.length === 1 ? '' : 's'}`
         }
       >
         {sets.isSuccess && byNight.length === 0 && (
@@ -259,7 +258,7 @@ function NightSets({
   onChooseAll: (on: boolean) => void
 }) {
   const picked = list.filter((cs) => chosen.has(cs.id)).length
-  const title = night === 'unknown' ? 'Night unknown' : nightText(night)
+  const title = night === 'unknown' ? 'Night unknown (no site in the headers)' : nightText(night)
   return (
     <Collapsible
       id={`calibration-night-${night}`}
@@ -283,7 +282,7 @@ function NightSets({
               <th>Filter</th>
               <th className={s.num}>Exposure</th>
               <th className={s.num}>Frames</th>
-              <th className={s.num}>Session (UTC)</th>
+              <th className={s.num}>Session</th>
               <th className={s.num}>Gain / offset</th>
               <th className={s.num}>Bin</th>
               <th className={s.num}>Set temp</th>
@@ -304,38 +303,30 @@ function NightSets({
                   <ChooseBox
                     checked={chosen.has(cs.id)}
                     onChange={() => onChoose(cs.id)}
-                    label={`Select ${[TYPE[cs.type] ?? cs.type, cs.filter, `${cs.exptime_s} s`, hhmm(cs.session_start_utc)].filter(Boolean).join(' ')}`}
+                    label={`Select ${[TYPE[cs.type] ?? cs.type, cs.filter, exposureText(cs.exptime_s), hhmm(cs.session_start_utc)].filter(Boolean).join(' ')}`}
                   />
                 </td>
+                {/* the row opens the set; the type is its name, not a second link (C26) */}
                 <td className={s.nowrap}>
-                  <Link
-                    to="/calibration/sets/$id"
-                    params={{ id: String(cs.id) }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {TYPE[cs.type] ?? cs.type}
-                  </Link>
+                  <strong>{TYPE[cs.type] ?? cs.type}</strong>
                 </td>
-                <td data-label="Filter">
-                  {cs.filter ??
-                    Object.entries(cs.filter_blocks)
-                      .map(([f, n]) => `${f} ×${n}`)
-                      .join(', ')}
+                <td data-label="Filter">{setFilterText(cs)}</td>
+                <td className={s.num} data-label="Exposure">
+                  {exposureText(cs.exptime_s)}
                 </td>
-                <td className={`mono ${s.num}`} data-label="Exposure">
-                  {cs.exptime_s} s
+                <td className={s.num} data-label="Frames">
+                  {countText(cs.frame_count)}
                 </td>
-                <td className={`mono ${s.num}`} data-label="Frames">
-                  {cs.frame_count}
+                <td className={s.num} data-label="Session">
+                  {hhmm(cs.session_start_utc) === hhmm(cs.session_end_utc)
+                    ? hhmm(cs.session_start_utc)
+                    : `${hhmm(cs.session_start_utc)}–${hhmm(cs.session_end_utc)}`}
                 </td>
-                <td className={`mono ${s.num}`} data-label="Session (UTC)">
-                  {hhmm(cs.session_start_utc)}–{hhmm(cs.session_end_utc)}
-                </td>
-                <td className={`mono ${s.num}`} data-label="Gain / offset">
+                <td className={s.num} data-label="Gain / offset">
                   {cs.gain ?? '—'} / {cs.offset ?? '—'}
                 </td>
-                <td className={`mono ${s.num}`} data-label="Bin">
-                  {cs.binning}
+                <td className={s.num} data-label="Bin">
+                  {binText(cs.binning)}
                 </td>
                 <td className={s.num} data-label="Set temp">
                   {temp(cs.set_temp_c)}
@@ -371,12 +362,11 @@ function Blocking({ scope }: { scope: Scope }) {
     <Collapsible
       id="calibration-blocking"
       title="Waiting for calibration"
-      meta={`${subs.toLocaleString('en-GB')} subs · ${rows.length} session${rows.length === 1 ? '' : 's'}`}
+      meta={`${countText(subs)} subs · ${rows.length} session${rows.length === 1 ? '' : 's'}`}
       className={s.blocking}
     >
       <p className="muted">
-        {subs.toLocaleString('en-GB')} subs waiting. Add the frames below or change the rig in Settings →
-        Rigs.{' '}
+        {countText(subs)} subs waiting. Add the frames below or change the rig in Settings → Rigs.{' '}
         <Link to="/calibration/to-shoot" search={query}>
           What to shoot
         </Link>{' '}
@@ -485,7 +475,7 @@ function WindowEditor({ sha, from, to }: { sha: string; from: string; to: string
     return (
       <button
         type="button"
-        className={ui.button}
+        className={buttonClass({ variant: 'ghost', size: 'sm' })}
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
@@ -595,7 +585,7 @@ function MastersTable({
     more,
   } = useProgressive(sorted, 60, `${filterKey}|${tab}|${sort?.key}|${sort?.desc}`)
   return (
-    <Collapsible id="calibration-masters" title="Masters" meta={masters.length.toLocaleString('en-GB')}>
+    <Collapsible id="calibration-masters" title="Masters" meta={countText(masters.length)}>
       <div className={s.tabs} role="tablist" aria-label="Master type">
         {TABS.map(([k, label, f]) => (
           <button
@@ -606,7 +596,7 @@ function MastersTable({
             className={s.tab}
             onClick={() => setTab(k)}
           >
-            {label} <span className="mono">{masters.filter(f).length}</span>
+            {label} <span className="muted">{masters.filter(f).length}</span>
           </button>
         ))}
       </div>
@@ -656,10 +646,12 @@ function MastersTable({
                   </td>
                   <td data-label="Type">{TYPE[m.frame_type] ?? m.frame_type}</td>
                   <td data-label="Matches" data-wide>
-                    <span className="mono">
+                    <span>
                       {[
-                        m.filter,
-                        m.exptime_s != null && m.frame_type !== 'master_bias' ? `${m.exptime_s} s` : null,
+                        m.filter ? filterName(m.filter) : null,
+                        m.exptime_s != null && m.frame_type !== 'master_bias'
+                          ? exposureText(m.exptime_s)
+                          : null,
                         m.gain != null ? `gain ${m.gain}` : null,
                         m.set_temp_c != null ? temp(m.set_temp_c) : null,
                       ]
@@ -668,7 +660,7 @@ function MastersTable({
                     </span>
                     <div className="muted">{rigOf(m)}</div>
                   </td>
-                  <td className={`mono ${s.num}`} data-label="Frames">
+                  <td className={s.num} data-label="Frames">
                     {m.built_set_id ? (
                       <Link
                         to="/calibration/sets/$id"
@@ -695,7 +687,10 @@ function MastersTable({
                         <VerdictBadge state="recon" label={`Needs ${m.missing.join(', ')}`} />
                       </Link>
                     ) : (
-                      <span className={m.state === 'Current' ? undefined : 'muted'}>{m.state}</span>
+                      <span className={m.state === 'Current' ? undefined : 'muted'}>
+                        {/* "Unused · 32 days" reads as an age of use; say what the age is (D11) */}
+                        {m.state.replace(/^Unused · (.+)$/, 'Unused · made $1 ago')}
+                      </span>
                     )}
                     {(m.valid_from || m.valid_to) && (
                       <div className="muted">
@@ -710,7 +705,8 @@ function MastersTable({
                     <div className={s.rowActions}>
                       <WindowEditor sha={m.sha256} from={m.valid_from ?? ''} to={m.valid_to ?? ''} />
                       <ConfirmButton
-                        className={ui.button}
+                        variant="ghost"
+                        size="sm"
                         question={<>Retire this master? Lights using it will rematch.</>}
                         confirm="Retire"
                         onConfirm={() => retire.mutate(m.sha256)}
@@ -728,4 +724,12 @@ function MastersTable({
       )}
     </Collapsible>
   )
+}
+
+/** A set's filter: its canonical name, or the filters it holds ("Hα ×4, OIII ×2"); "—" for frames with none
+ * (darks, bias) rather than "none ×8" (C26). */
+function setFilterText(cs: { filter?: string | null; filter_blocks: Record<string, number> }): string {
+  if (cs.filter) return filterName(cs.filter)
+  const named = Object.entries(cs.filter_blocks).filter(([f]) => f && f.toLowerCase() !== 'none')
+  return named.length ? named.map(([f, n]) => `${filterName(f)} ×${n}`).join(', ') : '—'
 }

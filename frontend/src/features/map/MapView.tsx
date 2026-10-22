@@ -16,19 +16,13 @@ import { omit, readScope, scopeQuery, type Scope } from '../scope/scope'
 import { besidesNights, type MapSearch, mapQuery, nearest, periodText, presets } from './search'
 import { baseLayer } from './tiles'
 import s from './map.module.css'
+import { countText, dateText } from '../format'
 
 type Place = components['schemas']['MapPlace']
 const route = getRouteApi('/app/map')
 
-const count = (n: number) => (n >= 10_000 ? `${Math.round(n / 1000)}k` : n.toLocaleString('en-GB'))
-const day = (d: string | null | undefined) =>
-  d
-    ? new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    : ''
+const count = (n: number) => (n >= 10_000 ? `${Math.round(n / 1000)}k` : countText(n))
+const day = (d: string | null | undefined) => (d ? dateText(`${d}T12:00:00`) : '')
 
 function tile(image: string | null | undefined, n: number, big = false): L.DivIcon {
   const size = big ? 64 : 56
@@ -152,7 +146,7 @@ export function MapView() {
           {chosen.image && <img className={s.hero} src={chosen.image} alt="" />}
           <h2 className={s.title}>{chosen.targets.slice(0, 2).join(' · ') || 'Subs'}</h2>
           <p className="muted">
-            {chosen.subs.toLocaleString('en-GB')} subs · {chosen.nights.length} night
+            {countText(chosen.subs)} subs · {chosen.nights.length} night
             {chosen.nights.length === 1 ? '' : 's'}
             {chosen.first &&
               ` · ${day(chosen.first)}${chosen.last !== chosen.first ? ` to ${day(chosen.last)}` : ''}`}
@@ -179,7 +173,7 @@ export function MapView() {
                 ) : (
                   <span>{c.name}</span>
                 )}
-                <span className="muted">{c.subs.toLocaleString('en-GB')} subs</span>
+                <span className="muted">{countText(c.subs)} subs</span>
               </li>
             ))}
           </ul>
@@ -194,7 +188,7 @@ export function MapView() {
                 >
                   {day(n.date)}
                 </Link>
-                <span className="muted">{n.subs.toLocaleString('en-GB')} subs</span>
+                <span className="muted">{countText(n.subs)} subs</span>
               </li>
             ))}
           </ul>

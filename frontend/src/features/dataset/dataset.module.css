@@ -112,7 +112,6 @@
   pointer-events: none;
 }
 .manual {
-  font-family: var(--sst-font-mono);
   font-size: 10px;
   font-weight: 700;
   color: var(--sst-text);
@@ -134,7 +133,7 @@
 }
 .tileFoot {
   padding: 6px 8px 8px;
-  font-size: 11px;
+  font-size: 12px;
   position: relative;
   z-index: 2;
   pointer-events: none;
@@ -142,6 +141,13 @@
 .tileName {
   color: var(--sst-text);
   text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
   pointer-events: auto;
 }
 .tileName:hover {
@@ -203,7 +209,6 @@
 .ovAxis {
   position: relative;
   height: 16px;
-  font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--sst-muted);
 }
@@ -229,10 +234,10 @@
   align-items: center;
 }
 .lgFwhm {
-  color: var(--sst-accent);
+  color: var(--sst-chart-1);
 }
 .lgSqm {
-  color: var(--sst-violet);
+  color: var(--sst-chart-2);
 }
 .nightChart {
   width: 100%;
@@ -241,12 +246,12 @@
 }
 .fwhmLine {
   fill: none;
-  stroke: var(--sst-accent);
+  stroke: var(--sst-chart-1);
   stroke-width: 1.6;
 }
 .sqmLine {
   fill: none;
-  stroke: var(--sst-violet);
+  stroke: var(--sst-chart-2);
   stroke-width: 1.6;
 }
 .medLine {
@@ -254,13 +259,13 @@
   stroke-dasharray: 4 4;
 }
 .pt {
-  fill: var(--sst-accent);
+  fill: var(--sst-chart-1);
 }
 .ptDown {
-  fill: var(--sst-warn);
+  fill: var(--sst-st-down);
 }
 .ptReject {
-  fill: var(--sst-bad);
+  fill: var(--sst-st-rejected);
 }
 .ptRing {
   fill: none;
@@ -272,7 +277,6 @@
 .tick {
   fill: var(--sst-muted);
   font-size: 11px;
-  font-family: var(--sst-font-mono);
 }
 .rowSel td {
   background: var(--sst-accent-tint);
@@ -302,6 +306,7 @@
   top: 8px;
   right: 8px;
   background: var(--sst-scrim);
+  color: var(--sst-on-scrim);
 }
 .inspVerdict {
   display: flex;
@@ -362,7 +367,7 @@
   gap: 4px;
 }
 .running {
-  border-color: var(--sst-accent-line);
+  border-color: var(--sst-line);
   padding: 16px 18px;
 }
 .runHead {
@@ -396,10 +401,10 @@
   border-radius: 2px;
 }
 .stepDone {
-  background: var(--sst-ok);
+  background: var(--sst-st-kept);
 }
 .stepNow {
-  background: var(--sst-accent);
+  background: var(--sst-data-fill);
 }
 .version {
   display: grid;
@@ -687,6 +692,9 @@
   background: none;
   text-align: left;
   cursor: pointer;
+  text-decoration: none;
+}
+.tileOpen:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
 }

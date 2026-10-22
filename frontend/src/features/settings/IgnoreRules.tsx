@@ -9,6 +9,7 @@ import { binMessage } from './Bin'
 import { useAddIgnore, useIgnoreRules, useUndoIgnore, type IgnoreRule } from '../metadata/queries'
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
+import { dateText } from '../format'
 
 const KIND_TEXT: Record<string, string> = { folder: 'Folder', glob: 'File names', content: 'Sub' }
 
@@ -90,7 +91,7 @@ export function IgnoreRules() {
                   ) : (
                     <>
                       {r.matches ?? 0} file{r.matches === 1 ? '' : 's'} known · by {r.created_by ?? 'someone'}{' '}
-                      on {r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB') : ''}
+                      on {r.created_at ? dateText(r.created_at) : ''}
                     </>
                   )}
                   {r.note && ` · ${r.note}`}

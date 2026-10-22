@@ -53,6 +53,7 @@ KIND = {
     "redraw_post_views": "Redraw post-processed views",
     "activate_rc_astro": "Activate RC-Astro",
     "move_collection": "Move collection files",
+    "build_progression": "Progressive stacks",
 }
 
 
@@ -201,6 +202,11 @@ def _target(t: Task) -> tuple[str, int | None, dict]:
             )
         if short == "move_collection":
             return _move_target(int(args[0])), None, {}
+        if short == "build_progression":
+            from apps.finished.models import FinishedProject
+
+            fp = FinishedProject.objects.get(pk=args[0])
+            return f"{fp.subject} · {fp.name}", None, {}
         if short == "postprocess_master":
             from apps.processing.models import Master
 
@@ -500,9 +506,11 @@ def _verb(w: Worker) -> str:
 
 @router.get("", response=ActivityOut)
 def activity(request):
+    from apps.finished.progression import reconcile_progressions
     from apps.processing.masters import reconcile_states
 
     reconcile_states()
+    reconcile_progressions()
     from apps.catalogue.models import Copy
     from apps.libraries.models import InstallationSettings, Library
 
@@ -648,9 +656,11 @@ def cancel(request, id: str):  # noqa: A002
         raise ApiError(409, "not_waiting", "Only waiting or running jobs can be cancelled.")
     t.status, t.finished_at = TaskStatus.CANCELLED, timezone.now()
     t.save(update_fields=["status", "finished_at"])
+    from apps.finished.progression import reconcile_progressions
     from apps.processing.masters import reconcile_states
 
     reconcile_states()
+    reconcile_progressions()
     return job_out(t)
 
 

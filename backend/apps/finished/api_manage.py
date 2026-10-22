@@ -2,6 +2,7 @@
 rescan; create and revoke render tokens. SubStation never writes into a Completed library (020-DR-12). Session routes like the rest of the app; changes are admin-only.
 No `from __future__ import annotations` here: see substation.api."""
 
+import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,10 +15,22 @@ from django.utils import timezone
 from apps.catalogue.models import Project
 from substation.api import ApiError, Router, Schema, Status, admin_required
 
-from .models import ApiToken, FileRole, FinishedFile, FinishedProject, TokenScope
+from .models import (
+    ApiToken,
+    FileRole,
+    FinishedFile,
+    FinishedProject,
+    Progression,
+    ProgressionState,
+    TokenScope,
+)
+from .progression import availability as progression_availability
+from .progression import reconcile_progressions
+from .progression import start as start_progression
 from .render import build, changed_at, file_key, offered
 from .scan import IMAGE_EXTS, completed_libraries, guess_roles, scan_all
 
+log = logging.getLogger("substation.finished")
 router = Router(tags=["finished"])
 tokens_router = Router(tags=["tokens"])
 
@@ -226,6 +239,11 @@ def set_links(request: HttpRequest, id: int, body: LinkIn) -> FinishedOut:
         raise ApiError(400, "unknown_project", "One of those SubStation projects doesn't exist.")
     p.linked_projects.set(projects)
     p.save(update_fields=["updated_at"])
+    if projects:  # 020-DR-15: build the cumulative stacks when nothing needs calibrating again
+        try:
+            start_progression(p, auto=True)
+        except Exception:  # noqa: BLE001 (linking must never fail on it)
+            log.exception("Couldn't start the progression of finished project %s", p.pk)
     return _out(p)
 
 
@@ -331,11 +349,104 @@ def lookup_distance(request: HttpRequest, id: int) -> FinishedOut:
     return _out(p)
 
 
+# -- cumulative progressive stacks (020-DR-15) ---------------------------------------------------------------
+
+
+class CheckpointOut(Schema):
+    order: int
+    nights: list[str]
+    label: str
+    integration_s: float
+    subs: int
+    filters: dict[str, dict[str, float]]
+    image_url: str
+
+
+class ProgressionOut(Schema):
+    state: str
+    step: str
+    progress: float
+    reason: str
+    mapping: str
+    built_at: datetime | None
+    checkpoints: list[CheckpointOut]
+
+
+class ProgressionIn(Schema):
+    force: bool = False
+
+
+def _progression_out(p: FinishedProject, prog: Progression | None) -> ProgressionOut:
+    if prog is None:
+        return ProgressionOut(
+            state=ProgressionState.NONE,
+            step="",
+            progress=0,
+            reason=progression_availability(p),
+            mapping="",
+            built_at=None,
+            checkpoints=[],
+        )
+    return ProgressionOut(
+        state=prog.state,
+        step=prog.step,
+        progress=prog.progress,
+        reason=prog.reason,
+        mapping=prog.mapping,
+        built_at=prog.finished_at,
+        checkpoints=[
+            CheckpointOut(
+                order=ck["order"],
+                nights=ck.get("nights") or [],
+                label=ck.get("label") or "",
+                integration_s=ck.get("integration_s") or 0,
+                subs=ck.get("subs") or 0,
+                filters=ck.get("filters") or {},
+                image_url=f"/api/v1/finished/{p.pk}/progression/{ck['order']}/image",
+            )
+            for ck in prog.checkpoints
+        ],
+    )
+
+
+@router.get("/{id}/progression", response=ProgressionOut)
+def get_progression(request: HttpRequest, id: int) -> ProgressionOut:
+    p = get_object_or_404(FinishedProject, pk=id)
+    reconcile_progressions()
+    return _progression_out(p, Progression.objects.filter(project=p).first())
+
+
+@router.post("/{id}/progression", response=ProgressionOut)
+@admin_required
+def generate_progression(request: HttpRequest, id: int, body: ProgressionIn) -> ProgressionOut:
+    """Build the cumulative stacks (the Generate progression button); `force` rebuilds even when cached."""
+    p = get_object_or_404(FinishedProject, pk=id)
+    prog = start_progression(p, force=body.force)
+    if prog.state == ProgressionState.UNAVAILABLE:
+        raise ApiError(409, "unavailable", prog.reason)
+    return _progression_out(p, prog)
+
+
+@router.get("/{id}/progression/{order}/image", response={200: None, 404: None})
+def progression_image(request: HttpRequest, id: int, order: str) -> FileResponse:
+    from .api_render import progression_checkpoint
+
+    p = get_object_or_404(FinishedProject, pk=id)
+    found = progression_checkpoint(p, order)
+    if found is None:
+        raise ApiError(404, "no_file", "There's no progression image with that number.")
+    ck, path = found
+    resp = FileResponse(path.open("rb"), content_type="image/jpeg")
+    resp["ETag"] = f'"{ck["hash"][:32]}"'
+    resp["Cache-Control"] = "private, max-age=3600"
+    return resp
+
+
 @router.get("/{id}/render-data", response=dict)
 def render_data_preview(request: HttpRequest, id: int) -> dict:
     """What the renderer would get, for checking in the app."""
     p = get_object_or_404(FinishedProject, pk=id)
-    if not p.linked_projects.exists():
+    if p.kind == "astro" and not p.linked_projects.exists():
         raise ApiError(409, "not_linked", "Link this project to a SubStation project first.")
     return build(p)
 

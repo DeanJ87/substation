@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from django.test import Client
@@ -45,7 +46,9 @@ def heart():
     col = Collection.objects.create(
         name="Heart Nebula", objects_text="Heart · IC 1805", constellation="Cassiopeia"
     )
-    project = Project.objects.create(collection=col, name="Mosaic 2026", kind="mosaic", planned_panels=2)
+    project = Project.objects.create(
+        collection=col, own_name="Mosaic 2026", kind_override="mosaic", planned_panels=2
+    )
     n1 = Night.objects.create(site_key="48,9", date=date(2026, 9, 14), site_lat=47.62, site_lon=8.71)
     n2 = Night.objects.create(site_key="48,9", date=date(2026, 9, 15), site_lat=47.62, site_lon=8.71)
     i = 0
@@ -387,7 +390,9 @@ def test_updated_at_moves_whenever_the_render_data_can_change_and_only_then(comp
     listed = c.get("/api/v1/render/projects").json()["projects"][0]["updated_at"]
     assert abs(datetime.fromisoformat(listed) - datetime.fromisoformat(first)) < timedelta(milliseconds=1)
 
-    elsewhere = Project.objects.create(collection=heart.collection, name="Elsewhere", kind="single")
+    elsewhere = Project.objects.create(
+        collection=heart.collection, own_name="Elsewhere", kind_override="single"
+    )
     ds = Dataset.objects.create(
         group_key="heart-extra",
         target="IC 1805",
@@ -508,6 +513,114 @@ def test_the_app_gets_thumbnails_of_output_files_and_only_relevant_suggestions(
     assert admin_client.get(f"/api/v1/finished/{p.pk}/files/{working.pk}/image").status_code == 404
 
     other = Collection.objects.create(name="North America Nebula", objects_text="NGC 7000")
-    Project.objects.create(collection=other, name="2026", kind="single")
+    Project.objects.create(collection=other, season="2026", kind_override="single")
     names = [s["collection_name"] for s in admin_client.get(f"/api/v1/finished/{p.pk}/suggestions").json()]
     assert names == ["Heart Nebula"]  # same target; a shared year alone isn't a reason
+
+
+def test_a_recombined_file_is_the_final_and_a_nightscape_needs_no_link(completed, token, tmp_path):
+    lib, folder = completed
+    (folder / "exports" / "heart-final.png").unlink()
+    _png(folder / "exports" / "heart_final_v3_fullres_starless-recombined.png")
+    night = Path(lib.mount_path) / "Nightscapes" / "Haytor" / "2026 Milky Way"
+    _png(night / "exports" / "milky-way-final.jpg")
+    scan_all()
+    heart = FinishedProject.objects.get(kind="astro")
+    assert heart.files.get(rel_path="exports/heart_final_v3_fullres_starless-recombined.png").role == "final"
+    listed = {p["name"] for p in bearer(token).get("/api/v1/render/projects").json()["projects"]}
+    assert listed == {"2026 Milky Way"}  # offered with its final alone; the unlinked astro project isn't
+
+
+def _progression(p: FinishedProject, settings, tmp_path, hashes=("a" * 64, "b" * 64)):  # noqa: ANN001
+    """A built progression (020-DR-15): its checkpoints and their cached JPEGs."""
+    from apps.finished.models import Progression
+
+    settings.STATION_ROOT = tmp_path / "station"
+    cks = []
+    for order, h in enumerate(hashes, start=1):
+        cks.append(
+            {
+                "order": order,
+                "nights": [f"2026-09-1{3 + order}"],
+                "label": f"1{3 + order} Sep",
+                "integration_s": 1200.0 * order,
+                "subs": 4 * order,
+                "filters": {"Hα": {"subs": 2 * order, "integration_s": 600.0 * order}},
+                "hash": h,
+                "file": f"{h}.jpg",
+            }
+        )
+        out = tmp_path / "station" / "cache" / "progression" / f"fp{p.pk}" / f"{h}.jpg"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("L", (40, 30), 40 * order).save(out, "JPEG")
+    return Progression.objects.update_or_create(
+        project=p,
+        defaults={"state": "done", "mapping": "HOO", "checkpoints": cks, "finished_at": datetime.now(UTC)},
+    )[0]
+
+
+def test_cumulative_stacks_are_listed_and_served_beside_the_owners_progressive_files(
+    completed, heart, token, settings, tmp_path
+):
+    p = _linked(heart)
+    c = bearer(token)
+    before = c.get(f"/api/v1/render/projects/{p.pk}").json()
+    assert "progression" not in before["frames"] and "progression_info" not in before["frames"]
+    _progression(p, settings, tmp_path)
+    data = c.get(f"/api/v1/render/projects/{p.pk}").json()
+    frames = data["frames"]
+    assert frames.get("progressive") == before["frames"].get("progressive")  # the owner's files, unchanged
+    assert frames["progression"][0] == {
+        "order": 1,
+        "nights": ["2026-09-14"],
+        "label": "14 Sep",
+        "integration_s": 1200.0,
+        "subs": 4,
+        "filters": {"Hα": {"subs": 2, "integration_s": 600.0}},
+        "url": f"/api/v1/render/projects/{p.pk}/files/progression/1",
+    }
+    assert [x["order"] for x in frames["progression"]] == [1, 2]
+    assert frames["progression_info"]["mapping"] == "HOO" and frames["progression_info"]["built_at"]
+
+    r = c.get(frames["progression"][1]["url"])
+    assert r.status_code == 200 and r["Content-Type"] == "image/jpeg"
+    assert r["ETag"] == f'"{"b" * 32}"'
+    assert c.get(frames["progression"][1]["url"], HTTP_IF_NONE_MATCH=r["ETag"]).status_code == 304
+    assert c.get(f"/api/v1/render/projects/{p.pk}/files/progression/3").status_code == 404
+    assert c.get(f"/api/v1/render/projects/{p.pk}/files/progression/x").status_code == 404
+
+
+def test_updated_at_moves_when_the_cumulative_stacks_are_rebuilt(completed, heart, token, settings, tmp_path):
+    p = _linked(heart)
+    c = bearer(token)
+
+    def stamp() -> str:
+        return c.get(f"/api/v1/render/projects/{p.pk}").json()["project"]["updated_at"]
+
+    first = stamp()
+    _progression(p, settings, tmp_path)
+    built = stamp()
+    assert built > first and stamp() == built
+    _progression(p, settings, tmp_path, hashes=("c" * 64, "d" * 64, "e" * 64))
+    assert stamp() > built
+
+
+def test_the_app_shows_the_progression_and_a_mosaic_cant_have_one(
+    completed, heart, admin_client, settings, tmp_path
+):
+    p = _linked(heart)
+    r = admin_client.get(f"/api/v1/finished/{p.pk}/progression")
+    assert r.status_code == 200 and r.json()["state"] == "none"
+    assert r.json()["reason"].endswith("Progression is for single-field projects for now.")
+    r = admin_client.post(
+        f"/api/v1/finished/{p.pk}/progression", data=json.dumps({}), content_type="application/json"
+    )
+    assert r.status_code == 409 and "single-field" in r.json()["message"]
+
+    _progression(p, settings, tmp_path)
+    got = admin_client.get(f"/api/v1/finished/{p.pk}/progression").json()
+    assert got["state"] == "done" and got["mapping"] == "HOO"
+    assert got["checkpoints"][1]["image_url"] == f"/api/v1/finished/{p.pk}/progression/2/image"
+    img = admin_client.get(got["checkpoints"][1]["image_url"])
+    assert img.status_code == 200 and img["Content-Type"] == "image/jpeg"
+    assert admin_client.get(f"/api/v1/finished/{p.pk}/progression/9/image").status_code == 404

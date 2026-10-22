@@ -72,10 +72,29 @@ def test_combined_masters_stay_within_a_project_and_a_pixel_scale(admin_client, 
     monkeypatch.setattr(combine, "_scale", lambda m: scales[m.dataset_id])
     plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined").json()
     assert list(plan["filters"]) == ["Hα"] and "3.67″/px" in plan["left_out"][0]
-    p = Project.objects.create(collection=col, name="Seestar")
+    p = Project.objects.create(collection=col, own_name="Seestar")
     Dataset.objects.filter(pk=lp.dataset_id).update(project=p)
     plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined?project={p.pk}").json()
     assert list(plan["filters"]) == ["LP"] and plan["left_out"] == []
+
+
+def test_outside_a_mosaic_masters_of_another_panel_are_left_out(admin_client, tmp_path):
+    """Amendment 2026-10-22: a season's project can hold a mosaic's panels beside a single field; only a mosaic
+    stitches panels, so a single field's combine leaves the other panels out and says so."""
+    from apps.catalogue.models import Project
+
+    col = Collection.objects.create(name="Heart")
+    ha = master(col, "ha", "Hα", 60, tmp_path, accepted=36000)
+    other = master(col, "ha2", "Hα", 30, tmp_path)
+    Dataset.objects.filter(pk=other.dataset_id).update(panel=2)
+    p = Project.objects.create(collection=col, season="2026", kind_override="single")
+    Dataset.objects.filter(pk__in=[ha.dataset_id, other.dataset_id]).update(project=p)
+    plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined?project={p.pk}").json()
+    assert [i["master"] for i in plan["filters"]["Hα"]] == [ha.pk]
+    assert "panel 2, not none" in plan["left_out"][0]
+    Project.objects.filter(pk=p.pk).update(kind_override="mosaic")
+    plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined?project={p.pk}").json()
+    assert len(plan["filters"]["Hα"]) == 2 and plan["left_out"] == []
 
 
 def test_registered_sequence_placements(tmp_path):

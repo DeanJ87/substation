@@ -1001,6 +1001,83 @@
     "title": "ChangeOut",
     "type": "object"
    },
+   "ChangedOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "title": "ChangedOut",
+    "type": "object"
+   },
+   "CheckpointOut": {
+    "properties": {
+     "filters": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "type": "number"
+       },
+       "type": "object"
+      },
+      "title": "Filters",
+      "type": "object"
+     },
+     "image_url": {
+      "title": "Image Url",
+      "type": "string"
+     },
+     "integration_s": {
+      "title": "Integration S",
+      "type": "number"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "nights": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Nights",
+      "type": "array"
+     },
+     "order": {
+      "title": "Order",
+      "type": "integer"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "order",
+     "nights",
+     "label",
+     "integration_s",
+     "subs",
+     "filters",
+     "image_url"
+    ],
+    "title": "CheckpointOut",
+    "type": "object"
+   },
    "ClassificationIn": {
     "properties": {
      "frame_type": {
@@ -3786,6 +3863,43 @@
     "title": "IgnoreRuleOut",
     "type": "object"
    },
+   "ImpactOut": {
+    "properties": {
+     "combined": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Combined",
+      "type": "array"
+     },
+     "datasets": {
+      "title": "Datasets",
+      "type": "integer"
+     },
+     "finished": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Finished",
+      "type": "array"
+     },
+     "goal_conflicts": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Goal Conflicts",
+      "type": "array"
+     }
+    },
+    "required": [
+     "finished",
+     "combined",
+     "goal_conflicts",
+     "datasets"
+    ],
+    "title": "ImpactOut",
+    "type": "object"
+   },
    "JobIdsIn": {
     "properties": {
      "ids": {
@@ -5257,6 +5371,27 @@
     "title": "MemberOut",
     "type": "object"
    },
+   "MergeIn": {
+    "properties": {
+     "from": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "From",
+      "type": "array"
+     },
+     "into": {
+      "title": "Into",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "into",
+     "from"
+    ],
+    "title": "MergeIn",
+    "type": "object"
+   },
    "MergeNamesIn": {
     "properties": {
      "into": {
@@ -5276,6 +5411,37 @@
      "into"
     ],
     "title": "MergeNamesIn",
+    "type": "object"
+   },
+   "MergeOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "project": {
+      "$ref": "#/components/schemas/ProjectOut"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "project"
+    ],
+    "title": "MergeOut",
     "type": "object"
    },
    "MetadataFieldOut": {
@@ -7147,6 +7313,71 @@
     "title": "ProcessingOut",
     "type": "object"
    },
+   "ProgressionIn": {
+    "properties": {
+     "force": {
+      "default": false,
+      "title": "Force",
+      "type": "boolean"
+     }
+    },
+    "title": "ProgressionIn",
+    "type": "object"
+   },
+   "ProgressionOut": {
+    "properties": {
+     "built_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Built At"
+     },
+     "checkpoints": {
+      "items": {
+       "$ref": "#/components/schemas/CheckpointOut"
+      },
+      "title": "Checkpoints",
+      "type": "array"
+     },
+     "mapping": {
+      "title": "Mapping",
+      "type": "string"
+     },
+     "progress": {
+      "title": "Progress",
+      "type": "number"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "step": {
+      "title": "Step",
+      "type": "string"
+     }
+    },
+    "required": [
+     "state",
+     "step",
+     "progress",
+     "reason",
+     "mapping",
+     "built_at",
+     "checkpoints"
+    ],
+    "title": "ProgressionOut",
+    "type": "object"
+   },
    "ProjectIn": {
     "properties": {
      "dataset_ids": {
@@ -7158,11 +7389,18 @@
       "type": "array"
      },
      "kind": {
-      "default": "single",
-      "title": "Kind",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
      },
      "name": {
+      "default": "",
       "title": "Name",
       "type": "string"
      },
@@ -7176,11 +7414,19 @@
        }
       ],
       "title": "Planned Panels"
+     },
+     "season": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season"
      }
     },
-    "required": [
-     "name"
-    ],
     "title": "ProjectIn",
     "type": "object"
    },
@@ -7190,12 +7436,40 @@
       "title": "Accepted Integration S",
       "type": "number"
      },
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
      "dataset_ids": {
       "items": {
        "type": "integer"
       },
       "title": "Dataset Ids",
       "type": "array"
+     },
+     "done": {
+      "default": false,
+      "title": "Done",
+      "type": "boolean"
+     },
+     "done_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done At"
      },
      "filter_time": {
       "additionalProperties": {
@@ -7233,6 +7507,25 @@
       "title": "Kind",
       "type": "string"
      },
+     "kind_auto": {
+      "title": "Kind Auto",
+      "type": "string"
+     },
+     "kind_override": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind Override"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
      "last_night": {
       "anyOf": [
        {
@@ -7254,6 +7547,15 @@
      },
      "name": {
       "title": "Name",
+      "type": "string"
+     },
+     "needs_review": {
+      "default": false,
+      "title": "Needs Review",
+      "type": "boolean"
+     },
+     "own_name": {
+      "title": "Own Name",
       "type": "string"
      },
      "panels": {
@@ -7278,6 +7580,11 @@
       "title": "Position",
       "type": "integer"
      },
+     "review_reason": {
+      "default": "",
+      "title": "Review Reason",
+      "type": "string"
+     },
      "rigs": {
       "default": [],
       "items": {
@@ -7285,12 +7592,28 @@
       },
       "title": "Rigs",
       "type": "array"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
      }
     },
     "required": [
      "id",
      "name",
+     "label",
+     "own_name",
+     "season",
      "kind",
+     "kind_auto",
      "planned_panels",
      "position",
      "dataset_ids",
@@ -7305,6 +7628,17 @@
    },
    "ProjectPatch": {
     "properties": {
+     "done": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done"
+     },
      "goals": {
       "anyOf": [
        {
@@ -7348,6 +7682,17 @@
       ],
       "title": "Name"
      },
+     "needs_review": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Needs Review"
+     },
      "planned_panels": {
       "anyOf": [
        {
@@ -7358,6 +7703,17 @@
        }
       ],
       "title": "Planned Panels"
+     },
+     "season": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season"
      }
     },
     "title": "ProjectPatch",
@@ -7428,6 +7784,14 @@
        "$ref": "#/components/schemas/ProjectOut"
       },
       "title": "Projects",
+      "type": "array"
+     },
+     "review": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ReviewOut"
+      },
+      "title": "Review",
       "type": "array"
      },
      "unassigned": {
@@ -8268,6 +8632,46 @@
      "subs"
     ],
     "title": "ReviewGroup",
+    "type": "object"
+   },
+   "ReviewOut": {
+    "description": "Projects of one season held apart when seasons were joined: the owner merges them or keeps them apart.",
+    "properties": {
+     "into": {
+      "title": "Into",
+      "type": "integer"
+     },
+     "mergeable": {
+      "title": "Mergeable",
+      "type": "boolean"
+     },
+     "project_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Project Ids",
+      "type": "array"
+     },
+     "reasons": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     }
+    },
+    "required": [
+     "season",
+     "project_ids",
+     "into",
+     "reasons",
+     "mergeable"
+    ],
+    "title": "ReviewOut",
     "type": "object"
    },
    "RigIn": {
@@ -10463,6 +10867,54 @@
     "title": "SolvingOut",
     "type": "object"
    },
+   "SortOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "created": {
+      "items": {
+       "$ref": "#/components/schemas/ProjectOut"
+      },
+      "title": "Created",
+      "type": "array"
+     },
+     "joined": {
+      "items": {
+       "$ref": "#/components/schemas/ProjectOut"
+      },
+      "title": "Joined",
+      "type": "array"
+     },
+     "placed": {
+      "title": "Placed",
+      "type": "integer"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "created",
+     "joined",
+     "placed"
+    ],
+    "title": "SortOut",
+    "type": "object"
+   },
    "SourceUse": {
     "properties": {
      "detail": {
@@ -10489,6 +10941,71 @@
      "frames"
     ],
     "title": "SourceUse",
+    "type": "object"
+   },
+   "SplitIn": {
+    "properties": {
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "dataset_ids": {
+      "default": [],
+      "items": {
+       "type": "integer"
+      },
+      "title": "Dataset Ids",
+      "type": "array"
+     },
+     "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "by"
+    ],
+    "title": "SplitIn",
+    "type": "object"
+   },
+   "SplitOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "created": {
+      "items": {
+       "$ref": "#/components/schemas/ProjectOut"
+      },
+      "title": "Created",
+      "type": "array"
+     },
+     "project": {
+      "$ref": "#/components/schemas/ProjectOut"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "project",
+     "created"
+    ],
+    "title": "SplitOut",
     "type": "object"
    },
    "Spread": {
@@ -16020,6 +16537,7 @@
     ]
    },
    "post": {
+    "description": "A new project for a season (this year unless said), with an optional name.",
     "operationId": "apps_catalogue_api_projects_create_project",
     "parameters": [
      {
@@ -16060,6 +16578,54 @@
      }
     ],
     "summary": "Create Project",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/collections/{id}/projects/merge": {
+   "post": {
+    "description": "Merge projects into one (`into` keeps its name): datasets, goals (the larger per filter), combined masters.\nRefused when a project to be absorbed is linked to a finished image.",
+    "operationId": "apps_catalogue_api_projects_merge_projects",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MergeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MergeOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Merge Projects",
     "tags": [
      "catalogue"
     ]
@@ -16118,7 +16684,7 @@
   },
   "/collections/{id}/projects/suggest": {
    "post": {
-    "description": "Make projects for the datasets not in one yet (006-DR-20); rename or regroup them afterwards.",
+    "description": "Sort the datasets not in a project into seasons: each joins its season's project, else a new project per\nseason. Never split by rig, panel or framing; split a project afterwards if wanted.",
     "operationId": "apps_catalogue_api_projects_suggest_projects",
     "parameters": [
      {
@@ -16136,11 +16702,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "items": {
-          "$ref": "#/components/schemas/ProjectOut"
-         },
-         "title": "Response",
-         "type": "array"
+         "$ref": "#/components/schemas/SortOut"
         }
        }
       },
@@ -17914,6 +18476,131 @@
      }
     ],
     "summary": "Set Links",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/progression": {
+   "get": {
+    "operationId": "apps_finished_api_manage_get_progression",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProgressionOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Get Progression",
+    "tags": [
+     "finished"
+    ]
+   },
+   "post": {
+    "description": "Build the cumulative stacks (the Generate progression button); `force` rebuilds even when cached.",
+    "operationId": "apps_finished_api_manage_generate_progression",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProgressionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProgressionOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Generate Progression",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/progression/{order}/image": {
+   "get": {
+    "operationId": "apps_finished_api_manage_progression_image",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "order",
+      "required": true,
+      "schema": {
+       "title": "Order",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Progression Image",
     "tags": [
      "finished"
     ]
@@ -21441,7 +22128,7 @@
   },
   "/projects/{id}": {
    "delete": {
-    "description": "The datasets stay in the collection, just not in a project.",
+    "description": "The datasets stay in the collection, just not in a project. Refused while it has combined masters; its\nfinished-image links go (said in warnings).",
     "operationId": "apps_catalogue_api_projects_delete_project",
     "parameters": [
      {
@@ -21455,8 +22142,15 @@
      }
     ],
     "responses": {
-     "204": {
-      "description": "No Content"
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ChangedOut"
+        }
+       }
+      },
+      "description": "OK"
      }
     },
     "security": [
@@ -21470,6 +22164,7 @@
     ]
    },
    "patch": {
+    "description": "Rename, change its season, set its kind (or back to automatic), planned panels, goals; mark it done.",
     "operationId": "apps_catalogue_api_projects_update_project",
     "parameters": [
      {
@@ -21557,6 +22252,108 @@
      }
     ],
     "summary": "Set Project Datasets",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/projects/{id}/impact": {
+   "get": {
+    "description": "What merging, splitting or removing this project would touch, for the page to ask first.",
+    "operationId": "apps_catalogue_api_projects_project_impact",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "into",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Into"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImpactOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Project Impact",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/projects/{id}/split": {
+   "post": {
+    "description": "New projects in the same season for part of this one: by rig, by panel, or the chosen datasets.",
+    "operationId": "apps_catalogue_api_projects_split_project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SplitIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SplitOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Split Project",
     "tags": [
      "catalogue"
     ]

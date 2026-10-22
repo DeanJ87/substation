@@ -5,9 +5,17 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
-import { ErrorState, PageLoading } from '../../components/ui'
-import { VerdictBadge } from '../../components/VerdictBadge'
-import { nightText, temp } from '../format'
+import { buttonClass, ErrorState, PageLoading } from '../../components/ui'
+import { VerdictIcon } from '../../components/VerdictBadge'
+import {
+  countText,
+  datasetLabel,
+  dateSpan,
+  exposureText as exposure,
+  numText,
+  pctText,
+  temp,
+} from '../format'
 import { TargetSky } from '../sky/SkyNights'
 import { useDatasetV2, useLiveRefresh, useSessions, useStacks, useSubs } from '../v2/hooks'
 import v from '../v2/v2.module.css'
@@ -46,17 +54,14 @@ export function DatasetScreen() {
     if (x.exptime_s) byExposure.set(x.exptime_s, (byExposure.get(x.exptime_s) ?? 0) + 1)
   const exposureText = [...byExposure.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([e, n]) => `${n} × ${e} s`)
+    .map(([e, n]) => `${countText(n)} × ${exposure(e)}`)
     .join(', ')
   const setTab = (t: Tab) => void navigate({ to: '/datasets/$id', params: { id }, search: { tab: t } })
   const tabs: [Tab, string][] = [
-    ['subs', `Subs ${d.sub_count}`],
+    ['subs', `Subs ${countText(d.sub_count)}`],
     ['quality', 'Quality'],
     ['calibration', 'Calibration'],
-    [
-      'masters',
-      `Masters ${(stacks.data ?? []).filter((m) => m.state !== 'failed' && m.state !== 'cancelled').length}`,
-    ],
+    ['masters', mastersTabLabel(stacks.data ?? [])],
     ['sky', 'Sky'],
   ]
 
@@ -85,14 +90,19 @@ export function DatasetScreen() {
               <> / {d.target}</>
             )}
           </div>
-          <h1>{d.label}</h1>
+          {/* one naming order everywhere (C08): target · panel · filter, the rig beside it */}
+          <h1>{datasetLabel(d) || d.label}</h1>
           <div className={v.sub}>
-            {d.nights} session{d.nights === 1 ? '' : 's'} · {exposureText || `${d.sub_count} subs`}
-            {d.gain != null && ` · gain ${d.gain}`}
-            {/* nights, not UTC dates: a sub after midnight belongs to the night before (spec 012) */}
-            {firstNight && ` · ${nightText(firstNight)}`}
-            {d.last_night && firstNight && d.last_night !== firstNight && ` to ${nightText(d.last_night)}`}
-            {d.camera && ` · ${d.camera}`}
+            {[
+              d.rig ?? d.telescope,
+              `${d.nights} session${d.nights === 1 ? '' : 's'}`,
+              exposureText || `${countText(d.sub_count)} subs`,
+              d.gain != null ? `gain ${d.gain}` : '',
+              // nights, not UTC dates: a sub after midnight belongs to the night before (spec 012)
+              firstNight ? dateSpan(firstNight, d.last_night) : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </div>
           {d.state_reason && (
             <div className={`${v.note} ${v.warn}`} style={{ marginTop: 6 }}>
@@ -107,22 +117,28 @@ export function DatasetScreen() {
               to="/datasets/$id"
               params={{ id: String(dsId) }}
               search={{ tab: 'subs', show: 'flagged', sub: flaggedFirst }}
-              className={v.pill}
+              className={buttonClass({ variant: 'primary' })}
             >
-              Review {flaggedCount} flagged
+              Review {flaggedCount}
             </Link>
           )}
           {failed && (
-            <button className={v.pill} onClick={() => setTab('masters')} title={failed.error ?? ''}>
-              <VerdictBadge state="reject" label={`Master v${failed.version} failed`} />
+            <button
+              className={buttonClass()}
+              onClick={() => setTab('masters')}
+              title="Open Masters to see why"
+            >
+              <VerdictIcon state="reject" size={14} title="" /> Master v{failed.version} failed
             </button>
           )}
           {running && (
-            <button className={v.pill} onClick={() => setTab('masters')} aria-label="Integration in progress">
-              <VerdictBadge
-                state="integ"
-                label={`Integrating v${running.version} · ${Math.round(running.progress * 100)}%`}
-              />
+            <button
+              className={buttonClass()}
+              onClick={() => setTab('masters')}
+              aria-label="Integration in progress"
+            >
+              <VerdictIcon state="integ" size={14} title="" /> Integrating v{running.version} ·{' '}
+              {pctText(running.progress)}
             </button>
           )}
         </div>
@@ -155,13 +171,20 @@ export function DatasetScreen() {
   )
 }
 
+/** "Masters 2", or "Masters 0 · 1 failed" so a failed version is never hidden behind a zero (B14). */
+export function mastersTabLabel(stacks: { state: string }[]): string {
+  const ok = stacks.filter((m) => m.state !== 'failed' && m.state !== 'cancelled').length
+  const failed = stacks.filter((m) => m.state === 'failed').length
+  return failed ? `Masters ${ok} · ${failed} failed` : `Masters ${ok}`
+}
+
 export function conditionsText(c: Record<string, number | null>): string {
   const parts = []
-  if (c.sqm != null) parts.push(`SQM ${c.sqm.toFixed(2)}`)
+  if (c.sqm != null) parts.push(`SQM ${numText(c.sqm, 2)}`)
   if (c.ambient != null) parts.push(temp(c.ambient))
-  if (c.humidity != null) parts.push(`${Math.round(c.humidity)}% RH`)
-  if (c.guiding != null) parts.push(`guiding ${c.guiding.toFixed(2)}″`)
-  if (c.cloud != null) parts.push(`cloud ${Math.round(c.cloud)}%`)
+  if (c.humidity != null) parts.push(`${numText(c.humidity)}% RH`)
+  if (c.guiding != null) parts.push(`guiding ${numText(c.guiding, 2)}″`)
+  if (c.cloud != null) parts.push(`cloud ${numText(c.cloud)}%`)
   return parts.join(' · ')
 }
 
@@ -183,7 +206,13 @@ function Regrade({ id }: { id: number }) {
   })
   if (!preview)
     return (
-      <button type="button" className={v.pill} disabled={call.isPending} onClick={() => call.mutate(false)}>
+      <button
+        type="button"
+        className={buttonClass()}
+        disabled={call.isPending}
+        onClick={() => call.mutate(false)}
+        title="Grade again with the current thresholds; shows what would change first"
+      >
         {call.isPending ? (call.variables ? 'Re-grading…' : 'Checking…') : 'Re-grade'}
       </button>
     )
@@ -200,13 +229,13 @@ function Regrade({ id }: { id: number }) {
         <span>No changes.</span>
       ) : (
         <span>
-          {preview.changes} sub{preview.changes === 1 ? '' : 's'} would change: {what}. Manual overrides kept.
+          {preview.changes} sub{preview.changes === 1 ? '' : 's'} would change: {what}.
         </span>
       )}
       {preview.changes > 0 && (
         <button
           type="button"
-          className={v.pill}
+          className={buttonClass({ variant: 'primary', size: 'sm' })}
           onClick={() => {
             // the question goes at once; the button says Re-grading… until the server has queued it
             call.mutate(true)
@@ -216,7 +245,7 @@ function Regrade({ id }: { id: number }) {
           Re-grade
         </button>
       )}
-      <button type="button" className={v.pill} onClick={() => setPreview(null)}>
+      <button type="button" className={buttonClass({ size: 'sm' })} onClick={() => setPreview(null)}>
         {preview.changes ? 'Cancel' : 'Close'}
       </button>
     </span>

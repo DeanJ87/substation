@@ -35,13 +35,28 @@
 .close:hover {
   color: var(--sst-text);
 }
+.sm,
+.md {
+  align-self: flex-start;
+  margin-top: min(12vh, 120px);
+  min-height: 0;
+  padding: 20px 22px 22px;
+}
+.sm {
+  width: min(480px, 100%);
+}
+.md {
+  width: min(760px, 100%);
+}
 /* a phone: the modal is the screen; long names wrap rather than push it wider */
 @media (max-width: 760px) {
   .backdrop {
     padding: 0;
   }
-  .panel {
+  .panel:not(.sm, .md) {
     min-height: 100%;
+  }
+  .panel {
     padding: 44px 16px 24px;
     border: 0;
     border-radius: 0;

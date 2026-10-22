@@ -4,9 +4,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../api/client'
 import { toast } from '../../components/Toasts'
 import { offerUndo } from './changes'
+import { countText } from '../format'
 
-const many = (n: number, one: string, more = `${one}s`) =>
-  `${n.toLocaleString('en-GB')} ${n === 1 ? one : more}`
+const many = (n: number, one: string, more = `${one}s`) => `${countText(n)} ${n === 1 ? one : more}`
 
 /** Skipped items, said once: "2 skipped: Already building." */
 function skippedNote(skipped: { reason: string }[]) {

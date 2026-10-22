@@ -9,6 +9,7 @@ import { toast } from '../../components/Toasts'
 import { VerdictIcon } from '../../components/VerdictBadge'
 import { Zoomable } from '../../components/CloseLook'
 import { Glance } from '../../components/Glance'
+import { Help } from '../../components/Help'
 import { Spinner } from '../../components/ui'
 import c from './calibrationTab.module.css'
 import { nightText } from '../format'
@@ -141,7 +142,20 @@ export function CalibrationTab({
         </output>
       )}
       <section className={`${v.card} ${tb.flush}`}>
-        <Collapsible id="calibration-sessions" title="Sessions" meta={sessions.length}>
+        <Collapsible
+          id="calibration-sessions"
+          title="Sessions"
+          meta={
+            <>
+              {sessions.length}
+              <Help topic="How calibration is matched">
+                Darks match exposure, gain, offset, binning, size and temperature (±2 °C), or bias for
+                &ldquo;flats and bias&rdquo; rigs. Flats match filter, camera, telescope, binning and size:
+                the latest on or before the session.
+              </Help>
+            </>
+          }
+        >
           <div className={tb.pane}>
             <table className={`${v.table} ${tb.table} cards`}>
               <thead>
@@ -171,7 +185,7 @@ export function CalibrationTab({
                           {x.dark ? (
                             <>
                               <div className={v.mono}>{x.dark}</div>
-                              <div className={`${v.note} ${v.ok}`}>{x.dark_note}</div>
+                              <div className={`${v.note} ${v.muted}`}>{x.dark_note}</div>
                             </>
                           ) : x.dark_note ? (
                             <span className={v.muted}>{x.dark_note}</span>
@@ -186,7 +200,8 @@ export function CalibrationTab({
                                 <FlatThumb sha={x.flat_sha} thumb={x.flat_thumb ?? null} label={x.flat} />
                               )}
                               <div className={v.mono}>{x.flat}</div>
-                              <div className={`${v.note} ${x.weak ? v.warn : v.ok}`}>{x.flat_note}</div>
+                              {/* a match is neutral; only a weak one (old, another train) is a warning (C25) */}
+                              <div className={`${v.note} ${x.weak ? v.warn : v.muted}`}>{x.flat_note}</div>
                             </>
                           ) : x.flat_note ? (
                             <span className={v.muted}>{x.flat_note}</span>
@@ -247,10 +262,6 @@ export function CalibrationTab({
           </div>
         </Collapsible>
       </section>
-      <p className={`${v.muted} ${v.note}`}>
-        Darks match exposure, gain, offset, binning, size and temperature (±2 °C), or bias for "flats and
-        bias" rigs. Flats match filter, camera, telescope, binning and size: latest on or before the session.
-      </p>
     </div>
   )
 }
@@ -473,8 +484,8 @@ function ChangePanel({
       </div>
       {fitting.length === 0 && q.data && (
         <p className={v.warn}>
-          No master dark or bias matches these subs. A dark that doesn't match leaves the wrong bias level and
-          dark current in every sub; shoot one at their settings, or leave the session waiting.
+          No master dark or bias matches these subs: shoot one at their settings, or leave the session
+          waiting.
         </p>
       )}
       {pickedMisfit && (

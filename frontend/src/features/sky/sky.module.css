@@ -47,7 +47,7 @@
 .ringLabel {
   font-size: 5px;
   fill: var(--sst-dim);
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .compass {
   font-size: 7px;
@@ -159,7 +159,7 @@
 .keyDetail {
   color: var(--sst-muted);
   font-size: 13px;
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .keyHint {
   margin: 0;
@@ -212,7 +212,7 @@
 }
 .clock {
   min-width: 7em;
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 14px;
   color: var(--sst-muted);
 }
@@ -243,7 +243,7 @@
 .axisText {
   font-size: 10px;
   fill: var(--sst-muted);
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .moonLine {
   fill: none;
@@ -261,7 +261,7 @@
   stroke-width: 0.8;
 }
 .nowLine {
-  stroke: var(--sst-accent);
+  stroke: var(--sst-text);
   stroke-width: 1;
 }
 .tracks {
@@ -312,7 +312,7 @@
   background: none;
   color: var(--sst-accent);
   font: inherit;
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
   text-decoration: underline;
 }
@@ -532,7 +532,7 @@
 }
 .nightCount {
   color: var(--sst-muted);
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
 }
 .placePick {

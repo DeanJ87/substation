@@ -17,7 +17,7 @@
   flex-wrap: wrap;
 }
 .workerChip {
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   border: 1px solid var(--sst-line);
   border-radius: 4px;
@@ -48,10 +48,10 @@
   border-radius: 2px;
 }
 .done {
-  background: var(--sst-ok);
+  background: var(--sst-st-kept);
 }
 .now {
-  background: var(--sst-accent);
+  background: var(--sst-data-fill);
 }
 .log {
   font-size: 12px;
@@ -88,13 +88,13 @@
 }
 .sparkCpu {
   fill: none;
-  stroke: var(--sst-accent);
+  stroke: var(--sst-chart-1);
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
 }
 .sparkRam {
   fill: none;
-  stroke: var(--sst-violet);
+  stroke: var(--sst-chart-2);
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
 }
@@ -224,7 +224,7 @@ button.chip:hover {
 button.chip[aria-pressed='true'] {
   border-color: var(--sst-accent);
   color: var(--sst-text);
-  background: color-mix(in srgb, var(--sst-accent) 14%, transparent);
+  background: var(--sst-accent-tint);
 }
 .rowText {
   min-width: 0;
@@ -295,7 +295,7 @@ button.chip[aria-pressed='true'] {
 }
 .kv dd {
   margin: 0;
-  font-family: var(--sst-font-mono);
+  font-variant-numeric: tabular-nums;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
