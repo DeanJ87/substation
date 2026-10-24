@@ -172,6 +172,26 @@ def test_done_projects_drop_out_of_the_goals(admin_client):
     assert Project.objects.get(pk=old.pk).done_at is None
 
 
+def test_a_mosaics_goals_are_per_panel(admin_client):
+    """019-DR-04: a 6 h Hα goal on a three-panel mosaic is 6 h for each panel: 18 h in the collection's totals, and
+    the project carries its integration per panel so each panel shows against the goal."""
+    col = Collection.objects.create(name="Heart")
+    p = Project.objects.create(collection=col, season="2026", goals={"Hα": 6}, kind_override="mosaic")
+    single = Project.objects.create(collection=col, season="2025", goals={"Hα": 4})
+    a = ds(col, [date(2026, 9, 1)], panel=1, hours=5)
+    b = ds(col, [date(2026, 9, 2)], panel=2, hours=2)
+    c = ds(col, [date(2026, 9, 3)], panel=3, hours=1, filt="OIII")
+    Dataset.objects.filter(pk__in=[a.pk, b.pk, c.pk]).update(project=p)
+    assert admin_client.get(f"/api/v1/collections/{col.pk}").json()["card"]["goals"] == {"Hα": 6 * 3 + 4}
+    out = {x["id"]: x for x in admin_client.get(f"/api/v1/collections/{col.pk}/projects").json()["projects"]}
+    assert out[p.pk]["goal_panels"] == 3 and out[single.pk]["goal_panels"] == 1
+    assert out[p.pk]["panel_time"]["1"]["Hα"]["accepted_s"] == 5 * 3600
+    assert out[p.pk]["panel_time"]["2"]["Hα"]["accepted_s"] == 2 * 3600
+    assert "Hα" not in out[p.pk]["panel_time"]["3"] and out[single.pk]["panel_time"] == {}
+    Project.objects.filter(pk=p.pk).update(planned_panels=6)  # planned panels not shot yet count too
+    assert admin_client.get(f"/api/v1/collections/{col.pk}").json()["card"]["goals"] == {"Hα": 6 * 6 + 4}
+
+
 def test_merge_moves_datasets_unions_goals_and_undoes(admin_client):
     col = Collection.objects.create(name="IC 1805")
     into = Project.objects.create(

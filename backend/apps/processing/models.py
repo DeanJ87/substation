@@ -272,6 +272,13 @@ class CombinedMaster(models.Model):
     )
     filter_norm = models.CharField(max_length=100)
     version = models.PositiveIntegerField()
+
+    class Method(models.TextChoices):
+        # 004-DR-32: a mosaic's panels placed on one canvas, or masters of one field stacked into a deeper one
+        STITCH = "stitch", "Stitch mosaic"
+        STACK = "stack", "Stack together"
+
+    method = models.CharField(max_length=8, choices=Method.choices, default=Method.STACK)
     state = models.CharField(max_length=12, choices=MasterState.choices, default=MasterState.QUEUED)
     state_reason = models.TextField(blank=True, default="")
     reference = models.ForeignKey(

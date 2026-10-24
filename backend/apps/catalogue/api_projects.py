@@ -37,8 +37,12 @@ class ProjectOut(Schema):
     first_night: date | None
     last_night: date | None
     accepted_integration_s: float
-    goals: dict[str, float] = {}  # spec 019: hours of usable integration wanted, per filter
+    goals: dict[
+        str, float
+    ] = {}  # spec 019: hours of usable integration wanted, per filter (a mosaic's per panel)
+    goal_panels: int = 1  # 019-DR-04: fields the goals are for: a mosaic's panels (planned or shot), else 1
     filter_time: dict[str, FilterTime] = {}
+    panel_time: dict[str, dict[str, FilterTime]] = {}  # a mosaic's integration per panel, then filter
     rigs: list[str] = []
     done: bool = False
     done_at: datetime | None = None
@@ -124,14 +128,26 @@ class ImpactOut(Schema):
     datasets: int
 
 
+def _times(split: dict[str, list[float]]) -> dict[str, FilterTime]:
+    return {
+        k: FilterTime(total_s=max(t, a + r), accepted_s=a, rejected_s=r) for k, (t, a, r) in split.items()
+    }
+
+
 def _out(p: Project, change=None, warnings: list[str] | None = None) -> ProjectOut:  # noqa: ANN001
     ds = list(p.datasets.select_related("rig").order_by("project_position", "panel", "filter_norm", "pk"))
     split: dict[str, list[float]] = {}
+    by_panel: dict[str, dict[str, list[float]]] = {}
     for d in ds:
-        t = split.setdefault(d.filter_norm or "?", [0.0, 0.0, 0.0])
-        t[0] += d.integration_s or 0
-        t[1] += d.accepted_integration_s or 0
-        t[2] += d.rejected_integration_s or 0
+        tallies = [split.setdefault(d.filter_norm or "?", [0.0, 0.0, 0.0])]
+        if d.panel:
+            tallies.append(
+                by_panel.setdefault(str(d.panel), {}).setdefault(d.filter_norm or "?", [0.0, 0.0, 0.0])
+            )
+        for t in tallies:
+            t[0] += d.integration_s or 0
+            t[1] += d.accepted_integration_s or 0
+            t[2] += d.rejected_integration_s or 0
     span = DatasetNight.objects.filter(dataset__in=ds).aggregate(
         first=Min("night__date"), last=Max("night__date")
     )
@@ -161,9 +177,9 @@ def _out(p: Project, change=None, warnings: list[str] | None = None) -> ProjectO
         last_night=span["last"],
         accepted_integration_s=sum(d.accepted_integration_s or 0 for d in ds),
         goals=p.goals or {},
-        filter_time={
-            k: FilterTime(total_s=max(t, a + r), accepted_s=a, rejected_s=r) for k, (t, a, r) in split.items()
-        },
+        goal_panels=max(1, p.planned_panels or 0, len(panels)) if kind == Project.Kind.MOSAIC else 1,
+        filter_time=_times(split),
+        panel_time={n: _times(f) for n, f in by_panel.items()} if kind == Project.Kind.MOSAIC else {},
         rigs=sorted({d.rig.name for d in ds if d.rig}),
         done=p.done_at is not None,
         done_at=p.done_at,

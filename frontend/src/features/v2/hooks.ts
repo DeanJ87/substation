@@ -69,10 +69,17 @@ export function useLibrary(scope: Scope = {}) {
     placeholderData: (prev) => prev,
   })
 }
-export function useCollection(id: number) {
+/** A collection's page; with `project`, its datasets, sessions, masters and rig table narrowed to that project
+ * (006-DR-42). The narrowed copy sits under the collection's key, so refreshing the collection refreshes it. */
+export function useCollection(id: number, project: number | null = null) {
   return useQuery({
-    queryKey: ['collection', id],
-    queryFn: async () => unwrap(await api.GET('/collections/{id}', { params: { path: { id } } })),
+    queryKey: project ? ['collection', id, { project }] : ['collection', id],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/collections/{id}', {
+          params: { path: { id }, query: project ? { project } : {} },
+        }),
+      ),
   })
 }
 export function useDatasetV2(id: number) {

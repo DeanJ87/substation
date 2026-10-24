@@ -33,3 +33,13 @@ each is.
   opens the drag-and-drop board.
 - **019-DR-03** (2026-10-22) Merging projects keeps the larger goal for each filter and says where they differed;
   projects marked Done leave the collection's goal totals.
+
+### Amendment 2026-10-24: a mosaic's goals are per panel
+
+- **019-DR-04** A goal on a mosaic project is hours per panel (a 6 h Hα goal on six panels is 6 h for each). The
+  project card's bar for a filter with a goal shows its least-covered panel against the goal ("2h / 6h per panel"),
+  a planned panel not shot yet counting as none, and its accessible text names that panel and how many panels have
+  reached the goal; the panel × filter table shows each column's goal and marks the panels that reached it. Goals
+  are entered as hours per panel. The Library card's and collection's totals count a mosaic's goal once per panel
+  (planned panels, or the panels shot when there are more). A single field is unchanged. The project carries its
+  integration per panel and filter, and how many panels its goals are for.

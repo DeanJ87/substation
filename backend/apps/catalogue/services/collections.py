@@ -63,7 +63,7 @@ def impact(col: Collection) -> dict[str, Any]:
     if move is not None:
         blockers.append("Its files are moving. Cancel the move first.")
     if combined:
-        blockers.append(f"It has combined masters ({', '.join(combined)}). Delete them first.")
+        blockers.append(f"It has stitched or stacked masters ({', '.join(combined)}). Delete them first.")
     w = where(col)
     return {
         "datasets": col.datasets.count(),
@@ -105,7 +105,7 @@ def remove(col: Collection, user: Any) -> tuple[Change, list[str]]:
         raise Refused("Its files are moving. Cancel the move first.")
     combined = _live_combined(col)
     if combined:
-        raise Refused(f"It has combined masters ({', '.join(combined)}). Delete them first.")
+        raise Refused(f"It has stitched or stacked masters ({', '.join(combined)}). Delete them first.")
     projects = list(col.projects.all())
     pids = [p.pk for p in projects]
     links = psvc._links(None, pids)

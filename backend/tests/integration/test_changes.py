@@ -102,7 +102,8 @@ def test_project_goals_are_set_changed_removed_and_add_up_on_the_card(admin_clie
     assert r["goals"] == {"Ha": 20, "R": 2.5}
     admin_client.patch(f"/api/v1/projects/{old.pk}", {"goals": {"Ha": 5}}, content_type="application/json")
     card = admin_client.get(f"/api/v1/collections/{col.pk}").json()["card"]
-    assert card["goals"] == {"Ha": 25, "R": 2.5}
+    # a mosaic's goals are per panel (019-DR-04): 20 panels × 20 h, plus the single field's 5 h
+    assert card["goals"] == {"Ha": 20 * 20 + 5, "R": 20 * 2.5}
     bad = admin_client.patch(url, {"goals": {"OIII": 5000}}, content_type="application/json")
     assert bad.status_code == 422 and "1,000 hours" in bad.json()["message"]
 

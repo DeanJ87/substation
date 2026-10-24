@@ -18,6 +18,7 @@ import {
   GradeMeter,
   Input,
   PageLoading,
+  SegmentedControl,
   Select,
 } from '../../components/ui'
 import { Help } from '../../components/Help'
@@ -45,7 +46,7 @@ import v from '../v2/v2.module.css'
 import s from './library.module.css'
 import { collectionFacts, nameParts } from './names'
 import c from './collection.module.css'
-import { useDeleteCombined, useProjects } from './Projects'
+import { madeName, METHOD, type Method, useDeleteCombined, useProjects } from './Projects'
 import { FILE_DELETED } from '../changes/putAway'
 import { useCanEdit } from '../settings/draft'
 import { useSort } from '../../components/sortable'
@@ -68,15 +69,19 @@ const route = getRouteApi('/app/collections/$id')
 export function CollectionView() {
   useLiveRefresh()
   const { id } = route.useParams()
-  const q = useCollection(Number(id))
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
   const [putAway, setPutAway] = useState<PutAwayStep>(null)
   const [range, setRange] = useState<[string, string] | null>(null)
   const search = route.useSearch()
-  // a link can open one project (a dataset's breadcrumb does)
-  const [project, setProject] = useState<number | null>(search.project ?? null)
+  // one project at a time, kept in the address so a link can open it (a dataset's breadcrumb, a project's title):
+  // every tab then shows only that project (006-DR-42)
+  const project = search.project ?? null
+  const setProject = (p: number | null) =>
+    void navigate({ to: '.', search: { ...search, project: p ?? undefined }, replace: true })
+  const whole = useCollection(Number(id))
+  const q = useCollection(Number(id), project)
   const projects = useProjects(Number(id))
   const tab = search.tab ?? 'overview'
   const setTab = (t: string) =>
@@ -90,7 +95,7 @@ export function CollectionView() {
   // the Library's or the map's filters (spec 018): this page narrows its sessions to their nights, and its
   // links (the Library, the map, a night) carry them on
   const scope = readScope(search)
-  const carry = scopeQuery(omit(scope, 'collection'))
+  const carry = scopeQuery(omit(scope, 'collection', 'project'))
   const nightsScoped = !!(scope.date || scope.date_from || scope.date_to)
   const [atLat, atLon] = (search.at ?? '').split(',').map(Number)
   const atName = usePlaceName(search.at ? atLat : null, search.at ? atLon : null)
@@ -120,7 +125,9 @@ export function CollectionView() {
       ],
     ]),
   })
-  const d = q.data
+  // while a project's narrowed page loads, the whole collection stands in (its datasets and masters are narrowed
+  // here too), so choosing a project doesn't blank the page
+  const d = q.data ?? whole.data
   const filters = useMemo(() => {
     const all = new Set<string>()
     for (const row of Object.values(d?.matrix ?? {})) for (const f of Object.keys(row)) all.add(f)
@@ -135,9 +142,11 @@ export function CollectionView() {
   if (!d) return <PageLoading />
   const card = d.card
   // a master to combine from: current or stale (failed and superseded ones don't count)
-  const usable = d.masters.some((m) => m.state === 'current' || m.state === 'stale')
   const chosenProject = projects.data?.projects.find((p) => p.id === project)
   const inProject = (dsId: number) => !chosenProject || chosenProject.dataset_ids.includes(dsId)
+  const masters = d.masters.filter((m) => inProject(m.dataset_id))
+  const sessions = project ? new Set(d.sessions.map((x) => x.night)).size : card.sessions
+  const usable = masters.some((m) => m.state === 'current' || m.state === 'stale')
   const rigs = Object.keys(d.matrix).sort()
   // the rig with the most accepted integration sets the framing others are registered to (006-DR-08)
   const total = (r: string) => Object.values(d.matrix[r]).reduce((x, y) => x + y, 0)
@@ -172,7 +181,11 @@ export function CollectionView() {
         </div>
         {/* one primary; archiving and deleting live in the ⋯ menu, away from Add (C17, 006-DR-40) */}
         <div className={v.actions}>
-          <Link to="/map" search={{ ...carry, collection: card.id }} className={buttonClass()}>
+          <Link
+            to="/map"
+            search={{ ...carry, collection: card.id, project: project ?? undefined }}
+            className={buttonClass()}
+          >
             Map
           </Link>
           <Button onClick={() => setEditing(true)}>Edit collection</Button>
@@ -213,9 +226,9 @@ export function CollectionView() {
         {(
           [
             ['overview', 'Overview'],
-            ['datasets', `Datasets ${d.datasets.length}`],
-            ['sessions', `Sessions ${card.sessions}`],
-            ['masters', `Masters ${d.masters.length}`],
+            ['datasets', `Datasets ${d.datasets.filter((x) => inProject(x.dataset.id)).length}`],
+            ['sessions', `Sessions ${sessions}`],
+            ['masters', `Masters ${masters.length}`],
             ['sky', 'Sky'],
           ] as const
         ).map(([t, label]) => (
@@ -229,7 +242,7 @@ export function CollectionView() {
         <>
           <ProjectCards
             collectionId={card.id}
-            datasets={d.datasets}
+            datasets={(whole.data ?? d).datasets}
             value={project}
             onChange={setProject}
             onArchive={() => setPutAway('archive')}
@@ -330,7 +343,7 @@ export function CollectionView() {
             <Collapsible
               id="collection-sessions"
               title="Sessions"
-              meta={`${plural(card.sessions, 'session')} · kept integration per night`}
+              meta={`${plural(sessions, 'session')} · kept integration per night`}
             >
               <Timeline sessions={d.sessions} rigs={rigs} range={range} onRange={setRange} />
             </Collapsible>
@@ -342,7 +355,11 @@ export function CollectionView() {
                 Showing the {only.size} night{only.size === 1 ? '' : 's'} shot
                 {search.at ? ` at ${atName.data ?? 'this place'}` : ' at one place'}.
               </span>
-              <Link to="." search={{ ...carry, tab: 'sessions' }} className={buttonClass({ size: 'sm' })}>
+              <Link
+                to="."
+                search={{ ...carry, project: project ?? undefined, tab: 'sessions' }}
+                className={buttonClass({ size: 'sm' })}
+              >
                 Show every session
               </Link>
             </div>
@@ -375,7 +392,12 @@ export function CollectionView() {
           <TargetSky
             kind="collection"
             id={card.id}
-            nights={{ date: scope.date, date_from: scope.date_from, date_to: scope.date_to }}
+            nights={{
+              date: scope.date,
+              date_from: scope.date_from,
+              date_to: scope.date_to,
+              project: project ?? undefined,
+            }}
           />
         </section>
       )}
@@ -390,21 +412,21 @@ export function CollectionView() {
             </Button>
           }
         >
-          Stack each dataset first; combined masters are made from those.
+          Stack each dataset first; mosaics and stacks across datasets are made from those.
         </EmptyState>
       )}
-      {tab === 'masters' && !usable && <MasterList masters={d.masters} />}
+      {tab === 'masters' && !usable && <MasterList masters={masters} />}
       {tab === 'masters' && usable && (
         <>
           {project === null && projects.data?.projects.length ? (
-            // all datasets: each project's own combined masters (they're never combined across projects)
+            // all datasets: each project's own stitched or stacked masters (never across projects)
             projects.data.projects.map((p) => (
               <Combined key={p.id} id={card.id} project={p.id} projectName={p.name} />
             ))
           ) : (
             <Combined id={card.id} project={project} projectName={chosenProject?.name ?? null} />
           )}
-          <MasterList masters={d.masters} />
+          <MasterList masters={masters} />
         </>
       )}
     </div>
@@ -702,8 +724,10 @@ function MasterList({ masters }: { masters: ColMaster[] }) {
   )
 }
 
-/** Combined masters (004-DR-05, T022): one master per filter, each dataset's current master registered to the
- * reference framing and same-filter masters averaged, so the filters line up for colour combination. */
+/** A project's dataset masters made into one per filter (004-DR-05, T022, 004-DR-32), two ways: Stitch mosaic places
+ * every panel on one canvas by its plate solution; Stack together stacks masters of one field (two rigs, two
+ * seasons) into a deeper one. The project's kind picks the default; the other is offered where it makes sense.
+ * Either way the filters line up pixel for pixel; colour composition (HOO, SHO) is a separate step. */
 type CombinedPlan = components['schemas']['CombinedPlanOut']
 function Combined({
   id,
@@ -715,30 +739,41 @@ function Combined({
   projectName: string | null
 }) {
   const qc = useQueryClient()
+  // null: the one that fits the project, as the server says
+  const [chosen, setChosen] = useState<Method | null>(null)
+  const key = chosen ? ['combined', id, project, chosen] : ['combined', id, project]
   const q = useQuery({
-    queryKey: ['combined', id, project],
+    queryKey: key,
     queryFn: async () =>
       unwrap(
         await api.GET('/collections/{id}/combined', {
-          params: { path: { id }, query: project ? { project } : {} },
+          params: {
+            path: { id },
+            query: { ...(project ? { project } : {}), ...(chosen ? { method: chosen } : {}) },
+          },
         }),
       ),
+    placeholderData: (prev) => prev,
     refetchInterval: (query) =>
       query.state.data?.combined.some((x) => x.state === 'queued' || x.state === 'running') ? 3000 : false,
   })
+  const method: Method = q.data?.method === 'stitch' ? 'stitch' : 'stack'
   const start = useMutation({
     mutationFn: async () =>
       unwrap(
         await api.POST('/collections/{id}/combined', {
-          params: { path: { id }, query: project ? { project } : {} },
+          params: { path: { id }, query: { ...(project ? { project } : {}), method } },
         }),
       ),
     scope: { id: `combined-${id}-${project}` },
-    meta: { failed: "Couldn't start the combined masters" },
-    // a waiting version per filter at once, so the button flips to Combining… and the cards show Waiting
+    meta: {
+      failed:
+        method === 'stitch' ? "Couldn't start stitching the mosaic" : "Couldn't start stacking together",
+    },
+    // a waiting version per filter at once, so the button flips to Stitching… or Stacking… and the cards show Waiting
     ...optimistic(qc, () => [
       [
-        ['combined', id, project],
+        key,
         (o) => {
           const p = o as CombinedPlan | undefined
           if (!p) return o
@@ -746,6 +781,7 @@ function Combined({
             id: -1 - i,
             filter,
             inputs,
+            method,
             version: Math.max(0, ...p.combined.filter((x) => x.filter === filter).map((x) => x.version)) + 1,
             state: 'queued',
             state_reason: '',
@@ -766,11 +802,12 @@ function Combined({
   if (!d) return null
   const filters = Object.entries(d.filters)
   const busy = d.combined.some((x) => x.state === 'queued' || x.state === 'running')
+  const methods = (d.methods ?? []).filter((m): m is Method => m === 'stitch' || m === 'stack')
   return (
     <section className={`${v.card} ${v.cardPad}`}>
       <Collapsible
         id={`collection-combined-${project ?? 'all'}`}
-        title={`Combined masters${projectName ? ` · ${projectName}` : ''}`}
+        title={`Stitched and stacked${projectName ? ` · ${projectName}` : ''}`}
         meta={
           <Button
             size="sm"
@@ -778,43 +815,66 @@ function Combined({
             onClick={() => start.mutate()}
             title={d.reference ? undefined : 'Stack each dataset first'}
           >
-            {busy ? 'Combining…' : 'Stack combined masters'}
+            {busy ? METHOD[method].doing : METHOD[method].label}
           </Button>
         }
       >
+        {methods.length > 1 && (
+          <div className={v.actions}>
+            <SegmentedControl
+              size="sm"
+              label="How to make one master per filter"
+              value={method}
+              onChange={(m) => setChosen(m)}
+              options={methods.map((m) => ({
+                value: m,
+                label: METHOD[m].label,
+                title: m === d.default_method ? 'Fits this project' : undefined,
+              }))}
+            />
+          </div>
+        )}
         <p className={v.muted}>
+          {method === 'stitch'
+            ? "Each filter's panels placed on one canvas by their plate solutions."
+            : "Each filter's masters of one field stacked into a deeper one, weighted by their subs."}{' '}
           {d.reference
-            ? `Aligned to ${d.reference_label}. ${filters
+            ? `${method === 'stitch' ? 'Canvas drawn from' : 'Aligned to'} ${d.reference_label}. ${filters
                 .sort(([a], [b]) => compareFilters(a, b))
                 .map(([f, inputs]) => `${filterName(f)}: ${plural(inputs.length, 'master')}`)
                 .join(' · ')}`
             : 'Stack each dataset in this project first.'}
         </p>
-        {d.left_out.length > 0 && (
-          <p className={v.muted}>Left out (different pixel scale): {d.left_out.join('; ')}.</p>
+        {filters.some(([, inputs]) => inputs.some((x) => x.stale)) && (
+          <p className={v.muted}>
+            Used as they are:{' '}
+            {filters.flatMap(([, inputs]) => inputs.filter((x) => x.stale).map((x) => x.label)).join('; ')}{' '}
+            (older masters, new subs since).
+          </p>
         )}
+        {d.left_out.length > 0 && <p className={v.muted}>Left out: {d.left_out.join('; ')}.</p>}
+        {(d.notes ?? []).map((n) => (
+          <p key={n} className={v.muted}>
+            {n}
+          </p>
+        ))}
         {d.combined.length > 0 && (
           <div className={c.masters}>
             {d.combined.map((m) => (
               <article key={m.id} className={`${v.card} ${c.masterCard}`}>
                 <div className={c.masterThumb}>
                   {m.has_preview && (
-                    <Zoomable
-                      target={{ kind: 'combined', id: m.id }}
-                      name={`${m.filter} combined v${m.version}`}
-                    >
+                    <Zoomable target={{ kind: 'combined', id: m.id }} name={madeName(m)}>
                       <img
                         src={`/api/v1/combined/${m.id}/preview?size=thumb`}
-                        alt={`${m.filter} combined`}
+                        alt={madeName(m)}
                         loading="lazy"
                       />
                     </Zoomable>
                   )}
                 </div>
                 <div className={c.masterBody}>
-                  <strong>
-                    {filterName(m.filter)} · v{m.version}
-                  </strong>
+                  <strong>{madeName(m)}</strong>
                   <span className={v.muted}>
                     {MASTER_TAG[m.state] ?? m.state} · {integrationText(m.integration_s)} from{' '}
                     {plural(m.inputs.length, 'master')}
@@ -833,16 +893,11 @@ function Combined({
                         variant="ghost"
                         question={
                           <>
-                            Delete {filterName(m.filter)} combined v{m.version}? {FILE_DELETED}
+                            Delete {madeName(m)}? {FILE_DELETED}
                           </>
                         }
                         confirm="Delete"
-                        onConfirm={() =>
-                          removeCombined.mutate({
-                            id: m.id,
-                            name: `${filterName(m.filter)} combined v${m.version}`,
-                          })
-                        }
+                        onConfirm={() => removeCombined.mutate({ id: m.id, name: madeName(m) })}
                       >
                         Delete…
                       </ConfirmButton>

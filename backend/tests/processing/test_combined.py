@@ -37,7 +37,8 @@ def test_plan_start_and_stale(admin_client, tmp_path):
     assert len(plan["filters"]["OIII"]) == 2
     r = admin_client.post(f"/api/v1/collections/{col.pk}/combined")
     assert r.status_code == 201 and {c["filter"] for c in r.json()} == {"Hα", "OIII"}
-    assert Task.objects.filter(name__endswith="combine.combine").count() == 1
+    assert Task.objects.filter(name__endswith="combine.stack_together").count() == 1
+    assert plan["method"] == plan["default_method"] == "stack" and plan["methods"] == ["stack"]
     # once made, a newer master for one of the OIII datasets makes that combined master stale
     CombinedMaster.objects.update(state="current", finished_at=datetime(2026, 10, 2, tzinfo=UTC))
     d = Dataset.objects.get(group_key="oiii2")
@@ -50,7 +51,7 @@ def test_plan_start_and_stale(admin_client, tmp_path):
     rows = {
         c["filter"]: c for c in admin_client.get(f"/api/v1/collections/{col.pk}/combined").json()["combined"]
     }
-    assert rows["OIII"]["stale"] == "OIII combined master is stale: 41 new subs since 2 October."
+    assert rows["OIII"]["stale"] == "OIII stacked master is stale: 41 new subs since 2 October."
     assert rows["Hα"]["stale"] == ""
 
 
@@ -92,9 +93,49 @@ def test_outside_a_mosaic_masters_of_another_panel_are_left_out(admin_client, tm
     plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined?project={p.pk}").json()
     assert [i["master"] for i in plan["filters"]["Hα"]] == [ha.pk]
     assert "panel 2, not none" in plan["left_out"][0]
+    # two panels: stitching is offered too, though stacking (the single field's default) leaves panel 2 out
+    assert plan["methods"] == ["stitch", "stack"] and plan["method"] == "stack"
     Project.objects.filter(pk=p.pk).update(kind_override="mosaic")
     plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined?project={p.pk}").json()
     assert len(plan["filters"]["Hα"]) == 2 and plan["left_out"] == []
+    assert plan["method"] == plan["default_method"] == "stitch"
+    # in a mosaic, Stack together is the owner's choice: one field's masters, the other panel left out
+    plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined?project={p.pk}&method=stack").json()
+    assert plan["method"] == "stack" and [i["master"] for i in plan["filters"]["Hα"]] == [ha.pk]
+
+
+def test_stitch_mosaic_is_its_own_task_and_a_stale_panel_is_used_and_named(
+    admin_client, tmp_path, monkeypatch
+):
+    """004-DR-32: a mosaic project stitches by default, queued as "Stitch mosaic"; a stale panel master never
+    blocks it: it is used, marked stale in the inputs, and named in the result."""
+    from apps.catalogue.models import Project
+    from apps.processing.combine import Stitched, _place_mosaic, older_masters
+
+    col = Collection.objects.create(name="Heart")
+    a = master(col, "p1", "Hα", 60, tmp_path, accepted=36000)
+    b = master(col, "p2", "Hα", 30, tmp_path)
+    Master.objects.filter(pk=b.pk).update(state="stale")
+    Dataset.objects.filter(pk=a.dataset_id).update(panel=1)
+    Dataset.objects.filter(pk=b.dataset_id).update(panel=4)
+    p = Project.objects.create(collection=col, season="2026", kind_override="mosaic")
+    Dataset.objects.filter(pk__in=[a.dataset_id, b.dataset_id]).update(project=p)
+    r = admin_client.post(f"/api/v1/collections/{col.pk}/combined?project={p.pk}")
+    assert r.status_code == 201 and r.json()[0]["method"] == "stitch"
+    assert Task.objects.filter(name__endswith="combine.stitch_mosaic").count() == 1
+    cm = CombinedMaster.objects.get()
+    assert [i["stale"] for i in cm.inputs] == [False, True]
+    assert older_masters(cm.inputs) == ["Unknown rig · Hα · Panel 4 uses an older master (new subs since)."]
+    out = tmp_path / "canvas.fit"
+    out.write_bytes(b"x")
+    import apps.processing.previews as previews
+
+    monkeypatch.setattr(previews, "render", lambda *a, **k: None)
+    (tmp_path / "stacks").mkdir()
+    _place_mosaic(cm, {cm.pk: Stitched(path=out)}, tmp_path / "stacks", col.pk)
+    cm.refresh_from_db()
+    assert cm.state == "current" and cm.state_reason.startswith("Stitched from 2 panel masters")
+    assert "Panel 4 uses an older master (new subs since)." in cm.state_reason
 
 
 def test_registered_sequence_placements(tmp_path):

@@ -3,6 +3,7 @@
 // merges, splits, marks done or deletes, each with Undo. Datasets not in a project sort into their seasons; the
 // board moves datasets between projects by dragging.
 import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { useMenu } from '../../components/useMenu'
@@ -29,6 +30,7 @@ import p from './projects.module.css'
 import {
   type ProjectT,
   type ReviewT,
+  madeName,
   useDeleteCombined,
   useImpact,
   useProjectActions,
@@ -52,6 +54,31 @@ export function filterProgress(time: FilterTime | undefined, goalHours: number |
   const waiting = time ? Math.max(0, time.total_s - time.accepted_s - time.rejected_s) : 0
   const goal = (goalHours ?? 0) * 3600
   return { kept, waiting, goal, pct: goal ? Math.min(100, Math.round((kept / goal) * 100)) : null }
+}
+
+type GoalScope = Pick<
+  ProjectT,
+  'kind' | 'goals' | 'filter_time' | 'panel_time' | 'goal_panels' | 'panels' | 'missing_panels'
+>
+
+/** One filter's bar against its goal (019-DR-04). A single field: the project's kept time. A mosaic's goal is per
+ * panel, so the bar is its least-covered panel (a planned panel not shot yet counts as none), with how many panels
+ * have reached the goal. */
+export function goalProgress(x: GoalScope, f: string) {
+  const goalHours = x.goals?.[f]
+  if (x.kind !== 'mosaic' || !goalHours)
+    return { ...filterProgress(x.filter_time?.[f], goalHours), panel: null }
+  const panels = [
+    ...new Set([...Object.keys(x.panel_time ?? {}).map(Number), ...x.panels, ...x.missing_panels]),
+  ].sort((a, b) => a - b)
+  const each = panels.map((n) => ({ n, ...filterProgress(x.panel_time?.[String(n)]?.[f], goalHours) }))
+  const reached = each.filter((e) => e.kept >= e.goal).length
+  // more panels to come than numbered so far (planned, not shot yet): the least-covered has nothing
+  const unseen = Math.max(0, (x.goal_panels ?? 1) - panels.length)
+  const least = unseen
+    ? { n: null, ...filterProgress(undefined, goalHours) }
+    : each.reduce((a, b) => (b.kept < a.kept ? b : a))
+  return { ...least, panel: least.n, reached, of: panels.length + unseen }
 }
 
 /** "Mosaic 2/4" or "Single field". */
@@ -310,7 +337,18 @@ function ProjectCard({
     <article className={`${p.card} ${selected ? p.selected : ''} ${x.done ? p.done : ''}`}>
       <header className={p.head}>
         <div className={p.title}>
-          <strong>{x.label || x.name}</strong>
+          {/* the title opens the collection showing only this project, on every tab (006-DR-43) */}
+          <strong>
+            <Link
+              to="/collections/$id"
+              params={{ id: String(collectionId) }}
+              search={{ project: x.id }}
+              aria-current={selected ? 'page' : undefined}
+              title={`Show only ${x.label || x.name}`}
+            >
+              {x.label || x.name}
+            </Link>
+          </strong>
           <Chip title={x.kind_override ? 'Set by you' : 'Worked out from the panels'}>
             {kindText(x)}
             {!x.kind_override && <span className={p.auto}>auto</span>}
@@ -355,7 +393,9 @@ function ProjectCard({
       {mode === null && filters.length > 0 && (
         <div className={p.bars}>
           {filters.map((f) => {
-            const g = filterProgress(x.filter_time?.[f], x.goals?.[f])
+            const g = goalProgress(x, f)
+            const perPanel = 'reached' in g
+            const where = perPanel ? (g.panel != null ? `panel ${g.panel}` : 'a panel not shot yet') : ''
             return (
               <FilterMeter
                 key={f}
@@ -363,14 +403,18 @@ function ProjectCard({
                 kept={g.kept}
                 waiting={g.waiting}
                 goal={g.goal || null}
-                max={most}
+                max={perPanel ? Math.max(g.goal, g.kept + g.waiting) : most}
                 value={
-                  g.goal ? `${integrationText(g.kept)} / ${integrationText(g.goal)}` : integrationText(g.kept)
+                  g.goal
+                    ? `${integrationText(g.kept)} / ${integrationText(g.goal)}${perPanel ? ' per panel' : ''}`
+                    : integrationText(g.kept)
                 }
                 detail={
-                  g.goal
-                    ? `${integrationText(g.kept)} kept of a ${integrationText(g.goal)} goal, ${g.pct}%`
-                    : `${integrationText(g.kept)} kept`
+                  perPanel
+                    ? `least-covered ${where}: ${integrationText(g.kept)} kept of a ${integrationText(g.goal)} goal per panel, ${g.pct}%; ${g.reached} of ${g.of} panels reached it`
+                    : g.goal
+                      ? `${integrationText(g.kept)} kept of a ${integrationText(g.goal)} goal, ${g.pct}%`
+                      : `${integrationText(g.kept)} kept`
                 }
               />
             )
@@ -440,6 +484,9 @@ function PanelMatrix({ project: x, byId }: { project: ProjectT; byId: Map<number
   }
   const cols = sortFilters([...filters])
   const rows = [...panels].sort((a, b) => a - b)
+  // a mosaic's goals are per panel (019-DR-04): each column's goal, in seconds, matched by the filter's name
+  const goalOf = (f: string) =>
+    (Object.entries(x.goals ?? {}).find(([k]) => (filterName(k) || '—') === f)?.[1] ?? 0) * 3600
   if (!rows.length || !cols.length) return null
   return (
     <div className={p.matrixWrap}>
@@ -450,6 +497,7 @@ function PanelMatrix({ project: x, byId }: { project: ProjectT; byId: Map<number
             {cols.map((f) => (
               <th key={f} scope="col">
                 {filterKey(f) ? <FilterTag filter={f} plain /> : f}
+                {goalOf(f) ? <span className={p.goalEach}> · goal {integrationText(goalOf(f))}</span> : null}
               </th>
             ))}
           </tr>
@@ -460,7 +508,19 @@ function PanelMatrix({ project: x, byId }: { project: ProjectT; byId: Map<number
               <th scope="row">{n}</th>
               {cols.map((f) => {
                 const s = cell.get(`${n}|${f}`)
-                return <td key={f}>{s ? integrationText(s) : '—'}</td>
+                const goal = goalOf(f)
+                const short = goal > 0 && (s ?? 0) < goal
+                return (
+                  <td key={f} className={short ? p.short : undefined}>
+                    {s ? integrationText(s) : '—'}
+                    {goal > 0 && (s ?? 0) >= goal && (
+                      <span className={p.reached} title="Goal reached">
+                        <span aria-hidden="true"> ✓</span>
+                        <span className="visually-hidden">, goal reached</span>
+                      </span>
+                    )}
+                  </td>
+                )
               })}
             </tr>
           ))}
@@ -653,7 +713,7 @@ function GoalsForm({
       }}
     >
       <fieldset className={p.goals}>
-        <legend>Goals, hours kept</legend>
+        <legend>{x.kind === 'mosaic' ? 'Goals, hours kept per panel' : 'Goals, hours kept'}</legend>
         {sortFilters(Object.keys(goals)).map((f) => (
           <Field key={f} inline label={<FilterTag filter={f} plain />}>
             <span className={p.hours}>
@@ -738,7 +798,7 @@ function DeleteProject({
       impact={i ? projectImpactLines(x, i) : null}
       refused={
         blocked
-          ? `It has combined masters (${i.combined.join(', ')}). Delete them first, or merge it.`
+          ? `It has stitched or stacked masters (${i.combined.join(', ')}). Delete them first, or merge it.`
           : undefined
       }
       onConfirm={() => {
@@ -752,7 +812,7 @@ function DeleteProject({
   )
 }
 
-/** A project's combined masters, each with Delete: the file goes for good. */
+/** A project's stitched and stacked masters, each with Delete: the file goes for good. */
 function CombinedToDelete({
   collectionId,
   project,
@@ -777,7 +837,7 @@ function CombinedToDelete({
     <>
       <ul className={p.combinedList}>
         {(q.data?.combined ?? []).map((m) => {
-          const name = `${filterName(m.filter)} combined v${m.version}`
+          const name = madeName(m)
           return (
             <li key={m.id}>
               <span>{name}</span>
@@ -839,7 +899,9 @@ function MergeDialog({
             {plural(x.dataset_ids.length, 'dataset')} move into {target?.label}; {target?.label} keeps its
             name.
           </li>
-          {i?.combined.length ? <li>Combined masters move with them: {i.combined.join(', ')}.</li> : null}
+          {i?.combined.length ? (
+            <li>Stitched and stacked masters move with them: {i.combined.join(', ')}.</li>
+          ) : null}
           {i?.goal_conflicts.map((g) => (
             <li key={g} className={p.warn}>
               Goals differ, the larger is kept: {g}.

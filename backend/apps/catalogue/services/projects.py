@@ -133,6 +133,22 @@ def effective_kind(p: Any, apps: Any = None) -> str:
     return "mosaic" if panels > 1 else "single"
 
 
+def goal_panels(p: Any) -> int:
+    """How many fields a project's goals are for (019-DR-04): a mosaic's goals are per panel, so its panels (planned,
+    or shot when there are more); a single field, one."""
+    if effective_kind(p) != "mosaic":
+        return 1
+    shot = (
+        _m(None, "Dataset")
+        .objects.filter(project_id=p.pk)
+        .exclude(panel=None)
+        .values("panel")
+        .distinct()
+        .count()
+    )
+    return max(1, p.planned_panels or 0, shot)
+
+
 def _snap(p: Any) -> dict:
     out = {f: getattr(p, f) for f in FIELDS}
     out["pk"] = p.pk
@@ -421,7 +437,9 @@ def remove(p: Any, user: Any) -> tuple:
     dataset = _m(None, "Dataset")
     combos = impact(p)["combined"]
     if combos:
-        raise Refused(f"It has combined masters ({', '.join(combos)}). Delete them first, or merge it.")
+        raise Refused(
+            f"It has stitched or stacked masters ({', '.join(combos)}). Delete them first, or merge it."
+        )
     linked = _links(None, [p.pk]).get(p.pk, [])
     warnings = [f"No longer linked to {', '.join(finished_names(None, linked))}."] if linked else []
     rows = list(dataset.objects.filter(project=p).values_list("pk", "project_position"))

@@ -568,7 +568,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Collection */
+        /**
+         * Get Collection
+         * @description The collection's page. With `project`, everything but its card (datasets, the rig × filter table, sessions,
+         *     masters, rigs) is narrowed to that project's datasets (006-DR-42).
+         */
         get: operations["apps_catalogue_api_library_get_collection"];
         put?: never;
         post?: never;
@@ -635,11 +639,15 @@ export interface paths {
         };
         /**
          * Combined Masters
-         * @description What "Stack combined masters" would use, and the combined masters made so far (latest per filter).
+         * @description What Stitch mosaic or Stack together would use (the project's kind chooses when `method` isn't given), and
+         *     the masters made so far (latest per filter).
          */
         get: operations["apps_processing_api_masters_combined_masters"];
         put?: never;
-        /** Start Combined */
+        /**
+         * Start Combined
+         * @description Stitch mosaic or Stack together, for every filter of the project (004-DR-32).
+         */
         post: operations["apps_processing_api_masters_start_combined"];
         delete?: never;
         options?: never;
@@ -4053,6 +4061,8 @@ export interface components {
             master: number;
             /** Registered */
             registered?: boolean | null;
+            /** Stale */
+            stale?: boolean | null;
             /** Subs */
             subs?: number | null;
             /** Version */
@@ -4079,6 +4089,11 @@ export interface components {
             inputs: components["schemas"]["CombinedInput"][];
             /** Integration S */
             integration_s: number;
+            /**
+             * Method
+             * @default stack
+             */
+            method: string;
             /** Stale */
             stale: string;
             /** State */
@@ -4092,6 +4107,11 @@ export interface components {
         CombinedPlanOut: {
             /** Combined */
             combined: components["schemas"]["CombinedOut"][];
+            /**
+             * Default Method
+             * @default stack
+             */
+            default_method: string;
             /** Filters */
             filters: {
                 [key: string]: components["schemas"]["CombinedInput"][];
@@ -4101,6 +4121,23 @@ export interface components {
              * @default []
              */
             left_out: string[];
+            /**
+             * Method
+             * @default stack
+             */
+            method: string;
+            /**
+             * Methods
+             * @default [
+             *       "stack"
+             *     ]
+             */
+            methods: string[];
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
             /** Reference */
             reference: number | null;
             /** Reference Label */
@@ -6029,6 +6066,11 @@ export interface components {
             /** First Night */
             first_night: string | null;
             /**
+             * Goal Panels
+             * @default 1
+             */
+            goal_panels: number;
+            /**
              * Goals
              * @default {}
              */
@@ -6058,6 +6100,15 @@ export interface components {
             needs_review: boolean;
             /** Own Name */
             own_name: string;
+            /**
+             * Panel Time
+             * @default {}
+             */
+            panel_time: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["FilterTime"];
+                };
+            };
             /** Panels */
             panels: number[];
             /** Planned Panels */
@@ -8461,7 +8512,9 @@ export interface operations {
     };
     apps_catalogue_api_library_get_collection: {
         parameters: {
-            query?: never;
+            query?: {
+                project?: number | null;
+            };
             header?: never;
             path: {
                 id: number;
@@ -8575,6 +8628,7 @@ export interface operations {
         parameters: {
             query?: {
                 project?: number | null;
+                method?: ("stitch" | "stack") | null;
             };
             header?: never;
             path: {
@@ -8599,6 +8653,7 @@ export interface operations {
         parameters: {
             query?: {
                 project?: number | null;
+                method?: ("stitch" | "stack") | null;
             };
             header?: never;
             path: {

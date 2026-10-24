@@ -7,6 +7,7 @@ import { optimistic } from '../../api/optimistic'
 import { toast } from '../../components/Toasts'
 import { offerUndo } from '../changes/changes'
 import { deletedText } from '../changes/putAway'
+import { filterName } from '../../components/filters'
 
 export type ProjectT = NonNullable<ReturnType<typeof useProjects>['data']>['projects'][number]
 export type ReviewT = NonNullable<ReturnType<typeof useProjects>['data']>['review'][number]
@@ -125,7 +126,9 @@ export function useProjectActions(collectionId: number) {
           last_night: null,
           position: ps.length,
           goals: {},
+          goal_panels: 1,
           filter_time: {},
+          panel_time: {},
           rigs: [],
           done: false,
           needs_review: false,
@@ -252,7 +255,19 @@ export function useProjectActions(collectionId: number) {
   }
 }
 
-/** Delete a combined master (006-DR-38): its output file goes for good, so there's no Undo. Refused while it runs. */
+/** The two ways a project's dataset masters become one per filter (004-DR-32); colour composition is separate. */
+export const METHOD = {
+  stitch: { label: 'Stitch mosaic', doing: 'Stitching…', what: 'mosaic' },
+  stack: { label: 'Stack together', doing: 'Stacking…', what: 'stacked' },
+} as const
+export type Method = keyof typeof METHOD
+
+/** "Hα mosaic v3", "OIII stacked v2". */
+export function madeName(m: { filter: string; method?: string; version: number }) {
+  return `${filterName(m.filter)} ${METHOD[m.method === 'stitch' ? 'stitch' : 'stack'].what} v${m.version}`
+}
+
+/** Delete a stitched or stacked master (006-DR-38): its output file goes for good, so there's no Undo. Refused while it runs. */
 export function useDeleteCombined() {
   const qc = useQueryClient()
   return useMutation({
@@ -260,7 +275,7 @@ export function useDeleteCombined() {
       unwrap(
         await api.DELETE('/combined/{id}', { params: { path: { id } } }).then((r) => ({ ...r, data: null })),
       ),
-    meta: { failed: "Couldn't delete the combined master" },
+    meta: { failed: "Couldn't delete the stitched or stacked master" },
     onSuccess: (_r, vars) => toast(`Deleted ${vars.name}`),
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['combined'] })

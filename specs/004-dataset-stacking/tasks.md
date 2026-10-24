@@ -70,3 +70,14 @@
   checkpoints record which (004-DR-27)
 - [X] (2026-10-22) Combine leaves out other-panel masters outside mosaics (004-DR-29); test
 - [X] (2026-10-22) Delete a combined master (004-DR-30); tests
+- [X] (2026-10-24) Mosaic panels placed by plate solution: stored solution written into each panel's copy, solved
+  only when missing, `seqplatesolve` + `seqapplyreg -framing=max`, one canvas for every filter; panels that can't be
+  placed or don't overlap named with why (004-DR-31); FakeSiril tests
+- [X] (2026-10-24) Stitch mosaic and Stack together as two named operations, the project's kind choosing the default
+  and the other selectable; `CombinedMaster.method` (migration marks earlier mosaics stitched); own task names; user
+  words renamed (004-DR-32); tests
+- [X] (2026-10-24) Stale masters used and named, never blocking (004-DR-33); test
+- [ ] Check 004-DR-31 on real Siril 1.4 with a real six-panel set: `seqplatesolve` skips already-solved copies and
+  writes registration; `r_m_.seq` after framing max holds per-image sizes and translation-only H lines that
+  `_placements` reads; all filters' canvases identical
+- [ ] Per-panel Stack together before Stitch (needs a per-panel stacked master the stitch can take) (004-DR-32)

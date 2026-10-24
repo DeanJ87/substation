@@ -171,7 +171,9 @@ describe('Projects panel (amendment 2026-10-22)', { timeout: 20_000 }, () => {
     })
     menu('2025–26 · widefield', 'Merge into…')
     const dialog = await screen.findByRole('dialog', { name: 'Merge 2025–26 · widefield' })
-    expect(await within(dialog).findByText(/Combined masters move with them: Hα v1/)).toBeInTheDocument()
+    expect(
+      await within(dialog).findByText(/Stitched and stacked masters move with them: Hα v1/),
+    ).toBeInTheDocument()
     expect(within(dialog).getByText(/the larger is kept: Hα: goals of 10 h and 20 h/)).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' }))
     await waitFor(() =>
@@ -226,12 +228,14 @@ describe('Projects panel (amendment 2026-10-22)', { timeout: 20_000 }, () => {
     menu('2026', 'Delete…')
     const dialog = await screen.findByRole('dialog', { name: 'Delete 2026?' })
     expect(
-      await within(dialog).findByText('It has combined masters (Hα v1). Delete them first, or merge it.'),
+      await within(dialog).findByText(
+        'It has stitched or stacked masters (Hα v1). Delete them first, or merge it.',
+      ),
     ).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeDisabled()
     fireEvent.click(await within(dialog).findByRole('button', { name: 'Delete…' }))
     expect(within(dialog).getByText("File deleted now; can't be undone.")).toBeInTheDocument()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Hα combined v1' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Hα stacked v1' }))
     await waitFor(() =>
       expect(api.calls).toContainEqual({ method: 'DELETE', path: '/combined/9', body: null }),
     )
@@ -298,3 +302,114 @@ describe('Projects panel (amendment 2026-10-22)', { timeout: 20_000 }, () => {
     )
   })
 })
+
+describe(
+  'goals per panel and one project on every tab (019-DR-04, 006-DR-42, -43)',
+  { timeout: 20_000 },
+  () => {
+    const H = 3600
+    const masterRow = (id: number, dataset_id: number, dataset: string) => ({
+      id,
+      dataset_id,
+      dataset,
+      version: 1,
+      state: 'current',
+      sub_count: 10,
+      integration_s: 10 * H,
+      finished_at: null,
+      has_preview: false,
+      filter: 'Hα',
+    })
+    const collection = (project: string | null) => {
+      const all = fakeFor('get', '/collections/1') as Record<string, unknown>
+      const masters = [masterRow(1, 11, 'Askar 71F · Hα · Panel 1'), masterRow(2, 13, 'Seestar S50 · LP')]
+      return { ...all, masters: project === '2' ? [masters[1]] : masters }
+    }
+
+    it("shows a mosaic's least-covered panel against its per-panel goal", async () => {
+      await open({
+        'GET /collections/1/projects': {
+          ...LIST,
+          projects: [
+            {
+              ...MOSAIC,
+              goals: { Hα: 6 },
+              goal_panels: 3,
+              planned_panels: 3,
+              panels: [1, 2],
+              missing_panels: [3],
+              filter_time: { Hα: { total_s: 7 * H, accepted_s: 7 * H, rejected_s: 0 } },
+              panel_time: {
+                '1': { Hα: { total_s: 5 * H, accepted_s: 5 * H, rejected_s: 0 } },
+                '2': { Hα: { total_s: 2 * H, accepted_s: 2 * H, rejected_s: 0 } },
+              },
+            },
+            WIDE,
+          ],
+        },
+      })
+      const card = screen.getByRole('link', { name: '2026' }).closest('article')!
+      // not 7h of 6h: panel 3 has nothing yet, so the bar is empty against 6h per panel
+      expect(within(card).getByText('0m / 6h per panel')).toBeInTheDocument()
+      expect(
+        within(card).getByRole('img', {
+          name: /least-covered panel 3: 0m kept of a 6h goal per panel, 0%; 0 of 3 panels reached it/,
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('opens one project from its title, and the Masters tab shows only its masters', async () => {
+      const seen: string[] = []
+      const { router } = await open({
+        'GET /collections/1': (_b: unknown, url: URL) => (
+          seen.push(url.search),
+          collection(url.searchParams.get('project'))
+        ),
+      })
+      fireEvent.click(screen.getByRole('link', { name: '2025–26 · widefield' }))
+      await waitFor(() => expect(router.state.location.search).toMatchObject({ project: 2 }))
+      expect(await screen.findByRole('button', { name: 'Show everything' })).toBeInTheDocument()
+      await waitFor(() => expect(seen).toContain('?project=2'))
+      fireEvent.click(screen.getByRole('tab', { name: /Masters/ }))
+      expect(await screen.findByText('Seestar S50 · LP · v1')).toBeInTheDocument()
+      expect(screen.queryByText('Askar 71F · Hα · Panel 1 · v1')).not.toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Masters 1' })).toBeInTheDocument()
+    })
+
+    it('offers Stitch mosaic on a mosaic, and Stack together as the other choice (004-DR-32)', async () => {
+      const asked: string[] = []
+      const plan = (url: URL) => {
+        asked.push(url.search)
+        const method = url.searchParams.get('method') ?? 'stitch'
+        return {
+          ...fakeFor('get', '/collections/1/combined'),
+          method,
+          default_method: 'stitch',
+          methods: ['stitch', 'stack'],
+          reference: 1,
+          reference_label: 'Askar 71F · Hα · Panel 1',
+          filters: { Hα: [{ master: 1, dataset: 11, label: 'Askar 71F · Hα · Panel 4', stale: true }] },
+          left_out: [],
+          notes: [],
+          combined: [],
+        }
+      }
+      const { api } = await renderRoute('/collections/1?project=1&tab=masters', {
+        'GET /collections/1/projects': LIST,
+        'GET /collections/1': () => collection('1'),
+        'GET /collections/1/combined': (_b: unknown, url: URL) => plan(url),
+        'POST /collections/1/combined': (_b: unknown, url: URL) => (asked.push(`POST${url.search}`), []),
+      })
+      expect(await screen.findByRole('button', { name: 'Stitch mosaic' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'Stitch mosaic' })).toBeChecked()
+      // a stale panel master is used as it is, and said so
+      expect(screen.getByText(/Used as they are: Askar 71F · Hα · Panel 4/)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('radio', { name: 'Stack together' }))
+      expect(await screen.findByRole('button', { name: 'Stack together' })).toBeInTheDocument()
+      expect(asked).toContain('?project=1&method=stack')
+      fireEvent.click(screen.getByRole('button', { name: 'Stack together' }))
+      await waitFor(() => expect(asked).toContain('POST?project=1&method=stack'))
+      expect(api.calls.some((c) => c.method === 'POST' && c.path === '/collections/1/combined')).toBe(true)
+    })
+  },
+)

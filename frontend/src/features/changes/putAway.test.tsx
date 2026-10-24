@@ -303,13 +303,13 @@ describe('someone who can only look', { timeout: 20_000 }, () => {
     expect(screen.getAllByRole('button', { name: /^More for (?!collection)/ }).length).toBeGreaterThan(0)
   })
 
-  it("can't delete a combined master", async () => {
+  it("can't delete a stitched or stacked master", async () => {
     const { api } = await renderRoute('/collections/1?tab=masters', {
       'GET /settings': READ_ONLY,
       'GET /collections/1': usable(),
       'GET /collections/1/combined': COMBINED(1),
     })
-    expect((await screen.findAllByText(/Combined masters/)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Stitched and stacked/)).length).toBeGreaterThan(0)
     await settled(api)
     expect(screen.queryByRole('button', { name: 'Delete…' })).not.toBeInTheDocument()
   })

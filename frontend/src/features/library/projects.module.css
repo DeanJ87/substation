@@ -288,3 +288,13 @@
   justify-content: space-between;
   gap: 8px;
 }
+/* a mosaic's panel × filter table against the per-panel goal (019-DR-04) */
+.goalEach {
+  font-weight: 500;
+}
+.matrix td.short {
+  color: var(--sst-muted);
+}
+.reached {
+  color: var(--sst-ok);
+}

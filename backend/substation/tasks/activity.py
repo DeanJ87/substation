@@ -43,11 +43,13 @@ KIND = {
     "palette_view": "HOO/SHO view",
     "solve_master": "Solve master",
     "backfill_master_solves": "Queue master solves",
-    "combine": "Combine masters",
+    "combine": "Stitch or stack masters",  # jobs queued before the two had their own names (004-DR-32)
+    "stitch_mosaic": "Stitch mosaic",
+    "stack_together": "Stack together",
     "auto_stacks": "Automatic stacks",
     "rerender_session": "Redraw session",
     "rerender_all_sessions": "Redraw all sessions",
-    "combined_view": "100% view of a combined master",
+    "combined_view": "100% view of a mosaic or stacked master",
     "postprocess_master": "Post-process master",
     "check_tools": "Check finishing tools",
     "redraw_post_views": "Redraw post-processed views",
@@ -305,7 +307,7 @@ def _link(short: str, args: list, ds: int | None) -> str | None:
                 BuiltMaster.objects.filter(pk=args[0]).values_list("calibration_set_id", flat=True).first()
             )
             return f"/calibration/sets/{set_id}" if set_id else "/calibration"
-        if short == "combine" and args:
+        if short in ("combine", "stitch_mosaic", "stack_together") and args:
             return f"/collections/{args[0]}?tab=masters"
         if short == "regrade_datasets" and args and args[0]:
             return f"/datasets/{args[0][0]}?tab=quality" if len(args[0]) == 1 else "/"
@@ -480,7 +482,9 @@ VERBS = {
     "backfill_solves": "Queueing solves",
     "star_map": "Finding stars",
     "full_view": "Drawing at 100%",
-    "combine": "Combining masters",
+    "combine": "Stitching or stacking",
+    "stitch_mosaic": "Stitching a mosaic",
+    "stack_together": "Stacking together",
     "postprocess_master": "Post-processing",
 }
 STEP_VERBS = {

@@ -87,7 +87,9 @@ class CollectionCard(Schema):
     preview_master: int | None
     constellation: str = ""
     nights: list[date] = []  # every session's date, for the Library's date filter
-    goals: dict[str, float] = {}  # spec 019: every project's goals added up, per filter
+    goals: dict[
+        str, float
+    ] = {}  # spec 019: every project's goals added up, per filter (a mosaic's × its panels)
     # spec 013, on the Library's list: where its files are (active, archive, both; blank where no library has a
     # role) and whether it is worth archiving
     files_where: str = ""
@@ -148,10 +150,17 @@ def _states(datasets: list[Dataset]) -> list[str]:
 
 
 def _goals_total(col: Collection) -> dict[str, float]:
+    """Every open project's goals added up, per filter; a mosaic's goals are per panel, so they count once for each
+    of its panels (019-DR-04). Done projects drop out."""
+    from .services.projects import goal_panels
+
     total: dict[str, float] = defaultdict(float)
-    for g in col.projects.filter(done_at=None).values_list("goals", flat=True):  # done projects drop out
-        for f, h in (g or {}).items():
-            total[f] += h
+    for p in col.projects.filter(done_at=None):
+        if not p.goals:
+            continue
+        n = goal_panels(p)
+        for f, h in p.goals.items():
+            total[f] += h * n
     return dict(total)
 
 
@@ -478,11 +487,16 @@ def accept_all_suggestions(request):
 
 
 @router.get("/collections/{id}", response=CollectionOut)
-def get_collection(request, id: int):  # noqa: A002
+def get_collection(request, id: int, project: int | None = None):  # noqa: A002
+    """The collection's page. With `project`, everything but its card (datasets, the rig × filter table, sessions,
+    masters, rigs) is narrowed to that project's datasets (006-DR-42)."""
     from apps.processing.models import Master
 
     col = get_object_or_404(Collection, pk=id)
-    ds = list(col.datasets.select_related("rig").order_by("rig__name", "filter_norm", "panel"))
+    qs = col.datasets.all()
+    if project is not None:
+        qs = qs.filter(project_id=project)
+    ds = list(qs.select_related("rig").order_by("rig__name", "filter_norm", "panel"))
     matrix: dict[str, dict[str, float]] = defaultdict(dict)
     for d in ds:
         ensure_rig(d)

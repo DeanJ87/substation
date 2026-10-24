@@ -49,7 +49,7 @@ const placeText = (p: Nights['places'][number]) =>
   `${Math.abs(p.lat).toFixed(2)}° ${p.lat >= 0 ? 'N' : 'S'}, ${Math.abs(p.lon).toFixed(2)}° ${p.lon >= 0 ? 'E' : 'W'} · ${p.subs} subs over ${p.nights} night${p.nights === 1 ? '' : 's'}`
 
 /** The dome across nights, loading its own data. */
-type NightsScope = Pick<Scope, 'date' | 'date_from' | 'date_to'>
+type NightsScope = Pick<Scope, 'date' | 'date_from' | 'date_to' | 'project'>
 
 export function TargetSky({
   kind,

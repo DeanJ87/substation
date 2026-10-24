@@ -1787,6 +1787,17 @@
       ],
       "title": "Registered"
      },
+     "stale": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stale"
+     },
      "subs": {
       "anyOf": [
        {
@@ -1871,6 +1882,11 @@
       "title": "Integration S",
       "type": "number"
      },
+     "method": {
+      "default": "stack",
+      "title": "Method",
+      "type": "string"
+     },
      "stale": {
       "title": "Stale",
       "type": "string"
@@ -1913,6 +1929,11 @@
       "title": "Combined",
       "type": "array"
      },
+     "default_method": {
+      "default": "stack",
+      "title": "Default Method",
+      "type": "string"
+     },
      "filters": {
       "additionalProperties": {
        "items": {
@@ -1929,6 +1950,29 @@
        "type": "string"
       },
       "title": "Left Out",
+      "type": "array"
+     },
+     "method": {
+      "default": "stack",
+      "title": "Method",
+      "type": "string"
+     },
+     "methods": {
+      "default": [
+       "stack"
+      ],
+      "items": {
+       "type": "string"
+      },
+      "title": "Methods",
+      "type": "array"
+     },
+     "notes": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Notes",
       "type": "array"
      },
      "reference": {
@@ -7691,6 +7735,11 @@
       ],
       "title": "First Night"
      },
+     "goal_panels": {
+      "default": 1,
+      "title": "Goal Panels",
+      "type": "integer"
+     },
      "goals": {
       "additionalProperties": {
        "type": "number"
@@ -7757,6 +7806,17 @@
      "own_name": {
       "title": "Own Name",
       "type": "string"
+     },
+     "panel_time": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "$ref": "#/components/schemas/FilterTime"
+       },
+       "type": "object"
+      },
+      "default": {},
+      "title": "Panel Time",
+      "type": "object"
      },
      "panels": {
       "items": {
@@ -15914,6 +15974,7 @@
     ]
    },
    "get": {
+    "description": "The collection's page. With `project`, everything but its card (datasets, the rig \u00d7 filter table, sessions,\nmasters, rigs) is narrowed to that project's datasets (006-DR-42).",
     "operationId": "apps_catalogue_api_library_get_collection",
     "parameters": [
      {
@@ -15923,6 +15984,22 @@
       "schema": {
        "title": "Id",
        "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
       }
      }
     ],
@@ -16069,7 +16146,7 @@
   },
   "/collections/{id}/combined": {
    "get": {
-    "description": "What \"Stack combined masters\" would use, and the combined masters made so far (latest per filter).",
+    "description": "What Stitch mosaic or Stack together would use (the project's kind chooses when `method` isn't given), and\nthe masters made so far (latest per filter).",
     "operationId": "apps_processing_api_masters_combined_masters",
     "parameters": [
      {
@@ -16096,6 +16173,26 @@
        ],
        "title": "Project"
       }
+     },
+     {
+      "in": "query",
+      "name": "method",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "stitch",
+          "stack"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Method"
+      }
      }
     ],
     "responses": {
@@ -16121,6 +16218,7 @@
     ]
    },
    "post": {
+    "description": "Stitch mosaic or Stack together, for every filter of the project (004-DR-32).",
     "operationId": "apps_processing_api_masters_start_combined",
     "parameters": [
      {
@@ -16146,6 +16244,26 @@
         }
        ],
        "title": "Project"
+      }
+     },
+     {
+      "in": "query",
+      "name": "method",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "stitch",
+          "stack"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Method"
       }
      }
     ],

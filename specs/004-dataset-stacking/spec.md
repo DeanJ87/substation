@@ -290,3 +290,31 @@ split it into, and subs far from the reference share too few stars with it.
 - **004-DR-30** (2026-10-22) A combined master can be deleted like a stack: refused while queued or running; its
   output and preview files go; its record stays, marked deleted, so a project or collection is no longer held back
   by it.
+
+### Amendment 2026-10-24: mosaics placed by plate solution; stitch or stack, named as such
+
+- **004-DR-31 A mosaic's panels are placed by their plate solutions.** Star matching every panel against one
+  reference panel failed on a six-panel mosaic whose outer panels share no stars with it. Each panel master is now
+  placed by its plate solution: its own copy (the master's file is never written to) carries the solution stored
+  with the master; a copy whose file already carries one keeps it; a panel with neither is solved there, starting
+  from where its own solve put it. Siril's `seqplatesolve` turns the solutions into registration and
+  `seqapplyreg -framing=max` lays out one canvas over every panel; star registration is no longer used for
+  mosaics. Every filter is then stacked (brightness matched on overlaps, feathered edges) and placed on that one
+  canvas, so all filters stay the same size pixel for pixel. A panel that can't be placed is named with the reason
+  in plain words (no plate solution, Siril didn't place it); a filter with none placed fails naming its panels; a
+  panel that doesn't overlap the rest of its filter's mosaic is placed with a gap, and the result says so, since its
+  brightness can't be matched to the others.
+- **004-DR-32 Stitch mosaic or Stack together.** Making one master per filter from a project's dataset masters is
+  two operations, named for what they do (not "combined", which reads as colour combining): **Stitch mosaic** puts
+  one filter's panels on one canvas (004-DR-31); **Stack together** stacks masters of the same filter and field (two
+  rigs, two seasons) into one deeper master, leaving out other panels and other pixel scales with the reason. The
+  project's kind picks the default (a mosaic stitches); the other is offered wherever the project's masters cover
+  more than one field. Each result records which it was; buttons, card names ("Hα mosaic v3", "OIII stacked v2"),
+  stale notices, Activity task names and failure messages ("Couldn't stitch the Hα mosaic: …", "Couldn't stack
+  together: …") use those words. Colour composition (HOO, SHO) stays its own step. When a stitch has two masters of
+  one panel and filter (two seasons), both are placed and averaged where they overlap, not weighted by their subs;
+  the plan says so. Stacking each panel's masters together first and then stitching those is not offered yet: it
+  needs a per-panel stacked master (one per panel and filter) that a stitch can take in place of the dataset
+  masters.
+- **004-DR-33 A stale master never blocks a stitch or a stack.** A dataset master with newer subs since is used as
+  it is; the plan lists it and the result says so ("… Panel 4 uses an older master (new subs since)").

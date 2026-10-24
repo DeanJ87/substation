@@ -484,12 +484,14 @@ class CombinedInput(Schema):
     integration_s: float | None = None
     subs: int | None = None
     registered: bool | None = None
+    stale: bool | None = None  # an older master (newer subs since), used as it is
 
 
 class CombinedOut(Schema):
     id: int
     filter: str
     version: int
+    method: str = "stack"  # 004-DR-32: stitch (a mosaic's panels on one canvas) or stack (one field, deeper)
     state: str
     state_reason: str
     stale: str
@@ -502,10 +504,14 @@ class CombinedOut(Schema):
 
 
 class CombinedPlanOut(Schema):
+    method: str = "stack"  # the operation this plan is for (004-DR-32)
+    default_method: str = "stack"  # the one that fits the project: stitch for a mosaic
+    methods: list[str] = ["stack"]  # the ones that make sense here
     reference: int | None
     reference_label: str | None = None
     filters: dict[str, list[CombinedInput]]
     left_out: list[str] = []
+    notes: list[str] = []
     combined: list[CombinedOut]
 
 
@@ -516,6 +522,7 @@ def _combined_out(c) -> CombinedOut:  # noqa: ANN001
         id=c.pk,
         filter=c.filter_norm,
         version=c.version,
+        method=c.method,
         state=c.state,
         state_reason=c.state_reason,
         stale=staleness(c),
@@ -529,8 +536,14 @@ def _combined_out(c) -> CombinedOut:  # noqa: ANN001
 
 
 @router.get("/collections/{id}/combined", response=CombinedPlanOut)
-def combined_masters(request, id: int, project: int | None = None):  # noqa: A002
-    """What "Stack combined masters" would use, and the combined masters made so far (latest per filter)."""
+def combined_masters(
+    request,
+    id: int,  # noqa: A002
+    project: int | None = None,
+    method: Literal["stitch", "stack"] | None = None,
+):
+    """What Stitch mosaic or Stack together would use (the project's kind chooses when `method` isn't given), and
+    the masters made so far (latest per filter)."""
     from apps.catalogue.models import Collection
 
     from .combine import plan
@@ -546,18 +559,24 @@ def combined_masters(request, id: int, project: int | None = None):  # noqa: A00
         .order_by("version")
     ):
         latest[c.filter_norm] = c
-    return CombinedPlanOut(**plan(col, project), combined=[_combined_out(c) for c in latest.values()])
+    return CombinedPlanOut(**plan(col, project, method), combined=[_combined_out(c) for c in latest.values()])
 
 
 @router.post("/collections/{id}/combined", response={201: list[CombinedOut]})
-def start_combined(request, id: int, project: int | None = None):  # noqa: A002
+def start_combined(
+    request,
+    id: int,  # noqa: A002
+    project: int | None = None,
+    method: Literal["stitch", "stack"] | None = None,
+):
+    """Stitch mosaic or Stack together, for every filter of the project (004-DR-32)."""
     from apps.catalogue.models import Collection
 
     from .combine import start
 
     col = get_object_or_404(Collection, pk=id)
     try:
-        rows = start(col, project)
+        rows = start(col, project, method)
     except ValueError as e:
         raise ApiError(422, "cannot_combine", str(e)) from None
     return Status(201, [_combined_out(c) for c in rows])
@@ -734,7 +753,7 @@ def make_palette_look(request, id: int, name: Literal["hoo", "sho"], project: in
     from .tasks import palette_inputs, palette_view
 
     if palette_inputs(id, project, name) is None:
-        raise ApiError(422, "missing", "Stack the combined masters first.")
+        raise ApiError(422, "missing", "Stitch the mosaic or stack the masters together first.")
     enqueue(palette_view, id, project, name, dedupe_key=f"palette:{id}:{project}:{name}")
     return LookOut(ready=False, generating=True, note="Drawing the 100% view…")
 

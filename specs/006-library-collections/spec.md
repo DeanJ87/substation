@@ -224,3 +224,13 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   collection / its project, each a link (the project opens the collection showing only that project), or Library /
   Not in a collection. A collection's is Library / Collections. "Collections" and "Not in a collection" land on those
   sections of the Library. Breadcrumb links look like links.
+
+### Amendment 2026-10-24: one project on every tab; the project's title opens it
+
+- **006-DR-42** Choosing one project on a collection's page narrows every tab to it: Overview (datasets, framing),
+  Datasets, Sessions (and their count), Masters (the dataset masters as well as that project's stitched or stacked
+  masters, and the tab's count) and Sky. The chosen project is kept in the address (`?project=`), so a link opens
+  it; the collection's endpoint and its sky take `project` and narrow datasets, the rig × filter table, sessions,
+  masters and rigs to it, the collection's card staying whole.
+- **006-DR-43** A project card's title is a link that opens the collection showing only that project; it is
+  keyboard reachable and marked current when that project is shown.
