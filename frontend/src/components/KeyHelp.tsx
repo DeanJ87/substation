@@ -25,6 +25,8 @@ const SCREENS: { match: RegExp; title: string; keys: [string, string][] }[] = [
         'Viewer: full-size view (wheel or + − to zoom, drag to pan, 0 fit, 1 100%, double-click; Esc: close)',
       ],
       ['X', 'Viewer: aberration inspector'],
+      ['[ and ]', 'Viewer: black point down and up (on screen only)'],
+      ['\\', 'Viewer: reset the black point and brightness'],
       ['Esc', 'Close the viewer'],
     ],
   },

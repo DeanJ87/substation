@@ -28,3 +28,7 @@
   hover (they showed "…_026" or a cut-off name)
 - [X] V13 (2026-10-22) Night page: the viewer follows the strips' order (012-DR-06)
 - [X] V14 (2026-10-22) Bin in the viewer steps to the next or previous sub, or closes (012-DR-07); test
+- [X] V15 (2026-10-24) Display levels in the sub viewer (012-DR-08): Black point and Brightness sliders and Reset
+  under the toolbar and in the 100% view's bar; an SVG levels filter on the viewer image, 100% view and inspector;
+  held across J and K, remembered per dataset and filter in the browser; [ ] \ keys and key help; tests for the
+  curve, stepping, Reset, keys and storage

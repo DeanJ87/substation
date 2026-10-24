@@ -26,6 +26,8 @@ import { AnnotateToggle, AnnotationOverlay, useAnnotateSwitch } from '../../comp
 import { Collapsible } from '../../components/Collapsible'
 import { SiteMap } from '../map/SiteMap'
 import tb from '../library/tables.module.css'
+import { BLACK_STEP, NEUTRAL, useLevels } from './levels'
+import { LevelsControl, LevelsFilter, levelsFilter, useFilterId } from './LevelsControl'
 
 const route = getRouteApi('/app/subs/$sha')
 
@@ -101,6 +103,13 @@ export function SubView({
   const navigate = useNavigate()
   const verdict = useVerdict()
   const d = q.data
+  // display levels (012-DR-08): per dataset and filter, so they hold while stepping through the list
+  const [levels, setLevels] = useLevels(
+    d ? `${d.dataset_id ?? 'none'}:${filterOfLabel(d.dataset_label ?? '') || 'none'}` : null,
+  )
+  const filterId = useFilterId()
+  const imageFilter = levelsFilter(filterId, levels)
+  const levelControl = <LevelsControl levels={levels} onChange={setLevels} />
   // the list it was opened from, else the dataset in capture order
   const at = list ? list.shas.indexOf(sha) : -1
   const n: { index?: number; count?: number; previous?: string; next?: string } = list
@@ -123,7 +132,11 @@ export function SubView({
     )
   useEffect(() => {
     function key(e: KeyboardEvent) {
-      if (!d || (e.target as HTMLElement).closest('input, select, textarea') || e.metaKey || e.ctrlKey) return
+      const el = e.target as HTMLElement
+      // on a levels slider, [ ] and \ still work (the arrows are the slider's own)
+      const levelKey = e.key.length === 1 && '[]\\'.includes(e.key)
+      const typing = el.closest('input, select, textarea') && !(levelKey && el.matches('input[type=range]'))
+      if (!d || typing || e.metaKey || e.ctrlKey) return
       const k = e.key.toLowerCase()
       // J sits left of K: J goes back, K goes on, like ← and → (2026-10-15)
       if (k === 'k' || e.key === 'ArrowRight') go(n.next)
@@ -134,6 +147,9 @@ export function SubView({
       else if (k === 'u') decide('auto')
       else if (k === 'z' && d.sub.has_preview) setLook('full')
       else if (k === 'x' && d.sub.has_preview) setLook('inspector')
+      else if (e.key === '[') setLevels({ ...levels, black: levels.black - BLACK_STEP })
+      else if (e.key === ']') setLevels({ ...levels, black: levels.black + BLACK_STEP })
+      else if (e.key === '\\') setLevels(NEUTRAL)
       else return
       e.preventDefault()
     }
@@ -295,6 +311,8 @@ export function SubView({
               </Button>
             </span>
           </div>
+          {sub.has_preview && levelControl}
+          <LevelsFilter id={filterId} levels={levels} />
           {look && (
             <CloseLook
               target={{ kind: 'sub', sha: sub.sha256 }}
@@ -302,6 +320,8 @@ export function SubView({
               mode={look}
               onMode={setLook}
               onClose={() => setLook(null)}
+              imageFilter={imageFilter}
+              tools={levelControl}
             />
           )}
           {mode === 'stars' && (
@@ -319,8 +339,17 @@ export function SubView({
           <div className={s.preview}>
             {sub.has_preview ? (
               <span className={s.overlayWrap}>
-                <Zoomable target={{ kind: 'sub', sha: sub.sha256 }} name={sub.file}>
-                  <img src={previewUrl(sub.sha256, 'screen')} alt={`Preview of ${sub.file}`} />
+                <Zoomable
+                  target={{ kind: 'sub', sha: sub.sha256 }}
+                  name={sub.file}
+                  imageFilter={imageFilter}
+                  tools={levelControl}
+                >
+                  <img
+                    src={previewUrl(sub.sha256, 'screen')}
+                    alt={`Preview of ${sub.file}`}
+                    style={{ filter: imageFilter }}
+                  />
                 </Zoomable>
                 {mode !== 'auto' && starList.data && (
                   <StarOverlay data={starList.data} fwhm={mode === 'fwhm'} />

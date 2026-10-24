@@ -64,12 +64,16 @@ export function Zoomable({
   children,
   className,
   version,
+  imageFilter,
+  tools,
 }: {
   target: LookTarget
   name: string
   children: ReactNode
   className?: string
   version?: string // a master's version to open on (a post-processing step)
+  imageFilter?: string
+  tools?: ReactNode
 }) {
   const [mode, setMode] = useState<LookMode | null>(null)
   return (
@@ -99,6 +103,8 @@ export function Zoomable({
               onMode={setMode}
               onClose={() => setMode(null)}
               initialVersion={version}
+              imageFilter={imageFilter}
+              tools={tools}
             />
           </div>,
           document.body,
@@ -114,6 +120,8 @@ export function CloseLook({
   onMode,
   onClose,
   initialVersion,
+  imageFilter,
+  tools,
 }: {
   target: LookTarget
   name: string
@@ -121,6 +129,10 @@ export function CloseLook({
   onMode: (m: LookMode) => void
   onClose: () => void
   initialVersion?: string
+  /** a CSS filter for the image on screen (the sub viewer's display levels, 012-DR-08) */
+  imageFilter?: string
+  /** controls the caller adds to the bar */
+  tools?: ReactNode
 }) {
   // zoom like any image viewer (2026-10-15): the wheel or a pinch zooms about the pointer, drag pans, a double
   // click toggles fit and 100%; 'fit' follows the window, a number is the scale (1 = 100%)
@@ -317,6 +329,7 @@ export function CloseLook({
             <kbd>N</kbd>
           </div>
         )}
+        {tools}
         <button type="button" className={s.close} onClick={onClose}>
           Close <kbd>Esc</kbd>
         </button>
@@ -360,7 +373,10 @@ export function CloseLook({
                 alt={`${name}${shown ? `, ${shown.label}` : ''} at full resolution`}
                 draggable={false}
                 onLoad={onImgLoad}
-                style={dims ? { width: dims.w * scale, height: dims.h * scale } : undefined}
+                style={{
+                  ...(dims ? { width: dims.w * scale, height: dims.h * scale } : {}),
+                  filter: imageFilter,
+                }}
                 className={scale >= 2 ? s.actualImg : s.smoothImg}
               />
               {annotate && solvable && <AnnotationOverlay target={solvable} />}
@@ -401,7 +417,7 @@ export function CloseLook({
       )}
       {d?.ready && mode === 'inspector' && d.inspector && (
         <div className={s.inspect}>
-          <img src={d.inspector} alt={`Aberration inspector for ${name}`} />
+          <img src={d.inspector} alt={`Aberration inspector for ${name}`} style={{ filter: imageFilter }} />
           <p className={s.hint}>Corners, edges and centre at 100%.</p>
         </div>
       )}

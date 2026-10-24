@@ -147,3 +147,16 @@ experience; propose something better. Also asked for: a map on the sub page.
   one time order across every dataset (which jumped between strips).
 - **012-DR-07 (2026-10-22) Binning steps on.** After a sub is binned the viewer shows the next sub in its list, else
   the one before, else closes; it never reloads the binned sub (which no longer exists, so it showed an error).
+
+### Amendment 2026-10-24: display levels in the viewer
+
+- **012-DR-08 (2026-10-24) A black point you can slide while looking.** Under the viewer's toolbar, and in the bar of
+  the 100% view, sit a Black point slider, a Brightness slider and Reset. They change only how the preview is drawn
+  on this screen: the curve out = clamp((in − b) / (255 − b))^γ runs in the browser on the preview's 8-bit values
+  (an SVG feComponentTransfer table, the same for red, green and blue, so a mono preview stays grey). Nothing is sent
+  to the server; files and stored previews are unchanged, and the site-wide preview look in Settings is untouched.
+  The black point runs from −64 (lifting the shadows) to +128; Brightness from −100 to +100 is the midtone, γ =
+  2^(−brightness / 50). The levels apply to the viewer's image, the 100% view and the aberration inspector, and hold
+  while stepping with J and K until Reset, so frames compare at the same black point. They are remembered in this
+  browser for each dataset and filter, not for every sub. Keys: [ and ] move the black point by 2, \ resets; they
+  are in the key help. The sliders are labelled range inputs that say their value ("Black point +12").

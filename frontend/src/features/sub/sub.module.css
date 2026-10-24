@@ -126,3 +126,35 @@
   align-items: center;
   gap: 8px 12px;
 }
+
+/* display levels (012-DR-08): compact sliders under the toolbar and in the 100% view's bar */
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 13px;
+}
+.level {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sst-muted);
+}
+.level input {
+  width: 120px;
+  accent-color: var(--sst-accent);
+}
+.levelValue {
+  min-width: 3ch;
+  color: var(--sst-text);
+  font-variant-numeric: tabular-nums;
+}
+/* the filter's definition takes no space, but isn't display:none (a hidden SVG's filters stop applying in some
+   browsers) */
+.filterDefs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
