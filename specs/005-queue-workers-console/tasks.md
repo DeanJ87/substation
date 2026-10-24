@@ -115,3 +115,5 @@
   test helpers); the limit drops from 14 to 10 (005-DR-29); `tests/unit/test_split_helpers_w40.py`
 - [X] W41 (2026-10-15) Stale failures: later version built, deleted masters, rebuilt or emptied calibration sets
   (005-DR-28); tests
+- [X] (2026-10-24) CI: cached image builds in the e2e and image jobs, one image job per image, a11y tests in parallel
+  (005-DR-30)

@@ -295,3 +295,7 @@ SQLite support was then removed rather than kept as a second, untested path.
   Updated 2026-10-15 (005-DR-28): a failed stack also clears once a later version of the same dataset is built, a
   master marked deleted counts as gone, and a failed calibration build clears once its set is built again or has no
   frames left (e.g. all binned).
+- **005-DR-30** (2026-10-24) CI builds from cache and runs in parallel. The end-to-end job builds its images from the
+  layers the publish job caches, so only what changed is rebuilt; the image job builds one image per parallel job,
+  both platforms, from the publish cache and its own; and the accessibility checks run each theme and width as its
+  own test, three at a time. What is checked is unchanged.

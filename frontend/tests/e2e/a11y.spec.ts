@@ -4,6 +4,9 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { signIn } from './helpers'
 
+// each theme × width is its own test and only reads pages, so they run side by side (CI passes --workers=3)
+test.describe.configure({ mode: 'parallel' })
+
 const THEMES = ['dark', 'light', 'night'] as const
 const WIDTHS = [1440, 400] as const
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
