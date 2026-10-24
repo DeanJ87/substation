@@ -1,5 +1,10 @@
 <!--
-Sync Impact Report (2.2.0, 2026-10-17): I expanded: owner-chosen file operations (the bin, spec 011; archiving
+Sync Impact Report (2.3.0, 2026-10-24): I renamed "Originals Are Read-Only" → "Originals Change Only When You
+Choose" and its rationale reworded. The rule is unchanged since 2.2.0; the old title and the rationale line ("never
+deletes or moves") contradicted the bin and archiving that 2.2.0 already allowed. PATCH-level wording, versioned MINOR
+so the change is visible.
+
+Earlier report (2.2.0, 2026-10-17): I expanded: owner-chosen file operations (the bin, spec 011; archiving
 collections, spec 013) are allowed only in libraries mounted read-write, and never change or overwrite content.
 MINOR.
 
@@ -32,7 +37,7 @@ GNU General Public License v3.0.
 
 ## Core Principles
 
-### I. Originals Are Read-Only
+### I. Originals Change Only When You Choose
 
 - SubStation MUST NOT modify, move, rename or delete any file in a source folder on its own initiative. Source
   mounts MUST work read-only. The only exceptions are actions the owner chooses, in a library the owner has mounted
@@ -46,7 +51,8 @@ GNU General Public License v3.0.
 - Intermediates MUST be deletable at any time without losing user decisions; the catalogue, verdicts
   and stack recipes are the durable state.
 
-Rationale: the user's subs are irreplaceable; "SubStation never deletes or moves your original subs".
+Rationale: the user's subs are irreplaceable. Nothing happens to them unless the owner chooses it, in a library the
+owner has made writable, and every such change is recorded and traceable; a file's content is never changed.
 
 ### II. Content Is Identity, Metadata Is Resolved
 
@@ -189,4 +195,4 @@ Report, a semantic version bump (MAJOR: principle removed or redefined; MINOR: p
 added or materially expanded; PATCH: wording) and the dated reason. Spike reports in `docs/spikes/` are
 the evidence base. All code is licensed GPL-3.0; dependencies MUST be GPL-3.0-compatible.
 
-**Version**: 2.2.0 | **Ratified**: 2026-10-09 | **Last Amended**: 2026-10-17
+**Version**: 2.3.0 | **Ratified**: 2026-10-09 | **Last Amended**: 2026-10-24
