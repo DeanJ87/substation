@@ -630,16 +630,22 @@ def redraw_post_views(master_id: int, kind: str = "master") -> dict:
 def postprocess_master(master_id: int, overrides: dict | None = None) -> dict:
     """Spec 010 US1/US3: run the chain on a master (from the untouched master, every time)."""
     from .models import Master
+    from .move_guard import wait_for_moves
 
-    return postprocess(Master.objects.get(pk=master_id), overrides)
+    m = Master.objects.select_related("dataset").get(pk=master_id)
+    wait_for_moves([m.dataset.collection_id])  # its collection's files may be moving (spec 013, 2026-10-24)
+    return postprocess(m, overrides)
 
 
 @station_task(queue_name="finish", priority=PRIORITY_BULK + 4, max_attempts=3)
 def postprocess_combined(combined_id: int, overrides: dict | None = None) -> dict:
     """Spec 010 US6 (2026-10-24): the same chain on a stitched mosaic or a stacked-together master."""
     from .models import CombinedMaster
+    from .move_guard import wait_for_moves
 
-    return postprocess(CombinedMaster.objects.select_related("collection").get(pk=combined_id), overrides)
+    cm = CombinedMaster.objects.select_related("collection").get(pk=combined_id)
+    wait_for_moves([cm.collection_id])  # its collection's files may be moving (spec 013, 2026-10-24)
+    return postprocess(cm, overrides)
 
 
 def _save_tool_status(status: dict) -> None:

@@ -126,3 +126,5 @@ requirement they close.
 - [X] (2026-10-24) Project scope on every tab, kept in the address; collection endpoint narrows by project
   (006-DR-42); test
 - [X] (2026-10-24) Project card title links to the collection showing only that project (006-DR-43); test
+- [X] (2026-10-24) Filter chips on the Masters tab, counts across both lists, kept in the address as the scope's
+  `filter` (006-DR-44); tests

@@ -4169,6 +4169,105 @@
     "title": "ImpactOut",
     "type": "object"
    },
+   "IntegrationOut": {
+    "description": "What a master holds, for the viewer's side panel (004-DR-36, 010-DR-30).",
+    "properties": {
+     "filter": {
+      "default": "",
+      "title": "Filter",
+      "type": "string"
+     },
+     "integration_s": {
+      "title": "Integration S",
+      "type": "number"
+     },
+     "kind": {
+      "enum": [
+       "master",
+       "stitch",
+       "stack",
+       "palette"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "parts": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/IntegrationPart"
+      },
+      "title": "Parts",
+      "type": "array"
+     },
+     "sessions": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sessions"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "kind",
+     "integration_s",
+     "subs"
+    ],
+    "title": "IntegrationOut",
+    "type": "object"
+   },
+   "IntegrationPart": {
+    "description": "One input of a stitched or stacked master (a panel, a dataset's master), or one filter of a palette.",
+    "properties": {
+     "filter": {
+      "default": "",
+      "title": "Filter",
+      "type": "string"
+     },
+     "integration_s": {
+      "title": "Integration S",
+      "type": "number"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "panel": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Panel"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     },
+     "used": {
+      "default": true,
+      "title": "Used",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "label",
+     "integration_s",
+     "subs"
+    ],
+    "title": "IntegrationPart",
+    "type": "object"
+   },
    "JobIdsIn": {
     "properties": {
      "ids": {
@@ -4984,6 +5083,16 @@
        }
       ],
       "title": "Inspector"
+     },
+     "integration": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/IntegrationOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "note": {
       "default": "",
@@ -5969,6 +6078,17 @@
      "lights": {
       "title": "Lights",
       "type": "integer"
+     },
+     "refused": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refused"
      },
      "to_library": {
       "title": "To Library",

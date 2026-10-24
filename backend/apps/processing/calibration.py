@@ -597,6 +597,9 @@ def build_master(built_id: int) -> dict:
 
     bm = BuiltMaster.objects.select_related("calibration_set").get(pk=built_id)
     cs = bm.calibration_set
+    from .move_guard import wait_for_calibration_moves
+
+    wait_for_calibration_moves(cs.pk)  # its frames may be moving with a collection (spec 013, 2026-10-24)
     BuiltMaster.objects.filter(pk=bm.pk).update(state="running", error=None)
     frames = list(
         Frame.objects.filter(calibration_set=cs, status=FrameStatus.CATALOGUED).order_by("date_obs_utc")

@@ -470,3 +470,9 @@ palette images are still out of scope.
   NAS or on a helper. Automatic runs (after stacking or combining) keep Settings' selection. API:
   `POST /stacks/{id}/post` and `POST /combined/{id}/post` take an optional body `{steps: [...]}` (an unknown step
   is refused with 422); `PostOut.steps` lists the choices; `PostRunOut.chosen` and `.helper` are added.
+
+## Amendment 2026-10-24: integration beside each version
+
+- **010-DR-30** While tabbing through a master's post-processing versions at 100%, the side panel keeps the
+  master's integration (004-DR-36) above the version's measurements, for dataset masters and for stitched or
+  stacked masters alike.

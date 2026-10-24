@@ -599,8 +599,19 @@ def _combine(collection_id: int, combined_ids: list[int], canvas: list[int] | No
     rows = list(CombinedMaster.objects.filter(pk__in=combined_ids).select_related("reference", "project"))
     if not rows or rows[0].reference is None:
         return {"result": "nothing to do"}
+    from substation.tasks import Reschedule
+
+    from .move_guard import wait_for_moves
+
+    try:  # the collection's files may be moving: it waits its turn (spec 013, 2026-10-24)
+        wait_for_moves([collection_id])
+    except Reschedule as r:
+        CombinedMaster.objects.filter(pk__in=combined_ids).update(state_reason=r.note)
+        raise
     ref = Path(rows[0].reference.output_path)
-    CombinedMaster.objects.filter(pk__in=combined_ids).update(state=MasterState.RUNNING, error=None)
+    CombinedMaster.objects.filter(pk__in=combined_ids).update(
+        state=MasterState.RUNNING, error=None, state_reason=""
+    )
     root = Path(settings.WORK_DIR) / "combine" / f"col{collection_id}"
     shutil.rmtree(root, ignore_errors=True)
     out_dir = Path(settings.STACKS_DIR) / "collections" / f"col{collection_id}"

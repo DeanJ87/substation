@@ -11,6 +11,7 @@ from django.utils import timezone
 from apps.catalogue.api import router
 from apps.catalogue.models import Change, Collection, CollectionMove, MoveDirection, MoveItem, MoveItemState
 from apps.catalogue.services import archive
+from apps.processing.move_guard import check_collection
 from substation.api import ApiError, Schema, Status
 
 
@@ -75,6 +76,7 @@ class MovePreviewOut(Schema):
     lights: int
     calibration: int
     calibration_kept: int  # calibration frames staying: other collections still in the library use them
+    refused: str | None = None  # why it can't start now: a build reads these files (amendment 2026-10-24)
 
 
 class CollectionMoveIn(Schema):
@@ -102,9 +104,11 @@ def _move_out(m: CollectionMove) -> CollectionMoveOut:
     )
 
 
-def _choice(col: Collection, direction: str, moving: bool) -> MoveChoice:
+def _choice(col: Collection, direction: str, moving: bool, building: str = "") -> MoveChoice:
     if moving:
         return MoveChoice(possible=False, reason="Its files are being moved.")
+    if building:  # its builds and its moves take turns (amendment 2026-10-24)
+        return MoveChoice(possible=False, reason=building)
     try:
         src, dst = archive.pair(col, direction)
     except archive.CantMove as e:
@@ -133,14 +137,15 @@ def collection_files(request, id: int):  # noqa: A002
     if latest is not None:
         archive.sync(latest)
     moving = archive.busy(col) is not None
+    building = "" if moving else check_collection(col)
     return CollectionFilesOut(
         location=w.location,  # type: ignore[arg-type]
         libraries=[LibraryShare(**x) for x in w.libraries],
         active_bytes=w.active_bytes,
         archive_bytes=w.archive_bytes,
         move=_move_out(latest) if latest else None,
-        archive=_choice(col, MoveDirection.ARCHIVE, moving),
-        bring_back=_choice(col, MoveDirection.BRING_BACK, moving),
+        archive=_choice(col, MoveDirection.ARCHIVE, moving, building),
+        bring_back=_choice(col, MoveDirection.BRING_BACK, moving, building),
         suggested=col.pk in archive.suggested({col.pk: w.location}),
         suggest_after_days=archive.suggest_after_days(),
         can_move=not _cant_move(request),
@@ -164,6 +169,7 @@ def move_preview(request, id: int, direction: Literal["archive", "bring_back"]):
         lights=len(p.lights),
         calibration=len(p.calibration),
         calibration_kept=p.kept,
+        refused=check_collection(col) or None,
     )
 
 

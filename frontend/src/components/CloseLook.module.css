@@ -203,12 +203,75 @@
 .delta {
   color: var(--sst-muted);
 }
+/* the side column: what the master holds, then the version's measurements (004-DR-36) */
+.side {
+  width: 240px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+.side .stats {
+  width: auto;
+}
+.total {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--sst-data);
+}
+.partsTitle {
+  margin-top: 4px;
+}
+.parts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.parts li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 8px;
+  border-top: 1px solid var(--sst-line);
+}
+.partLabel {
+  color: var(--sst-text);
+  overflow-wrap: anywhere;
+}
+.partValue {
+  font-variant-numeric: tabular-nums;
+  color: var(--sst-muted);
+  font-size: 12px;
+}
+.partNote {
+  color: var(--sst-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.unused {
+  opacity: 0.55;
+}
 @media (max-width: 900px) {
   .body {
     flex-direction: column;
   }
-  .stats {
+  .stats,
+  .side {
     width: auto;
+  }
+  .side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-height: 32vh;
+  }
+  .side > * {
+    flex: 1 1 200px;
   }
 }
 .pan {

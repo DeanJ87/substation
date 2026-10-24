@@ -4977,6 +4977,57 @@ export interface components {
             /** Goal Conflicts */
             goal_conflicts: string[];
         };
+        /**
+         * IntegrationOut
+         * @description What a master holds, for the viewer's side panel (004-DR-36, 010-DR-30).
+         */
+        IntegrationOut: {
+            /**
+             * Filter
+             * @default
+             */
+            filter: string;
+            /** Integration S */
+            integration_s: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "master" | "stitch" | "stack" | "palette";
+            /**
+             * Parts
+             * @default []
+             */
+            parts: components["schemas"]["IntegrationPart"][];
+            /** Sessions */
+            sessions?: number | null;
+            /** Subs */
+            subs: number;
+        };
+        /**
+         * IntegrationPart
+         * @description One input of a stitched or stacked master (a panel, a dataset's master), or one filter of a palette.
+         */
+        IntegrationPart: {
+            /**
+             * Filter
+             * @default
+             */
+            filter: string;
+            /** Integration S */
+            integration_s: number;
+            /** Label */
+            label: string;
+            /** Panel */
+            panel?: number | null;
+            /** Subs */
+            subs: number;
+            /**
+             * Used
+             * @default true
+             */
+            used: boolean;
+        };
         /** JobIdsIn */
         JobIdsIn: {
             /** Ids */
@@ -5239,6 +5290,7 @@ export interface components {
             generating: boolean;
             /** Inspector */
             inspector?: string | null;
+            integration?: components["schemas"]["IntegrationOut"] | null;
             /**
              * Note
              * @default
@@ -5531,6 +5583,8 @@ export interface components {
             from_library: string;
             /** Lights */
             lights: number;
+            /** Refused */
+            refused?: string | null;
             /** To Library */
             to_library: string;
         };

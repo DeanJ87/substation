@@ -10,7 +10,9 @@ import { Spinner } from './ui'
 import { AnnotateToggle, AnnotationOverlay, type AnnotateTarget, useAnnotateSwitch } from './Annotations'
 import s from './CloseLook.module.css'
 import { anchoredScroll, clampZoom, fitScale as fitOf } from './zoom'
-import { numText } from '../features/format'
+import type { components } from '../api/schema'
+import { integrationText, numText, plural } from '../features/format'
+import { filterName } from './filters'
 
 export type LookMode = 'full' | 'inspector'
 /** What to look at: a sub, a master, or a palette made from a project's combined masters. */
@@ -20,6 +22,7 @@ export type LookTarget =
   | { kind: 'combined'; id: number }
   | { kind: 'palette'; collection: number; project: number | null; name: 'hoo' | 'sho' }
 
+type Integration = components['schemas']['IntegrationOut']
 type Look = {
   ready: boolean
   generating?: boolean
@@ -27,6 +30,7 @@ type Look = {
   full?: string | null
   inspector?: string | null
   note?: string
+  integration?: Integration | null
 }
 
 async function status(t: LookTarget): Promise<Look> {
@@ -388,12 +392,17 @@ export function CloseLook({
               </div>
             )}
           </div>
-          {original && Object.keys(original).length > 0 && (
-            <StatsPanel
-              label={shown ? shown.label.replace(/^\+ /, 'With ') : 'Original'}
-              now={shown ? shown.stats : original}
-              original={original}
-            />
+          {(d?.integration || (original && Object.keys(original).length > 0)) && (
+            <div className={s.side}>
+              {d?.integration && <IntegrationPanel i={d.integration} />}
+              {original && Object.keys(original).length > 0 && (
+                <StatsPanel
+                  label={shown ? shown.label.replace(/^\+ /, 'With ') : 'Original'}
+                  now={shown ? shown.stats : original}
+                  original={original}
+                />
+              )}
+            </div>
           )}
         </div>
       )}
@@ -422,6 +431,66 @@ export function CloseLook({
         </div>
       )}
     </div>
+  )
+}
+
+const PART: Record<Integration['kind'], string> = {
+  master: '',
+  stitch: 'Panels',
+  stack: 'Masters stacked',
+  palette: 'Filters',
+}
+
+/** What the master holds (004-DR-36, 010-DR-30): its integration and subs, and for a stitched or stacked master or
+ * a palette, each panel, master or filter it was made from. */
+export function IntegrationPanel({ i }: { i: Integration }) {
+  const parts = i.parts ?? []
+  const left = parts.filter((p) => !p.used)
+  return (
+    <aside className={s.stats} aria-label="Integration">
+      <strong>Integration</strong>
+      <dl>
+        <div>
+          <dt>Total{i.filter ? ` · ${filterName(i.filter)}` : ''}</dt>
+          <dd className={s.total}>{integrationText(i.integration_s)}</dd>
+        </div>
+        <div>
+          <dt>Subs</dt>
+          <dd>
+            {plural(i.subs, 'sub')}
+            {i.sessions ? ` · ${plural(i.sessions, 'night')}` : ''}
+          </dd>
+        </div>
+      </dl>
+      {parts.length > 0 && (
+        <>
+          <strong className={s.partsTitle}>{PART[i.kind]}</strong>
+          <ul className={s.parts}>
+            {parts.map((p, n) => (
+              <li key={`${p.label}-${n}`} className={p.used ? undefined : s.unused}>
+                <span className={s.partLabel}>
+                  {i.kind === 'palette'
+                    ? filterName(p.label)
+                    : p.panel != null && i.kind === 'stitch'
+                      ? `Panel ${p.panel}`
+                      : p.label}
+                </span>
+                <span className={s.partValue}>
+                  {integrationText(p.integration_s)} · {plural(p.subs, 'sub')}
+                </span>
+                {i.kind === 'stitch' && p.panel != null && <span className={s.partNote}>{p.label}</span>}
+              </li>
+            ))}
+          </ul>
+          {left.length > 0 && (
+            <p className={s.hint}>
+              Dimmed: left out, its stars couldn’t be matched to the rest. The total counts only what was
+              used.
+            </p>
+          )}
+        </>
+      )}
+    </aside>
   )
 }
 

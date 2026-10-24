@@ -104,3 +104,5 @@
 - [X] T048 Tests: the production report shape (helper run, stage without preview, null fields), a newer failed or
   deleted try beside the current one, chosen steps end to end, unavailable steps; frontend card, dialog and request
   body tests
+- [X] (2026-10-24) The 100% view's side column holds the integration panel above the measurements, at every
+  version (010-DR-30)

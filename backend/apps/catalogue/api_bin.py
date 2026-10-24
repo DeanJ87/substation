@@ -58,9 +58,19 @@ def _by(request) -> str:  # noqa: ANN001
     return getattr(request.user, "username", "") or ""
 
 
+def _not_while_building(shas: list[str]) -> None:
+    """Binning moves files: refused while a build of their collection reads them (spec 013, 2026-10-24)."""
+    from apps.processing.move_guard import check_frames
+
+    if why := check_frames(shas):
+        raise ApiError(409, "building", why)
+
+
 def _bin_and_record(request, shas: list[str], reason: str) -> BinOut:  # noqa: ANN001
     """Bin, and record which files went so the change can be undone (spec 016)."""
     from apps.catalogue.services.changes import record
+
+    _not_while_building(shas)
 
     before = set(
         Frame.objects.filter(pk__in=shas).exclude(status=FrameStatus.BINNED).values_list("pk", flat=True)
@@ -118,6 +128,7 @@ def bin_ignored(request, id: int):  # noqa: A002
     _no_viewers(request)
     rule = get_object_or_404(IgnoreRule, pk=id)
     shas = [f.pk for f in frames_for_rule(rule) if f.status == FrameStatus.IGNORED]
+    _not_while_building(shas)
     return BinOut(**bin_frames(shas, rule.note or "Ignored, then binned", by=_by(request)))
 
 

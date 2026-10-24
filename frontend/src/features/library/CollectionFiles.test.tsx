@@ -75,6 +75,22 @@ describe('Collection → Files (spec 013)', () => {
     )
   })
 
+  it('refuses while a build reads its files, naming it, before anything is tried (013, 2026-10-24)', async () => {
+    const why = "NGC 7000's Hα master v3 is being stacked; try again when it finishes."
+    const { api } = await renderRoute('/collections/1', {
+      'GET /collections/1/files': FILES,
+      'GET /collections/1/move-preview': { ...PREVIEW, refused: why },
+    })
+    await screen.findByRole('heading', { name: 'Files' })
+    fireEvent.click(screen.getByRole('button', { name: 'Archive…' }))
+    const ask = await screen.findByRole('group', { name: /^Archive/ })
+    expect(await within(ask).findByRole('alert')).toHaveTextContent(why)
+    const go = within(ask).getByRole('button', { name: 'Archive 122 files' })
+    expect(go).toBeDisabled()
+    expect(go).toHaveAccessibleDescription(why)
+    expect(api.calls.some((c) => c.method === 'POST' && c.path === '/collections/1/move')).toBe(false)
+  })
+
   it('cancelling the question moves nothing', async () => {
     const { api } = await open()
     fireEvent.click(screen.getByRole('button', { name: 'Archive…' }))

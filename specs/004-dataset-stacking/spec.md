@@ -348,3 +348,12 @@ split it into, and subs far from the reference share too few stars with it.
     report notes and in its header (`SST-RES`); its FWHM in arcseconds uses the master's own pixel scale.
   - Combining keeps one resolution per project: masters at another resolution than the reference's are left out
     and listed with the reason, so every panel and filter lands on the same pixel grid.
+
+## Amendment 2026-10-24: integration beside a master at 100%
+
+- **004-DR-36** The 100% view of a master has a side panel saying what it holds: its total integration ("17h 50m")
+  and its subs (with nights, for a dataset master). A stitched mosaic lists each panel, and a stacked-together
+  master each master it stacked, with that input's integration and subs; an input that couldn't be registered is
+  shown dimmed and left out of the total. A colour palette (HOO, SHO) lists each filter it is made from. The
+  numbers come with the view's status (`LookOut.integration`, `IntegrationOut`), so every place that opens the
+  viewer shows them.

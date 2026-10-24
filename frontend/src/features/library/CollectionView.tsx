@@ -65,6 +65,7 @@ import { ChooseBox, useChosen } from '../../components/BulkBar'
 import { DatasetBulkBar } from './DatasetBulkBar'
 import { CollectionFiles } from './CollectionFiles'
 import { CollectionMenu, type PutAwayStep } from './CollectionMenu'
+import { combinedQuery, MasterFilterChips, sameFilter, useCombinedFilters } from './MasterFilters'
 
 const route = getRouteApi('/app/collections/$id')
 
@@ -130,6 +131,17 @@ export function CollectionView() {
   // while a project's narrowed page loads, the whole collection stands in (its datasets and masters are narrowed
   // here too), so choosing a project doesn't blank the page
   const d = q.data ?? whole.data
+  // the Masters tab narrowed to one filter (006-DR-44): the scope's filter, kept in the address
+  const masterFilter = scope.filter
+  const setMasterFilter = (f: string | undefined) =>
+    void navigate({ to: '.', search: { ...search, filter: f }, replace: true })
+  const combinedSections =
+    project === null && projects.data?.projects.length ? projects.data.projects.map((p) => p.id) : [project]
+  const combinedFilters = useCombinedFilters(
+    Number(id),
+    combinedSections,
+    tab === 'masters' && !!projects.data,
+  )
   const filters = useMemo(() => {
     const all = new Set<string>()
     for (const row of Object.values(d?.matrix ?? {})) for (const f of Object.keys(row)) all.add(f)
@@ -147,6 +159,7 @@ export function CollectionView() {
   const chosenProject = projects.data?.projects.find((p) => p.id === project)
   const inProject = (dsId: number) => !chosenProject || chosenProject.dataset_ids.includes(dsId)
   const masters = d.masters.filter((m) => inProject(m.dataset_id))
+  const mastersShown = masterFilter ? masters.filter((m) => sameFilter(m.filter, masterFilter)) : masters
   const sessions = project ? new Set(d.sessions.map((x) => x.night)).size : card.sessions
   const usable = masters.some((m) => m.state === 'current' || m.state === 'stale')
   const rigs = Object.keys(d.matrix).sort()
@@ -404,6 +417,13 @@ export function CollectionView() {
         </section>
       )}
 
+      {tab === 'masters' && (
+        <MasterFilterChips
+          filters={[...masters.map((m) => m.filter ?? ''), ...(usable ? combinedFilters : [])]}
+          chosen={masterFilter}
+          onChoose={setMasterFilter}
+        />
+      )}
       {tab === 'masters' && !usable && (
         // one empty state, not one per project (C21): combined masters need each dataset's master first
         <EmptyState
@@ -417,18 +437,29 @@ export function CollectionView() {
           Stack each dataset first; mosaics and stacks across datasets are made from those.
         </EmptyState>
       )}
-      {tab === 'masters' && !usable && <MasterList masters={masters} />}
+      {tab === 'masters' && !usable && <MasterList masters={mastersShown} filter={masterFilter} />}
       {tab === 'masters' && usable && (
         <>
           {project === null && projects.data?.projects.length ? (
             // all datasets: each project's own stitched or stacked masters (never across projects)
             projects.data.projects.map((p) => (
-              <Combined key={p.id} id={card.id} project={p.id} projectName={p.name} />
+              <Combined
+                key={p.id}
+                id={card.id}
+                project={p.id}
+                projectName={p.name}
+                onlyFilter={masterFilter}
+              />
             ))
           ) : (
-            <Combined id={card.id} project={project} projectName={chosenProject?.name ?? null} />
+            <Combined
+              id={card.id}
+              project={project}
+              projectName={chosenProject?.name ?? null}
+              onlyFilter={masterFilter}
+            />
           )}
-          <MasterList masters={masters} />
+          <MasterList masters={mastersShown} filter={masterFilter} />
         </>
       )}
     </div>
@@ -674,15 +705,16 @@ const MASTER_TAG: Record<string, string> = {
   queued: 'Waiting',
 }
 
-function MasterList({ masters }: { masters: ColMaster[] }) {
+function MasterList({ masters, filter }: { masters: ColMaster[]; filter?: string }) {
   // older versions are kept but out of the way: their images can look like another panel's (2026-10-11)
   const [old, setOld] = useState(false)
   const older = masters.filter(
     (m) => m.state === 'superseded' || m.state === 'failed' || m.state === 'cancelled',
   )
   const shown = old ? masters : masters.filter((m) => !older.includes(m))
-  const { visible, hasMore, more } = useProgressive(shown, 24, old)
-  if (!masters.length) return null
+  const { visible, hasMore, more } = useProgressive(shown, 24, `${old}${filter ?? ''}`)
+  if (!masters.length)
+    return filter ? <p className={v.muted}>No dataset masters of {filterName(filter)}.</p> : null
   return (
     <Collapsible id="collection-masters" title="Masters" meta={countText(shown.length)}>
       {older.length > 0 && (
@@ -735,26 +767,21 @@ function Combined({
   id,
   project,
   projectName,
+  onlyFilter,
 }: {
   id: number
   project: number | null
   projectName: string | null
+  /** only this filter's masters (006-DR-44) */
+  onlyFilter?: string
 }) {
   const qc = useQueryClient()
   // null: the one that fits the project, as the server says
   const [chosen, setChosen] = useState<Method | null>(null)
-  const key = chosen ? ['combined', id, project, chosen] : ['combined', id, project]
+  const { queryKey: key, queryFn } = combinedQuery(id, project, chosen)
   const q = useQuery({
     queryKey: key,
-    queryFn: async () =>
-      unwrap(
-        await api.GET('/collections/{id}/combined', {
-          params: {
-            path: { id },
-            query: { ...(project ? { project } : {}), ...(chosen ? { method: chosen } : {}) },
-          },
-        }),
-      ),
+    queryFn,
     placeholderData: (prev) => prev,
     refetchInterval: (query) =>
       query.state.data?.combined.some((x) => x.state === 'queued' || x.state === 'running') ? 3000 : false,
@@ -811,6 +838,7 @@ function Combined({
   const filters = Object.entries(d.filters)
   const busy = d.combined.some((x) => x.state === 'queued' || x.state === 'running')
   const methods = (d.methods ?? []).filter((m): m is Method => m === 'stitch' || m === 'stack')
+  const shown = onlyFilter ? d.combined.filter((x) => sameFilter(x.filter, onlyFilter)) : d.combined
   return (
     <section className={`${v.card} ${v.cardPad}`}>
       <Collapsible
@@ -875,9 +903,12 @@ function Combined({
             onClose={() => setChoosing(false)}
           />
         )}
-        {d.combined.length > 0 && (
+        {onlyFilter && d.combined.length > 0 && !shown.length && (
+          <p className={v.muted}>No stitched or stacked masters of {filterName(onlyFilter)}.</p>
+        )}
+        {shown.length > 0 && (
           <div className={c.masters}>
-            {d.combined.map((m) => (
+            {shown.map((m) => (
               <article key={m.id} className={`${v.card} ${c.masterCard}`}>
                 <div className={c.masterThumb}>
                   {m.has_preview && (

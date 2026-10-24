@@ -16,7 +16,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from ..models import Copy, Dataset, Frame, FrameStatus, FrameType
+from ..models import Collection, Copy, Dataset, Frame, FrameStatus, FrameType
 
 log = logging.getLogger(__name__)
 QUARANTINE = ".substation-quarantine"
@@ -203,8 +203,15 @@ def auto_bin(now=None) -> dict:  # noqa: ANN001
         if since is None or since > cutoff:
             continue
         due.append((f.pk, f"Rejected for over {days} days: {why}"))
+    from apps.processing.move_guard import check_collection
+
+    # a build of its collection reads it: binned on a later tidy (spec 013, 2026-10-24)
+    cols = dict(Frame.objects.filter(pk__in=[d[0] for d in due]).values_list("pk", "dataset__collection_id"))
+    building = {c.pk for c in Collection.objects.filter(pk__in=set(cols.values())) if check_collection(c)}
     n = 0
     for sha, reason in due:
+        if cols.get(sha) in building:
+            continue
         n += bin_frames([sha], reason, by="auto")["binned"]
     return {"binned": n}
 

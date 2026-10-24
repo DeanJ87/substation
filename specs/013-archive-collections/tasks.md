@@ -28,3 +28,8 @@ the Library's filter checked.
 - [ ] A11 (2026-10-18, open) First run on the real library: Bring back the smallest collection from `organised`
   (archive) to `active`, verify every file by hash at the destination, the originals gone, frame/master counts and
   no files reported missing; then Archive it back and verify again. Record the result here
+- [X] A12 (2026-10-24) Builds and moves take turns: `apps/processing/move_guard.py` lists the jobs reading a
+  collection's files; start, undo and the move job refuse or wait; `/files` and `/move-preview` carry the reason;
+  bin endpoints answer 409 and the daily tidy skips those subs (013-DR-13); stack, stitch, stack-together,
+  post-processing, progression and calibration builds reschedule while a move is waiting or running (013-DR-14);
+  confirm shows the refusal; tests both ways

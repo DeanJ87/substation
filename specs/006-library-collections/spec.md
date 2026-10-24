@@ -234,3 +234,12 @@ From the full design review (`docs/design/design-review.md`, sections B–D): ev
   masters and rigs to it, the collection's card staying whole.
 - **006-DR-43** A project card's title is a link that opens the collection showing only that project; it is
   keyboard reachable and marked current when that project is shown.
+
+## Amendment 2026-10-24: masters of one filter
+
+- **006-DR-44** The collection's Masters tab (also with a project chosen) has a chip per filter its masters are in,
+  in the canonical filter order, each with how many masters (dataset masters and stitched or stacked ones), and
+  "All" first. A chip narrows both the stitched and stacked masters and the dataset masters to that filter. The
+  choice is the scope's `filter` key in the address (`?tab=masters&filter=OIII`), so a link opens on it; a filter
+  asked for that no master is in shows with 0 and the lists say none are there. With only one filter, no chips
+  are shown.

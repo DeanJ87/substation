@@ -711,6 +711,13 @@ def build_progression(fp_id: int, force: bool = False) -> dict:
     prog, _ = Progression.objects.get_or_create(project=proj)
     if prog.state == ProgressionState.CANCELLED:
         return {"result": "cancelled"}
+    from apps.processing.move_guard import wait_for_moves
+
+    try:  # its subs may be moving (Archive, Bring back): it waits its turn (spec 013, 2026-10-24)
+        wait_for_moves(proj.linked_projects.values_list("collection_id", flat=True))
+    except Reschedule as r:
+        Progression.objects.filter(pk=prog.pk).update(state=ProgressionState.QUEUED, reason=r.note)
+        raise
     subs = kept_subs(proj)
     why = availability(proj, subs)
     if why:

@@ -271,6 +271,10 @@ def start_move(col: Collection, direction: str, user=None) -> tuple[CollectionMo
 
     if busy(col) is not None:
         raise CantMove("Its files are already being moved.")
+    from apps.processing.move_guard import check_collection
+
+    if why := check_collection(col):  # its builds and its moves take turns (amendment 2026-10-24)
+        raise CantMove(why)
     p = plan(col, direction)
     if not p.files:
         raise CantMove(f"None of its files are in {p.src.name}; there's nothing to move.")
@@ -373,11 +377,22 @@ def _wait_for_earlier(move: CollectionMove) -> None:
             raise Reschedule(30, "Waiting for the collection's earlier move to stop")
 
 
+def _wait_for_builds(move: CollectionMove) -> None:
+    """A build that started reading the collection's files just before the move was asked for finishes first."""
+    from apps.processing.move_guard import builds
+    from substation.tasks import Reschedule
+
+    found = builds(move.collection, running_only=True)
+    if found:
+        raise Reschedule(60, f"Waiting: {found[0]}; the move starts when it finishes")
+
+
 def run_move(move_id: int) -> dict:
     move = CollectionMove.objects.select_related("collection", "from_library", "to_library").get(pk=move_id)
     if move.state not in ACTIVE_MOVE_STATES:
         return {"result": move.state}
     _wait_for_earlier(move)
+    _wait_for_builds(move)
     try:
         if not move.planned:
             _plan_items(move)
@@ -625,6 +640,11 @@ def undo(move_id: int, user=None) -> str:  # noqa: ANN001
     if move.state in ACTIVE_MOVE_STATES and (task is None or task.status == TaskStatus.READY):
         cancel_move(move)
         return "Cancelled the move before it started"
+    from apps.processing.move_guard import check_collection
+
+    # builds waiting for this move don't stop it going back; one already reading the files does
+    if why := check_collection(move.collection, running_only=True):
+        raise CantMove(why)
     back = MoveDirection.BRING_BACK if move.direction == MoveDirection.ARCHIVE else MoveDirection.ARCHIVE
     src, dst = move.to_library, move.from_library
     check_libraries(src, dst, back)

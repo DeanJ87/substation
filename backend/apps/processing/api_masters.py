@@ -633,6 +633,28 @@ def delete_combined(request, id: int):  # noqa: A002
 
 
 # ---- 100% views of masters and palettes (owner 2026-10-10) --------------------------------------------------
+class IntegrationPart(Schema):
+    """One input of a stitched or stacked master (a panel, a dataset's master), or one filter of a palette."""
+
+    label: str
+    filter: str = ""
+    panel: int | None = None
+    integration_s: float
+    subs: int
+    used: bool = True  # false: left out (its stars couldn't be matched to the rest)
+
+
+class IntegrationOut(Schema):
+    """What a master holds, for the viewer's side panel (004-DR-36, 010-DR-30)."""
+
+    kind: Literal["master", "stitch", "stack", "palette"]
+    filter: str = ""
+    integration_s: float
+    subs: int
+    sessions: int | None = None  # a dataset master's nights
+    parts: list[IntegrationPart] = []  # per panel or master (stitched, stacked); per filter (a palette)
+
+
 class LookOut(Schema):
     ready: bool
     generating: bool = False
@@ -640,6 +662,77 @@ class LookOut(Schema):
     full: str | None = None
     inspector: str | None = None
     note: str = ""
+    integration: IntegrationOut | None = None  # masters, stitched or stacked masters and palettes
+
+
+def master_integration(m: Master) -> IntegrationOut:
+    return IntegrationOut(
+        kind="master",
+        filter=m.dataset.filter_norm or "",
+        integration_s=m.integration_s,
+        subs=m.sub_count,
+        sessions=m.session_count,
+    )
+
+
+def combined_integration(c) -> IntegrationOut:  # noqa: ANN001
+    """Per input (a mosaic's panels, the masters stacked together), the ones left out marked; the total counts the
+    ones used."""
+    from .combine import STITCH
+
+    panels = dict(
+        Dataset.objects.filter(pk__in=[i.get("dataset") for i in c.inputs]).values_list("pk", "panel")
+    )
+    parts = [
+        IntegrationPart(
+            label=str(i.get("label") or ""),
+            filter=c.filter_norm,
+            panel=panels.get(i.get("dataset")),
+            integration_s=float(i.get("integration_s") or 0),
+            subs=int(i.get("subs") or 0),
+            used=i.get("registered") is not False,
+        )
+        for i in c.inputs
+    ]
+    parts.sort(key=lambda p: (not p.used, p.panel if p.panel is not None else 1 << 16, -p.integration_s))
+    used = [p for p in parts if p.used]
+    return IntegrationOut(
+        kind="stitch" if c.method == STITCH else "stack",
+        filter=c.filter_norm,
+        integration_s=sum(p.integration_s for p in used),
+        subs=sum(p.subs for p in used),
+        parts=parts,
+    )
+
+
+def palette_integration(collection_id: int, project_id: int | None, name: str) -> IntegrationOut | None:
+    """Per filter: the stitched or stacked master each colour comes from."""
+    from .combine import in_project
+    from .models import CombinedMaster
+    from .tasks import PALETTES
+
+    parts = []
+    for filt in dict.fromkeys(PALETTES[name].values()):
+        cm = (
+            CombinedMaster.objects.filter(
+                collection_id=collection_id,
+                filter_norm=filt,
+                state=MasterState.CURRENT,
+                **in_project(project_id),
+            )
+            .order_by("-version")
+            .first()
+        )
+        if cm is None:
+            return None
+        one = combined_integration(cm)
+        parts.append(IntegrationPart(label=filt, filter=filt, integration_s=one.integration_s, subs=one.subs))
+    return IntegrationOut(
+        kind="palette",
+        integration_s=sum(p.integration_s for p in parts),
+        subs=sum(p.subs for p in parts),
+        parts=parts,
+    )
 
 
 def look_progress(key: str, idle: str) -> dict:
@@ -660,15 +753,23 @@ def look_progress(key: str, idle: str) -> dict:
 def master_look(request, id: int):  # noqa: A002
     from .tasks import master_view_paths
 
-    m = get_object_or_404(Master, pk=id)
+    m = get_object_or_404(Master.objects.select_related("dataset"), pk=id)
     if not m.output_path:
         return LookOut(ready=False, note="This master has no file.")
     full, inspect = master_view_paths(m)
+    integration = master_integration(m)
     if full.exists() and inspect.exists():
         return LookOut(
-            ready=True, full=f"/api/v1/stacks/{id}/view/full", inspector=f"/api/v1/stacks/{id}/view/inspector"
+            ready=True,
+            full=f"/api/v1/stacks/{id}/view/full",
+            inspector=f"/api/v1/stacks/{id}/view/inspector",
+            integration=integration,
         )
-    return LookOut(ready=False, **look_progress(f"master-view:{id}", "No 100% view of this master yet."))
+    return LookOut(
+        ready=False,
+        integration=integration,
+        **look_progress(f"master-view:{id}", "No 100% view of this master yet."),
+    )
 
 
 @router.post("/stacks/{id}/view", response=LookOut)
@@ -698,13 +799,17 @@ def combined_look(request, id: int):  # noqa: A002
     if not cm.output_path:
         return LookOut(ready=False, note="Not made yet.")
     full, inspect = master_view_paths(cm)
+    integration = combined_integration(cm)
     if full.exists() and inspect.exists():
         return LookOut(
             ready=True,
             full=f"/api/v1/combined/{id}/view/full",
             inspector=f"/api/v1/combined/{id}/view/inspector",
+            integration=integration,
         )
-    return LookOut(ready=False, **look_progress(f"combined-view:{id}", "No 100% view yet."))
+    return LookOut(
+        ready=False, integration=integration, **look_progress(f"combined-view:{id}", "No 100% view yet.")
+    )
 
 
 @router.post("/combined/{id}/view", response=LookOut)
@@ -739,6 +844,7 @@ def palette_look(request, id: int, name: Literal["hoo", "sho"], project: int | N
             ready=True,
             full=f"/api/v1/collections/{id}/palette/{name}/full{q}",
             inspector=f"/api/v1/collections/{id}/palette/{name}/inspector{q}",
+            integration=palette_integration(id, project, name),
         )
     if palette_inputs(id, project, name) is None:
         from apps.catalogue.models import Project

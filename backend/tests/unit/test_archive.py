@@ -410,6 +410,7 @@ def test_the_api_previews_starts_follows_and_undoes_a_move(setup, admin_client):
         "lights": 2,
         "calibration": 1,
         "calibration_kept": 1,
+        "refused": None,  # no build reads its files (amendment 2026-10-24)
     }
     r = admin_client.post(
         f"/api/v1/collections/{col.pk}/move", {"direction": "archive"}, content_type="application/json"

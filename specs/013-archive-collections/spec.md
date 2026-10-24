@@ -121,3 +121,23 @@ library stays as it is, with no role.
   whole-collection action.
 - **013-DR-12** (2026-10-22) A collection whose projects are all marked done is suggested for archiving at once, not
   only after 60 days without new subs (still only with files in an active library that has an archive).
+
+## Amendment 2026-10-24: builds and moves take turns
+
+- **013-DR-13 No moves under a build.** Archive, Bring back, undoing a move, and binning a collection's subs are
+  refused while a job that reads the collection's files is queued or running: a dataset master being stacked, a
+  mosaic being stitched or masters stacked together, post-processing of one of its masters, a progression of a
+  finished project linked to it, or a calibration master its subs use being built. The refusal names the job
+  ("NGC 7000's Hα master v3 is being stacked; try again when it finishes."; with "and N more jobs" when there are
+  several). It shows before anything is tried: the Files panel's Archive or Bring back is disabled with the
+  reason, and the confirm (from the panel or the ⋯ menu) shows it with the button disabled (`MovePreviewOut
+  .refused`). The API answers 409 with the same sentence. A job whose queue row has ended no longer counts.
+  Undoing a move that is under way is held only by a job already running, not by builds waiting for that move.
+  The daily tidy leaves such subs for a later run. Deleting a collection's record is not affected: it moves no
+  files.
+- **013-DR-14 Builds wait for moves.** A stack, stitch, stack-together, post-processing, progression or
+  calibration-master build that reaches the worker while a move of its collection's files (or, for a calibration
+  master, of a collection using that set) is waiting or running goes back in the queue without counting an
+  attempt, and Activity and the master say why ("Waiting for NGC 7000's files to be archived; starts when the move
+  finishes."). A move whose job finds a build already running (one that started just before the move was asked
+  for) waits for it the same way.

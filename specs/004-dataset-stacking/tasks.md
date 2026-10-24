@@ -91,3 +91,6 @@
   (004-DR-35); tests with fake Siril command sequences and a budget refusal
 - [ ] Check 004-DR-35 on real Siril 1.4.2: `-drizzle -scale=2` doubles the registered subs and the stack; a
   debayered colour sequence drizzles without complaint; a mosaic-shaped set drizzled with `-framing=max`
+- [X] (2026-10-24) Integration in the master viewer's side panel: `LookOut.integration` for dataset, stitched and
+  stacked masters and palettes (per input, per panel, per filter; inputs left out dimmed and not counted); panel
+  in `CloseLook` (004-DR-36); backend and frontend tests

@@ -32,6 +32,7 @@ from substation.tasks import (
 from .config import processing_settings
 from .effective import effective
 from .models import MachineGrade, Master, MasterMember, MasterState, MeasureState, SubMeasurement
+from .move_guard import wait_for_moves
 
 log = logging.getLogger("substation.masters")
 
@@ -867,6 +868,15 @@ def _open_work(m: Master) -> tuple[Path, dict]:
     return work, ck
 
 
+def _wait_for_moves(m: Master) -> None:
+    """Its files may be moving (Archive, Bring back): it waits its turn, saying why (spec 013, 2026-10-24)."""
+    try:
+        wait_for_moves([m.dataset.collection_id])
+    except Reschedule as r:
+        Master.objects.filter(pk=m.pk).update(state=MasterState.QUEUED, state_reason=r.note)
+        raise
+
+
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
 def integrate(master_id: int) -> dict:
     from apps.engine import parse
@@ -875,7 +885,10 @@ def integrate(master_id: int) -> dict:
     m = Master.objects.select_related("dataset").get(pk=master_id)
     if m.state == MasterState.CANCELLED:
         return {"result": "cancelled"}
-    Master.objects.filter(pk=m.pk).update(state=MasterState.RUNNING, started_at=timezone.now(), error=None)
+    _wait_for_moves(m)
+    Master.objects.filter(pk=m.pk).update(
+        state=MasterState.RUNNING, started_at=timezone.now(), error=None, state_reason=""
+    )
     work, ck = _open_work(m)
     keep = False
     try:

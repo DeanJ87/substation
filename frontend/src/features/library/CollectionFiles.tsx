@@ -4,7 +4,7 @@
 // the queue and shows its progress here and in Activity, and can be cancelled.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { api, unwrap } from '../../api/client'
+import { api, ApiError, unwrap } from '../../api/client'
 import type { components } from '../../api/schema'
 import { Help } from '../../components/Help'
 import { Button, Meter } from '../../components/ui'
@@ -187,6 +187,10 @@ export function Confirm({
       )
       onClose()
     },
+    onError: (e) => {
+      // a build that started meanwhile: the refusal shows here, from a fresh preview (013, 2026-10-24)
+      if (e instanceof ApiError && e.status === 409) void preview.refetch()
+    },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['collection-files', id] })
       void qc.invalidateQueries({ queryKey: ['library'] })
@@ -194,6 +198,8 @@ export function Confirm({
     meta: { failed: "Couldn't start the move" },
   })
   const p = preview.data
+  // its builds and its moves take turns: a stack, stitch or post-processing reading these files refuses it
+  const refused = p?.refused ?? null
   return (
     <div className={c.confirm} role="group" aria-label={`${VERB[direction].label} ${name}`}>
       {preview.isError && (
@@ -225,11 +231,17 @@ export function Confirm({
           </p>
         </>
       )}
+      {refused && (
+        <p className={c.reason} role="alert" id={`move-refused-${id}`}>
+          {refused}
+        </p>
+      )}
       <div className={c.filesActions}>
         <Button
           size="sm"
           variant="primary"
-          disabled={!p || !p.files || start.isPending}
+          disabled={!p || !p.files || !!refused || start.isPending}
+          aria-describedby={refused ? `move-refused-${id}` : undefined}
           onClick={() => start.mutate()}
         >
           {p ? `${VERB[direction].label} ${count(p.files, 'file')}` : VERB[direction].label}
