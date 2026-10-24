@@ -67,11 +67,16 @@ def test_the_combined_post_api(admin_client, standard_client, tmp_path):
     cm = _combined(tmp_path)
     assert admin_client.get(f"/api/v1/combined/{cm.pk}/post").json()["runs"] == []
     # starting a run is for admins
-    assert standard_client.post(f"/api/v1/combined/{cm.pk}/post").status_code == 403
-    r = admin_client.post(f"/api/v1/combined/{cm.pk}/post")
+    assert (
+        standard_client.post(f"/api/v1/combined/{cm.pk}/post", content_type="application/json").status_code
+        == 403
+    )
+    r = admin_client.post(f"/api/v1/combined/{cm.pk}/post", content_type="application/json")
     assert r.status_code == 200 and r.json()["queued"]
     assert Task.objects.filter(name__endswith="postprocess_combined", args__0=cm.pk).count() == 1
-    admin_client.post(f"/api/v1/combined/{cm.pk}/post")  # asking twice queues it once
+    admin_client.post(
+        f"/api/v1/combined/{cm.pk}/post", content_type="application/json"
+    )  # asking twice queues it once
     assert Task.objects.filter(name__endswith="postprocess_combined", args__0=cm.pk).count() == 1
     postprocess.postprocess_combined.call(cm.pk)
     out = admin_client.get(f"/api/v1/combined/{cm.pk}/post").json()
@@ -85,7 +90,10 @@ def test_the_combined_post_api(admin_client, standard_client, tmp_path):
 def test_a_deleted_combined_master_cant_be_post_processed(admin_client, tmp_path):
     cm = _combined(tmp_path)
     CombinedMaster.objects.filter(pk=cm.pk).update(state="deleted", output_path="")
-    assert admin_client.post(f"/api/v1/combined/{cm.pk}/post").status_code == 409
+    assert (
+        admin_client.post(f"/api/v1/combined/{cm.pk}/post", content_type="application/json").status_code
+        == 409
+    )
 
 
 @pytest.mark.parametrize("on", [True, False])

@@ -646,7 +646,7 @@ export interface paths {
         put?: never;
         /**
          * Start Combined
-         * @description Stitch mosaic or Stack together, for every filter of the project (004-DR-32).
+         * @description Stitch mosaic or Stack together, for the chosen filters of the project (004-DR-32, -34).
          */
         post: operations["apps_processing_api_masters_start_combined"];
         delete?: never;
@@ -966,8 +966,8 @@ export interface paths {
         put?: never;
         /**
          * Start Combined Post
-         * @description Post-process this stitched or stacked master (again), from its untouched file, with the current settings.
-         *     Admins only: a run on a big canvas takes a helper a long time.
+         * @description Post-process this stitched or stacked master (again), from its untouched file, with the current settings or
+         *     the steps chosen for this run (010-DR-29). Admins only: a run on a big canvas takes a helper a long time.
          */
         post: operations["apps_processing_api_masters_start_combined_post"];
         delete?: never;
@@ -3047,7 +3047,8 @@ export interface paths {
         put?: never;
         /**
          * Start Master Post
-         * @description Spec 010 US3: post-process this master again, from the untouched master, with the current settings.
+         * @description Spec 010 US3: post-process this master again, from the untouched master, with the current settings, or
+         *     with the steps chosen for this run (010-DR-29).
          */
         post: operations["apps_processing_api_masters_start_master_post"];
         delete?: never;
@@ -4151,6 +4152,11 @@ export interface components {
             id: number;
             /** Label */
             label: string;
+        };
+        /** CombineIn */
+        CombineIn: {
+            /** Filters */
+            filters?: string[] | null;
         };
         /** CombinedInput */
         CombinedInput: {
@@ -5882,6 +5888,11 @@ export interface components {
             /** Subs */
             subs: number;
         };
+        /** PostIn */
+        PostIn: {
+            /** Steps */
+            steps?: string[] | null;
+        };
         /** PostOut */
         PostOut: {
             /** Enabled */
@@ -5902,11 +5913,23 @@ export interface components {
             queued: boolean;
             /** Runs */
             runs: components["schemas"]["PostRunOut"][];
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["PostStepChoice"][];
         };
         /** PostRunOut */
         PostRunOut: {
+            /** Chosen */
+            chosen?: string[] | null;
             /** Finished At */
             finished_at: string;
+            /**
+             * Helper
+             * @default
+             */
+            helper: string;
             /**
              * Original Stats
              * @default {}
@@ -5971,6 +5994,27 @@ export interface components {
              * @default
              */
             tool_label: string;
+        };
+        /**
+         * PostStepChoice
+         * @description A step a run can be asked for (010-DR-29): on by default when Settings has it on.
+         */
+        PostStepChoice: {
+            /** Available */
+            available: boolean;
+            /** Label */
+            label: string;
+            /** On */
+            on: boolean;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Step */
+            step: string;
+            /** Tool */
+            tool: string;
         };
         /** PostToolsOut */
         PostToolsOut: {
@@ -7393,6 +7437,8 @@ export interface components {
             reference?: ("best_fwhm" | "most_stars") | null;
             /** Rejection */
             rejection?: ("winsorized" | "sigma" | "linear") | null;
+            /** Resolution */
+            resolution?: ("normal" | "drizzle2" | "bin2") | null;
             /** Weighting */
             weighting?: ("grade" | "snr" | "equal") | null;
         };
@@ -7434,6 +7480,11 @@ export interface components {
             report: {
                 [key: string]: unknown;
             };
+            /**
+             * Resolution
+             * @default normal
+             */
+            resolution: string;
             /** Rule */
             rule: string;
             /** Rule Text */
@@ -8769,7 +8820,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CombineIn"] | null;
+            };
+        };
         responses: {
             /** @description Created */
             201: {
@@ -9234,7 +9289,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PostIn"] | null;
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -12289,7 +12348,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PostIn"] | null;
+            };
+        };
         responses: {
             /** @description OK */
             200: {

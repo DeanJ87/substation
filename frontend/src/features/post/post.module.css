@@ -1,0 +1,58 @@
+/* the steps of one post-processing run (010-DR-29) */
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dialog p {
+  margin: 0;
+}
+.title {
+  margin: 0;
+  font-size: 18px;
+}
+.steps {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--sst-radius-sm);
+  cursor: pointer;
+}
+.step:hover {
+  background: var(--sst-panel-2);
+}
+.step[data-off] {
+  cursor: default;
+  opacity: 0.6;
+}
+.step input {
+  accent-color: var(--sst-accent);
+  width: 15px;
+  height: 15px;
+  margin: 2px 0 0;
+}
+.stepText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 14px;
+}
+.stepText > span {
+  font-size: 12px;
+}

@@ -417,18 +417,108 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 12px;
 }
 .postStages li {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
 }
-.postStages li > button {
-  /* a pill, not the picture-sized button a Zoomable usually is */
-  align-self: flex-start;
-  width: auto;
-  height: auto;
+/* a stage's thumbnail: the picture-sized button a Zoomable is, at the master card's 3:2 */
+.postThumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 2;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--sst-radius-sm);
+  background: var(--sst-bg);
+  color: var(--sst-muted);
+  font-size: 12px;
+}
+.postThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.postText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Stitch mosaic or Stack together for chosen filters (004-DR-34) */
+.combineFilters {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.combineLegend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.combineFilter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--sst-line);
+  border-radius: var(--sst-radius-sm);
+}
+.combineFilter[data-off] .combineInputs {
+  opacity: 0.5;
+}
+.combineHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.combineHead input {
+  accent-color: var(--sst-accent);
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+.combineInputs {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 23px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.combineInputs li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.postFiles ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.postFiles li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.postFiles summary {
+  cursor: pointer;
+  font-size: 12px;
 }

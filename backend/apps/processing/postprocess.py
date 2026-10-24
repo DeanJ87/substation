@@ -32,6 +32,64 @@ STEP_NAMES = {
 }
 
 
+STEP_TOOLS = {
+    "background": "GraXpert",
+    "deconvolve": "BlurXTerminator",
+    "denoise": "NoiseXTerminator",
+    "starless": "StarXTerminator",
+}
+
+
+def step_choices(cfg: dict, tools: dict | None) -> list[dict]:
+    """The steps a run can be asked for (010-DR-29), each on by default when Settings → Processing has it on, and
+    available when the finisher last said its tool is ready (all of them while it hasn't reported yet)."""
+    tools = tools or {}
+    known = bool(tools.get("checked_at"))
+
+    def ready(name: str) -> bool:
+        return bool((tools.get(name) or {}).get("ready")) if known else True
+
+    out = []
+    for st in cfg.get("steps", []):
+        name = st.get("step", "")
+        if name not in STEP_TOOLS:
+            continue
+        if name == "background":
+            ok, why = ready("graxpert"), (tools.get("graxpert") or {}).get("reason", "")
+        elif name == "denoise":
+            ok = ready("rc_astro") or ready("graxpert")
+            why = (tools.get("graxpert") or {}).get("reason", "")
+        else:
+            ok, why = ready("rc_astro"), (tools.get("rc_astro") or {}).get("reason", "")
+        tool = STEP_TOOLS[name]
+        if name == "denoise" and known and not ready("rc_astro") and ready("graxpert"):
+            tool = "GraXpert denoise"
+        out.append(
+            {
+                "step": name,
+                "label": STEP_NAMES.get(name, name),
+                "tool": tool,
+                "on": bool(st.get("enabled")),
+                "available": ok,
+                "reason": "" if ok else why,
+            }
+        )
+    return out
+
+
+def chosen_overrides(cfg: dict, steps: list[str]) -> dict:
+    """Overrides that run exactly `steps`, each with Settings' own parameters (010-DR-29); the choice is kept with
+    the run."""
+    names = [s.get("step") for s in cfg.get("steps", [])]
+    unknown = [x for x in steps if x not in names]
+    if unknown:
+        raise ValueError(f"Unknown post-processing step: {', '.join(unknown)}.")
+    return {
+        "steps": [s | {"enabled": s.get("step") in steps} for s in cfg.get("steps", [])],
+        "chosen_steps": [n for n in names if n in steps],
+    }
+
+
 def _exe(configured: str, *names: str) -> str | None:
     """A configured path is used as given (never swapped for another install); otherwise the first name found."""
     if configured:
@@ -505,12 +563,15 @@ def size_problem(src: Path, out_dir: Path, cfg: dict) -> str:
 def failed_run(reason: str, cfg: dict) -> dict:
     """A run that couldn't start, recorded so the master says why instead of the job crashing."""
     now = timezone.now().isoformat()
-    return {
+    run = {
         "started_at": now,
         "finished_at": now,
         "stages": [{"step": "preflight", "label": "Before starting", "state": "failed", "reason": reason}],
         "settings": cfg,
     }
+    if cfg.get("chosen_steps") is not None:
+        run["chosen"] = cfg["chosen_steps"]
+    return run
 
 
 def postprocess(obj, overrides: dict | None = None) -> dict:  # noqa: ANN001
@@ -539,6 +600,8 @@ def postprocess(obj, overrides: dict | None = None) -> dict:  # noqa: ANN001
         "settings": cfg,
         **run_stats,
     }
+    if cfg.get("chosen_steps") is not None:
+        run["chosen"] = cfg["chosen_steps"]  # the steps asked for on this run (010-DR-29)
     run_no = record_run(obj, run)
     emit_updated(obj)
     done = sum(1 for s in stages if s.get("state") == "done")

@@ -449,3 +449,24 @@ palette images are still out of scope.
   in Settings → Processing); about three 32-bit copies of the image wouldn't fit in the memory free to the worker
   (its container limit when it has one); or the stages (one 32-bit copy each, plus the trimmed copy) wouldn't fit
   on the disk beside the master. Nothing crashes and no tool starts.
+
+## Amendment 2026-10-24 (2): finished runs on a combined master's card; steps chosen per run
+
+- **010-DR-28**: A combined master's finished post-processing always shows on its card. The Masters tab lists,
+  per filter, the current combined master and, beside it, a newer try that is still queued, running or failed; a
+  newer failed or deleted try no longer takes the current master's place (it used to hide the current master and
+  its runs). The card shows a thumbnail per finished stage that opens the 100% view on that version, with tabs
+  for the others; a stage with a 100% view but no preview shows a "View at 100%" tile instead of nothing. The
+  stage files sit under "Files of each step". The run line names the helper that ran it. A run recorded by an
+  older helper or version with a missing or null field is still listed. Pages refresh their runs when a run
+  finishes (the `master.updated` event), not only while one is queued.
+- **010-DR-29**: **Run post-processing** and **Run again** (a combined master's card, admins) and **Post-process
+  this master / again** (a dataset master's card) open a dialog listing the steps (background extraction,
+  deconvolution, noise reduction, starless) as on/off choices, starting from the selection in Settings →
+  Processing. A step whose tool the finisher last reported as not ready is shown off and disabled with the reason
+  (all are offered until the finisher has reported). The run takes exactly the chosen steps, each with its
+  parameters from Settings; parameters are not chosen per run. The choice is recorded on the run (`chosen`) and
+  shown on the card ("Steps chosen for this run: …"); the run's recorded settings are the ones it ran with, on the
+  NAS or on a helper. Automatic runs (after stacking or combining) keep Settings' selection. API:
+  `POST /stacks/{id}/post` and `POST /combined/{id}/post` take an optional body `{steps: [...]}` (an unknown step
+  is refused with 422); `PostOut.steps` lists the choices; `PostRunOut.chosen` and `.helper` are added.

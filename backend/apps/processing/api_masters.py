@@ -26,6 +26,8 @@ class StackOptions(Schema):
     rejection: Literal["winsorized", "sigma", "linear"] | None = None
     weighting: Literal["grade", "snr", "equal"] | None = None
     reference: Literal["best_fwhm", "most_stars"] | None = None
+    # 004-DR-35: Drizzle ×2 (twice the width and height) or Bin 2×2 (half), else the subs' own resolution
+    resolution: Literal["normal", "drizzle2", "bin2"] | None = None
 
 
 class StackIn(Schema):
@@ -74,6 +76,7 @@ class StackOut(Schema):
     finished_at: datetime | None
     engine_version: str
     method: str
+    resolution: str = "normal"  # normal, drizzle2 or bin2 (004-DR-35)
 
 
 def stack_out(m: Master) -> StackOut:
@@ -104,6 +107,7 @@ def stack_out(m: Master) -> StackOut:
         finished_at=m.finished_at,
         engine_version=m.engine_version,
         method=method(m),
+        resolution=svc.resolution_of(m),
     )
 
 
@@ -118,7 +122,8 @@ def method(m: Master) -> str:
     rej = {"winsorized": "winsorised", "sigma": "sigma clipping", "linear": "linear fit clipping"}.get(
         o.get("rejection", "winsorized"), "winsorised"
     )
-    return f"{rej} σ {sigma} · {weights}"
+    res = svc.RESOLUTIONS.get(svc.resolution_of(m), "")
+    return f"{rej} σ {sigma} · {weights}" + (f" · {res}" if res else "")
 
 
 @router.get("/datasets/{id}/stacks", response=list[StackOut])
@@ -546,20 +551,18 @@ def combined_masters(
     the masters made so far (latest per filter)."""
     from apps.catalogue.models import Collection
 
-    from .combine import plan
-    from .models import CombinedMaster
+    from .combine import plan, shown_combined
 
     col = get_object_or_404(Collection, pk=id)
-    latest: dict[str, CombinedMaster] = {}
-    from .combine import in_project
+    return CombinedPlanOut(
+        **plan(col, project, method), combined=[_combined_out(c) for c in shown_combined(col, project)]
+    )
 
-    for c in (
-        CombinedMaster.objects.filter(collection=col, **in_project(project))
-        .exclude(state=MasterState.SUPERSEDED)
-        .order_by("version")
-    ):
-        latest[c.filter_norm] = c
-    return CombinedPlanOut(**plan(col, project, method), combined=[_combined_out(c) for c in latest.values()])
+
+class CombineIn(Schema):
+    # 004-DR-34: only these filters are stitched or stacked (all of the plan's when empty); a mosaic's canvas still
+    # covers every panel of every filter, so a filter made later lines up pixel for pixel
+    filters: list[str] | None = None
 
 
 @router.post("/collections/{id}/combined", response={201: list[CombinedOut]})
@@ -568,15 +571,16 @@ def start_combined(
     id: int,  # noqa: A002
     project: int | None = None,
     method: Literal["stitch", "stack"] | None = None,
+    body: CombineIn | None = None,
 ):
-    """Stitch mosaic or Stack together, for every filter of the project (004-DR-32)."""
+    """Stitch mosaic or Stack together, for the chosen filters of the project (004-DR-32, -34)."""
     from apps.catalogue.models import Collection
 
     from .combine import start
 
     col = get_object_or_404(Collection, pk=id)
     try:
-        rows = start(col, project, method)
+        rows = start(col, project, method, body.filters if body else None)
     except ValueError as e:
         raise ApiError(422, "cannot_combine", str(e)) from None
     return Status(201, [_combined_out(c) for c in rows])
@@ -809,12 +813,32 @@ class PostRunOut(Schema):
     finished_at: str
     stages: list[PostStageOut]
     original_stats: dict = {}
+    chosen: list[str] | None = None  # the steps asked for on this run; None: Settings' selection (010-DR-29)
+    helper: str = ""  # the helper that ran it, when one did
+
+
+class PostStepChoice(Schema):
+    """A step a run can be asked for (010-DR-29): on by default when Settings has it on."""
+
+    step: str
+    label: str
+    tool: str
+    on: bool
+    available: bool
+    reason: str = ""
+
+
+class PostIn(Schema):
+    steps: list[str] | None = (
+        None  # exactly these steps, with Settings' parameters; None: Settings' selection
+    )
 
 
 class PostOut(Schema):
     enabled: bool
     queued: bool
     runs: list[PostRunOut]
+    steps: list[PostStepChoice] = []
     helper_online: bool = False  # a helper asked for work in the last two minutes
     helper_host: str = ""
     helper_seen_at: str | None = None
@@ -844,17 +868,18 @@ def _post_out(m) -> PostOut:  # noqa: ANN001 — a Master or a CombinedMaster
         if combined
         else "apps.processing.postprocess.postprocess_master"
     )
-    runs = []
+    runs: list[PostRunOut] = []
     for r in (m.report or {}).get("post_runs", []):
+        # a run recorded by an older helper or version may lack a field or carry a null: never fail the whole list
         stages = [
             PostStageOut(
-                step=s["step"],
-                label=s.get("label", s["step"]),
-                state=s.get("state", ""),
-                reason=s.get("reason", ""),
-                tool=s.get("tool", ""),
+                step=s.get("step") or "",
+                label=s.get("label") or s.get("step") or "",
+                state=s.get("state") or "",
+                reason=s.get("reason") or "",
+                tool=s.get("tool") or "",
                 seconds=s.get("seconds"),
-                params=s.get("params", {}),
+                params=s.get("params") or {},
                 preview=f"{base}/{r['run']}/{i}/preview" if s.get("preview") else None,
                 full=f"{base}/{r['run']}/{i}/full" if s.get("full") else None,
                 tool_label=_tool_label(s),
@@ -868,11 +893,13 @@ def _post_out(m) -> PostOut:  # noqa: ANN001 — a Master or a CombinedMaster
         ]
         runs.append(
             PostRunOut(
-                run=r["run"],
-                started_at=r["started_at"],
-                finished_at=r["finished_at"],
+                run=r.get("run") or len(runs) + 1,
+                started_at=r.get("started_at") or "",
+                finished_at=r.get("finished_at") or r.get("started_at") or "",
                 stages=stages,
                 original_stats=r.get("original_stats") or {},
+                chosen=r.get("chosen"),
+                helper=r.get("helper") or "",
             )
         )
     from datetime import datetime, timedelta
@@ -885,10 +912,14 @@ def _post_out(m) -> PostOut:  # noqa: ANN001 — a Master or a CombinedMaster
         Task.objects.filter(dedupe_key=key, status__in=["ready", "running"]).exists()
         or Task.objects.filter(name=task_name, args__0=m.pk, status__in=["ready", "running"]).exists()
     )
+    from .postprocess import step_choices
+
+    ps = processing_settings()
     return PostOut(
-        enabled=bool(processing_settings()["post"].get("enabled")),
+        enabled=bool(ps["post"].get("enabled")),
         queued=queued,
         runs=list(reversed(runs)),
+        steps=[PostStepChoice(**c) for c in step_choices(ps["post"], ps.get("post_tools"))],
         helper_online=online,
         helper_host=seen.get("host", ""),
         helper_seen_at=at,
@@ -901,15 +932,29 @@ def master_post(request, id: int):  # noqa: A002
     return _post_out(get_object_or_404(Master, pk=id))
 
 
+def _run_overrides(body: PostIn | None) -> tuple:
+    """The task arguments after the master's id: none for Settings' selection, else exactly the chosen steps."""
+    from .config import processing_settings
+    from .postprocess import chosen_overrides
+
+    if body is None or body.steps is None:
+        return ()
+    try:
+        return (chosen_overrides(processing_settings()["post"], body.steps),)
+    except ValueError as e:
+        raise ApiError(422, "unknown_step", str(e)) from None
+
+
 @router.post("/stacks/{id}/post", response=PostOut)
-def start_master_post(request, id: int):  # noqa: A002
-    """Spec 010 US3: post-process this master again, from the untouched master, with the current settings."""
+def start_master_post(request, id: int, body: PostIn | None = None):  # noqa: A002
+    """Spec 010 US3: post-process this master again, from the untouched master, with the current settings, or
+    with the steps chosen for this run (010-DR-29)."""
     from .postprocess import postprocess_master
 
     m = get_object_or_404(Master, pk=id)
     if not m.output_path:
         raise ApiError(409, "no_file", "This master has no file to process.")
-    enqueue(postprocess_master, m.pk, dedupe_key=f"post:{m.pk}")
+    enqueue(postprocess_master, m.pk, *_run_overrides(body), dedupe_key=f"post:{m.pk}")
     return _post_out(m)
 
 
@@ -987,9 +1032,9 @@ def combined_post(request, id: int):  # noqa: A002
 
 
 @router.post("/combined/{id}/post", response=PostOut)
-def start_combined_post(request, id: int):  # noqa: A002
-    """Post-process this stitched or stacked master (again), from its untouched file, with the current settings.
-    Admins only: a run on a big canvas takes a helper a long time."""
+def start_combined_post(request, id: int, body: PostIn | None = None):  # noqa: A002
+    """Post-process this stitched or stacked master (again), from its untouched file, with the current settings or
+    the steps chosen for this run (010-DR-29). Admins only: a run on a big canvas takes a helper a long time."""
     from apps.accounts.roles import is_admin
 
     from .postprocess import postprocess_combined
@@ -999,7 +1044,7 @@ def start_combined_post(request, id: int):  # noqa: A002
     cm = _combined(id)
     if not cm.output_path or cm.state != MasterState.CURRENT:
         raise ApiError(409, "no_file", "This master has no current file to process.")
-    enqueue(postprocess_combined, cm.pk, dedupe_key=f"post-combined:{cm.pk}")
+    enqueue(postprocess_combined, cm.pk, *_run_overrides(body), dedupe_key=f"post-combined:{cm.pk}")
     return _post_out(cm)
 
 

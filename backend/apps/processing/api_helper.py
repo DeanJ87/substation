@@ -263,7 +263,7 @@ def upload_stage(
 @router.post("/tasks/{task_id}/done", response={204: None})
 def job_done(request, task_id: str, host: str, body: HelperDoneIn):
     """Record the run: previews, 100% views and measurements are drawn here, as for a run on the NAS."""
-    from .config import processing_settings
+    from .config import _merge, processing_settings
     from .postprocess import emit_updated, record_run, stage_views
 
     t = _task(task_id, host)
@@ -285,14 +285,19 @@ def job_done(request, task_id: str, host: str, body: HelperDoneIn):
     run_stats: dict = {}
     stage_views(src, stages, run_stats)
     m = _target(t)
+    # the settings the helper was given: Settings → Processing with this run's own choice of steps (010-DR-29)
+    overrides = t.args[1] if len(t.args) > 1 and isinstance(t.args[1], dict) else {}
+    cfg = _merge(processing_settings()["post"], overrides)
     run = {
         "started_at": (t.started_at or timezone.now()).isoformat(),
         "finished_at": timezone.now().isoformat(),
         "stages": stages,
-        "settings": processing_settings()["post"],
+        "settings": cfg,
         "helper": host,
         **run_stats,
     }
+    if cfg.get("chosen_steps") is not None:
+        run["chosen"] = cfg["chosen_steps"]
     record_run(m, run)
     done = sum(1 for s in stages if s.get("state") == "done")
     Task.objects.filter(pk=t.pk).update(

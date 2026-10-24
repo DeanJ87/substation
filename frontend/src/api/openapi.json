@@ -1751,6 +1751,26 @@
     "title": "CollectionProjectImpact",
     "type": "object"
    },
+   "CombineIn": {
+    "properties": {
+     "filters": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filters"
+     }
+    },
+    "title": "CombineIn",
+    "type": "object"
+   },
    "CombinedInput": {
     "properties": {
      "dataset": {
@@ -7047,6 +7067,26 @@
     "title": "PendingRecalOut",
     "type": "object"
    },
+   "PostIn": {
+    "properties": {
+     "steps": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Steps"
+     }
+    },
+    "title": "PostIn",
+    "type": "object"
+   },
    "PostOut": {
     "properties": {
      "enabled": {
@@ -7084,6 +7124,14 @@
       },
       "title": "Runs",
       "type": "array"
+     },
+     "steps": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PostStepChoice"
+      },
+      "title": "Steps",
+      "type": "array"
      }
     },
     "required": [
@@ -7096,8 +7144,27 @@
    },
    "PostRunOut": {
     "properties": {
+     "chosen": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Chosen"
+     },
      "finished_at": {
       "title": "Finished At",
+      "type": "string"
+     },
+     "helper": {
+      "default": "",
+      "title": "Helper",
       "type": "string"
      },
      "original_stats": {
@@ -7228,6 +7295,45 @@
      "state"
     ],
     "title": "PostStageOut",
+    "type": "object"
+   },
+   "PostStepChoice": {
+    "description": "A step a run can be asked for (010-DR-29): on by default when Settings has it on.",
+    "properties": {
+     "available": {
+      "title": "Available",
+      "type": "boolean"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "on": {
+      "title": "On",
+      "type": "boolean"
+     },
+     "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+     },
+     "step": {
+      "title": "Step",
+      "type": "string"
+     },
+     "tool": {
+      "title": "Tool",
+      "type": "string"
+     }
+    },
+    "required": [
+     "step",
+     "label",
+     "tool",
+     "on",
+     "available"
+    ],
+    "title": "PostStepChoice",
     "type": "object"
    },
    "PostToolsOut": {
@@ -11563,6 +11669,22 @@
       ],
       "title": "Rejection"
      },
+     "resolution": {
+      "anyOf": [
+       {
+        "enum": [
+         "normal",
+         "drizzle2",
+         "bin2"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Resolution"
+     },
      "weighting": {
       "anyOf": [
        {
@@ -11676,6 +11798,11 @@
       "additionalProperties": true,
       "title": "Report",
       "type": "object"
+     },
+     "resolution": {
+      "default": "normal",
+      "title": "Resolution",
+      "type": "string"
      },
      "rule": {
       "title": "Rule",
@@ -16223,7 +16350,7 @@
     ]
    },
    "post": {
-    "description": "Stitch mosaic or Stack together, for every filter of the project (004-DR-32).",
+    "description": "Stitch mosaic or Stack together, for the chosen filters of the project (004-DR-32, -34).",
     "operationId": "apps_processing_api_masters_start_combined",
     "parameters": [
      {
@@ -16272,6 +16399,23 @@
       }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/CombineIn"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      }
+     },
+     "required": false
+    },
     "responses": {
      "201": {
       "content": {
@@ -17171,7 +17315,7 @@
     ]
    },
    "post": {
-    "description": "Post-process this stitched or stacked master (again), from its untouched file, with the current settings.\nAdmins only: a run on a big canvas takes a helper a long time.",
+    "description": "Post-process this stitched or stacked master (again), from its untouched file, with the current settings or\nthe steps chosen for this run (010-DR-29). Admins only: a run on a big canvas takes a helper a long time.",
     "operationId": "apps_processing_api_masters_start_combined_post",
     "parameters": [
      {
@@ -17184,6 +17328,23 @@
       }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/PostIn"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      }
+     },
+     "required": false
+    },
     "responses": {
      "200": {
       "content": {
@@ -24499,7 +24660,7 @@
     ]
    },
    "post": {
-    "description": "Spec 010 US3: post-process this master again, from the untouched master, with the current settings.",
+    "description": "Spec 010 US3: post-process this master again, from the untouched master, with the current settings, or\nwith the steps chosen for this run (010-DR-29).",
     "operationId": "apps_processing_api_masters_start_master_post",
     "parameters": [
      {
@@ -24512,6 +24673,23 @@
       }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/PostIn"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      }
+     },
+     "required": false
+    },
     "responses": {
      "200": {
       "content": {

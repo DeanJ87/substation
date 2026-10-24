@@ -81,3 +81,13 @@
   writes registration; `r_m_.seq` after framing max holds per-image sizes and translation-only H lines that
   `_placements` reads; all filters' canvases identical
 - [ ] Per-panel Stack together before Stitch (needs a per-panel stacked master the stitch can take) (004-DR-32)
+
+## Amendment 2026-10-24 (2)
+
+- [X] (2026-10-24) Stitch mosaic / Stack together dialog with chosen filters; only those are built; the canvas
+  is laid out from every filter's panels (004-DR-34); tests
+- [X] (2026-10-24) Resolution option: Drizzle ×2 and Bin 2×2 in the New master builder, Siril commands, budget,
+  binned copies and solutions, resume rules, card and report, one resolution per project when combining
+  (004-DR-35); tests with fake Siril command sequences and a budget refusal
+- [ ] Check 004-DR-35 on real Siril 1.4.2: `-drizzle -scale=2` doubles the registered subs and the stack; a
+  debayered colour sequence drizzles without complaint; a mosaic-shaped set drizzled with `-framing=max`

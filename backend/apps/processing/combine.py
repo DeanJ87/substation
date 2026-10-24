@@ -32,6 +32,36 @@ def in_project(project_id: int | None) -> dict:
     return {"project_id": project_id} if project_id else {"project__isnull": True}
 
 
+def shown_combined(col: Collection, project_id: int | None) -> list[CombinedMaster]:
+    """The combined masters a project's Masters tab shows, per filter: the current one, and a newer one still
+    queued, running or failed beside it. A newer failed or deleted try never hides the current master (and its
+    post-processing) any more (010-DR-28)."""
+    rows = list(
+        CombinedMaster.objects.filter(collection=col, **in_project(project_id))
+        .exclude(state__in=[MasterState.SUPERSEDED, MasterState.DELETED])
+        .order_by("version")
+    )
+    out: list[CombinedMaster] = []
+    for filt in dict.fromkeys(c.filter_norm for c in rows):
+        mine = [c for c in rows if c.filter_norm == filt]
+        current = next((c for c in reversed(mine) if c.state == MasterState.CURRENT), None)
+        newest = mine[-1]
+        if newest is not current:
+            out.append(newest)
+        if current is not None:
+            out.append(current)
+    return out
+
+
+RESOLUTION_LABEL = {"normal": "normal resolution", "drizzle2": "drizzled ×2", "bin2": "binned 2×2"}
+
+
+def resolution(m: Master) -> str:
+    """How a dataset master was sampled (004-DR-35): normal, drizzle2 or bin2."""
+    r = ((m.recipe or {}).get("options") or {}).get("resolution") or "normal"
+    return r if r in RESOLUTION_LABEL else "normal"
+
+
 def current_masters(col: Collection, project_id: int | None = None) -> list[Master]:
     # a stale master (newer subs since) is still a good image: use it until it's re-stacked
     qs = Master.objects.filter(
@@ -83,6 +113,12 @@ def plan(col: Collection, project_id: int | None = None, method: str | None = No
         sc = _scale(m)
         if rs and sc and abs(sc / rs - 1) > 0.10:
             left_out.append(f"{label(m.dataset)} ({sc:.2f}″/px, not {rs:.2f}″/px)")
+        elif resolution(m) != resolution(ref):
+            # 004-DR-35: one resolution per project, so every panel and filter lands on the same pixel grid
+            left_out.append(
+                f"{label(m.dataset)} ({RESOLUTION_LABEL[resolution(m)]}, not {RESOLUTION_LABEL[resolution(ref)]}"
+                "; stack it again the same way)"
+            )
         elif method == STACK and m.dataset.panel != ref.dataset.panel:
             left_out.append(
                 f"{label(m.dataset)} (panel {m.dataset.panel or 'none'}, not {ref.dataset.panel or 'none'})"
@@ -119,7 +155,13 @@ def plan(col: Collection, project_id: int | None = None, method: str | None = No
     }
 
 
-def start(col: Collection, project_id: int | None = None, method: str | None = None) -> list[CombinedMaster]:
+def start(
+    col: Collection,
+    project_id: int | None = None,
+    method: str | None = None,
+    filters: list[str] | None = None,
+) -> list[CombinedMaster]:
+    """Stitch or stack the chosen filters (all of them when `filters` is empty, 004-DR-34)."""
     from apps.catalogue.models import Project
 
     # owner 2026-10-10: within a project, never across rigs or panels
@@ -128,9 +170,15 @@ def start(col: Collection, project_id: int | None = None, method: str | None = N
     p = plan(col, project_id, method)
     if p["reference"] is None:
         raise ValueError("No current masters yet. Stack each dataset first.")
+    chosen = {f: i for f, i in p["filters"].items() if not filters or f in filters}
+    if not chosen:
+        raise ValueError(f"None of {', '.join(filters or [])} has masters to use here.")
+    # a mosaic's canvas is laid out from every panel of every filter, chosen or not, so a filter stitched later
+    # lands on the same canvas, pixel for pixel
+    canvas = [i["master"] for inputs in p["filters"].values() for i in inputs]
     out = []
     with transaction.atomic():
-        for filt, inputs in p["filters"].items():
+        for filt, inputs in chosen.items():
             version = (
                 CombinedMaster.objects.filter(collection=col, filter_norm=filt, **in_project(project_id))
                 .order_by("-version")
@@ -150,8 +198,10 @@ def start(col: Collection, project_id: int | None = None, method: str | None = N
                     integration_s=sum(i["integration_s"] or 0 for i in inputs),
                 )
             )
-    task = stitch_mosaic if p["method"] == STITCH else stack_together
-    job = enqueue(task, col.pk, [c.pk for c in out], priority=PRIORITY_BULK + 5)
+    if p["method"] == STITCH:
+        job = enqueue(stitch_mosaic, col.pk, [c.pk for c in out], canvas, priority=PRIORITY_BULK + 5)
+    else:
+        job = enqueue(stack_together, col.pk, [c.pk for c in out], priority=PRIORITY_BULK + 5)
     CombinedMaster.objects.filter(pk__in=[c.pk for c in out]).update(task_id=job.id)
     return out
 
@@ -329,12 +379,17 @@ def _touching(rects: dict[int, tuple[int, int, int, int]]) -> list[set[int]]:
 
 
 def _staged(
-    eng, groups: dict[int, list[Panel]], ref: Panel, work: Path
-) -> tuple[list[Panel], dict[Path, str]]:  # noqa: ANN001
+    eng,  # noqa: ANN001
+    groups: dict[int, list[Panel]],
+    ref: Panel,
+    work: Path,
+    extra: list[Panel] | None = None,
+) -> tuple[list[Panel], dict[Path, str]]:
     """Each panel made ready on its own (a solved copy, 004-DR-31); only the ones with a solution join the sequence
-    m_, numbered in order (the reference first, when it has one). Returns the sequence and, per file, why not."""
+    m_, numbered in order (the reference first, when it has one), then the canvas-only panels (`extra`: other
+    filters' masters, 004-DR-34). Returns the sequence and, per file, why not."""
     order: list[Panel] = []
-    for p in [ref] + [p for ps in groups.values() for p in ps]:
+    for p in [ref] + [p for ps in groups.values() for p in ps] + list(extra or []):
         if all(p.path != q.path for q in order):
             order.append(p)
     why: dict[Path, str] = {}
@@ -420,16 +475,23 @@ def _filter_mosaic(
     return target, ""
 
 
-def _mosaic_all(eng, groups: dict[int, list[Panel]], ref: Panel, work: Path) -> dict[int, Stitched]:  # noqa: ANN001
+def _mosaic_all(
+    eng,  # noqa: ANN001
+    groups: dict[int, list[Panel]],
+    ref: Panel,
+    work: Path,
+    extra: list[Panel] | None = None,
+) -> dict[int, Stitched]:
     """Every master of a mosaic project, all filters and panels, laid out on one canvas by its plate solution
     (004-DR-31): star matching against one reference panel can't place an outer panel that shares no stars with it.
     Each panel's copy carries its master's stored solution (solved here only when it has none), seqplatesolve turns
     the solutions into registration, and framing max lays out the canvas that covers every panel. Each filter's
     panels are then stacked (brightness matched on the overlaps, feathered edges) and placed on that one canvas, so
     all filters come out the same size, pixel for pixel (HOO and SHO across the whole mosaic). `groups` maps a
-    combined master to its panels."""
+    combined master to its panels; `extra` are panels that only shape the canvas (filters not being stitched now,
+    004-DR-34), so stitching Hα alone gives the canvas a later OIII lands on."""
     work.mkdir(parents=True)
-    seq, why = _staged(eng, groups, ref, work)
+    seq, why = _staged(eng, groups, ref, work, extra)
     out = {
         k: Stitched(left_out={p.master: why[p.path] for p in ps if why.get(p.path)})
         for k, ps in groups.items()
@@ -475,8 +537,14 @@ def _factor(m: Master, ref: Master) -> float:
     return float(a["scale"]) / float(b["scale"])
 
 
-def _stitch(eng, rows: list[CombinedMaster], work: Path) -> dict[int, Stitched]:  # noqa: ANN001
-    """Each filter of a mosaic project placed on the one canvas, from its masters' files and stored solves."""
+def _stitch(
+    eng,  # noqa: ANN001
+    rows: list[CombinedMaster],
+    work: Path,
+    canvas: list[int] | None = None,
+) -> dict[int, Stitched]:
+    """Each chosen filter of a mosaic project placed on the one canvas, from its masters' files and stored solves;
+    `canvas` are every master the canvas is drawn from (all filters', 004-DR-34)."""
     from apps.catalogue.api_library import label
 
     def panel(m: Master) -> Panel:
@@ -494,14 +562,23 @@ def _stitch(eng, rows: list[CombinedMaster], work: Path) -> dict[int, Stitched]:
         ]
         for cm in rows
     }
+    used = {p.master for ps in groups.values() for p in ps}
+    extra = [
+        panel(m)
+        for m in Master.objects.filter(pk__in=[k for k in canvas or [] if k not in used])
+        .select_related("dataset", "dataset__rig")
+        .order_by("pk")
+        if m.output_path and Path(m.output_path).exists()
+    ]
     report_progress(0.0, f"Placing {sum(len(v) for v in groups.values())} masters on the mosaic")
-    return _mosaic_all(eng, groups, panel(ref), work)
+    return _mosaic_all(eng, groups, panel(ref), work, extra)
 
 
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
-def stitch_mosaic(collection_id: int, combined_ids: list[int]) -> dict:
-    """Stitch mosaic (004-DR-32): each filter's panels placed on one canvas by their plate solutions."""
-    return _combine(collection_id, combined_ids)
+def stitch_mosaic(collection_id: int, combined_ids: list[int], canvas: list[int] | None = None) -> dict:
+    """Stitch mosaic (004-DR-32): each chosen filter's panels placed on one canvas by their plate solutions; the
+    canvas is drawn from `canvas` (every filter's masters, 004-DR-34)."""
+    return _combine(collection_id, combined_ids, canvas)
 
 
 @station_task(queue_name="stack", slot="siril_heavy", max_attempts=1)
@@ -516,7 +593,7 @@ def combine(collection_id: int, combined_ids: list[int]) -> dict:
     return _combine(collection_id, combined_ids)
 
 
-def _combine(collection_id: int, combined_ids: list[int]) -> dict:
+def _combine(collection_id: int, combined_ids: list[int], canvas: list[int] | None = None) -> dict:
     from apps.engine.siril import engine
 
     rows = list(CombinedMaster.objects.filter(pk__in=combined_ids).select_related("reference", "project"))
@@ -540,7 +617,7 @@ def _combine(collection_id: int, combined_ids: list[int]) -> dict:
     try:
         mosaics: dict[int, Stitched] = {}
         if stitch:
-            mosaics = _stitch(eng, rows, root / "mosaic")
+            mosaics = _stitch(eng, rows, root / "mosaic", canvas)
         for n, cm in enumerate(rows):
             what = (
                 f"Stitching the {cm.filter_norm} mosaic"

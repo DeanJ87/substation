@@ -59,6 +59,7 @@ import tb from './tables.module.css'
 import { usePlaceName } from '../map/place'
 import { ProjectCards } from './ProjectCards'
 import { CombinedPost, CombinedThumb } from './CombinedPost'
+import { CombineDialog } from './CombineDialog'
 import { inNights, omit, readScope, scopeQuery } from '../scope/scope'
 import { ChooseBox, useChosen } from '../../components/BulkBar'
 import { DatasetBulkBar } from './DatasetBulkBar'
@@ -759,11 +760,14 @@ function Combined({
       query.state.data?.combined.some((x) => x.state === 'queued' || x.state === 'running') ? 3000 : false,
   })
   const method: Method = q.data?.method === 'stitch' ? 'stitch' : 'stack'
+  const [choosing, setChoosing] = useState(false)
   const start = useMutation({
-    mutationFn: async () =>
+    // only the chosen filters (004-DR-34); a mosaic's canvas still covers every filter's panels
+    mutationFn: async (filters: string[]) =>
       unwrap(
         await api.POST('/collections/{id}/combined', {
           params: { path: { id }, query: { ...(project ? { project } : {}), method } },
+          body: { filters },
         }),
       ),
     scope: { id: `combined-${id}-${project}` },
@@ -772,26 +776,29 @@ function Combined({
         method === 'stitch' ? "Couldn't start stitching the mosaic" : "Couldn't start stacking together",
     },
     // a waiting version per filter at once, so the button flips to Stitching… or Stacking… and the cards show Waiting
-    ...optimistic(qc, () => [
+    ...optimistic(qc, (filters: string[]) => [
       [
         key,
         (o) => {
           const p = o as CombinedPlan | undefined
           if (!p) return o
-          const queued = Object.entries(p.filters).map(([filter, inputs], i) => ({
-            id: -1 - i,
-            filter,
-            inputs,
-            method,
-            version: Math.max(0, ...p.combined.filter((x) => x.filter === filter).map((x) => x.version)) + 1,
-            state: 'queued',
-            state_reason: '',
-            stale: '',
-            error: null,
-            finished_at: null,
-            has_preview: false,
-            integration_s: inputs.reduce((n, x) => n + (x.integration_s ?? 0), 0),
-          }))
+          const queued = Object.entries(p.filters)
+            .filter(([filter]) => filters.includes(filter))
+            .map(([filter, inputs], i) => ({
+              id: -1 - i,
+              filter,
+              inputs,
+              method,
+              version:
+                Math.max(0, ...p.combined.filter((x) => x.filter === filter).map((x) => x.version)) + 1,
+              state: 'queued',
+              state_reason: '',
+              stale: '',
+              error: null,
+              finished_at: null,
+              has_preview: false,
+              integration_s: inputs.reduce((n, x) => n + (x.integration_s ?? 0), 0),
+            }))
           return { ...p, combined: [...queued, ...p.combined] }
         },
       ],
@@ -813,10 +820,10 @@ function Combined({
           <Button
             size="sm"
             disabled={!d.reference || busy || start.isPending}
-            onClick={() => start.mutate()}
-            title={d.reference ? undefined : 'Stack each dataset first'}
+            onClick={() => setChoosing(true)}
+            title={d.reference ? 'Choose the filters, then start' : 'Stack each dataset first'}
           >
-            {busy ? METHOD[method].doing : METHOD[method].label}
+            {busy ? METHOD[method].doing : `${METHOD[method].label}…`}
           </Button>
         }
       >
@@ -859,6 +866,15 @@ function Combined({
             {n}
           </p>
         ))}
+        {choosing && (
+          <CombineDialog
+            plan={d}
+            method={method}
+            projectName={projectName}
+            onStart={(picked) => start.mutate(picked)}
+            onClose={() => setChoosing(false)}
+          />
+        )}
         {d.combined.length > 0 && (
           <div className={c.masters}>
             {d.combined.map((m) => (

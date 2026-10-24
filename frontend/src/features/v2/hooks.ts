@@ -37,6 +37,11 @@ const KEYS = [
   'calibration-sets',
   'masters',
   'calibration-set',
+  // post-processing runs and stitched or stacked masters: a run finished on a helper says so with master.updated
+  // (010-DR-28), so an open card shows it without waiting for a reload
+  'post',
+  'post-combined',
+  'combined',
 ] as const
 
 /** Batched refresh on server events, so a burst of subs is one refetch. */
@@ -192,6 +197,7 @@ export function useStartStack(id: number) {
         rejection?: 'winsorized' | 'sigma' | 'linear' | null
         weighting?: 'grade' | 'snr' | 'equal' | null
         reference?: 'best_fwhm' | 'most_stars' | null
+        resolution?: 'normal' | 'drizzle2' | 'bin2' | null
       } | null
     }) => unwrap(await api.POST('/datasets/{id}/stacks', { params: { path: { id } }, body })),
     meta: { failed: "Couldn't start the stack" },
@@ -208,6 +214,7 @@ export function useStartStack(id: number) {
           version,
           dataset_id: id,
           state: 'queued',
+          resolution: body.options?.resolution ?? 'normal',
           state_reason: '',
           file_path: '',
           step: '',

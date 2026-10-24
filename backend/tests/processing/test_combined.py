@@ -35,7 +35,7 @@ def test_plan_start_and_stale(admin_client, tmp_path):
     plan = admin_client.get(f"/api/v1/collections/{col.pk}/combined").json()
     assert plan["reference"] == ha.pk and sorted(plan["filters"]) == ["Hα", "OIII"] and plan["combined"] == []
     assert len(plan["filters"]["OIII"]) == 2
-    r = admin_client.post(f"/api/v1/collections/{col.pk}/combined")
+    r = admin_client.post(f"/api/v1/collections/{col.pk}/combined", content_type="application/json")
     assert r.status_code == 201 and {c["filter"] for c in r.json()} == {"Hα", "OIII"}
     assert Task.objects.filter(name__endswith="combine.stack_together").count() == 1
     assert plan["method"] == plan["default_method"] == "stack" and plan["methods"] == ["stack"]
@@ -57,7 +57,7 @@ def test_plan_start_and_stale(admin_client, tmp_path):
 
 def test_nothing_to_combine_says_why(admin_client):
     col = Collection.objects.create(name="Empty")
-    r = admin_client.post(f"/api/v1/collections/{col.pk}/combined")
+    r = admin_client.post(f"/api/v1/collections/{col.pk}/combined", content_type="application/json")
     assert r.status_code == 422 and "Stack each dataset first" in r.json()["message"]
 
 
@@ -120,7 +120,9 @@ def test_stitch_mosaic_is_its_own_task_and_a_stale_panel_is_used_and_named(
     Dataset.objects.filter(pk=b.dataset_id).update(panel=4)
     p = Project.objects.create(collection=col, season="2026", kind_override="mosaic")
     Dataset.objects.filter(pk__in=[a.dataset_id, b.dataset_id]).update(project=p)
-    r = admin_client.post(f"/api/v1/collections/{col.pk}/combined?project={p.pk}")
+    r = admin_client.post(
+        f"/api/v1/collections/{col.pk}/combined?project={p.pk}", content_type="application/json"
+    )
     assert r.status_code == 201 and r.json()[0]["method"] == "stitch"
     assert Task.objects.filter(name__endswith="combine.stitch_mosaic").count() == 1
     cm = CombinedMaster.objects.get()

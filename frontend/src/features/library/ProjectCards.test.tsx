@@ -398,17 +398,23 @@ describe(
         'GET /collections/1/projects': LIST,
         'GET /collections/1': () => collection('1'),
         'GET /collections/1/combined': (_b: unknown, url: URL) => plan(url),
-        'POST /collections/1/combined': (_b: unknown, url: URL) => (asked.push(`POST${url.search}`), []),
+        'POST /collections/1/combined': (b: unknown, url: URL) => (
+          asked.push(`POST${url.search} ${JSON.stringify(b)}`),
+          []
+        ),
       })
-      expect(await screen.findByRole('button', { name: 'Stitch mosaic' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Stitch mosaic…' })).toBeInTheDocument()
       expect(screen.getByRole('radio', { name: 'Stitch mosaic' })).toBeChecked()
       // a stale panel master is used as it is, and said so
       expect(screen.getByText(/Used as they are: Askar 71F · Hα · Panel 4/)).toBeInTheDocument()
       fireEvent.click(screen.getByRole('radio', { name: 'Stack together' }))
-      expect(await screen.findByRole('button', { name: 'Stack together' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Stack together…' })).toBeInTheDocument()
       expect(asked).toContain('?project=1&method=stack')
-      fireEvent.click(screen.getByRole('button', { name: 'Stack together' }))
-      await waitFor(() => expect(asked).toContain('POST?project=1&method=stack'))
+      // the filters are chosen in a dialog first (004-DR-34)
+      fireEvent.click(screen.getByRole('button', { name: 'Stack together…' }))
+      const dialog = await screen.findByRole('dialog', { name: /Stack together/ })
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Stack Hα' }))
+      await waitFor(() => expect(asked).toContain('POST?project=1&method=stack {"filters":["Hα"]}'))
       expect(api.calls.some((c) => c.method === 'POST' && c.path === '/collections/1/combined')).toBe(true)
     })
   },

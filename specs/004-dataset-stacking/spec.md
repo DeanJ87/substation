@@ -318,3 +318,33 @@ split it into, and subs far from the reference share too few stars with it.
   masters.
 - **004-DR-33 A stale master never blocks a stitch or a stack.** A dataset master with newer subs since is used as
   it is; the plan lists it and the result says so ("… Panel 4 uses an older master (new subs since)").
+
+### Amendment 2026-10-24 (2): chosen filters; drizzle or bin
+
+- **004-DR-34 Stitch mosaic and Stack together for chosen filters.** The button opens a dialog laid out like the
+  dataset's New master builder: one entry per filter of the plan, each on by default, listing the masters (or
+  panel masters) that go in with their version, integration and subs; an older master used as it is is marked.
+  Only the chosen filters get new combined masters. A mosaic's canvas is still laid out from every panel of every
+  filter in the plan, chosen or not (the others are placed but not stacked), so a filter stitched later lands on
+  the same canvas pixel for pixel. A chosen filter that isn't in the plan is refused with the reason. API:
+  `POST /collections/{id}/combined` takes an optional body `{filters: [...]}` (none: every filter, as before);
+  the stitch job carries the canvas's masters.
+- **004-DR-35 Resolution: Normal, Drizzle ×2 or Bin 2×2.** A master option (Options → Resolution, stored as
+  `recipe.options.resolution`: `normal`, `drizzle2`, `bin2`).
+  - Drizzle ×2 registers onto a grid twice as fine with Siril's drizzle: `seqapplyreg sub_ -framing=current
+    -drizzle -scale=2 -pixfrac=1.0 -kernel=square` after `register sub_ -2pass` (best-FWHM reference),
+    `register sub_ -drizzle -scale=2 -pixfrac=1.0 -kernel=square` (most-stars reference), and `seqapplyreg sub_
+    -framing=max` with the same options for a mosaic-shaped set. Colour subs are debayered when calibrated, so a
+    colour master drizzles the debayered subs (not a Bayer drizzle), and its report says so.
+  - Each registered sub is four times the size of a sub, so the work-budget check counts five sub sizes per sub
+    (the sub and its registered copy) and refuses with a plain reason when that can never fit; the free-space check
+    before registration counts four times as much.
+  - Bin 2×2 averages each 2×2 block of the calibrated subs (an odd last row or column dropped) into the stack's own
+    copies before registration; the calibration cache is never written. Binning, pixel size and the plate solution
+    in the header follow (distortion terms dropped); a stored solution written into a binned copy is scaled, and a
+    solution Siril makes for a binned copy is not stored as the sub's own.
+  - A resumed or adopted work folder is reused only when it was made at the same resolution.
+  - The master shows its resolution beside its state, at the end of its method line ("· Drizzle ×2"), in its
+    report notes and in its header (`SST-RES`); its FWHM in arcseconds uses the master's own pixel scale.
+  - Combining keeps one resolution per project: masters at another resolution than the reference's are left out
+    and listed with the reason, so every panel and filter lands on the same pixel grid.

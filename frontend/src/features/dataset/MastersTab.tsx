@@ -10,7 +10,7 @@ import { AnnotateToggle, AnnotationOverlay, useAnnotateSwitch } from '../../comp
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api, unwrap } from '../../api/client'
-import { Button, ConfirmButton, EmptyState, ErrorDetail, shortError } from '../../components/ui'
+import { Button, ConfirmButton, EmptyState, ErrorDetail, shortError, Tag } from '../../components/ui'
 import {
   clockText,
   countText,
@@ -36,6 +36,8 @@ import { Collapsible } from '../../components/Collapsible'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import { inRange, keepOffered, setRangeEnd } from '../cascade'
+import { PostRunDialog } from '../post/PostRunDialog'
+import { stepNames } from '../library/CombinedPost'
 
 type Rule = 'default' | 'accepted' | 'graded' | 'everything'
 const RULES: [Rule, string][] = [
@@ -92,6 +94,7 @@ export function MastersTab({
     rejection?: 'winsorized' | 'sigma' | 'linear'
     weighting?: 'grade' | 'snr' | 'equal'
     reference?: 'best_fwhm' | 'most_stars'
+    resolution?: 'drizzle2' | 'bin2'
   }>({})
   const preview = useQuery({
     queryKey: ['stack-preview', dataset.id, rule, nights, from, to, partners],
@@ -256,6 +259,15 @@ export function MastersTab({
                       ['most_stars', 'Most stars'],
                     ],
                   ],
+                  // 004-DR-35: drizzle onto a grid twice as fine, or average 2×2 blocks before registering
+                  [
+                    'resolution',
+                    'Resolution',
+                    [
+                      ['drizzle2', 'Drizzle ×2'],
+                      ['bin2', 'Bin 2×2'],
+                    ],
+                  ],
                 ] as const
               ).map(([key, label, choices]) => (
                 <label key={key} className={v.muted}>
@@ -265,7 +277,7 @@ export function MastersTab({
                     value={options[key] ?? ''}
                     onChange={(e) => setOptions({ ...options, [key]: e.target.value || undefined })}
                   >
-                    <option value="">Default</option>
+                    <option value="">{key === 'resolution' ? 'Normal' : 'Default'}</option>
                     {choices.map(([value, text]) => (
                       <option key={value} value={value}>
                         {text}
@@ -275,6 +287,13 @@ export function MastersTab({
                 </label>
               ))}
             </div>
+            {options.resolution && (
+              <p className={`${v.note} ${v.muted}`}>
+                {options.resolution === 'drizzle2'
+                  ? 'Twice the width and height of the subs; registering needs about four times the working space. Best with many well-dithered subs.'
+                  : 'Each 2×2 block of the calibrated subs is averaged first: half the width and height, less noise per pixel.'}
+              </p>
+            )}
           </details>
         </Collapsible>
       </section>
@@ -411,6 +430,8 @@ function Running({ m }: { m: Stack }) {
   )
 }
 
+const RESOLUTION: Record<string, string> = { drizzle2: 'Drizzle ×2', bin2: 'Bin 2×2' }
+
 const STATE_TAG: Record<string, string> = {
   current: 'Current',
   superseded: 'Superseded',
@@ -484,6 +505,12 @@ function Version({ m }: { m: Stack }) {
       <div>
         <strong>Master v{m.version}</strong>{' '}
         <span className={`${s.tag} ${stateTag}`}>{STATE_TAG[m.state] ?? m.state}</span>
+        {RESOLUTION[m.resolution ?? ''] && (
+          <>
+            {' '}
+            <Tag>{RESOLUTION[m.resolution ?? '']}</Tag>
+          </>
+        )}
         <div className={v.muted}>
           {m.sub_count} subs · {m.session_count} session{m.session_count === 1 ? '' : 's'} ·{' '}
           {m.finished_at ? `${dateTimeText(m.finished_at)} · ` : ''}
@@ -716,8 +743,11 @@ function TiltOverlay({ r }: { r: RegionalT }) {
 function PostStages({ id, version }: { id: number; version: number }) {
   const qc = useQueryClient()
   const q = usePost(id)
+  const [choosing, setChoosing] = useState(false)
   const start = useMutation({
-    mutationFn: async () => unwrap(await api.POST('/stacks/{id}/post', { params: { path: { id } } })),
+    // exactly the steps chosen for this run, with Settings' parameters (010-DR-29)
+    mutationFn: async (steps: string[]) =>
+      unwrap(await api.POST('/stacks/{id}/post', { params: { path: { id } }, body: { steps } })),
     scope: { id: `post-${id}` },
     meta: { failed: "Couldn't start post-processing" },
     onMutate: () =>
@@ -727,12 +757,22 @@ function PostStages({ id, version }: { id: number; version: number }) {
   const d = q.data
   if (!d) return null
   const run = d.runs[0]
+  const dialog = choosing && (
+    <PostRunDialog
+      name={`Master v${version}`}
+      steps={d.steps ?? []}
+      again={!!run}
+      onRun={(steps) => start.mutate(steps)}
+      onClose={() => setChoosing(false)}
+    />
+  )
   if (!run && !d.enabled && !d.queued)
     return (
       <div className={`${v.actions} ${s.postBar}`}>
-        <button type="button" className={v.pill} onClick={() => start.mutate()}>
-          Post-process this master
+        <button type="button" className={v.pill} onClick={() => setChoosing(true)}>
+          Post-process this master…
         </button>
+        {dialog}
       </div>
     )
   return (
@@ -754,12 +794,18 @@ function PostStages({ id, version }: { id: number; version: number }) {
           type="button"
           className={v.pill}
           style={{ marginLeft: 'auto' }}
-          disabled={d.queued}
-          onClick={() => start.mutate()}
+          disabled={d.queued || start.isPending}
+          onClick={() => setChoosing(true)}
         >
-          {run ? 'Post-process again' : 'Post-process this master'}
+          {run ? 'Post-process again…' : 'Post-process this master…'}
         </button>
       </div>
+      {run?.chosen && (
+        <span className={v.muted}>
+          Steps chosen for this run: {run.chosen.length ? stepNames(run) : 'none'}
+        </span>
+      )}
+      {dialog}
       {run && (
         <ol className={s.postStrip}>
           {run.stages.map((st, i) => (

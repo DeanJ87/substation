@@ -1001,6 +1001,83 @@
     "title": "ChangeOut",
     "type": "object"
    },
+   "ChangedOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "title": "ChangedOut",
+    "type": "object"
+   },
+   "CheckpointOut": {
+    "properties": {
+     "filters": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "type": "number"
+       },
+       "type": "object"
+      },
+      "title": "Filters",
+      "type": "object"
+     },
+     "image_url": {
+      "title": "Image Url",
+      "type": "string"
+     },
+     "integration_s": {
+      "title": "Integration S",
+      "type": "number"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "nights": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Nights",
+      "type": "array"
+     },
+     "order": {
+      "title": "Order",
+      "type": "integer"
+     },
+     "subs": {
+      "title": "Subs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "order",
+     "nights",
+     "label",
+     "integration_s",
+     "subs",
+     "filters",
+     "image_url"
+    ],
+    "title": "CheckpointOut",
+    "type": "object"
+   },
    "ClassificationIn": {
     "properties": {
      "frame_type": {
@@ -1162,6 +1239,27 @@
     "title": "CollectionCard",
     "type": "object"
    },
+   "CollectionDeletedOut": {
+    "properties": {
+     "change_id": {
+      "title": "Change Id",
+      "type": "integer"
+     },
+     "warnings": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "change_id",
+     "warnings"
+    ],
+    "title": "CollectionDeletedOut",
+    "type": "object"
+   },
    "CollectionFilesOut": {
     "properties": {
      "active_bytes": {
@@ -1233,6 +1331,88 @@
     "title": "CollectionFilesOut",
     "type": "object"
    },
+   "CollectionImpactOut": {
+    "properties": {
+     "blockers": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Blockers",
+      "type": "array"
+     },
+     "combined": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Combined",
+      "type": "array"
+     },
+     "datasets": {
+      "title": "Datasets",
+      "type": "integer"
+     },
+     "finished": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Finished",
+      "type": "array"
+     },
+     "libraries": {
+      "items": {
+       "$ref": "#/components/schemas/CollectionLibraryImpact"
+      },
+      "title": "Libraries",
+      "type": "array"
+     },
+     "location": {
+      "title": "Location",
+      "type": "string"
+     },
+     "move": {
+      "anyOf": [
+       {
+        "enum": [
+         "waiting",
+         "running"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Move"
+     },
+     "projects": {
+      "items": {
+       "$ref": "#/components/schemas/CollectionProjectImpact"
+      },
+      "title": "Projects",
+      "type": "array"
+     },
+     "unoffered": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Unoffered",
+      "type": "array"
+     }
+    },
+    "required": [
+     "datasets",
+     "projects",
+     "combined",
+     "finished",
+     "unoffered",
+     "move",
+     "location",
+     "libraries",
+     "blockers"
+    ],
+    "title": "CollectionImpactOut",
+    "type": "object"
+   },
    "CollectionIn": {
     "properties": {
      "dataset_ids": {
@@ -1252,6 +1432,34 @@
      "name"
     ],
     "title": "CollectionIn",
+    "type": "object"
+   },
+   "CollectionLibraryImpact": {
+    "properties": {
+     "bytes": {
+      "title": "Bytes",
+      "type": "integer"
+     },
+     "files": {
+      "title": "Files",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "role": {
+      "title": "Role",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "role",
+     "files",
+     "bytes"
+    ],
+    "title": "CollectionLibraryImpact",
     "type": "object"
    },
    "CollectionMasterOut": {
@@ -1515,6 +1723,54 @@
     "title": "CollectionPatch",
     "type": "object"
    },
+   "CollectionProjectImpact": {
+    "properties": {
+     "done": {
+      "title": "Done",
+      "type": "boolean"
+     },
+     "goals_set": {
+      "title": "Goals Set",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "label",
+     "done",
+     "goals_set"
+    ],
+    "title": "CollectionProjectImpact",
+    "type": "object"
+   },
+   "CombineIn": {
+    "properties": {
+     "filters": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filters"
+     }
+    },
+    "title": "CombineIn",
+    "type": "object"
+   },
    "CombinedInput": {
     "properties": {
      "dataset": {
@@ -1550,6 +1806,17 @@
        }
       ],
       "title": "Registered"
+     },
+     "stale": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stale"
      },
      "subs": {
       "anyOf": [
@@ -1635,6 +1902,11 @@
       "title": "Integration S",
       "type": "number"
      },
+     "method": {
+      "default": "stack",
+      "title": "Method",
+      "type": "string"
+     },
      "stale": {
       "title": "Stale",
       "type": "string"
@@ -1677,6 +1949,11 @@
       "title": "Combined",
       "type": "array"
      },
+     "default_method": {
+      "default": "stack",
+      "title": "Default Method",
+      "type": "string"
+     },
      "filters": {
       "additionalProperties": {
        "items": {
@@ -1693,6 +1970,29 @@
        "type": "string"
       },
       "title": "Left Out",
+      "type": "array"
+     },
+     "method": {
+      "default": "stack",
+      "title": "Method",
+      "type": "string"
+     },
+     "methods": {
+      "default": [
+       "stack"
+      ],
+      "items": {
+       "type": "string"
+      },
+      "title": "Methods",
+      "type": "array"
+     },
+     "notes": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Notes",
       "type": "array"
      },
      "reference": {
@@ -2108,6 +2408,28 @@
       ],
       "title": "Panel"
      },
+     "project_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Id"
+     },
+     "project_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Label"
+     },
      "rejected_count": {
       "title": "Rejected Count",
       "type": "integer"
@@ -2303,20 +2625,24 @@
     "title": "DatasetsMoveOut",
     "type": "object"
    },
-   "DefaultsIn": {
+   "DistanceIn": {
     "properties": {
-     "steps": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Steps",
-      "type": "array"
+     "distance_ly": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Distance Ly"
      }
     },
     "required": [
-     "steps"
+     "distance_ly"
     ],
-    "title": "DefaultsIn",
+    "title": "DistanceIn",
     "type": "object"
    },
    "Field": {
@@ -2382,6 +2708,10 @@
       "title": "Role Filter",
       "type": "string"
      },
+     "role_label": {
+      "title": "Role Label",
+      "type": "string"
+     },
      "role_order": {
       "anyOf": [
        {
@@ -2416,6 +2746,7 @@
      "role",
      "role_filter",
      "role_order",
+     "role_label",
      "key"
     ],
     "title": "FileOut",
@@ -2482,13 +2813,35 @@
    },
    "FinishedOut": {
     "properties": {
-     "can_write_project_json": {
-      "title": "Can Write Project Json",
-      "type": "boolean"
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
      },
      "changed_at": {
       "format": "date-time",
       "title": "Changed At",
+      "type": "string"
+     },
+     "distance_ly": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Distance Ly"
+     },
+     "distance_source": {
+      "title": "Distance Source",
       "type": "string"
      },
      "files": {
@@ -2529,15 +2882,8 @@
       "title": "Offered",
       "type": "boolean"
      },
-     "processing": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Processing",
-      "type": "array"
-     },
-     "project_json_reason": {
-      "title": "Project Json Reason",
+     "path": {
+      "title": "Path",
       "type": "string"
      },
      "reason": {
@@ -2551,6 +2897,14 @@
      "subject": {
       "title": "Subject",
       "type": "string"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
      }
     },
     "required": [
@@ -2564,11 +2918,11 @@
      "offered",
      "reason",
      "links",
-     "processing",
      "files",
      "changed_at",
-     "can_write_project_json",
-     "project_json_reason"
+     "distance_ly",
+     "distance_source",
+     "path"
     ],
     "title": "FinishedOut",
     "type": "object"
@@ -3417,6 +3771,11 @@
    },
    "HelperJobOut": {
     "properties": {
+     "kind": {
+      "default": "master",
+      "title": "Kind",
+      "type": "string"
+     },
      "master_file": {
       "title": "Master File",
       "type": "string"
@@ -3771,6 +4130,43 @@
      "matches"
     ],
     "title": "IgnoreRuleOut",
+    "type": "object"
+   },
+   "ImpactOut": {
+    "properties": {
+     "combined": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Combined",
+      "type": "array"
+     },
+     "datasets": {
+      "title": "Datasets",
+      "type": "integer"
+     },
+     "finished": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Finished",
+      "type": "array"
+     },
+     "goal_conflicts": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Goal Conflicts",
+      "type": "array"
+     }
+    },
+    "required": [
+     "finished",
+     "combined",
+     "goal_conflicts",
+     "datasets"
+    ],
+    "title": "ImpactOut",
     "type": "object"
    },
    "JobIdsIn": {
@@ -5244,6 +5640,27 @@
     "title": "MemberOut",
     "type": "object"
    },
+   "MergeIn": {
+    "properties": {
+     "from": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "From",
+      "type": "array"
+     },
+     "into": {
+      "title": "Into",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "into",
+     "from"
+    ],
+    "title": "MergeIn",
+    "type": "object"
+   },
    "MergeNamesIn": {
     "properties": {
      "into": {
@@ -5263,6 +5680,37 @@
      "into"
     ],
     "title": "MergeNamesIn",
+    "type": "object"
+   },
+   "MergeOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "project": {
+      "$ref": "#/components/schemas/ProjectOut"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "project"
+    ],
+    "title": "MergeOut",
     "type": "object"
    },
    "MetadataFieldOut": {
@@ -6619,6 +7067,26 @@
     "title": "PendingRecalOut",
     "type": "object"
    },
+   "PostIn": {
+    "properties": {
+     "steps": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Steps"
+     }
+    },
+    "title": "PostIn",
+    "type": "object"
+   },
    "PostOut": {
     "properties": {
      "enabled": {
@@ -6656,6 +7124,14 @@
       },
       "title": "Runs",
       "type": "array"
+     },
+     "steps": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PostStepChoice"
+      },
+      "title": "Steps",
+      "type": "array"
      }
     },
     "required": [
@@ -6668,8 +7144,27 @@
    },
    "PostRunOut": {
     "properties": {
+     "chosen": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Chosen"
+     },
      "finished_at": {
       "title": "Finished At",
+      "type": "string"
+     },
+     "helper": {
+      "default": "",
+      "title": "Helper",
       "type": "string"
      },
      "original_stats": {
@@ -6800,6 +7295,45 @@
      "state"
     ],
     "title": "PostStageOut",
+    "type": "object"
+   },
+   "PostStepChoice": {
+    "description": "A step a run can be asked for (010-DR-29): on by default when Settings has it on.",
+    "properties": {
+     "available": {
+      "title": "Available",
+      "type": "boolean"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "on": {
+      "title": "On",
+      "type": "boolean"
+     },
+     "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+     },
+     "step": {
+      "title": "Step",
+      "type": "string"
+     },
+     "tool": {
+      "title": "Tool",
+      "type": "string"
+     }
+    },
+    "required": [
+     "step",
+     "label",
+     "tool",
+     "on",
+     "available"
+    ],
+    "title": "PostStepChoice",
     "type": "object"
    },
    "PostToolsOut": {
@@ -7000,22 +7534,6 @@
     "title": "PreviewSample",
     "type": "object"
    },
-   "ProcessingIn": {
-    "properties": {
-     "steps": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Steps",
-      "type": "array"
-     }
-    },
-    "required": [
-     "steps"
-    ],
-    "title": "ProcessingIn",
-    "type": "object"
-   },
    "ProcessingOut": {
     "properties": {
      "calibration": {
@@ -7150,6 +7668,71 @@
     "title": "ProcessingOut",
     "type": "object"
    },
+   "ProgressionIn": {
+    "properties": {
+     "force": {
+      "default": false,
+      "title": "Force",
+      "type": "boolean"
+     }
+    },
+    "title": "ProgressionIn",
+    "type": "object"
+   },
+   "ProgressionOut": {
+    "properties": {
+     "built_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Built At"
+     },
+     "checkpoints": {
+      "items": {
+       "$ref": "#/components/schemas/CheckpointOut"
+      },
+      "title": "Checkpoints",
+      "type": "array"
+     },
+     "mapping": {
+      "title": "Mapping",
+      "type": "string"
+     },
+     "progress": {
+      "title": "Progress",
+      "type": "number"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "step": {
+      "title": "Step",
+      "type": "string"
+     }
+    },
+    "required": [
+     "state",
+     "step",
+     "progress",
+     "reason",
+     "mapping",
+     "built_at",
+     "checkpoints"
+    ],
+    "title": "ProgressionOut",
+    "type": "object"
+   },
    "ProjectIn": {
     "properties": {
      "dataset_ids": {
@@ -7161,11 +7744,18 @@
       "type": "array"
      },
      "kind": {
-      "default": "single",
-      "title": "Kind",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
      },
      "name": {
+      "default": "",
       "title": "Name",
       "type": "string"
      },
@@ -7179,11 +7769,19 @@
        }
       ],
       "title": "Planned Panels"
+     },
+     "season": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season"
      }
     },
-    "required": [
-     "name"
-    ],
     "title": "ProjectIn",
     "type": "object"
    },
@@ -7193,12 +7791,40 @@
       "title": "Accepted Integration S",
       "type": "number"
      },
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
      "dataset_ids": {
       "items": {
        "type": "integer"
       },
       "title": "Dataset Ids",
       "type": "array"
+     },
+     "done": {
+      "default": false,
+      "title": "Done",
+      "type": "boolean"
+     },
+     "done_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done At"
      },
      "filter_time": {
       "additionalProperties": {
@@ -7220,6 +7846,11 @@
       ],
       "title": "First Night"
      },
+     "goal_panels": {
+      "default": 1,
+      "title": "Goal Panels",
+      "type": "integer"
+     },
      "goals": {
       "additionalProperties": {
        "type": "number"
@@ -7234,6 +7865,25 @@
      },
      "kind": {
       "title": "Kind",
+      "type": "string"
+     },
+     "kind_auto": {
+      "title": "Kind Auto",
+      "type": "string"
+     },
+     "kind_override": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind Override"
+     },
+     "label": {
+      "title": "Label",
       "type": "string"
      },
      "last_night": {
@@ -7259,6 +7909,26 @@
       "title": "Name",
       "type": "string"
      },
+     "needs_review": {
+      "default": false,
+      "title": "Needs Review",
+      "type": "boolean"
+     },
+     "own_name": {
+      "title": "Own Name",
+      "type": "string"
+     },
+     "panel_time": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "$ref": "#/components/schemas/FilterTime"
+       },
+       "type": "object"
+      },
+      "default": {},
+      "title": "Panel Time",
+      "type": "object"
+     },
      "panels": {
       "items": {
        "type": "integer"
@@ -7281,6 +7951,11 @@
       "title": "Position",
       "type": "integer"
      },
+     "review_reason": {
+      "default": "",
+      "title": "Review Reason",
+      "type": "string"
+     },
      "rigs": {
       "default": [],
       "items": {
@@ -7288,12 +7963,28 @@
       },
       "title": "Rigs",
       "type": "array"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
      }
     },
     "required": [
      "id",
      "name",
+     "label",
+     "own_name",
+     "season",
      "kind",
+     "kind_auto",
      "planned_panels",
      "position",
      "dataset_ids",
@@ -7308,6 +7999,17 @@
    },
    "ProjectPatch": {
     "properties": {
+     "done": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done"
+     },
      "goals": {
       "anyOf": [
        {
@@ -7351,6 +8053,17 @@
       ],
       "title": "Name"
      },
+     "needs_review": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Needs Review"
+     },
      "planned_panels": {
       "anyOf": [
        {
@@ -7361,6 +8074,17 @@
        }
       ],
       "title": "Planned Panels"
+     },
+     "season": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season"
      }
     },
     "title": "ProjectPatch",
@@ -7431,6 +8155,14 @@
        "$ref": "#/components/schemas/ProjectOut"
       },
       "title": "Projects",
+      "type": "array"
+     },
+     "review": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ReviewOut"
+      },
+      "title": "Review",
       "type": "array"
      },
      "unassigned": {
@@ -8273,6 +9005,46 @@
     "title": "ReviewGroup",
     "type": "object"
    },
+   "ReviewOut": {
+    "description": "Projects of one season held apart when seasons were joined: the owner merges them or keeps them apart.",
+    "properties": {
+     "into": {
+      "title": "Into",
+      "type": "integer"
+     },
+     "mergeable": {
+      "title": "Mergeable",
+      "type": "boolean"
+     },
+     "project_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Project Ids",
+      "type": "array"
+     },
+     "reasons": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     }
+    },
+    "required": [
+     "season",
+     "project_ids",
+     "into",
+     "reasons",
+     "mergeable"
+    ],
+    "title": "ReviewOut",
+    "type": "object"
+   },
    "RigIn": {
     "properties": {
      "camera": {
@@ -8345,6 +9117,14 @@
      "datasets": {
       "title": "Datasets",
       "type": "integer"
+     },
+     "filters": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Filters",
+      "type": "array"
      },
      "focal_mm": {
       "anyOf": [
@@ -8491,6 +9271,11 @@
      "role_filter": {
       "default": "",
       "title": "Role Filter",
+      "type": "string"
+     },
+     "role_label": {
+      "default": "",
+      "title": "Role Label",
       "type": "string"
      },
      "role_order": {
@@ -9616,14 +10401,6 @@
       "title": "Cpu Threads",
       "type": "integer"
      },
-     "default_processing": {
-      "default": [],
-      "items": {
-       "type": "string"
-      },
-      "title": "Default Processing",
-      "type": "array"
-     },
      "filter_aliases": {
       "additionalProperties": {
        "type": "string"
@@ -10461,6 +11238,54 @@
     "title": "SolvingOut",
     "type": "object"
    },
+   "SortOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "created": {
+      "items": {
+       "$ref": "#/components/schemas/ProjectOut"
+      },
+      "title": "Created",
+      "type": "array"
+     },
+     "joined": {
+      "items": {
+       "$ref": "#/components/schemas/ProjectOut"
+      },
+      "title": "Joined",
+      "type": "array"
+     },
+     "placed": {
+      "title": "Placed",
+      "type": "integer"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "created",
+     "joined",
+     "placed"
+    ],
+    "title": "SortOut",
+    "type": "object"
+   },
    "SourceUse": {
     "properties": {
      "detail": {
@@ -10487,6 +11312,71 @@
      "frames"
     ],
     "title": "SourceUse",
+    "type": "object"
+   },
+   "SplitIn": {
+    "properties": {
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "dataset_ids": {
+      "default": [],
+      "items": {
+       "type": "integer"
+      },
+      "title": "Dataset Ids",
+      "type": "array"
+     },
+     "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "by"
+    ],
+    "title": "SplitIn",
+    "type": "object"
+   },
+   "SplitOut": {
+    "properties": {
+     "change_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change Id"
+     },
+     "created": {
+      "items": {
+       "$ref": "#/components/schemas/ProjectOut"
+      },
+      "title": "Created",
+      "type": "array"
+     },
+     "project": {
+      "$ref": "#/components/schemas/ProjectOut"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "project",
+     "created"
+    ],
+    "title": "SplitOut",
     "type": "object"
    },
    "Spread": {
@@ -10779,6 +11669,22 @@
       ],
       "title": "Rejection"
      },
+     "resolution": {
+      "anyOf": [
+       {
+        "enum": [
+         "normal",
+         "drizzle2",
+         "bin2"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Resolution"
+     },
      "weighting": {
       "anyOf": [
        {
@@ -10892,6 +11798,11 @@
       "additionalProperties": true,
       "title": "Report",
       "type": "object"
+     },
+     "resolution": {
+      "default": "normal",
+      "title": "Resolution",
+      "type": "string"
      },
      "rule": {
       "title": "Rule",
@@ -14677,7 +15588,7 @@
   },
   "/changes": {
    "get": {
-    "description": "Your latest changes, newest first (everyone's, for an admin who asks).",
+    "description": "Your latest changes, newest first (everyone's, for an admin who asks); `kind` keeps one kind, `offset` pages.",
     "operationId": "apps_catalogue_api_changes_list_changes",
     "parameters": [
      {
@@ -14698,6 +15609,32 @@
        "default": 20,
        "title": "Limit",
        "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "kind",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Kind"
       }
      }
     ],
@@ -15133,6 +16070,7 @@
   },
   "/collections/{id}": {
    "delete": {
+    "description": "Delete the collection's record and its projects': the datasets stay, files are never touched. Refused while\nits files are moving or it has combined masters; undoable.",
     "operationId": "apps_catalogue_api_library_delete_collection",
     "parameters": [
      {
@@ -15146,8 +16084,15 @@
      }
     ],
     "responses": {
-     "204": {
-      "description": "No Content"
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CollectionDeletedOut"
+        }
+       }
+      },
+      "description": "OK"
      }
     },
     "security": [
@@ -15161,6 +16106,7 @@
     ]
    },
    "get": {
+    "description": "The collection's page. With `project`, everything but its card (datasets, the rig \u00d7 filter table, sessions,\nmasters, rigs) is narrowed to that project's datasets (006-DR-42).",
     "operationId": "apps_catalogue_api_library_get_collection",
     "parameters": [
      {
@@ -15170,6 +16116,22 @@
       "schema": {
        "title": "Id",
        "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "project",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Project"
       }
      }
     ],
@@ -15316,7 +16278,7 @@
   },
   "/collections/{id}/combined": {
    "get": {
-    "description": "What \"Stack combined masters\" would use, and the combined masters made so far (latest per filter).",
+    "description": "What Stitch mosaic or Stack together would use (the project's kind chooses when `method` isn't given), and\nthe masters made so far (latest per filter).",
     "operationId": "apps_processing_api_masters_combined_masters",
     "parameters": [
      {
@@ -15343,6 +16305,26 @@
        ],
        "title": "Project"
       }
+     },
+     {
+      "in": "query",
+      "name": "method",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "stitch",
+          "stack"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Method"
+      }
      }
     ],
     "responses": {
@@ -15368,6 +16350,7 @@
     ]
    },
    "post": {
+    "description": "Stitch mosaic or Stack together, for the chosen filters of the project (004-DR-32, -34).",
     "operationId": "apps_processing_api_masters_start_combined",
     "parameters": [
      {
@@ -15394,8 +16377,45 @@
        ],
        "title": "Project"
       }
+     },
+     {
+      "in": "query",
+      "name": "method",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "stitch",
+          "stack"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Method"
+      }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/CombineIn"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      }
+     },
+     "required": false
+    },
     "responses": {
      "201": {
       "content": {
@@ -15465,52 +16485,6 @@
      }
     ],
     "summary": "Add Datasets",
-    "tags": [
-     "catalogue"
-    ]
-   }
-  },
-  "/collections/{id}/datasets/{dataset_id}": {
-   "delete": {
-    "operationId": "apps_catalogue_api_library_remove_dataset",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "id",
-      "required": true,
-      "schema": {
-       "title": "Id",
-       "type": "integer"
-      }
-     },
-     {
-      "in": "path",
-      "name": "dataset_id",
-      "required": true,
-      "schema": {
-       "title": "Dataset Id",
-       "type": "integer"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/CollectionCard"
-        }
-       }
-      },
-      "description": "OK"
-     }
-    },
-    "security": [
-     {
-      "SessionAuth": []
-     }
-    ],
-    "summary": "Remove Dataset",
     "tags": [
      "catalogue"
     ]
@@ -15623,6 +16597,44 @@
      }
     ],
     "summary": "Collection Framing",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/collections/{id}/impact": {
+   "get": {
+    "description": "What deleting this collection's record would touch, for the page to ask first.",
+    "operationId": "apps_catalogue_api_library_collection_impact",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CollectionImpactOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Collection Impact",
     "tags": [
      "catalogue"
     ]
@@ -16018,6 +17030,7 @@
     ]
    },
    "post": {
+    "description": "A new project for a season (this year unless said), with an optional name.",
     "operationId": "apps_catalogue_api_projects_create_project",
     "parameters": [
      {
@@ -16058,6 +17071,54 @@
      }
     ],
     "summary": "Create Project",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/collections/{id}/projects/merge": {
+   "post": {
+    "description": "Merge projects into one (`into` keeps its name): datasets, goals (the larger per filter), combined masters.\nRefused when a project to be absorbed is linked to a finished image.",
+    "operationId": "apps_catalogue_api_projects_merge_projects",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MergeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MergeOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Merge Projects",
     "tags": [
      "catalogue"
     ]
@@ -16116,7 +17177,7 @@
   },
   "/collections/{id}/projects/suggest": {
    "post": {
-    "description": "Make projects for the datasets not in one yet (006-DR-20); rename or regroup them afterwards.",
+    "description": "Sort the datasets not in a project into seasons: each joins its season's project, else a new project per\nseason. Never split by rig, panel or framing; split a project afterwards if wanted.",
     "operationId": "apps_catalogue_api_projects_suggest_projects",
     "parameters": [
      {
@@ -16134,11 +17195,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "items": {
-          "$ref": "#/components/schemas/ProjectOut"
-         },
-         "title": "Response",
-         "type": "array"
+         "$ref": "#/components/schemas/SortOut"
         }
        }
       },
@@ -16151,6 +17208,37 @@
      }
     ],
     "summary": "Suggest Projects",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}": {
+   "delete": {
+    "description": "Delete a combined master's output: its file and preview go, the row stays as the record (state deleted).",
+    "operationId": "apps_processing_api_masters_delete_combined",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "No Content"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Delete Combined",
     "tags": [
      "catalogue"
     ]
@@ -16184,6 +17272,304 @@
      }
     ],
     "summary": "Combined Download",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post": {
+   "get": {
+    "description": "A stitched or stacked master's post-processing runs, newest first, as a dataset master's.",
+    "operationId": "apps_processing_api_masters_combined_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PostOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post",
+    "tags": [
+     "catalogue"
+    ]
+   },
+   "post": {
+    "description": "Post-process this stitched or stacked master (again), from its untouched file, with the current settings or\nthe steps chosen for this run (010-DR-29). Admins only: a run on a big canvas takes a helper a long time.",
+    "operationId": "apps_processing_api_masters_start_combined_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/PostIn"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      }
+     },
+     "required": false
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PostOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Start Combined Post",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/views": {
+   "post": {
+    "description": "Redraw this combined master's stages with its stretch, at 100% too.",
+    "operationId": "apps_processing_api_masters_redraw_combined_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PostOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Redraw Combined Post",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/{run}/{stage}/download": {
+   "get": {
+    "description": "A processed version's linear 32-bit file, to download.",
+    "operationId": "apps_processing_api_masters_combined_post_download",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run",
+      "required": true,
+      "schema": {
+       "title": "Run",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "title": "Stage",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post Download",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/{run}/{stage}/full": {
+   "get": {
+    "description": "A stage at 100%, drawn with the combined master's stretch.",
+    "operationId": "apps_processing_api_masters_combined_post_full",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run",
+      "required": true,
+      "schema": {
+       "title": "Run",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "title": "Stage",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post Full",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/{run}/{stage}/preview": {
+   "get": {
+    "operationId": "apps_processing_api_masters_combined_post_preview",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run",
+      "required": true,
+      "schema": {
+       "title": "Run",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "title": "Stage",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "size",
+      "required": false,
+      "schema": {
+       "default": "screen",
+       "enum": [
+        "screen",
+        "thumb"
+       ],
+       "title": "Size",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post Preview",
     "tags": [
      "catalogue"
     ]
@@ -17694,47 +19080,6 @@
     ]
    }
   },
-  "/finished/defaults/processing": {
-   "put": {
-    "operationId": "apps_finished_api_manage_set_default_processing",
-    "parameters": [],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/DefaultsIn"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "type": "string"
-         },
-         "title": "Response",
-         "type": "array"
-        }
-       }
-      },
-      "description": "OK"
-     }
-    },
-    "security": [
-     {
-      "SessionAuth": []
-     }
-    ],
-    "summary": "Set Default Processing",
-    "tags": [
-     "finished"
-    ]
-   }
-  },
   "/finished/{id}": {
    "get": {
     "operationId": "apps_finished_api_manage_get_finished",
@@ -17767,6 +19112,145 @@
      }
     ],
     "summary": "Get Finished",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/distance": {
+   "put": {
+    "description": "The owner's own figure (020-DR-13); it wins over a look-up until cleared.",
+    "operationId": "apps_finished_api_manage_set_distance",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DistanceIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Set Distance",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/distance/lookup": {
+   "post": {
+    "description": "Ask SIMBAD (020-DR-13). Never replaces a figure the owner typed.",
+    "operationId": "apps_finished_api_manage_lookup_distance",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FinishedOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Lookup Distance",
+    "tags": [
+     "finished"
+    ]
+   }
+  },
+  "/finished/{id}/files/{file_id}/image": {
+   "get": {
+    "description": "A JPEG of one output file for the app: `thumb` for the grid, `preview` to look closer. Never the original,\nwhich can be a 300 MB TIFF.",
+    "operationId": "apps_finished_api_manage_file_image",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "file_id",
+      "required": true,
+      "schema": {
+       "title": "File Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "size",
+      "required": false,
+      "schema": {
+       "default": "thumb",
+       "title": "Size",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "File Image",
     "tags": [
      "finished"
     ]
@@ -17819,9 +19303,45 @@
     ]
    }
   },
-  "/finished/{id}/processing": {
-   "put": {
-    "operationId": "apps_finished_api_manage_set_processing",
+  "/finished/{id}/progression": {
+   "get": {
+    "operationId": "apps_finished_api_manage_get_progression",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProgressionOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Get Progression",
+    "tags": [
+     "finished"
+    ]
+   },
+   "post": {
+    "description": "Build the cumulative stacks (the Generate progression button); `force` rebuilds even when cached.",
+    "operationId": "apps_finished_api_manage_generate_progression",
     "parameters": [
      {
       "in": "path",
@@ -17837,7 +19357,7 @@
      "content": {
       "application/json": {
        "schema": {
-        "$ref": "#/components/schemas/ProcessingIn"
+        "$ref": "#/components/schemas/ProgressionIn"
        }
       }
      },
@@ -17848,7 +19368,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/FinishedOut"
+         "$ref": "#/components/schemas/ProgressionOut"
         }
        }
       },
@@ -17860,16 +19380,15 @@
       "SessionAuth": []
      }
     ],
-    "summary": "Set Processing",
+    "summary": "Generate Progression",
     "tags": [
      "finished"
     ]
    }
   },
-  "/finished/{id}/project-json": {
-   "post": {
-    "description": "020-FR-014: only in a read-write library; never over a project.json SubStation didn't write.",
-    "operationId": "apps_finished_api_manage_write_project_json",
+  "/finished/{id}/progression/{order}/image": {
+   "get": {
+    "operationId": "apps_finished_api_manage_progression_image",
     "parameters": [
      {
       "in": "path",
@@ -17879,18 +19398,23 @@
        "title": "Id",
        "type": "integer"
       }
+     },
+     {
+      "in": "path",
+      "name": "order",
+      "required": true,
+      "schema": {
+       "title": "Order",
+       "type": "string"
+      }
      }
     ],
     "responses": {
      "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/FinishedOut"
-        }
-       }
-      },
       "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
      }
     },
     "security": [
@@ -17898,7 +19422,7 @@
       "SessionAuth": []
      }
     ],
-    "summary": "Write Project Json",
+    "summary": "Progression Image",
     "tags": [
      "finished"
     ]
@@ -18030,7 +19554,7 @@
   },
   "/finished/{id}/suggestions": {
    "get": {
-    "description": "Ranked SubStation projects to link (020-FR-004): catalogue numbers and names in common.\nTODO(020 T018): add plate-solve field overlap once finished images are solved.",
+    "description": "SubStation projects to link (020-FR-004): only those sharing a catalogue number or the name; the year only\nranks them. TODO(020 T018): add plate-solve field overlap once finished images are solved.",
     "operationId": "apps_finished_api_manage_suggestions",
     "parameters": [
      {
@@ -18661,7 +20185,7 @@
   },
   "/frames/{sha256}/glance": {
    "get": {
-    "description": "A small image of any frame for hover previews: its preview, QA thumbnail or built-master preview when one\nexists, else drawn from the file once and cached (owner 2026-10-11).",
+    "description": "A small image of any frame for hover previews: its preview, QA thumbnail or built-master preview when one\nexists, else drawn from the file once and cached (owner 2026-10-11). A measured sub's glance is its preview,\nso it shares its session's stretch; one drawn here uses the preview look on its own (003, 2026-10-24).",
     "operationId": "apps_processing_api_glance_image",
     "parameters": [
      {
@@ -18677,6 +20201,9 @@
     "responses": {
      "200": {
       "description": "OK"
+     },
+     "304": {
+      "description": "Not Modified"
      },
      "404": {
       "description": "Not Found"
@@ -18724,6 +20251,9 @@
     "responses": {
      "200": {
       "description": "OK"
+     },
+     "304": {
+      "description": "Not Modified"
      },
      "404": {
       "description": "Not Found"
@@ -21426,7 +22956,7 @@
   },
   "/projects/{id}": {
    "delete": {
-    "description": "The datasets stay in the collection, just not in a project.",
+    "description": "The datasets stay in the collection, just not in a project. Refused while it has combined masters; its\nfinished-image links go (said in warnings).",
     "operationId": "apps_catalogue_api_projects_delete_project",
     "parameters": [
      {
@@ -21440,8 +22970,15 @@
      }
     ],
     "responses": {
-     "204": {
-      "description": "No Content"
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ChangedOut"
+        }
+       }
+      },
+      "description": "OK"
      }
     },
     "security": [
@@ -21455,6 +22992,7 @@
     ]
    },
    "patch": {
+    "description": "Rename, change its season, set its kind (or back to automatic), planned panels, goals; mark it done.",
     "operationId": "apps_catalogue_api_projects_update_project",
     "parameters": [
      {
@@ -21542,6 +23080,108 @@
      }
     ],
     "summary": "Set Project Datasets",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/projects/{id}/impact": {
+   "get": {
+    "description": "What merging, splitting or removing this project would touch, for the page to ask first.",
+    "operationId": "apps_catalogue_api_projects_project_impact",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "into",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Into"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImpactOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Project Impact",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/projects/{id}/split": {
+   "post": {
+    "description": "New projects in the same season for part of this one: by rig, by panel, or the chosen datasets.",
+    "operationId": "apps_catalogue_api_projects_split_project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SplitIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SplitOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Split Project",
     "tags": [
      "catalogue"
     ]
@@ -23020,7 +24660,7 @@
     ]
    },
    "post": {
-    "description": "Spec 010 US3: post-process this master again, from the untouched master, with the current settings.",
+    "description": "Spec 010 US3: post-process this master again, from the untouched master, with the current settings, or\nwith the steps chosen for this run (010-DR-29).",
     "operationId": "apps_processing_api_masters_start_master_post",
     "parameters": [
      {
@@ -23033,6 +24673,23 @@
       }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/PostIn"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      }
+     },
+     "required": false
+    },
     "responses": {
      "200": {
       "content": {

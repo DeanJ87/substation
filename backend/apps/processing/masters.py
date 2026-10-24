@@ -43,6 +43,91 @@ RULES = {
 }
 STEPS = ["Select inputs", "Calibrate", "Register", "Normalise", "Integrate", "Write"]
 
+# 004-DR-35: a master's resolution. Drizzle ×2 registers the subs onto a grid twice as fine (Siril's HST drizzle,
+# pixel fraction 1, square kernel); Bin 2×2 averages each 2×2 block of the calibrated subs before registration.
+RESOLUTIONS = {"normal": "", "drizzle2": "Drizzle ×2", "bin2": "Bin 2×2"}
+DRIZZLE = "-drizzle -scale=2 -pixfrac=1.0 -kernel=square"
+
+
+def resolution_of(m: Master | None) -> str:
+    r = ((getattr(m, "recipe", None) or {}).get("options") or {}).get("resolution") or "normal"
+    return r if r in RESOLUTIONS else "normal"
+
+
+def pixel_factor(res: str) -> float:
+    """How much bigger a master pixel is than a sub pixel: ½ drizzled, 2 binned."""
+    return {"drizzle2": 0.5, "bin2": 2.0}.get(res, 1.0)
+
+
+def scaled_wcs(wcs: dict, f: int) -> dict:
+    """A stored plate solution for the image binned `f`×`f`: the pixel grid is coarser by `f`, the sky the same.
+    Distortion terms (SIP) are left out: they were fitted on the unbinned pixels."""
+    out: dict = {}
+    for k, v in wcs.items():
+        if re.match(r"^(A|B|AP|BP)_", k):
+            continue
+        if k in ("NAXIS1", "NAXIS2"):
+            out[k] = int(v) // f
+        elif k in ("CRPIX1", "CRPIX2"):
+            out[k] = (float(v) - 0.5) / f + 0.5
+        elif re.match(r"^(CD\d_\d|CDELT\d)$", k):
+            out[k] = float(v) * f
+        elif k in ("CTYPE1", "CTYPE2") and isinstance(v, str):
+            out[k] = v.replace("-SIP", "")
+        else:
+            out[k] = v
+    return out
+
+
+def bin2x2(path: Path) -> None:
+    """Replace the stack's link to a calibrated sub by its 2×2 average (the cache is never written to): each output
+    pixel is the mean of four, an odd last row or column is dropped, and the header says so (binning, pixel size
+    and plate solution follow)."""
+    import numpy as np
+    from astropy.io import fits
+
+    with fits.open(path.resolve(), memmap=False) as hl:
+        data = np.asarray(hl[0].data)
+        header = hl[0].header.copy()
+    h, w = data.shape[-2] // 2 * 2, data.shape[-1] // 2 * 2
+    a = data[..., :h, :w].astype(np.float32)
+    binned = (a[..., 0::2, 0::2] + a[..., 1::2, 0::2] + a[..., 0::2, 1::2] + a[..., 1::2, 1::2]) / 4
+    if np.issubdtype(data.dtype, np.integer):
+        out = np.clip(np.rint(binned), 0, 65535).astype(np.uint16)
+    else:
+        out = binned.astype(np.float32)
+    for k in ("XBINNING", "YBINNING"):
+        header[k] = int(header.get(k, 1) or 1) * 2
+    for k in ("XPIXSZ", "YPIXSZ"):
+        if k in header:
+            header[k] = float(header[k]) * 2
+    wcs = {
+        k: header[k] for k in list(header) if re.match(r"^(CRPIX\d|CD\d_\d|CDELT\d|CTYPE\d|(A|B|AP|BP)_)", k)
+    }
+    if "CRPIX1" in wcs:
+        for k in wcs:
+            del header[k]
+        for k, v in scaled_wcs(wcs, 2).items():
+            header[k] = v
+    header.add_history("SubStation: binned 2x2 (average) before registration")
+    tmp = path.with_suffix(".part.fit")
+    fits.PrimaryHDU(data=out, header=header).writeto(tmp, overwrite=True)
+    path.unlink(missing_ok=True)
+    tmp.replace(path)
+
+
+def _bin_inputs(m: Master, work: Path, ck: dict, order: dict) -> None:
+    """Bin 2×2 every input before registration (004-DR-35); a resumed folder that did it already isn't binned twice."""
+    if "binned" in ck["done"]:
+        return
+    n = len(order)
+    for k, i in enumerate(sorted(order), start=1):
+        bin2x2(work / f"sub_{i:05d}.fit")
+        if k % 20 == 0 or k == n:
+            _step(m, f"Bin 2×2 ({k} of {n})", 0.1 + 0.1 * k / n)
+    ck["done"].append("binned")
+    _save_checkpoint(work, ck)
+
 
 def scope_of(recipe: dict) -> dict:
     """The scope a recipe (or a request) names beyond its nights (004 T008/T009): a date range, more datasets of the
@@ -481,6 +566,8 @@ def _provenance(path: Path, m: Master, notes: list[str]) -> None:
             "pixel rejection",
         )
         h["SST-WGT"] = (str(o.get("weighting", "grade"))[:60], "sub weighting")
+        if resolution_of(m) != "normal":
+            h["SST-RES"] = (fits_ascii(RESOLUTIONS[resolution_of(m)]), "drizzled or binned (SubStation)")
         for n in notes:
             h.add_history(fits_ascii(n)[:70])
 
@@ -504,18 +591,24 @@ def _dir_bytes(root: Path) -> int:
     return total
 
 
-def _check_budget(work: Path, n: int) -> None:
-    """The subs plus one registered copy each must fit the stack work budget (004 T015). A stack that can never
-    fit fails with the reason; one that would fit once other stacks' working files are gone waits for them."""
+def _check_budget(work: Path, n: int, grow: int = 1) -> None:
+    """The subs plus one registered copy each must fit the stack work budget (004 T015); drizzled ×2, each
+    registered copy is `grow` (4) times a sub (004-DR-35). A stack that can never fit fails with the reason; one
+    that would fit once other stacks' working files are gone waits for them."""
     first = next(iter(sorted(work.glob("sub_*.fit*"))), None)
     if first is None:
         return
-    need = first.resolve().stat().st_size * n * 2
+    need = first.resolve().stat().st_size * n * (1 + grow)
     budget = work_budget_bytes()
     if need > budget:
+        why = (
+            " Drizzle ×2 makes every registered sub four times the size; stack without it, or fewer sessions."
+            if grow > 1
+            else " Stack fewer sessions or raise the budget in Settings → Workers."
+        )
         raise RuntimeError(
             f"Needs about {need / 1e9:.0f} GB of working space for {n} subs; the work budget is "
-            f"{budget / 1e9:.0f} GB. Stack fewer sessions or raise the budget in Settings → Workers."
+            f"{budget / 1e9:.0f} GB.{why}"
         )
     others = sum(_dir_bytes(d) for d in (Path(settings.WORK_DIR) / "integrations").glob("*") if d != work)
     if need + others > budget and _kept_folders(
@@ -531,7 +624,7 @@ def _check_budget(work: Path, n: int) -> None:
         )
 
 
-def _fit_registered(eng, work: Path, n: int) -> list[str]:  # noqa: ANN001
+def _fit_registered(eng, work: Path, n: int, grow: int = 1) -> list[str]:  # noqa: ANN001
     """Siril refuses to write the registered subs unless the free space it sees covers them. Under Docker Desktop
     that is the Mac's system disk, whatever disk the folder is really on, so a large stack can be refused with
     hundreds of GB free. Registered subs are saved at 16 bits when 32 won't fit (half the size; the stack itself is
@@ -546,7 +639,7 @@ def _fit_registered(eng, work: Path, n: int) -> list[str]:  # noqa: ANN001
             "set16bits"
         )  # 16-bit subs (in-camera calibrated, just debayered) gain nothing from float copies
         return ["Registered subs kept at 16 bits."]
-    need = first.resolve().stat().st_size * n * 1.1
+    need = first.resolve().stat().st_size * n * 1.1 * grow  # a drizzled copy is four times a sub
     free = shutil.disk_usage(work).free
     if need <= free:
         return []
@@ -570,8 +663,12 @@ def _write_wcs(path: Path, wcs: dict) -> bool:
         src = path.resolve()
         with fits.open(src, memmap=False) as hdul:
             h = hdul[0].header
-            if (h.get("NAXIS1"), h.get("NAXIS2")) != (wcs.get("NAXIS1"), wcs.get("NAXIS2")):
-                return False
+            size = (h.get("NAXIS1"), h.get("NAXIS2"))
+            if size != (wcs.get("NAXIS1"), wcs.get("NAXIS2")):
+                # a sub binned 2×2 for this stack (004-DR-35): its solution, on the coarser grid
+                if wcs.get("NAXIS1") is None or size != (int(wcs["NAXIS1"]) // 2, int(wcs["NAXIS2"]) // 2):
+                    return False
+                wcs = scaled_wcs(wcs, 2)
             data, header = hdul[0].data, h.copy()
         for k, v in wcs.items():
             if not k.startswith("NAXIS"):
@@ -651,7 +748,8 @@ def _solve_each(eng, work: Path, order: dict[int, MasterMember], m: Master) -> t
                     (work / f"{name}.fit").unlink(missing_ok=True)
                     eng.run(f"save {name}", timeout=180)
                     solved.append(i)
-                    _keep_wcs(work / f"{name}.fit", order[i].frame_id)
+                    if resolution_of(m) != "bin2":  # a binned sub's solution isn't the sub's own
+                        _keep_wcs(work / f"{name}.fit", order[i].frame_id)
                 else:
                     unsolved.append(i)
             except EngineError as exc:  # Siril crashed on this sub: the next command starts it again
@@ -743,6 +841,8 @@ def _adopt(work: Path, m: Master, members: list[MasterMember]) -> dict | None:
     for d, ck in _kept_folders(work):
         if not d.name.startswith(f"ds{m.dataset_id}_v") or sorted((ck.get("frames") or {}).values()) != want:
             continue
+        if (ck.get("resolution") or "normal") != resolution_of(m):  # binned or drizzled another way
+            continue
         shutil.rmtree(work, ignore_errors=True)
         d.rename(work)
         ck.update(master=m.pk, kept=None)
@@ -783,14 +883,18 @@ def integrate(master_id: int) -> dict:
         check_interrupted()
         if len(order) < 2:
             raise RuntimeError("Fewer than two calibrated subs.")
+        res = resolution_of(m)
+        if res == "bin2":
+            _bin_inputs(m, work, ck, order)
         eng = engine()
         _heavy = heavy_memory()
         _heavy.__enter__()
         eng.run(f"cd {work}")
         _step(m, "Register", 0.2)
-        _check_budget(work, len(order))
+        _check_budget(work, len(order), 4 if res == "drizzle2" else 1)
         mosaic = mosaic_reason([mm.frame for mm in order.values()])
         notes = _register(eng, m, work, ck, order, mosaic)
+        notes += resolution_notes(m, order)
         eng.run("set32bits")
         registered = {im["filenum"] for im in parse.seq_images(work / "r_sub_.seq")}
         _exclude_unregistered(m, order, registered, mosaic)
@@ -864,11 +968,12 @@ def _prepare_inputs(
     _release_kept(work, KEPT_FOR)
     if not ck["done"]:
         ck = _adopt(work, m, members) or ck
-    order = _resumed_inputs(work, ck, m) if "inputs" in ck["done"] else None
+    same = (ck.get("resolution") or "normal") == resolution_of(m)
+    order = _resumed_inputs(work, ck, m) if "inputs" in ck["done"] and same else None
     if order is None:
         shutil.rmtree(work, ignore_errors=True)
         work.mkdir(parents=True)
-        ck = {"master": m.pk, "done": []}
+        ck = {"master": m.pk, "done": [], "resolution": resolution_of(m)}
         order = _inputs(m, members, work)
         ck.update(
             done=["inputs"],
@@ -895,9 +1000,14 @@ def _register(
     elif (m.recipe.get("options") or {}).get("reference") == "most_stars":
         # the sub with the most stars is the reference; one pass keeps that choice (004 FR-004)
         best = max(order, key=lambda i: order[i].frame.measurement.stars or 0)
-        notes = _fit_registered(eng, work, len(order))
+        notes = _fit_registered(eng, work, len(order), _grow(m))
         eng.run(f"setref sub_ {sorted(order).index(best) + 1}")
-        eng.run("register sub_", timeout=7200, quiet=True, on_line=_Live(m, "Register", 0.2, 0.6, len(order)))
+        eng.run(
+            f"register sub_{_drizzle(m)}",
+            timeout=7200,
+            quiet=True,
+            on_line=_Live(m, "Register", 0.2, 0.6, len(order)),
+        )
         notes.append(f"Reference: sub with most stars ({order[best].frame.measurement.stars:,}).")
     else:
         # two passes: Siril picks the sharpest, roundest sub as the reference (best FWHM)
@@ -907,9 +1017,9 @@ def _register(
             quiet=True,
             on_line=_Live(m, "Register", 0.2, 0.4, len(order)),
         )
-        notes = _fit_registered(eng, work, len(order))
+        notes = _fit_registered(eng, work, len(order), _grow(m))
         eng.run(
-            "seqapplyreg sub_ -framing=current",
+            f"seqapplyreg sub_ -framing=current{_drizzle(m)}",
             timeout=7200,
             quiet=True,
             on_line=_Live(m, "Register", 0.4, 0.6, len(order)),
@@ -922,11 +1032,41 @@ def _register(
     return notes
 
 
+def _drizzle(m: Master) -> str:
+    """Siril's drizzle options for a master stacked Drizzle ×2, else nothing."""
+    return f" {DRIZZLE}" if resolution_of(m) == "drizzle2" else ""
+
+
+def _grow(m: Master) -> int:
+    return 4 if resolution_of(m) == "drizzle2" else 1
+
+
+def resolution_notes(m: Master, order: dict[int, MasterMember]) -> list[str]:
+    """What the report says about a drizzled or binned master (004-DR-35)."""
+    from .tasks import is_colour_frame
+
+    res = resolution_of(m)
+    if res == "drizzle2":
+        notes = ["Drizzle ×2 (pixel fraction 1, square kernel): twice the width and height of the subs."]
+        first = next(iter(order.values()), None)
+        if first is not None and is_colour_frame(first.frame):
+            notes.append(
+                "Colour subs are debayered when they are calibrated, so this drizzles the debayered subs; it is "
+                "not a Bayer drizzle."
+            )
+        return notes
+    if res == "bin2":
+        return [
+            "Bin 2×2: each 2×2 block of the calibrated subs averaged before registration (half the size)."
+        ]
+    return []
+
+
 def _register_mosaic(eng, m: Master, work: Path, order: dict[int, MasterMember], mosaic: str) -> list[str]:  # noqa: ANN001
     """Register by plate solution onto one canvas that holds every sub (004-DR-23). Each sub is solved on its own
     first: a sub that crashes Siril (IC 4605, 2026-10-14: a segfault at sub 284 of 413 took the whole stack down)
     costs only itself; seqplatesolve then lays out the canvas from those solutions."""
-    notes = _fit_registered(eng, work, len(order))
+    notes = _fit_registered(eng, work, len(order), _grow(m))
     solved, unsolved = _solve_each(eng, work, order, m)
     if len(solved) < 2:
         raise RuntimeError(f"Only {len(solved)} of {len(order)} subs could be plate solved.")
@@ -938,7 +1078,7 @@ def _register_mosaic(eng, m: Master, work: Path, order: dict[int, MasterMember],
         "seqplatesolve sub_", timeout=7200, quiet=True, on_line=_Live(m, "Plate solve", 0.45, 0.5, len(order))
     )
     eng.run(
-        "seqapplyreg sub_ -framing=max",
+        f"seqapplyreg sub_ -framing=max{_drizzle(m)}",
         timeout=7200,
         quiet=True,
         on_line=_Live(m, "Register", 0.5, 0.6, len(order)),
@@ -1036,6 +1176,8 @@ def _measure_master(
     except Exception as exc:  # noqa: BLE001
         log.warning("Master preview failed: %s", exc)
     scale = pixel_scale(members[0].frame)
+    if scale:
+        scale *= pixel_factor(resolution_of(m))  # a drizzled or binned master's pixels (004-DR-35)
     report = {
         "stars": n,
         "fwhm_px": fwhm,

@@ -91,3 +91,16 @@
   a too-big run recorded without crashing, a helper end to end on a combined master, a helper refused a canvas too
   big for the server
 - [ ] T044 Palette images (HOO, SHO) through the chain (rest of US6)
+
+## Amendment 2026-10-24 (2)
+
+- [X] T045 Combined masters listed per filter as current plus a newer queued/running/failed try; deleted and
+  superseded ones never hide the current one (010-DR-28)
+- [X] T046 Combined card: thumbnail per finished stage opening the 100% view on that version, a tile for a stage
+  without a preview, files folded under "Files of each step", the helper named; post lists tolerate missing or
+  null fields; `post`, `post-combined` and `combined` queries refresh on `master.updated` (010-DR-28)
+- [X] T047 Steps per run: `step_choices`, `chosen_overrides`, optional `{steps}` body on both POST routes, `chosen`
+  recorded on NAS and helper runs, helper runs record the settings they ran with; dialog on both cards (010-DR-29)
+- [X] T048 Tests: the production report shape (helper run, stage without preview, null fields), a newer failed or
+  deleted try beside the current one, chosen steps end to end, unavailable steps; frontend card, dialog and request
+  body tests
