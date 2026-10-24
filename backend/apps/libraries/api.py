@@ -232,6 +232,7 @@ EDITABLE = {
     "bin",
     "backup",
     "archive",
+    "previews",
 }
 CHOICES = {
     ("stacking", "rejection"): {"winsorized", "sigma", "linear"},
@@ -241,6 +242,7 @@ CHOICES = {
     ("stacking", "format"): {"fits"},  # Siril writes FITS
     ("grading", "profile"): {"standard", "spike"},
     ("queue", "priority_mode"): {"new_first", "in_order"},
+    ("previews", "mode"): {"session", "sub"},
 }
 # measures graded against the session median: [down-weight, reject] and the direction that is bad
 LEVELS = {"fwhm": "above", "background": "above", "eccentricity": "above", "stars": "below"}
@@ -319,6 +321,12 @@ _RANGES: dict[tuple[str, str], tuple[Callable[[object], bool], str]] = {
     ),
     ("stacking", "auto_quiet_hours"): (_number_in(0.5, 24), "Quiet time must be 0.5–24 hours."),
     ("stacking", "auto_every_n"): (_number_in(3, 1000, whole=True), "N must be 3–1,000."),
+    ("post", "max_megapixels"): (
+        _number_in(50, 10000, whole=True),
+        "The largest image to post-process must be 50–10,000 megapixels.",
+    ),
+    ("previews", "black_point"): (_number_in(-2, 2), "Black point must be −2 to +2."),
+    ("previews", "background"): (_number_in(0.1, 0.4), "Sky brightness must be 10–40%."),
     ("stacking", "sigma"): (
         lambda v: isinstance(v, list) and len(v) == 2 and all(_number_in(0.5, 10)(x) for x in v),
         "Sigma low and high must be 0.5–10.",
@@ -451,6 +459,7 @@ def patch_settings(request, body: SettingsIn):  # type: ignore[no-untyped-def]
         data["site_region"] = (data["site_region"] or "").strip()[:100]
     regrade = data.pop("regrade", False)
     change = _clean_processing(data.pop("processing", None) or {})
+    before = processing_settings()
     affected = (
         [
             r["dataset_id"]
@@ -472,6 +481,11 @@ def patch_settings(request, body: SettingsIn):  # type: ignore[no-untyped-def]
     s.save()
     if affected:
         enqueue(regrade_datasets, affected, dedupe_key="regrade")
+    if "previews" in change and _merge(before["previews"], change["previews"]) != before["previews"]:
+        # 003 amendment 2026-10-24: every session's previews redrawn in the background, one job per session
+        from apps.processing.tasks import rerender_all_sessions
+
+        enqueue(rerender_all_sessions, dedupe_key="rerender-all-sessions")
     if "calibration" in change:  # tolerance or fallback changed: every light's match is checked again
         from apps.processing.tasks import rematch_lights
 

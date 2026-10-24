@@ -370,56 +370,213 @@ def stage_views(master_path: Path, stages: list[dict], run: dict | None = None) 
                 st["preview_error"] = str(exc)[:200]
 
 
-@station_task(queue_name="process", priority=PRIORITY_BULK + 5, max_attempts=1)
-def redraw_post_views(master_id: int) -> dict:
-    """Redraw a master's existing post-processing stages with its stretch, at 100% too (older runs)."""
-    from .models import Master
-
-    m = Master.objects.get(pk=master_id)
-    report = dict(m.report or {})
-    runs = report.get("post_runs", [])
-    if not runs or not m.output_path:
-        return {"result": "nothing to redraw"}
-    for run in runs[-2:]:  # the latest runs; older ones keep their thumbnails
-        stage_views(Path(m.output_path), run.get("stages", []), run)
-    Master.objects.filter(pk=m.pk).update(report=report)
-    return {"result": "redrawn", "runs": min(2, len(runs))}
+# ---- what is post-processed: a dataset's master or a stitched or stacked master (2026-10-24) ------------------
+# Both keep their runs in `report["post_runs"]` and their file in `output_path`; nothing below needs more.
+KINDS = ("master", "combined")
 
 
-@station_task(queue_name="finish", priority=PRIORITY_BULK + 4, max_attempts=3)  # helpers can restart mid-job
-def postprocess_master(master_id: int, overrides: dict | None = None) -> dict:
-    """Spec 010 US1/US3: run the chain on a master (from the untouched master, every time)."""
+def post_object(kind: str, pk: int):  # noqa: ANN201
+    """The Master or CombinedMaster a post-processing job works on (None when it's gone)."""
+    from .models import CombinedMaster, Master
+
+    model = CombinedMaster if kind == "combined" else Master
+    return model.objects.filter(pk=pk).first()
+
+
+def post_name(obj) -> str:  # noqa: ANN001
+    """What the job is called, for the helper and Activity: "M 81 · Hα v3" or "Hα mosaic v2 · Soul"."""
+    from .models import CombinedMaster
+
+    if isinstance(obj, CombinedMaster):
+        what = "mosaic" if obj.method == "stitch" else "stacked master"
+        return f"{obj.filter_norm} {what} v{obj.version} · {obj.collection.name}"
+    return f"{obj.dataset} v{obj.version}"
+
+
+def record_run(obj, run: dict) -> int:  # noqa: ANN001
+    """Append a run to the object's report (re-read first: a long run must not undo other changes). Its number."""
+    obj.refresh_from_db(fields=["report"])
+    report = dict(obj.report or {})
+    run["run"] = len(report.get("post_runs", [])) + 1
+    report["post_runs"] = [*report.get("post_runs", []), run]
+    type(obj).objects.filter(pk=obj.pk).update(report=report)
+    obj.report = report
+    return run["run"]
+
+
+def emit_updated(obj) -> None:  # noqa: ANN001
+    from substation.events.emit import emit
+
+    from .models import CombinedMaster
+
+    if isinstance(obj, CombinedMaster):
+        # the same event as a dataset's master, so pages already listening refresh (combined_id says which)
+        emit(
+            "master.updated", {"collection_id": obj.collection_id, "combined_id": obj.pk, "state": obj.state}
+        )
+    else:
+        emit("master.updated", {"dataset_id": obj.dataset_id, "master_id": obj.pk, "state": obj.state})
+
+
+# ---- size limits (2026-10-24): a mosaic canvas can be many times a single master ------------------------------
+JPEG_MAX_SIDE = 65_500  # the 100% view is a JPEG, which can't be wider or taller than this
+DEFAULT_MAX_MEGAPIXELS = 1_000  # per plane; a 25-panel mosaic of 26 MP frames is about 400 MP
+
+
+def image_size(path: Path) -> tuple[int, int, int] | None:
+    """(width, height, planes) from the FITS header alone, without reading the pixels; None when unknown."""
+    from astropy.io import fits
+
+    try:
+        with fits.open(path, memmap=True) as hl:
+            h = next((x.header for x in hl if x.header.get("NAXIS", 0) >= 2), None)
+    except (OSError, ValueError):
+        return None
+    if h is None:
+        return None
+    return int(h["NAXIS1"]), int(h["NAXIS2"]), int(h.get("NAXIS3", 1) or 1)
+
+
+def available_memory() -> int | None:
+    """Bytes this process can still use: the container's limit when there is one, else the machine's free memory.
+    None when it can't be told (then the memory check is skipped, not failed)."""
+    try:
+        limit = Path("/sys/fs/cgroup/memory.max").read_text().strip()
+        if limit != "max":
+            used = int(Path("/sys/fs/cgroup/memory.current").read_text().strip())
+            return max(0, int(limit) - used)
+    except (OSError, ValueError):
+        pass
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return None
+
+
+def _gb(n: float) -> str:
+    return f"{n / 1024**3:.1f} GB"
+
+
+def size_problem(src: Path, out_dir: Path, cfg: dict) -> str:
+    """Why this image is too big to post-process here, in plain words, or "". Reading the stages back for their
+    previews, measurements and 100% views holds about three copies of one stage in memory, and every stage is
+    written as 32-bit floats beside the master."""
+    size = image_size(src) if src.suffix.lower() in (".fit", ".fits", ".fts") else None
+    if size is None:
+        return ""
+    w, h, planes = size
+    mp = w * h / 1e6
+    limit = float(cfg.get("max_megapixels") or DEFAULT_MAX_MEGAPIXELS)
+    if max(w, h) > JPEG_MAX_SIDE:
+        return (
+            f"Too large to post-process: {w:,} × {h:,} pixels, and a 100% view can't be wider or taller than "
+            f"{JPEG_MAX_SIDE:,}. Stitch fewer panels, or bin the panels first."
+        )
+    if mp > limit:
+        return (
+            f"Too large to post-process: {mp:,.0f} megapixels, over this installation's limit of {limit:,.0f} "
+            f"(Settings → Processing)."
+        )
+    one = w * h * planes * 4  # one 32-bit stage
+    mem = available_memory()
+    if mem is not None and 3 * one > mem:
+        return (
+            f"Not enough memory to post-process this {mp:,.0f} MP image here: it needs about {_gb(3 * one)} and "
+            f"{_gb(mem)} is free."
+        )
+    steps = sum(1 for s in cfg.get("steps", []) if s.get("enabled")) + 1  # and the trimmed copy
+    need = int(steps * one * 1.1)
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        free = shutil.disk_usage(out_dir).free
+    except OSError:
+        return ""  # preflight says why the folder can't be used
+    if need > free:
+        return (
+            f"Not enough disk space beside the master to post-process it: {steps} stages of {_gb(one)} need about "
+            f"{_gb(need)} and {_gb(free)} is free."
+        )
+    return ""
+
+
+def failed_run(reason: str, cfg: dict) -> dict:
+    """A run that couldn't start, recorded so the master says why instead of the job crashing."""
+    now = timezone.now().isoformat()
+    return {
+        "started_at": now,
+        "finished_at": now,
+        "stages": [{"step": "preflight", "label": "Before starting", "state": "failed", "reason": reason}],
+        "settings": cfg,
+    }
+
+
+def postprocess(obj, overrides: dict | None = None) -> dict:  # noqa: ANN001
+    """Run the chain on a master or a combined master, from its untouched file, and record the run."""
     from .config import _merge, processing_settings
-    from .models import Master
 
-    m = Master.objects.get(pk=master_id)
-    if not m.output_path:
+    if not obj.output_path:
         return {"result": "no master file"}
     cfg = _merge(processing_settings()["post"], overrides or {})
-    src = Path(m.output_path)
-    run_no = len((m.report or {}).get("post_runs", [])) + 1
+    src = Path(obj.output_path)
+    run_no = len((obj.report or {}).get("post_runs", [])) + 1
     out_dir = src.parent / f"{src.stem}_post{run_no}"
+    problem = size_problem(src, out_dir, cfg) if src.exists() else ""
+    if problem:
+        record_run(obj, failed_run(problem, cfg))
+        emit_updated(obj)
+        return {"result": "too large", "reason": problem}
     started = timezone.now()
     stages = run_chain(src, cfg, out_dir)
     run_stats: dict = {}
     stage_views(src, stages, run_stats)
     run = {
-        "run": run_no,
         "started_at": started.isoformat(),
         "finished_at": timezone.now().isoformat(),
         "stages": stages,
         "settings": cfg,
         **run_stats,
     }
-    m.refresh_from_db()
-    report = dict(m.report or {})
-    report["post_runs"] = [*report.get("post_runs", []), run]
-    Master.objects.filter(pk=m.pk).update(report=report)
-    from substation.events.emit import emit
-
-    emit("master.updated", {"dataset_id": m.dataset_id, "master_id": m.pk, "state": m.state})
+    run_no = record_run(obj, run)
+    emit_updated(obj)
     done = sum(1 for s in stages if s.get("state") == "done")
     return {"run": run_no, "done": done, "skipped": sum(1 for s in stages if s.get("state") == "skipped")}
+
+
+def redraw_views(obj) -> dict:  # noqa: ANN001
+    report = dict(obj.report or {})
+    runs = report.get("post_runs", [])
+    if not runs or not obj.output_path:
+        return {"result": "nothing to redraw"}
+    for run in runs[-2:]:  # the latest runs; older ones keep their thumbnails
+        stage_views(Path(obj.output_path), run.get("stages", []), run)
+    type(obj).objects.filter(pk=obj.pk).update(report=report)
+    return {"result": "redrawn", "runs": min(2, len(runs))}
+
+
+@station_task(queue_name="process", priority=PRIORITY_BULK + 5, max_attempts=1)
+def redraw_post_views(master_id: int, kind: str = "master") -> dict:
+    """Redraw a master's existing post-processing stages with its stretch, at 100% too (older runs)."""
+    obj = post_object(kind, master_id)
+    return {"result": "gone"} if obj is None else redraw_views(obj)
+
+
+@station_task(queue_name="finish", priority=PRIORITY_BULK + 4, max_attempts=3)  # helpers can restart mid-job
+def postprocess_master(master_id: int, overrides: dict | None = None) -> dict:
+    """Spec 010 US1/US3: run the chain on a master (from the untouched master, every time)."""
+    from .models import Master
+
+    return postprocess(Master.objects.get(pk=master_id), overrides)
+
+
+@station_task(queue_name="finish", priority=PRIORITY_BULK + 4, max_attempts=3)
+def postprocess_combined(combined_id: int, overrides: dict | None = None) -> dict:
+    """Spec 010 US6 (2026-10-24): the same chain on a stitched mosaic or a stacked-together master."""
+    from .models import CombinedMaster
+
+    return postprocess(CombinedMaster.objects.select_related("collection").get(pk=combined_id), overrides)
 
 
 def _save_tool_status(status: dict) -> None:

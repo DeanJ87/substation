@@ -20,6 +20,7 @@ import {
   Notifications,
   PlateSolving,
   Stacking,
+  SubPreviews,
   PostProcessing,
   Users,
   Workers,
@@ -48,11 +49,12 @@ const TABS: Tab[] = [
   {
     id: 'processing',
     label: 'Processing',
-    sections: ['grading', 'calibration', 'stacking', 'post', 'solving'],
+    sections: ['grading', 'calibration', 'previews', 'stacking', 'post', 'solving'],
     body: (
       <>
         <Grading />
         <CalibrationMatching />
+        <SubPreviews />
         <Stacking />
         <PostProcessing />
         <PlateSolving />

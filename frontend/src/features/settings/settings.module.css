@@ -663,3 +663,36 @@
   gap: 8px 12px;
   font-size: 13px;
 }
+
+/* Sub previews (003 amendment 2026-10-24): the look's sliders and its small example */
+.range {
+  width: 140px;
+  accent-color: var(--sst-accent);
+}
+.rangeValue {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+.lookSample {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0 0;
+}
+.lookSample > span {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.lookSample canvas {
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--sst-radius-sm);
+  border: 1px solid var(--sst-line);
+}
+.lookSample figcaption {
+  flex-basis: 100%;
+  font-size: 13px;
+}

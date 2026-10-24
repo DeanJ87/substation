@@ -50,7 +50,10 @@ export type Processing = {
     graxpert: string
     rc_astro: string
     timeout_s: number
+    max_megapixels?: number
   }
+  /** How sub previews are stretched (003 amendment 2026-10-24). */
+  previews: { mode: 'session' | 'sub'; black_point: number; background: number }
 }
 /** One finishing step (spec 010); the parameters depend on the step. */
 export type PostStep = { step: string; enabled: boolean; [param: string]: string | number | boolean }
@@ -83,6 +86,10 @@ const LABELS: Record<string, string> = {
   'post.enabled': 'Post-process new masters',
   'post.steps': 'Post-processing steps',
   'post.gpu': 'Use the GPU',
+  'post.max_megapixels': 'Largest image to post-process (MP)',
+  'previews.mode': 'Sub preview stretch',
+  'previews.black_point': 'Preview black point',
+  'previews.background': 'Preview sky brightness',
   'notifications.ntfy': 'ntfy topic',
   'notifications.webhook': 'Webhook',
   'notifications.pushover_user': 'Pushover user key',

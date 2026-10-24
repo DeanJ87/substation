@@ -42,3 +42,22 @@
 - [X] G48 (owner 2026-10-13) CloseLook auto-starts a missing view; `look_progress` reports drawing / failed (with
   reason) / idle for subs, masters, combined and palettes; `draw_full_view` raises with its reason; `_read_fits`
   falls back from memmap for scaled FITS; tests (003-DR-31)
+
+## Amendment 2026-10-24: one preview look
+
+- [X] G49 `processing.previews` settings (`mode` session or sub, `black_point` −2…+2, `background` 0.10–0.40)
+  with range checks; a change queues `rerender_all_sessions` once (003-DR-32, 003-DR-34)
+- [X] G50 `previews.stretch_params(black_point, background)`, `preview_look()`, `shared_params()`,
+  `session_median()`; `render`, `full_and_inspector` and `glance` take the look; masters keep the default
+  (003-DR-32, 003-DR-35)
+- [X] G51 `rerender_session` follows the mode, groups calibrated and capture-drawn subs separately, writes
+  `<night>.json` and `<night>.raw.json`, and drops the session's 100% views; `calibrate_measure` uses the session
+  stretch only in shared mode and draws the 100% view after the preview; `draw_full_view` uses the session's
+  shared stretch; `rerender_previews` redraws whole sessions in shared mode (003-DR-33, 003-DR-34)
+- [X] G52 Preview and glance responses carry an ETag and a five-minute cache; glance cache keyed by the look
+  (003-DR-34)
+- [X] G53 Settings → Processing → Sub previews: Stretch, Black point and Sky brightness with help, and a small
+  example (a clear and a cloudy sub drawn in the browser with the same maths) (003-DR-32)
+- [X] G54 Tests: black point moves by noise sigmas, darker sky when raised; sky brightness sets the grey; shared
+  parameters are the median; session redraw in both modes; 100% view with the session stretch; settings API
+  checks and background redraw; preview revalidation; the browser example's maths

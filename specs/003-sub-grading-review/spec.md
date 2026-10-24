@@ -319,3 +319,32 @@ Exposure time was hard to find in the UI, and a sub's capture date wasn't shown 
   at once and shows that it is loading; there is no Generate button. If drawing fails, the viewer says why (the
   task's own reason) and offers Try again. A 16-bit FITS stored with BZERO/BSCALE (the Sony A7 III's) is read in
   full rather than memory-mapped, which it can't be.
+
+## Amendment 2026-10-24: one preview look for the installation
+
+Sub previews were drawn with one stretch per session only for subs measured after that rule (G18), and every
+glance or 100% view drawn later used the frame's own stretch, so black points still differed between frames being
+compared while grading.
+
+- **003-DR-32**: Settings → Processing → **Sub previews** sets how sub previews are stretched, for the whole
+  installation:
+  - **Stretch**: *Shared per session* (default) draws every sub of one night and dataset with one stretch, the
+    median of its subs' own stretch parameters, so a cloudy or hazy sub looks darker beside its neighbours;
+    *Per sub* draws each with its own. Subs drawn from calibrated files and subs drawn from captures (no dark or
+    flat applied) are kept as separate groups within a session, since their levels differ.
+  - **Black point**: a signed offset from −2 to +2 in units of the sky's noise (sigma), default 0, applied to the
+    shadow clip (normally 2.8 sigma below the sky). The midtone balance stays where the default clip puts it, so
+    a higher black point draws a darker, cleaner sky and a lower one a lighter, noisier one.
+  - **Sky brightness**: the grey level the sky is drawn at with the default clip, 10–40%, default 25%.
+- **003-DR-33**: The look applies to everything that shows a sub: tiles, the night page strips, the dataset Subs
+  and Quality tabs, Review and the sub viewer all use the stored previews; a glance of a measured sub is its
+  preview; the 100% view and aberration inspector of a sub use its session's shared stretch in shared mode, and
+  the look otherwise. A glance of a frame that hasn't been measured has no session stretch yet and is drawn on its
+  own with the look.
+- **003-DR-34**: Changing the look queues one background job that queues a redraw per session (the existing
+  session redraw), bounded by the queue's workers; nothing is redrawn inside the request. Each redraw also drops
+  the session's 100% views, which are drawn again on request to match. Previews are sent with a five-minute cache
+  and an ETag, so browsers pick up redrawn previews without keeping stale ones for a day.
+- **003-DR-35**: Masters, combined masters and post-processed stages keep their own stretch and ignore the look:
+  their stages are compared against the master's own stretch (spec 010), and moving their black point with a
+  setting meant for grading subs would change every stage preview without redrawing them.

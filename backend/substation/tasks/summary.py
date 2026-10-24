@@ -41,6 +41,11 @@ def _settled_since(t: Task) -> bool:
 
     if not t.args:
         return False
+    if t.name.endswith(".postprocess_combined"):
+        from apps.processing.models import CombinedMaster
+
+        state = CombinedMaster.objects.filter(pk=t.args[0]).values_list("state", flat=True).first()
+        return state is None or state in (MasterState.DELETED, MasterState.SUPERSEDED)
     if t.name.endswith((".integrate", ".postprocess_master")):
         m = Master.objects.filter(pk=t.args[0]).values("state", "dataset_id", "version").first()
         if m is None or m["state"] == MasterState.DELETED:

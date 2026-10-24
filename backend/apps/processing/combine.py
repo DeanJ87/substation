@@ -691,10 +691,16 @@ def _register_and_stack(
 
 def _after_combine(rows: list[CombinedMaster], collection_id: int) -> None:
     # palettes made from these combined masters are redrawn now, so the 100% HOO/SHO views are ready
+    from .config import processing_settings
     from .tasks import PALETTES, combined_view, palette_inputs, palette_view
 
+    post_on = bool(processing_settings()["post"].get("enabled"))
     for cm in CombinedMaster.objects.filter(pk__in=[r.pk for r in rows], state=MasterState.CURRENT):
         enqueue(combined_view, cm.pk, dedupe_key=f"combined-view:{cm.pk}")
+        if post_on:  # spec 010 US6 (2026-10-24): finished like a dataset's master when the chain is on
+            from .postprocess import postprocess_combined
+
+            enqueue(postprocess_combined, cm.pk, dedupe_key=f"post-combined:{cm.pk}")
     project_id = rows[0].project_id
     for name in PALETTES:
         if palette_inputs(collection_id, project_id, name) is not None:

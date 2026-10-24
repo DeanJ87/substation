@@ -951,6 +951,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/combined/{id}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Combined Post
+         * @description A stitched or stacked master's post-processing runs, newest first, as a dataset master's.
+         */
+        get: operations["apps_processing_api_masters_combined_post"];
+        put?: never;
+        /**
+         * Start Combined Post
+         * @description Post-process this stitched or stacked master (again), from its untouched file, with the current settings.
+         *     Admins only: a run on a big canvas takes a helper a long time.
+         */
+        post: operations["apps_processing_api_masters_start_combined_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/combined/{id}/post/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redraw Combined Post
+         * @description Redraw this combined master's stages with its stretch, at 100% too.
+         */
+        post: operations["apps_processing_api_masters_redraw_combined_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/combined/{id}/post/{run}/{stage}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Combined Post Download
+         * @description A processed version's linear 32-bit file, to download.
+         */
+        get: operations["apps_processing_api_masters_combined_post_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/combined/{id}/post/{run}/{stage}/full": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Combined Post Full
+         * @description A stage at 100%, drawn with the combined master's stretch.
+         */
+        get: operations["apps_processing_api_masters_combined_post_full"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/combined/{id}/post/{run}/{stage}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Combined Post Preview */
+        get: operations["apps_processing_api_masters_combined_post_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/combined/{id}/preview": {
         parameters: {
             query?: never;
@@ -1644,7 +1746,8 @@ export interface paths {
         /**
          * Glance Image
          * @description A small image of any frame for hover previews: its preview, QA thumbnail or built-master preview when one
-         *     exists, else drawn from the file once and cached (owner 2026-10-11).
+         *     exists, else drawn from the file once and cached (owner 2026-10-11). A measured sub's glance is its preview,
+         *     so it shares its session's stretch; one drawn here uses the preview look on its own (003, 2026-10-24).
          */
         get: operations["apps_processing_api_glance_image"];
         put?: never;
@@ -4685,6 +4788,11 @@ export interface components {
         };
         /** HelperJobOut */
         HelperJobOut: {
+            /**
+             * Kind
+             * @default master
+             */
+            kind: string;
             /** Master File */
             master_file: string;
             /** Master Id */
@@ -9095,6 +9203,161 @@ export interface operations {
             };
         };
     };
+    apps_processing_api_masters_combined_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_masters_start_combined_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_masters_redraw_combined_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostOut"];
+                };
+            };
+        };
+    };
+    apps_processing_api_masters_combined_post_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                run: number;
+                stage: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    apps_processing_api_masters_combined_post_full: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                run: number;
+                stage: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    apps_processing_api_masters_combined_post_preview: {
+        parameters: {
+            query?: {
+                size?: "screen" | "thumb";
+            };
+            header?: never;
+            path: {
+                id: number;
+                run: number;
+                stage: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     apps_processing_api_masters_combined_preview: {
         parameters: {
             query?: {
@@ -10148,6 +10411,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Not Modified */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -10172,6 +10442,13 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Modified */
+            304: {
                 headers: {
                     [name: string]: unknown;
                 };

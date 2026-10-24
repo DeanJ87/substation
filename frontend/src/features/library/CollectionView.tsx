@@ -58,6 +58,7 @@ import { TargetSky } from '../sky/SkyNights'
 import tb from './tables.module.css'
 import { usePlaceName } from '../map/place'
 import { ProjectCards } from './ProjectCards'
+import { CombinedPost, CombinedThumb } from './CombinedPost'
 import { inNights, omit, readScope, scopeQuery } from '../scope/scope'
 import { ChooseBox, useChosen } from '../../components/BulkBar'
 import { DatasetBulkBar } from './DatasetBulkBar'
@@ -864,13 +865,7 @@ function Combined({
               <article key={m.id} className={`${v.card} ${c.masterCard}`}>
                 <div className={c.masterThumb}>
                   {m.has_preview && (
-                    <Zoomable target={{ kind: 'combined', id: m.id }} name={madeName(m)}>
-                      <img
-                        src={`/api/v1/combined/${m.id}/preview?size=thumb`}
-                        alt={madeName(m)}
-                        loading="lazy"
-                      />
-                    </Zoomable>
+                    <CombinedThumb id={m.id} name={madeName(m)} current={m.state === 'current' && m.id > 0} />
                   )}
                 </div>
                 <div className={c.masterBody}>
@@ -886,6 +881,7 @@ function Combined({
                   {m.state === 'current' && (
                     <FilePath path={m.file_path ?? ''} download={`/api/v1/combined/${m.id}/download`} />
                   )}
+                  {m.state === 'current' && m.id > 0 && <CombinedPost id={m.id} name={madeName(m)} />}
                   {canEdit && m.id > 0 && m.state !== 'queued' && m.state !== 'running' && (
                     <span>
                       <ConfirmButton

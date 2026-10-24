@@ -67,3 +67,27 @@
   masters' views redrawn
 - [X] T034 (2026-10-14) Stage uploads in 16 MB pieces (`offset`, `last`) so a proxy's one-minute limit can't cut
   them off; helper VERSION 4; test
+
+## Amendment 2026-10-24: combined masters
+
+- [X] T035 `postprocess.py`: the chain runs on any object with `output_path` and `report` (a master or a combined
+  master): `postprocess()`, `record_run()`, `redraw_views()`, `post_object()`, `post_name()`; new task
+  `postprocess_combined` on the `finish` queue; `redraw_post_views` takes a kind (010-DR-23, 010-DR-26)
+- [X] T036 `CombinedMaster.report` JSON field (migration `processing.0018_combined_report`)
+- [X] T037 Combining queues post-processing for each new current combined master when the chain is on
+  (`combine._after_combine`) (010-DR-23)
+- [X] T038 API: `/combined/{id}/post` (GET; POST admin only, refused for a deleted or unfinished one),
+  `/combined/{id}/post/views`, stage preview, 100% view and download (010-DR-26)
+- [X] T039 Helper API dispatches on the task: claim, download, stage upload, done and fail work for combined jobs;
+  the job carries `kind` (010-DR-26)
+- [X] T040 Size limits: `image_size`, `available_memory`, `size_problem`; refused runs recorded as a failed
+  "Before starting" stage, on the worker and at helper claim; `post.max_megapixels` setting and its range check
+  (010-DR-27)
+- [X] T041 Activity names, outcomes, links and the stale-failure check for `postprocess_combined`
+- [X] T042 UI: combined master card shows the latest run's stages, View at 100%, stage files, and Run
+  post-processing / Run again for admins; the card's picture is the latest processed stage; the 100% view tabs
+  through versions for combined masters; Settings shows the largest-image limit (010-DR-24, 010-DR-25)
+- [X] T043 Tests: chain on a combined master, API and admin check, automatic queueing on and off, each size limit,
+  a too-big run recorded without crashing, a helper end to end on a combined master, a helper refused a canvas too
+  big for the server
+- [ ] T044 Palette images (HOO, SHO) through the chain (rest of US6)

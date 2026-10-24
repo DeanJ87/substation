@@ -51,6 +51,7 @@ KIND = {
     "rerender_all_sessions": "Redraw all sessions",
     "combined_view": "100% view of a mosaic or stacked master",
     "postprocess_master": "Post-process master",
+    "postprocess_combined": "Post-process mosaic or stacked master",
     "check_tools": "Check finishing tools",
     "redraw_post_views": "Redraw post-processed views",
     "activate_rc_astro": "Activate RC-Astro",
@@ -79,6 +80,8 @@ def _measured(r: dict, t: str) -> str:
 def _post_processed(r: dict, t: str) -> str:
     if "run" in r:
         return f"Post-processed {t}: {r.get('done', 0)} done, {r.get('skipped', 0)} skipped"
+    if r.get("reason"):
+        return f"Post-processing didn't start · {t}: {r['reason']}"
     return f"Post-processing {r.get('result', 'ended')} · {t}"
 
 
@@ -100,6 +103,7 @@ _OUTCOMES: dict[str, Callable[[dict, str], str]] = {
         f"Stacked {_n(r, 'subs')} subs · {t}" if "subs" in r else f"Stack {r.get('result', 'ended')} · {t}"
     ),
     "postprocess_master": _post_processed,
+    "postprocess_combined": _post_processed,
     "build_master": lambda r, t: (
         f"Master blocked · {t}"
         if r.get("result") == "blocked"
@@ -154,6 +158,21 @@ def _move_target(move_id: int) -> str:
     return f"{m.get_direction_display()} · {m.collection.name} · {m.from_library.name} → {m.to_library.name}"
 
 
+def _combined_post_target(args: list) -> tuple[str, int | None, dict]:
+    from apps.processing.models import CombinedMaster
+    from apps.processing.postprocess import post_name
+
+    cm = CombinedMaster.objects.select_related("collection").get(pk=args[0])
+    return post_name(cm), None, {"combined_id": cm.pk, "collection_id": cm.collection_id}
+
+
+# job kinds whose target comes straight from their arguments
+_BY_ARGS: dict[str, Callable[[list], tuple[str, int | None, dict]]] = {
+    "move_collection": lambda args: (_move_target(int(args[0])), None, {}),
+    "postprocess_combined": _combined_post_target,
+}
+
+
 def _target(t: Task) -> tuple[str, int | None, dict]:
     """(target text, dataset id, extra) for a task, from its arguments."""
     short = t.name.rsplit(".", 1)[-1]
@@ -202,8 +221,8 @@ def _target(t: Task) -> tuple[str, int | None, dict]:
                     "why": why,  # who or what started it, and with which subs (owner 2026-10-13)
                 },
             )
-        if short == "move_collection":
-            return _move_target(int(args[0])), None, {}
+        if short in _BY_ARGS:
+            return _BY_ARGS[short](args)
         if short == "build_progression":
             from apps.finished.models import FinishedProject
 
@@ -309,6 +328,11 @@ def _link(short: str, args: list, ds: int | None) -> str | None:
             return f"/calibration/sets/{set_id}" if set_id else "/calibration"
         if short in ("combine", "stitch_mosaic", "stack_together") and args:
             return f"/collections/{args[0]}?tab=masters"
+        if short == "postprocess_combined" and args:
+            from apps.processing.models import CombinedMaster
+
+            col = CombinedMaster.objects.filter(pk=args[0]).values_list("collection_id", flat=True).first()
+            return f"/collections/{col}?tab=masters" if col else None
         if short == "regrade_datasets" and args and args[0]:
             return f"/datasets/{args[0][0]}?tab=quality" if len(args[0]) == 1 else "/"
         if short in ("rematch_lights", "qa_calibration_set"):
@@ -486,6 +510,7 @@ VERBS = {
     "stitch_mosaic": "Stitching a mosaic",
     "stack_together": "Stacking together",
     "postprocess_master": "Post-processing",
+    "postprocess_combined": "Post-processing",
 }
 STEP_VERBS = {
     "Register": "Registering",

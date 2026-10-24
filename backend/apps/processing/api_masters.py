@@ -833,9 +833,17 @@ def _tool_label(s: dict) -> str:
     return "GraXpert"
 
 
-def _post_out(m: Master) -> PostOut:
+def _post_out(m) -> PostOut:  # noqa: ANN001 — a Master or a CombinedMaster
     from .config import processing_settings
+    from .models import CombinedMaster
 
+    combined = isinstance(m, CombinedMaster)
+    base = f"/api/v1/combined/{m.pk}/post" if combined else f"/api/v1/stacks/{m.pk}/post"
+    task_name = (
+        "apps.processing.postprocess.postprocess_combined"
+        if combined
+        else "apps.processing.postprocess.postprocess_master"
+    )
     runs = []
     for r in (m.report or {}).get("post_runs", []):
         stages = [
@@ -847,12 +855,12 @@ def _post_out(m: Master) -> PostOut:
                 tool=s.get("tool", ""),
                 seconds=s.get("seconds"),
                 params=s.get("params", {}),
-                preview=f"/api/v1/stacks/{m.pk}/post/{r['run']}/{i}/preview" if s.get("preview") else None,
-                full=f"/api/v1/stacks/{m.pk}/post/{r['run']}/{i}/full" if s.get("full") else None,
+                preview=f"{base}/{r['run']}/{i}/preview" if s.get("preview") else None,
+                full=f"{base}/{r['run']}/{i}/full" if s.get("full") else None,
                 tool_label=_tool_label(s),
                 stats=s.get("stats") or {},
                 file_path=s.get("path", "") if s.get("state") == "done" else "",
-                download=f"/api/v1/stacks/{m.pk}/post/{r['run']}/{i}/download"
+                download=f"{base}/{r['run']}/{i}/download"
                 if s.get("state") == "done" and s.get("path")
                 else None,
             )
@@ -872,13 +880,10 @@ def _post_out(m: Master) -> PostOut:
     seen = processing_settings().get("helper_seen") or {}
     at = seen.get("at")
     online = isinstance(at, str) and timezone.now() - datetime.fromisoformat(at) < timedelta(minutes=2)
+    key = f"post-combined:{m.pk}" if combined else f"post:{m.pk}"
     queued = (
-        Task.objects.filter(dedupe_key=f"post:{m.pk}", status__in=["ready", "running"]).exists()
-        or Task.objects.filter(
-            name="apps.processing.postprocess.postprocess_master",
-            args__0=m.pk,
-            status__in=["ready", "running"],
-        ).exists()
+        Task.objects.filter(dedupe_key=key, status__in=["ready", "running"]).exists()
+        or Task.objects.filter(name=task_name, args__0=m.pk, status__in=["ready", "running"]).exists()
     )
     return PostOut(
         enabled=bool(processing_settings()["post"].get("enabled")),
@@ -959,6 +964,97 @@ def master_post_preview(request, id: int, run: int, stage: int, size: Literal["s
             if p.is_file():
                 return FileResponse(p.open("rb"), content_type="image/jpeg")
     return 404, None
+
+
+# ---- post-processing a stitched or stacked master (spec 010 US6, 2026-10-24) ------------------------------------
+def _combined(id: int):  # noqa: A002, ANN202
+    from .models import CombinedMaster
+
+    return get_object_or_404(CombinedMaster.objects.select_related("collection"), pk=id)
+
+
+def _stage(m, run: int, stage: int) -> dict | None:  # noqa: ANN001
+    for r in (m.report or {}).get("post_runs", []):
+        if r["run"] == run and 0 <= stage < len(r.get("stages", [])):
+            return r["stages"][stage]
+    return None
+
+
+@router.get("/combined/{id}/post", response=PostOut)
+def combined_post(request, id: int):  # noqa: A002
+    """A stitched or stacked master's post-processing runs, newest first, as a dataset master's."""
+    return _post_out(_combined(id))
+
+
+@router.post("/combined/{id}/post", response=PostOut)
+def start_combined_post(request, id: int):  # noqa: A002
+    """Post-process this stitched or stacked master (again), from its untouched file, with the current settings.
+    Admins only: a run on a big canvas takes a helper a long time."""
+    from apps.accounts.roles import is_admin
+
+    from .postprocess import postprocess_combined
+
+    if not is_admin(request.user):
+        raise ApiError(403, "admin_only", "Only an admin can start post-processing.")
+    cm = _combined(id)
+    if not cm.output_path or cm.state != MasterState.CURRENT:
+        raise ApiError(409, "no_file", "This master has no current file to process.")
+    enqueue(postprocess_combined, cm.pk, dedupe_key=f"post-combined:{cm.pk}")
+    return _post_out(cm)
+
+
+@router.post("/combined/{id}/post/views", response=PostOut)
+def redraw_combined_post(request, id: int):  # noqa: A002
+    """Redraw this combined master's stages with its stretch, at 100% too."""
+    from .postprocess import redraw_post_views
+
+    cm = _combined(id)
+    enqueue(redraw_post_views, cm.pk, "combined", dedupe_key=f"post-views-combined:{cm.pk}")
+    return _post_out(cm)
+
+
+@router.get("/combined/{id}/post/{run}/{stage}/preview", response={200: None, 404: None})
+def combined_post_preview(
+    request,
+    id: int,  # noqa: A002
+    run: int,
+    stage: int,
+    size: Literal["screen", "thumb"] = "screen",
+):
+    s = _stage(_combined(id), run, stage)
+    p = Path((s or {}).get("preview") or "")
+    if size == "thumb":
+        p = p.with_name(p.stem + "_t.jpg")
+    return (
+        FileResponse(p.open("rb"), content_type="image/jpeg")
+        if s and p.is_file()
+        else HttpResponse(status=404)
+    )
+
+
+@router.get("/combined/{id}/post/{run}/{stage}/full", response={200: None, 404: None})
+def combined_post_full(request, id: int, run: int, stage: int):  # noqa: A002
+    """A stage at 100%, drawn with the combined master's stretch."""
+    s = _stage(_combined(id), run, stage)
+    p = Path((s or {}).get("full") or "")
+    return (
+        FileResponse(p.open("rb"), content_type="image/jpeg")
+        if s and p.is_file()
+        else HttpResponse(status=404)
+    )
+
+
+@router.get("/combined/{id}/post/{run}/{stage}/download", response={200: None, 404: None})
+def combined_post_download(request, id: int, run: int, stage: int):  # noqa: A002
+    """A processed version's linear 32-bit file, to download."""
+    cm = _combined(id)
+    s = _stage(cm, run, stage)
+    p = Path((s or {}).get("path") or "")
+    if not s or s.get("state") != "done" or not p.is_file():
+        return HttpResponse(status=404)
+    return FileResponse(
+        p.open("rb"), as_attachment=True, filename=f"{Path(cm.output_path).stem}_{s['step']}{p.suffix}"
+    )
 
 
 class PostToolsOut(Schema):

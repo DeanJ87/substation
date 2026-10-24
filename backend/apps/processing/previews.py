@@ -1,6 +1,8 @@
 """Previews (spec 003 FR-007): an auto-stretched JPEG for the screen and a small one for tiles, made from the
 calibrated FITS. Stretch: a midtones transfer function placing the median at 25% grey, shadows clipped at
-median − 2.8·MAD (the usual screen-transfer default)."""
+median − 2.8·MAD (the usual screen-transfer default). Sub previews follow the installation's preview look (003
+amendment 2026-10-24): the black point moved by a number of noise sigmas and the sky's grey level; masters keep the
+default."""
 
 from __future__ import annotations
 
@@ -20,17 +22,49 @@ def _bin(data: np.ndarray, width: int) -> np.ndarray:
     return data[:h2, :w2].reshape(h2 // f, f, w2 // f, f).mean(axis=(1, 3))
 
 
-def stretch_params(data: np.ndarray) -> tuple[float, float, float]:
+SHADOW_SIGMAS = 2.8  # shadows clipped this many noise sigmas below the sky
+DEFAULT_LOOK: dict = {"mode": "session", "black_point": 0.0, "background": 0.25}
+
+
+def preview_look() -> dict:
+    """The installation's preview look for subs (Settings → Processing); the defaults when it can't be read."""
+    try:
+        from .config import processing_settings
+
+        return {**DEFAULT_LOOK, **(processing_settings().get("previews") or {})}
+    except Exception:  # noqa: BLE001 — no database (a helper, a script): the defaults
+        return dict(DEFAULT_LOOK)
+
+
+def look_args(look: dict | None) -> dict:
+    """The stretch arguments in a look (its mode is for the callers)."""
+    look = look or DEFAULT_LOOK
+    return {
+        "black_point": float(look.get("black_point", 0.0) or 0.0),
+        "background": float(look.get("background", 0.25) or 0.25),
+    }
+
+
+def stretch_params(
+    data: np.ndarray, black_point: float = 0.0, background: float = 0.25
+) -> tuple[float, float, float]:
+    """(black level, midtones balance, range) for one plane. `black_point` moves the shadow clip by that many
+    noise sigmas (+ clips more: a darker sky; − less), never up to the sky itself; `background` is the grey level
+    the sky is drawn at."""
     sample = data[:: max(1, data.shape[0] // 512), :: max(1, data.shape[1] // 512)]
     lo, hi = np.percentile(sample, [0.01, 99.999])
     span = max(hi - lo, 1e-9)
     norm = np.clip((sample - lo) / span, 0, 1)
     med = float(np.median(norm))
     mad = float(np.median(np.abs(norm - med))) * 1.4826
-    shadows = max(0.0, med - 2.8 * mad)
-    m = (med - shadows) / max(1e-9, 1 - shadows)
-    target = 0.25
+    # the midtones balance puts the sky at `background` grey with the usual clip; the black point then moves on its
+    # own, as a levels slider would, so a higher one draws a darker sky and a lower one a lighter one
+    base = max(0.0, med - SHADOW_SIGMAS * mad)
+    m = (med - base) / max(1e-9, 1 - base)
+    target = min(0.45, max(0.05, float(background)))
     midtones = (target - 1) * m / ((2 * target - 1) * m - target) if m > 0 else 0.5
+    # never at or above the sky: at least a quarter sigma below it
+    shadows = max(0.0, med - max(0.25, SHADOW_SIGMAS - float(black_point)) * mad)
     return float(lo + shadows * span), float(midtones), float(span * (1 - shadows))
 
 
@@ -58,6 +92,28 @@ def session_stretch(session: Path, own: list[tuple[float, float, float]]) -> lis
     session.parent.mkdir(parents=True, exist_ok=True)
     session.write_text(json.dumps(seen))
     return [tuple(float(np.median([s[i][k] for s in seen])) for k in range(3)) for i in range(len(own))]  # type: ignore[misc]
+
+
+def shared_params(per_sub: list[list[tuple[float, float, float]]]) -> list[tuple[float, float, float]]:
+    """One stretch for a set of frames (all with the same number of planes): the median of their own parameters,
+    plane by plane, so every frame is drawn alike and a cloudy one looks darker beside the others."""
+    n = len(per_sub[0])
+    return [tuple(float(np.median([p[i][k] for p in per_sub])) for k in range(3)) for i in range(n)]  # type: ignore[misc]
+
+
+def session_median(session: Path, planes: int | None = None) -> list[tuple[float, float, float]] | None:
+    """The stretch a session's previews were drawn with (its file's median), without adding to it; None when the
+    session has none yet (or none for this many planes)."""
+    import json
+
+    try:
+        seen = json.loads(session.read_text()) if session.exists() else []
+    except (OSError, ValueError):
+        return None
+    seen = [x for x in seen if planes is None or len(x) == planes]
+    if not seen:
+        return None
+    return shared_params([[tuple(p) for p in x] for x in seen])  # type: ignore[misc]
 
 
 def superpixel(data: np.ndarray, pattern: str) -> np.ndarray | None:
@@ -108,15 +164,17 @@ def render(
     raw: bool = False,
     session: Path | None = None,
     params: list[tuple[float, float, float]] | None = None,
+    look: dict | None = None,
 ) -> None:
     """`raw`: the file is a capture, not Siril's output, so a colour mosaic is debayered here and a top-down file
     is already the right way up. `session` adds this sub to its session's stretch and uses the session's;
-    `params` gives the stretch outright (a whole session redrawn at once)."""
+    `params` gives the stretch outright (a whole session redrawn at once); `look` is the preview look a sub's own
+    stretch is made with (None: the default, as masters use)."""
     from PIL import Image
 
     planes, mode, flip = screen_planes(fits_path, raw)
     if params is None:
-        params = [stretch_params(pl) for pl in planes]
+        params = [stretch_params(pl, **look_args(look)) for pl in planes]
         if session is not None:
             params = session_stretch(session, params)
     out = [_stretch8(pl, pr) for pl, pr in zip(planes, params, strict=True)]
@@ -157,14 +215,19 @@ def _load_display(fits_path: Path, raw: bool) -> tuple[np.ndarray, bool]:
 
 
 def _stretch_full(
-    data: np.ndarray, colour: bool, params: list[tuple[float, float, float]] | None = None
+    data: np.ndarray,
+    colour: bool,
+    params: list[tuple[float, float, float]] | None = None,
+    look: dict | None = None,
 ) -> np.ndarray:
     """8-bit, stretched with parameters from a binned copy (as the preview), applied at full resolution; or with
     `params` given (a post-processed stage drawn with its master's stretch, so versions compare fairly)."""
     planes = data if colour else data[None]
     out = []
     for i, c in enumerate(planes):
-        lo, m, span = params[min(i, len(params) - 1)] if params else stretch_params(_bin(c, SCREEN))  # type: ignore[misc]
+        lo, m, span = (  # type: ignore[misc]
+            params[min(i, len(params) - 1)] if params else stretch_params(_bin(c, SCREEN), **look_args(look))
+        )
         x = np.clip((c - lo) / max(span, 1e-9), 0, 1)
         out.append((np.clip(_mtf(x, m), 0, 1) * 255).astype(np.uint8))
     return np.ascontiguousarray(np.stack(out, axis=-1) if colour else out[0])
@@ -177,6 +240,7 @@ def full_and_inspector(
     raw: bool = False,
     tile: int = 320,
     params: list[tuple[float, float, float]] | None = None,
+    look: dict | None = None,
 ) -> None:
     """For checking a sub at 100% (owner 2026-10-10): the whole sub at full resolution, and an aberration
     inspector: nine full-resolution crops (corners, edge middles, centre) in a 3×3 grid, so elongated or soft
@@ -184,7 +248,7 @@ def full_and_inspector(
     from PIL import Image
 
     data, colour = _load_display(fits_path, raw)
-    img = _stretch_full(data, colour, params)
+    img = _stretch_full(data, colour, params, look)
     mode = "RGB" if colour else "L"
     out_full.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(img, mode=mode).save(out_full, quality=78)
@@ -265,9 +329,10 @@ def shifted_stretch(
     ]
 
 
-def glance(src: Path, out: Path, width: int = 480) -> None:
+def glance(src: Path, out: Path, width: int = 480, look: dict | None = None) -> None:
     """A small stretched JPEG of any frame, for hover previews (owner 2026-10-11).
-    Binned straight down to about `width` pixels, so a 24 MP file takes well under a second."""
+    Binned straight down to about `width` pixels, so a 24 MP file takes well under a second. A frame with no
+    measured preview has no session stretch to share, so it is drawn on its own, with the preview look."""
     from PIL import Image
 
     data, colour = _load_display(src, raw=True)
@@ -275,7 +340,7 @@ def glance(src: Path, out: Path, width: int = 480) -> None:
     small = [_bin(c, width) for c in planes]
     out8 = []
     for c in small:
-        lo, m, span = stretch_params(c)  # type: ignore[misc]
+        lo, m, span = stretch_params(c, **look_args(look))  # type: ignore[misc]
         x = np.clip((c - lo) / max(span, 1e-9), 0, 1)
         out8.append((np.clip(_mtf(x, m), 0, 1) * 255).astype(np.uint8))
     img = np.stack(out8, axis=-1) if colour else out8[0]

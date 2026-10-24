@@ -184,25 +184,30 @@ def _save_stars(calibrated: Path, stars: list, out: Path) -> None:
         log.warning("Couldn't keep the star list: %s", exc)
 
 
+def _grey_colour(prev: Path, src: Path) -> bool:
+    """A grey preview of colour data (what one-shot colour subs measured before colour previews looked like)."""
+    from astropy.io import fits
+    from PIL import Image
+
+    try:
+        if Image.open(prev).mode != "L":
+            return False
+        h = fits.getheader(src)
+    except (OSError, ValueError):
+        return False
+    return bool(h.get("BAYERPAT")) or h.get("NAXIS3") == 3
+
+
 @station_task(queue_name="process", priority=PRIORITY_BULK - 10, max_attempts=2)
 def rerender_previews(dataset_id: int | None = None, colour_only: bool = True) -> dict:
     """Redraw sub previews (after the preview rules change): from the calibrated file when it is still cached,
     else from the capture itself. `colour_only` redraws only grey previews of colour data, which is what one-shot
-    colour subs measured before colour previews looked like."""
-    from astropy.io import fits
-    from PIL import Image
+    colour subs measured before colour previews looked like. With the shared preview look, each affected session
+    is redrawn as a whole instead (003 amendment 2026-10-24)."""
+    from .previews import preview_look, render
 
-    from .previews import render
-
-    def grey_colour(prev: Path, src: Path) -> bool:
-        try:
-            if Image.open(prev).mode != "L":
-                return False
-            h = fits.getheader(src)
-        except (OSError, ValueError):
-            return False
-        return bool(h.get("BAYERPAT")) or h.get("NAXIS3") == 3
-
+    look = preview_look()
+    sessions: set[tuple[int, int | None]] = set()
     qs = (
         SubMeasurement.objects.filter(state=MeasureState.DONE)
         .exclude(preview_path="")
@@ -216,18 +221,32 @@ def rerender_previews(dataset_id: int | None = None, colour_only: bool = True) -
         for m in SubMeasurement.objects.filter(pk__in=ids[i : i + 100]).select_related("frame"):
             cal = Path(m.calibrated_path) if m.calibrated_path else None
             src, raw = (cal, False) if cal and cal.exists() else (source_path(m.frame), True)
-            if src is None:
-                continue
             out = Path(m.preview_path)
-            if colour_only and not grey_colour(out, src):
+            if src is None or (colour_only and not _grey_colour(out, src)):
+                continue
+            if look["mode"] == "session" and m.frame.dataset_id:
+                sessions.add((m.frame.dataset_id, m.frame.night_id))
                 continue
             try:
-                render(src, out, out.with_name(out.stem + "_t.jpg"), raw=raw)
+                render(src, out, out.with_name(out.stem + "_t.jpg"), raw=raw, look=look)
                 done += 1
             except Exception as exc:  # noqa: BLE001 (one bad file must not stop the rest)
                 log.warning("Preview redraw failed for %s: %s", m.frame_id[:12], exc)
         report_progress(min(1.0, (i + 100) / max(1, len(ids))), f"redrawing {len(ids)} previews")
-    return {"previews": done, "of": len(ids)}
+    for ds, night in sessions:
+        enqueue(rerender_session, ds, night, dedupe_key=f"rerender:{ds}:{night}")
+    return {"previews": done, "of": len(ids), "sessions": len(sessions)}
+
+
+def session_file(dataset_id: int | None, night: str, raw: bool) -> Path:
+    """Where a session's preview stretch is kept: one file for previews drawn from calibrated subs and one for those
+    drawn from captures (no dark or flat applied, so their levels differ and they aren't mixed)."""
+    name = f"{night}.raw.json" if raw else f"{night}.json"
+    return Path(settings.PREVIEWS_DIR) / f"ds{dataset_id or 0}" / "stretch" / name
+
+
+def _night_key(frame: Frame) -> str:
+    return frame.night.date.isoformat() if frame.night else "unknown"
 
 
 def master_fits(master: Frame) -> Path:
@@ -513,7 +532,7 @@ def calibrate_measure(sha256: str) -> dict:
     from apps.engine import parse
     from apps.engine.siril import engine
 
-    from .previews import render
+    from .previews import preview_look, render
 
     t0 = time.monotonic()
     frame = Frame.objects.get(pk=sha256)
@@ -558,20 +577,23 @@ def calibrate_measure(sha256: str) -> dict:
         report_progress(0.85, "preview")
         prev_dir = Path(settings.PREVIEWS_DIR) / f"ds{frame.dataset_id or 0}"
         _save_stars(calibrated, stars, prev_dir / f"{sha256[:20]}_stars.json")
-        make_full_view(
-            frame, calibrated
-        )  # 100% view and inspector, ready before anyone asks (owner 2026-10-10)
         try:
-            night = frame.night.date.isoformat() if frame.night else "unknown"
+            look = preview_look()
             render(
                 calibrated,
                 prev_dir / f"{sha256[:20]}.jpg",
                 prev_dir / f"{sha256[:20]}_t.jpg",
-                session=prev_dir / "stretch" / f"{night}.json",
+                session=session_file(frame.dataset_id, _night_key(frame), raw=False)
+                if look["mode"] == "session"
+                else None,
+                look=look,
             )
             m.preview_path = str(prev_dir / f"{sha256[:20]}.jpg")
         except Exception as exc:  # noqa: BLE001 (a preview must never fail the measurement)
             log.warning("Preview failed for %s: %s", sha256[:12], exc)
+        # 100% view and inspector, ready before anyone asks (owner 2026-10-10); after the preview, so it is drawn
+        # with the session's stretch including this sub
+        make_full_view(frame, calibrated)
         m.state, m.error = MeasureState.DONE, None
         m.seconds = round(time.monotonic() - t0, 2)
         m.measured_at = timezone.now()
@@ -647,21 +669,42 @@ FULL_VIEW_BUDGET_GB = float(os.environ.get("FULL_VIEW_BUDGET_GB", "20"))  # olde
 
 def draw_full_view(frame: Frame, cal: Path | None) -> None:
     """Draw the 100% view and inspector from the calibrated file (or the capture); raises with the reason."""
-    from .previews import full_and_inspector
+    from .previews import full_and_inspector, preview_look, session_median
 
     full, inspect = full_paths(frame)
     if full.exists() and inspect.exists():
         return
+    look = preview_look()
+
+    def shared(raw: bool):  # noqa: ANN202 — the session's stretch, as the sub's preview was drawn with
+        if look["mode"] != "session" or not frame.dataset_id:
+            return None
+        return session_median(session_file(frame.dataset_id, _night_key(frame), raw))
+
     if cal is not None and cal.exists():
-        full_and_inspector(cal, full, inspect)
+        full_and_inspector(cal, full, inspect, params=_fit(shared(False), cal), look=look)
     else:
         src = source_path(frame)
         if src is None:
             raise RuntimeError("The capture isn't on disk any more.")
         if src.suffix.lower() not in (".fit", ".fits", ".fts", ".xisf"):
             raise RuntimeError(f"A {src.suffix} capture can't be drawn at 100%.")
-        full_and_inspector(src, full, inspect, raw=True)
+        full_and_inspector(src, full, inspect, raw=True, params=_fit(shared(True), src), look=look)
     _prune_full_views()
+
+
+def _fit(params: list | None, src: Path) -> list | None:
+    """Session parameters only when they have as many planes as this file draws (one, or three for colour)."""
+    if params is None:
+        return None
+    from astropy.io import fits
+
+    try:
+        h = fits.getheader(src) if src.suffix.lower() != ".xisf" else None
+    except (OSError, ValueError):
+        return None
+    colour = h is not None and (bool(h.get("BAYERPAT")) or h.get("NAXIS3") == 3)
+    return params if len(params) == (3 if colour else 1) else None
 
 
 def make_full_view(frame: Frame, cal: Path | None) -> bool:
@@ -798,15 +841,17 @@ def palette_view(collection_id: int, project_id: int | None, name: str) -> dict:
 
 @station_task(queue_name="process", priority=PRIORITY_BULK - 26, max_attempts=1)
 def rerender_session(dataset_id: int, night_id: int | None) -> dict:
-    """Redraw one session's sub previews with one stretch (003 G18): every sub's own stretch is read first, then
-    all are drawn with the session's median, so a cloudy sub looks darker beside the others. Subs whose file is
+    """Redraw one session's sub previews (003 G18, amendment 2026-10-24). With the shared look (the default) every
+    sub's own stretch is read first, then all are drawn with the session's median, so a cloudy sub looks darker
+    beside the others; with "per sub" each is drawn with its own. Either way the installation's black point and sky
+    brightness apply, and the session's 100% views are dropped so they are drawn again to match. Subs whose file is
     no longer readable here (an XISF capture with no cached calibrated copy) keep their preview."""
     import json
 
-    import numpy as np
+    from .previews import preview_look, render, screen_planes, shared_params, stretch_params
 
-    from .previews import render, screen_planes, stretch_params
-
+    look = preview_look()
+    args = {k: look[k] for k in ("black_point", "background")}
     night_q = {"frame__night_id": night_id} if night_id is not None else {"frame__night__isnull": True}
     ms = list(
         SubMeasurement.objects.filter(frame__dataset_id=dataset_id, state=MeasureState.DONE, **night_q)
@@ -823,19 +868,26 @@ def rerender_session(dataset_id: int, night_id: int | None) -> dict:
             planes, _mode, _flip = screen_planes(src, raw)
         except Exception:  # noqa: BLE001
             continue
-        sources.append((m, src, raw, [stretch_params(pl) for pl in planes]))
+        sources.append((m, src, raw, [stretch_params(pl, **args) for pl in planes]))
     if not sources:
         return {"redrawn": 0}
-    for size in {len(x[3]) for x in sources}:  # mono and colour subs (rare in one session) each get their own
-        group = [x for x in sources if len(x[3]) == size]
-        med = [tuple(float(np.median([g[3][i][k] for g in group])) for k in range(3)) for i in range(size)]
-        for m, src, raw, _own in group:
+    night = _night_key(ms[0].frame)
+    # mono and colour subs (rare in one session) each get their own; so do calibrated subs and captures, whose
+    # levels differ (no dark or flat on a capture)
+    for size, raw_group in {(len(x[3]), x[2]) for x in sources}:
+        group = [x for x in sources if len(x[3]) == size and x[2] == raw_group]
+        med = shared_params([g[3] for g in group])
+        for m, src, raw, own in group:
             out = Path(m.preview_path)
-            render(src, out, out.with_name(out.stem + "_t.jpg"), raw=raw, params=med)  # type: ignore[arg-type]
-        night = ms[0].frame.night.date.isoformat() if ms[0].frame.night else "unknown"
-        session = Path(settings.PREVIEWS_DIR) / f"ds{dataset_id}" / "stretch" / f"{night}.json"
+            params = med if look["mode"] == "session" else own
+            render(src, out, out.with_name(out.stem + "_t.jpg"), raw=raw, params=params)
+            for p in full_paths(m.frame):
+                p.unlink(missing_ok=True)
+    for raw_group in {x[2] for x in sources}:
+        session = session_file(dataset_id, night, raw_group)
         session.parent.mkdir(parents=True, exist_ok=True)
-        session.write_text(json.dumps([[list(p) for p in g[3]] for g in group][-60:]))
+        own_params = [[list(p) for p in x[3]] for x in sources if x[2] == raw_group]
+        session.write_text(json.dumps(own_params[-60:]))
     return {"redrawn": len(sources)}
 
 

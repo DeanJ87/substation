@@ -21,6 +21,8 @@ from substation.api import ApiError
 from substation.tasks.models import ResourceSample, Task, TaskStatus, Worker, WorkerState
 
 HELPER_TASK = "apps.processing.postprocess.postprocess_master"
+# 2026-10-24: a stitched mosaic or stacked-together master goes through the same helpers
+HELPER_TASKS = {HELPER_TASK: "master", "apps.processing.postprocess.postprocess_combined": "combined"}
 
 
 class HelperToken(APIKeyHeader):
@@ -59,7 +61,8 @@ class HelperClaimIn(Schema):
 
 class HelperJobOut(Schema):
     task_id: str
-    master_id: int
+    master_id: int  # the master's id, or the combined master's when `kind` is "combined"
+    kind: str = "master"
     name: str
     master_url: str
     master_file: str  # stage uploads are stored as <master stem>_<step>.fits
@@ -134,17 +137,24 @@ def _seen(host: str, tools: dict, version: str) -> None:
 
 
 def _task(task_id: str, host: str) -> Task:
-    t = get_object_or_404(Task, pk=task_id, name=HELPER_TASK)
+    t = get_object_or_404(Task, pk=task_id, name__in=list(HELPER_TASKS))
     if t.status != TaskStatus.RUNNING or t.worker_id != f"helper:{host}"[:64]:
         raise ApiError(409, "not_yours", "This job isn't running on this helper any more.")
     return t
 
 
-def _stage_dir(t: Task) -> tuple[Path, Path]:
-    from .models import Master
+def _target(t: Task):  # noqa: ANN202
+    """The master or combined master a helper job works on."""
+    from .postprocess import post_object
 
-    m = Master.objects.get(pk=t.args[0])
-    src = Path(m.output_path)
+    obj = post_object(HELPER_TASKS[t.name], t.args[0])
+    if obj is None:
+        raise ApiError(404, "gone", "This master was deleted.")
+    return obj
+
+
+def _stage_dir(t: Task) -> tuple[Path, Path]:
+    src = Path(_target(t).output_path)
     return src, src.parent / f"{src.stem}_post-{str(t.pk)[:8]}"
 
 
@@ -154,7 +164,7 @@ def claim_job(request, body: HelperClaimIn):
     from substation.tasks.claim import claim
 
     from .config import _merge, processing_settings
-    from .models import Master
+    from .postprocess import failed_run, post_name, post_object, record_run, size_problem
 
     w = _worker(body.host)
     _seen(body.host, body.tools, body.version)
@@ -164,7 +174,8 @@ def claim_job(request, body: HelperClaimIn):
         Worker.objects.filter(pk=w.pk).update(state=WorkerState.IDLE, current_task=None, engine_command=None)
         return 204, None
     Worker.objects.filter(pk=w.pk).update(state=WorkerState.BUSY, current_task=row)
-    m = Master.objects.select_related("dataset").filter(pk=row.args[0]).first()
+    kind = HELPER_TASKS.get(row.name, "master")
+    m = post_object(kind, row.args[0])
     if m is None or not m.output_path or not Path(m.output_path).is_file():
         Task.objects.filter(pk=row.pk).update(
             status=TaskStatus.FAILED, finished_at=timezone.now(), error="The master's file is missing."
@@ -172,12 +183,23 @@ def claim_job(request, body: HelperClaimIn):
         return 204, None
     overrides = row.args[1] if len(row.args) > 1 and isinstance(row.args[1], dict) else {}
     cfg = _merge(processing_settings()["post"], overrides)
+    src = Path(m.output_path)
+    # the stages come back here to be measured and drawn, so a canvas too big for this server is refused now
+    problem = size_problem(src, src.parent / f"{src.stem}_post-{str(row.pk)[:8]}", cfg)
+    if problem:
+        record_run(m, failed_run(problem, cfg))
+        Task.objects.filter(pk=row.pk).update(
+            status=TaskStatus.FAILED, finished_at=timezone.now(), error=problem
+        )
+        Worker.objects.filter(pk=w.pk).update(state=WorkerState.IDLE, current_task=None)
+        return 204, None
     return 200, HelperJobOut(
         task_id=str(row.pk),
         master_id=m.pk,
-        name=f"{m.dataset} v{m.version}",
+        kind=kind,
+        name=post_name(m),
         master_url=f"/api/v1/helper/tasks/{row.pk}/master",
-        master_file=Path(m.output_path).name,
+        master_file=src.name,
         settings=cfg,
     )
 
@@ -241,11 +263,8 @@ def upload_stage(
 @router.post("/tasks/{task_id}/done", response={204: None})
 def job_done(request, task_id: str, host: str, body: HelperDoneIn):
     """Record the run: previews, 100% views and measurements are drawn here, as for a run on the NAS."""
-    from substation.events.emit import emit
-
     from .config import processing_settings
-    from .models import Master
-    from .postprocess import stage_views
+    from .postprocess import emit_updated, record_run, stage_views
 
     t = _task(task_id, host)
     src, out_dir = _stage_dir(t)
@@ -265,10 +284,8 @@ def job_done(request, task_id: str, host: str, body: HelperDoneIn):
         stages.append(rec)
     run_stats: dict = {}
     stage_views(src, stages, run_stats)
-    m = Master.objects.get(pk=t.args[0])
-    report = dict(m.report or {})
+    m = _target(t)
     run = {
-        "run": len(report.get("post_runs", [])) + 1,
         "started_at": (t.started_at or timezone.now()).isoformat(),
         "finished_at": timezone.now().isoformat(),
         "stages": stages,
@@ -276,8 +293,7 @@ def job_done(request, task_id: str, host: str, body: HelperDoneIn):
         "helper": host,
         **run_stats,
     }
-    report["post_runs"] = [*report.get("post_runs", []), run]
-    Master.objects.filter(pk=m.pk).update(report=report)
+    record_run(m, run)
     done = sum(1 for s in stages if s.get("state") == "done")
     Task.objects.filter(pk=t.pk).update(
         status=TaskStatus.SUCCEEDED,
@@ -288,7 +304,7 @@ def job_done(request, task_id: str, host: str, body: HelperDoneIn):
     Worker.objects.filter(pk=f"helper:{host}"[:64]).update(
         state=WorkerState.IDLE, current_task=None, engine_command=None
     )
-    emit("master.updated", {"dataset_id": m.dataset_id, "master_id": m.pk, "state": m.state})
+    emit_updated(m)
     return 204, None
 
 

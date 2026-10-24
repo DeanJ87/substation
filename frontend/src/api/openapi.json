@@ -3751,6 +3751,11 @@
    },
    "HelperJobOut": {
     "properties": {
+     "kind": {
+      "default": "master",
+      "title": "Kind",
+      "type": "string"
+     },
      "master_file": {
       "title": "Master File",
       "type": "string"
@@ -17128,6 +17133,287 @@
     ]
    }
   },
+  "/combined/{id}/post": {
+   "get": {
+    "description": "A stitched or stacked master's post-processing runs, newest first, as a dataset master's.",
+    "operationId": "apps_processing_api_masters_combined_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PostOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post",
+    "tags": [
+     "catalogue"
+    ]
+   },
+   "post": {
+    "description": "Post-process this stitched or stacked master (again), from its untouched file, with the current settings.\nAdmins only: a run on a big canvas takes a helper a long time.",
+    "operationId": "apps_processing_api_masters_start_combined_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PostOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Start Combined Post",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/views": {
+   "post": {
+    "description": "Redraw this combined master's stages with its stretch, at 100% too.",
+    "operationId": "apps_processing_api_masters_redraw_combined_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PostOut"
+        }
+       }
+      },
+      "description": "OK"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Redraw Combined Post",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/{run}/{stage}/download": {
+   "get": {
+    "description": "A processed version's linear 32-bit file, to download.",
+    "operationId": "apps_processing_api_masters_combined_post_download",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run",
+      "required": true,
+      "schema": {
+       "title": "Run",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "title": "Stage",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post Download",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/{run}/{stage}/full": {
+   "get": {
+    "description": "A stage at 100%, drawn with the combined master's stretch.",
+    "operationId": "apps_processing_api_masters_combined_post_full",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run",
+      "required": true,
+      "schema": {
+       "title": "Run",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "title": "Stage",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post Full",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
+  "/combined/{id}/post/{run}/{stage}/preview": {
+   "get": {
+    "operationId": "apps_processing_api_masters_combined_post_preview",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run",
+      "required": true,
+      "schema": {
+       "title": "Run",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "title": "Stage",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "size",
+      "required": false,
+      "schema": {
+       "default": "screen",
+       "enum": [
+        "screen",
+        "thumb"
+       ],
+       "title": "Size",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     },
+     "404": {
+      "description": "Not Found"
+     }
+    },
+    "security": [
+     {
+      "SessionAuth": []
+     }
+    ],
+    "summary": "Combined Post Preview",
+    "tags": [
+     "catalogue"
+    ]
+   }
+  },
   "/combined/{id}/preview": {
    "get": {
     "operationId": "apps_processing_api_masters_combined_preview",
@@ -19738,7 +20024,7 @@
   },
   "/frames/{sha256}/glance": {
    "get": {
-    "description": "A small image of any frame for hover previews: its preview, QA thumbnail or built-master preview when one\nexists, else drawn from the file once and cached (owner 2026-10-11).",
+    "description": "A small image of any frame for hover previews: its preview, QA thumbnail or built-master preview when one\nexists, else drawn from the file once and cached (owner 2026-10-11). A measured sub's glance is its preview,\nso it shares its session's stretch; one drawn here uses the preview look on its own (003, 2026-10-24).",
     "operationId": "apps_processing_api_glance_image",
     "parameters": [
      {
@@ -19754,6 +20040,9 @@
     "responses": {
      "200": {
       "description": "OK"
+     },
+     "304": {
+      "description": "Not Modified"
      },
      "404": {
       "description": "Not Found"
@@ -19801,6 +20090,9 @@
     "responses": {
      "200": {
       "description": "OK"
+     },
+     "304": {
+      "description": "Not Modified"
      },
      "404": {
       "description": "Not Found"

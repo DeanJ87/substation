@@ -70,7 +70,14 @@ DEFAULTS: dict = {
         "rc_astro": "",
         "gpu": True,
         "timeout_s": 3600,
+        # 2026-10-24: a bigger image (a mosaic canvas) is refused with the reason instead of exhausting the worker
+        "max_megapixels": 1000,
     },
+    # 003 amendment 2026-10-24: how sub previews and glances are stretched. "session": one stretch per night and
+    # dataset (the median of its subs'), so frames compare fairly; "sub": each frame on its own. `black_point`
+    # moves the shadow clip by that many noise sigmas (+ darker sky, − lighter); `background` is the grey level the
+    # sky is drawn at (0.25 = a quarter). Masters keep their own stretch.
+    "previews": {"mode": "session", "black_point": 0.0, "background": 0.25},
     "stacking": {
         "rejection": "winsorized",
         "sigma": [3.0, 3.0],

@@ -422,3 +422,30 @@ takes longer than that to upload, so it was cut off every time and the job faile
 stage in pieces of 16 MB; each piece says where it starts and the final piece says it is the last. A piece sent
 again overwrites from its start, so retrying one piece is safe; a piece that would leave a gap is refused. A body
 sent without a starting point is still taken as the whole file.
+
+## Amendment 2026-10-24: stitched and stacked masters are post-processed too
+
+User Story 6 is built for combined masters (a mosaic from Stitch mosaic, a deeper master from Stack together);
+palette images are still out of scope.
+
+- **010-DR-23**: When a stitch or stack finishes and post-processing is on in Settings → Processing, each new
+  current combined master is queued for the same chain as a dataset's master (edges trimmed, then the enabled
+  steps in order, each on the last good stage). The combined master's file is never changed.
+- **010-DR-24**: A combined master's card shows its latest run (each stage with its tool and time, or why it was
+  skipped or failed, "View at 100%", the stage's linear file) and, for admins, **Run post-processing** or **Run
+  again**, which runs the chain from the untouched file with the current settings. Read-only users see the runs
+  but not the action. The card's picture is the latest processed stage when there is one.
+- **010-DR-25**: The 100% view of a combined master tabs through Original and each processed stage exactly as
+  for a dataset's master: one stretch for every version (the combined master's own, each colour channel's black
+  point moved with that stage's sky), with the measurements panel.
+- **010-DR-26**: Runs are kept on the combined master (`CombinedMaster.report.post_runs`, the same shape as a
+  master's). API: `GET/POST /combined/{id}/post`, `POST /combined/{id}/post/views`, and
+  `GET /combined/{id}/post/{run}/{stage}/preview|full|download`. Helpers take combined jobs from the same queue;
+  a claimed job says `kind: "combined"`.
+- **010-DR-27**: Size limits. Before a run (on the worker, or before a helper is given the job) the image size is
+  read from its header. The run is refused, with the reason recorded as a failed "Before starting" stage and shown
+  on the card, when: a side is wider or taller than 65,500 pixels (the largest JPEG the 100% view can be); the
+  image is over the installation's limit (`post.max_megapixels`, default 1,000 MP per plane, editable 50–10,000
+  in Settings → Processing); about three 32-bit copies of the image wouldn't fit in the memory free to the worker
+  (its container limit when it has one); or the stages (one 32-bit copy each, plus the trimmed copy) wouldn't fit
+  on the disk beside the master. Nothing crashes and no tool starts.

@@ -400,3 +400,35 @@
 .dialog .confirm p {
   margin: 0;
 }
+
+/* a stitched or stacked master's post-processing (spec 010 US6, 2026-10-24) */
+.post {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--sst-line);
+}
+.post > div {
+  flex-wrap: wrap;
+}
+.postStages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.postStages li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.postStages li > button {
+  /* a pill, not the picture-sized button a Zoomable usually is */
+  align-self: flex-start;
+  width: auto;
+  height: auto;
+}

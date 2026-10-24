@@ -296,6 +296,8 @@ class CombinedMaster(models.Model):
     task = models.ForeignKey(
         "substation_tasks.Task", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    # spec 010 (2026-10-24): post-processing runs on this combined master, as Master.report["post_runs"]
+    report = models.JSONField(default=dict, blank=True, help_text="{post_runs: [...]}")
 
 
 class SkyPosition(models.Model):

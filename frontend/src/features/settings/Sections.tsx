@@ -8,13 +8,13 @@ import {
   type PathMap,
 } from '../../components/FilePath'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, unwrap } from '../../api/client'
 import { optimistic, patchItems } from '../../api/optimistic'
 import type { components } from '../../api/schema'
 import { toast } from '../../components/Toasts'
 import { Help } from '../../components/Help'
-import { Button, FieldGroup, Input, Tag } from '../../components/ui'
+import { Button, FieldGroup, Input, SegmentedControl, Tag } from '../../components/ui'
 import { LoadMore } from '../../components/LoadMore'
 import { useProgressive } from '../../components/useProgressive'
 import { bytes, countText, dateTimeText } from '../format'
@@ -23,6 +23,7 @@ import { useDraft, useSaveSettings, useSettings, type Processing } from './draft
 import s from './settings.module.css'
 import { SettingsSection } from './SettingsSection'
 import { MountMode, RoleControls } from './LibraryAccess'
+import { drawPair, SAMPLE_H, SAMPLE_W, type Look } from './previewLook'
 import { LibrarySite, SiteRenderFields } from './LibrarySite'
 
 const when = (iso: string | null | undefined) => (iso ? dateTimeText(iso) : 'never')
@@ -568,6 +569,22 @@ export function PostProcessing() {
         />
         Use the GPU when the worker has one
       </label>
+      <div className={s.inline}>
+        Largest image to post-process
+        <Num
+          label="Largest image to post-process, in megapixels"
+          step={50}
+          value={p.max_megapixels ?? 1000}
+          disabled={readOnly}
+          onChange={(v) => set('post', 'max_megapixels', Math.min(10000, Math.max(50, Math.round(v))))}
+        />
+        MP
+        <Help topic="Largest image">
+          Stitched mosaics can be many times the size of one master. A bigger image, or one that would need
+          more memory or disk space than this server has free, isn't post-processed: its card says why
+          instead.
+        </Help>
+      </div>
       {/* one row per step (B05): checkbox and name, the tool, then its settings */}
       <ol className={s.steps}>
         {p.steps.map((st, i) => {
@@ -603,6 +620,118 @@ export function PostProcessing() {
           )
         })}
       </ol>
+    </SettingsSection>
+  )
+}
+
+/** The example in Sub previews: a clear sub and a cloudy one from a mostly clear session, drawn with the look. */
+function LookSample({ look }: { look: Look }) {
+  const refs = [useRef<HTMLCanvasElement>(null), useRef<HTMLCanvasElement>(null)]
+  const { mode, black_point, background } = look
+  useEffect(() => {
+    const pair = drawPair({ mode, black_point, background })
+    refs.forEach((r, i) => {
+      const ctx = r.current?.getContext('2d')
+      if (!ctx) return
+      const img = ctx.createImageData(SAMPLE_W, SAMPLE_H)
+      pair[i].forEach((g, j) => img.data.set([g, g, g, 255], j * 4))
+      ctx.putImageData(img, 0, 0)
+    })
+    // refs are stable; the look's three values are what change the drawing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, black_point, background])
+  return (
+    <figure className={s.lookSample}>
+      {['Clear sub', 'Cloudy sub'].map((label, i) => (
+        <span key={label}>
+          <canvas
+            ref={refs[i]}
+            width={SAMPLE_W}
+            height={SAMPLE_H}
+            aria-label={`Example: ${label.toLowerCase()}`}
+          />
+          <span className="muted">{label}</span>
+        </span>
+      ))}
+      <figcaption className="muted">An example, drawn with these settings.</figcaption>
+    </figure>
+  )
+}
+
+/** 003 amendment 2026-10-24: how sub previews are stretched, so frames compare fairly while grading. */
+export function SubPreviews() {
+  const { draft, set, readOnly } = useDraft()
+  if (!draft?.previews) return null
+  const look = draft.previews
+  return (
+    <SettingsSection
+      id="previews"
+      title="Sub previews"
+      help={
+        <>
+          How sub tiles, night strips, hover previews and the sub viewer draw each sub. Shared per session
+          draws every sub of a night and dataset with one stretch (the median of its subs), so a cloudy or
+          hazy sub looks darker beside its neighbours. Per sub stretches each on its own, so faint detail
+          shows in every frame but frames no longer compare. Changing these redraws every preview in the
+          background. Masters and post-processed versions keep their own stretch.
+        </>
+      }
+    >
+      <div className={s.formGrid}>
+        <SegmentedControl
+          size="sm"
+          label="Stretch"
+          value={look.mode}
+          onChange={(v) => !readOnly && set('previews', 'mode', v)}
+          options={[
+            { value: 'session', label: 'Shared per session', disabled: readOnly },
+            { value: 'sub', label: 'Per sub', disabled: readOnly },
+          ]}
+        />
+        <div className={s.inline}>
+          Black point
+          <input
+            type="range"
+            aria-label="Black point"
+            className={s.range}
+            min={-2}
+            max={2}
+            step={0.25}
+            value={look.black_point}
+            disabled={readOnly}
+            onChange={(e) => set('previews', 'black_point', Number(e.target.value))}
+          />
+          <span className={s.rangeValue}>
+            {look.black_point > 0 ? '+' : look.black_point < 0 ? '−' : ''}
+            {Math.abs(look.black_point).toFixed(2)} σ
+          </span>
+          <Help topic="Black point">
+            Where the darkest grey starts, in steps of the sky&apos;s noise. Higher clips more of the sky to
+            black (a darker, cleaner background); lower keeps more of the faint end (a lighter, noisier one).
+            0 is the usual automatic stretch.
+          </Help>
+        </div>
+        <div className={s.inline}>
+          Sky brightness
+          <input
+            type="range"
+            aria-label="Sky brightness"
+            className={s.range}
+            min={0.1}
+            max={0.4}
+            step={0.05}
+            value={look.background}
+            disabled={readOnly}
+            onChange={(e) => set('previews', 'background', Number(e.target.value))}
+          />
+          <span className={s.rangeValue}>{Math.round(look.background * 100)}%</span>
+          <Help topic="Sky brightness">
+            The grey the sky is drawn at before the black point moves. 25% is the usual automatic stretch;
+            lower shows less of the faint signal, higher more.
+          </Help>
+        </div>
+      </div>
+      <LookSample look={look} />
     </SettingsSection>
   )
 }

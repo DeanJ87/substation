@@ -127,14 +127,16 @@ export function CloseLook({
   const [zoom, setZoom] = useState<'fit' | number>(1)
   const [annotate, setAnnotate] = useAnnotateSwitch()
   // owner 2026-10-12: tab through a master's versions at 100% — Original, + GraXpert, + BlurXTerminator, + NoiseXTerminator
+  // a stitched or stacked master has the same versions (spec 010 US6, 2026-10-24)
+  const postId = target.kind === 'master' || target.kind === 'combined' ? target.id : 0
   const post = useQuery({
-    queryKey: ['post', target.kind === 'master' ? target.id : -1],
-    enabled: target.kind === 'master',
+    queryKey: [target.kind === 'combined' ? 'post-combined' : 'post', postId || -1],
+    enabled: postId > 0,
     queryFn: async () =>
       unwrap(
-        await api.GET('/stacks/{id}/post', {
-          params: { path: { id: target.kind === 'master' ? target.id : 0 } },
-        }),
+        target.kind === 'combined'
+          ? await api.GET('/combined/{id}/post', { params: { path: { id: postId } } })
+          : await api.GET('/stacks/{id}/post', { params: { path: { id: postId } } }),
       ),
   })
   const versions = (post.data?.runs[0]?.stages ?? [])

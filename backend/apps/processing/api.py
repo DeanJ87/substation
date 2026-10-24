@@ -539,7 +539,22 @@ def agree_with_grades(request, body: AgreeIn):
 
 
 # ---- previews ---------------------------------------------------------------------------------------------
-@router.get("/frames/{sha256:sha256}/preview", response={200: None, 404: None})
+def send_jpeg(request, p: Path) -> HttpResponse | FileResponse:  # noqa: ANN001
+    """A preview image, cached briefly and then checked: previews are redrawn in place when the preview look
+    changes (003 amendment 2026-10-24), so a browser asks again after five minutes and gets 304 when unchanged."""
+    st = p.stat()
+    tag = f'"{st.st_mtime_ns:x}-{st.st_size:x}"'
+    resp: HttpResponse | FileResponse = (
+        HttpResponse(status=304)
+        if request.headers.get("If-None-Match") == tag
+        else FileResponse(p.open("rb"), content_type="image/jpeg")
+    )
+    resp["ETag"] = tag
+    resp["Cache-Control"] = "private, max-age=300"
+    return resp
+
+
+@router.get("/frames/{sha256:sha256}/preview", response={200: None, 304: None, 404: None})
 def preview(request, sha256: str, size: Literal["screen", "thumb"] = "screen"):
     m = SubMeasurement.objects.filter(frame_id=sha256).first()
     if m is None or not m.preview_path:
@@ -549,9 +564,7 @@ def preview(request, sha256: str, size: Literal["screen", "thumb"] = "screen"):
         p = p.with_name(p.stem + "_t.jpg")
     if not p.exists():
         return HttpResponse(status=404)
-    resp = FileResponse(p.open("rb"), content_type="image/jpeg")
-    resp["Cache-Control"] = "private, max-age=86400"
-    return resp
+    return send_jpeg(request, p)
 
 
 def _stored_glance(sha256: str) -> Path | None:
@@ -579,24 +592,29 @@ def _any_copy_on_disk(frame: Frame) -> Path | None:
     return None
 
 
-@router.get("/frames/{sha256:sha256}/glance", response={200: None, 404: None})
+@router.get("/frames/{sha256:sha256}/glance", response={200: None, 304: None, 404: None})
 def glance_image(request, sha256: str):
     """A small image of any frame for hover previews: its preview, QA thumbnail or built-master preview when one
-    exists, else drawn from the file once and cached (owner 2026-10-11)."""
+    exists, else drawn from the file once and cached (owner 2026-10-11). A measured sub's glance is its preview,
+    so it shares its session's stretch; one drawn here uses the preview look on its own (003, 2026-10-24)."""
     import tempfile
 
-    from .previews import glance
+    from .previews import glance, look_args, preview_look
     from .tasks import source_path
 
-    def send(p: Path) -> FileResponse:
-        resp = FileResponse(p.open("rb"), content_type="image/jpeg")
-        resp["Cache-Control"] = "private, max-age=86400"
-        return resp
+    def send(p: Path) -> HttpResponse | FileResponse:
+        return send_jpeg(request, p)
 
     if (stored := _stored_glance(sha256)) is not None:
         return send(stored)
-    # the API's folders are read-only: cache in its own temp space
-    cached = Path(tempfile.gettempdir()) / "sst-glance" / f"{sha256[:24]}.jpg"
+    look = preview_look()
+    a = look_args(look)
+    # the API's folders are read-only: cache in its own temp space, one file per look
+    cached = (
+        Path(tempfile.gettempdir())
+        / "sst-glance"
+        / f"{sha256[:24]}_{a['black_point']:+.2f}_{a['background']:.2f}.jpg"
+    )
     if cached.exists():
         return send(cached)
     frame = get_object_or_404(Frame, pk=sha256)
@@ -608,7 +626,7 @@ def glance_image(request, sha256: str):
     if src is None:
         return HttpResponse(status=404)
     try:
-        glance(src, cached)
+        glance(src, cached, look=look)
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).warning("Couldn't draw a glance of %s", sha256, exc_info=True)
         return HttpResponse(status=404)
