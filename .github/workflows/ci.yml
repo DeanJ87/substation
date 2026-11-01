@@ -30,7 +30,7 @@ jobs:
       SUBSTATION_DATABASE_URL: postgres://substation:test@localhost:5432/substation
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0  # no major-version tags after v7
+      - uses: astral-sh/setup-uv@v10.3.3  # no major-version tags after v7
       - run: uv sync --frozen --python 3.12
       - run: uv run ruff check .
       - run: uv run ruff format --check .
