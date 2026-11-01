@@ -3,7 +3,7 @@
 
 # Debian testing (forky) pinned twice: the base image by digest and apt by a snapshot.debian.org date,
 # so siril 1.4.2-1 resolves identically on every build (docs/spikes phase 1, risk 12).
-FROM debian:forky-slim@sha256:3c80e257eff6274d593eb33a94bda5174ccd619836e6a728a73e11c97f2213e3
+FROM debian:forky-slim@sha256:04db4720574d184e24353e77e46dbbe4377edad01c9ba50a67aa1473cef9b9d4
 ARG DEBIAN_SNAPSHOT=20261008T000000Z
 ARG SIRIL_VERSION=1.4.2-1
 ENV DEBIAN_FRONTEND=noninteractive
